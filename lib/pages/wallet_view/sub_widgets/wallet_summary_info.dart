@@ -29,9 +29,11 @@ import '../../../utilities/enums/wallet_balance_toggle_state.dart';
 import '../../../utilities/extensions/extensions.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../wallets/crypto_currency/coins/banano.dart';
+import '../../../wallets/crypto_currency/coins/beam.dart';
 import '../../../wallets/crypto_currency/coins/firo.dart';
 import '../../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../../wallets/wallet/impl/banano_wallet.dart';
+import '../../../widgets/beam/wallet_home/beam_wallet_home.dart';
 import '../../../widgets/conditional_parent.dart';
 import 'wallet_balance_toggle_sheet.dart';
 import 'wallet_refresh_button.dart';
@@ -64,6 +66,13 @@ class WalletSummaryInfo extends ConsumerWidget {
     debugPrint("BUILD: $runtimeType");
 
     final coin = ref.watch(pWalletCoin(walletId));
+    if (coin is Beam) {
+      // BEAM: spendable, arriving, assets and the node chip.
+      return BeamWalletSummaryInfo(
+        walletId: walletId,
+        initialSyncStatus: initialSyncStatus,
+      );
+    }
     final balance = ref.watch(pWalletBalance(walletId));
 
     final locale = ref.watch(

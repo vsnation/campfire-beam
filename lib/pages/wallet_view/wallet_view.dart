@@ -49,6 +49,7 @@ import '../../utilities/text_styles.dart';
 import '../../wallets/crypto_currency/crypto_currency.dart';
 import '../../wallets/crypto_currency/intermediate/frost_currency.dart';
 import '../../wallets/isar/providers/wallet_info_provider.dart';
+import '../../wallets/wallet/impl/beam_wallet.dart';
 import '../../wallets/wallet/impl/bitcoin_frost_wallet.dart';
 import '../../wallets/wallet/impl/epiccash_wallet.dart';
 import '../../wallets/wallet/impl/firo_wallet.dart';
@@ -66,6 +67,7 @@ import '../../wallets/wallet/wallet_mixin_interfaces/sign_verify_interface.dart'
 import '../../wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
 import '../../wallets/wallet/wallet_mixin_interfaces/view_only_option_interface.dart';
 import '../../widgets/background.dart';
+import '../../widgets/beam/wallet_home/beam_wallet_home.dart';
 import '../../widgets/conditional_parent.dart';
 import '../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../widgets/custom_buttons/blue_text_button.dart';
@@ -822,6 +824,11 @@ class _WalletViewState extends ConsumerState<WalletView> {
                             ),
                           ),
                         ),
+                        if (wallet is BeamWallet)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: BeamHomeExtras(walletId: walletId),
+                          ),
                         if ((isSparkWallet ||
                                 ref
                                     .watch(pWalletInfo(walletId))
@@ -1056,8 +1063,19 @@ class _WalletViewState extends ConsumerState<WalletView> {
                     if (!viewOnly)
                       WalletNavigationBarItemData(
                         label: "Send",
-                        icon: const SendNavIcon(),
+                        icon: wallet is BeamWallet
+                            ? BeamSendNavIconFor(walletId: walletId)
+                            : const SendNavIcon(),
+                        overrideText: wallet is BeamWallet
+                            ? BeamSendNavLabelFor(walletId: walletId)
+                            : null,
                         onTap: () {
+                          // BEAM: dimmed while not honestly synced; a tap
+                          // says why instead of opening a send that fails.
+                          if (wallet is BeamWallet &&
+                              !beamSendAllowed(context, ref, walletId)) {
+                            return;
+                          }
                           // not sure what this is supposed to accomplish?
                           // switch (ref
                           //     .read(walletBalanceToggleStateProvider.state)

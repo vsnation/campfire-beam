@@ -43,6 +43,7 @@ import '../../../utilities/text_styles.dart';
 import '../../../utilities/wallet_tools.dart';
 import '../../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../../wallets/wallet/impl/banano_wallet.dart';
+import '../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../../wallets/wallet/impl/firo_wallet.dart';
 import '../../../wallets/wallet/wallet.dart';
 import '../../../wallets/wallet/wallet_mixin_interfaces/mweb_interface.dart';
@@ -54,6 +55,7 @@ import '../../../widgets/desktop/desktop_scaffold.dart';
 import '../../../widgets/hover_text_field.dart';
 import '../../../widgets/rounded_white_container.dart';
 import '../../coin_control/desktop_coin_control_use_dialog.dart';
+import 'sub_widgets/beam_desktop_wallet_summary.dart';
 import 'sub_widgets/desktop_wallet_features.dart';
 import 'sub_widgets/desktop_wallet_summary.dart';
 import 'sub_widgets/firo_desktop_wallet_summary.dart';
@@ -318,6 +320,8 @@ class _DesktopWalletViewState extends ConsumerState<DesktopWalletView> {
         child: Column(
           children: [
             DesktopWalletHeaderRow(wallet, monke),
+            if (wallet is BeamWallet)
+              BeamDesktopSyncBanner(walletId: widget.walletId),
             const SizedBox(height: 24),
             Row(
               children: [
@@ -448,7 +452,16 @@ class DesktopWalletHeaderRow extends ConsumerWidget {
                       : WalletSyncStatus.synced,
             ),
 
-          if (wallet is! FiroWallet)
+          if (wallet is BeamWallet)
+            BeamDesktopWalletSummary(
+              walletId: wallet.walletId,
+              initialSyncStatus:
+                  wallet.refreshMutex.isLocked
+                      ? WalletSyncStatus.syncing
+                      : WalletSyncStatus.synced,
+            ),
+
+          if (wallet is! FiroWallet && wallet is! BeamWallet)
             wallet is MwebInterface &&
                     ref.watch(
                       pWalletInfo(
