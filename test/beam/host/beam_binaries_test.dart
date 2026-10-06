@@ -12,6 +12,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:stackwallet/wallets/beam/contracts/bans/bans_constants.dart';
 import 'package:stackwallet/wallets/beam/host/beam_binaries.dart';
 import 'package:stackwallet/wallets/beam/host/beam_binaries_manifest.dart';
 import 'package:stackwallet/wallets/beam/host/beam_host_exception.dart';
@@ -56,6 +57,34 @@ void main() {
       for (final hash in pins.values) {
         expect(hash, matches(RegExp(r'^[0-9a-f]{64}$')));
       }
+    });
+  });
+
+  group('release manifest', () {
+    test('pins the Campfire builds for every desktop platform we build', () {
+      for (final platform in ['macos-arm64', 'linux-arm64', 'linux-x86_64']) {
+        final pins = kBeamBinaryManifest[platform]!;
+        expect(
+          pins.keys.toSet(),
+          {'beam-wallet', 'wallet-api', 'beam-node'},
+          reason: platform,
+        );
+      }
+    });
+
+    test('development pins never overlap release pins', () {
+      final release = {
+        for (final m in kBeamBinaryManifest.values) ...m.values,
+      };
+      for (final m in kBeamDevBinaryManifest.values) {
+        for (final hash in m.values) {
+          expect(release, isNot(contains(hash)));
+        }
+      }
+    });
+
+    test('BANS is the only privileged shader', () {
+      expect(kBeamPrivilegedShaderSha256s, [kBansShaderSha256]);
     });
   });
 
@@ -136,6 +165,51 @@ void main() {
     test('accepts the pinned file and returns its path', () async {
       final b = binaries({'wallet-api': goodHash});
       expect(await b.verify(BeamBinary.walletApi), good);
+    });
+
+    test('a release pin marks a Campfire build', () async {
+      final b = binaries({'wallet-api': goodHash});
+      expect(b.isCampfireBuild(BeamBinary.walletApi), isFalse);
+      await b.verify(BeamBinary.walletApi);
+      expect(b.isCampfireBuild(BeamBinary.walletApi), isTrue);
+    });
+
+    test('a development pin needs development builds allowed', () async {
+      BeamBinaries dev({required bool allow}) => BeamBinaries(
+        binDir: binDir,
+        manifest: {
+          'test-os': {'wallet-api': '00' * 32},
+        },
+        devManifest: {
+          'test-os': {'wallet-api': goodHash},
+        },
+        allowDevBuilds: allow,
+        platform: 'test-os',
+      );
+      await expectLater(
+        dev(allow: false).verify(BeamBinary.walletApi),
+        throwsA(_hostError(BeamHostError.binaryUntrusted)),
+      );
+      final b = dev(allow: true);
+      expect(await b.verify(BeamBinary.walletApi), good);
+      expect(b.isCampfireBuild(BeamBinary.walletApi), isFalse);
+    });
+
+    test('a platform with only development pins is unsupported in a release '
+        'run', () async {
+      final b = BeamBinaries(
+        binDir: binDir,
+        manifest: const {},
+        devManifest: {
+          'test-os': {'wallet-api': goodHash},
+        },
+        allowDevBuilds: false,
+        platform: 'test-os',
+      );
+      await expectLater(
+        b.verify(BeamBinary.walletApi),
+        throwsA(_hostError(BeamHostError.unsupportedPlatform)),
+      );
     });
 
     test('refuses a tampered copy', () async {

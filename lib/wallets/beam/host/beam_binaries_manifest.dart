@@ -7,21 +7,51 @@
  *
  */
 
-/// Pinned SHA-256 of every BEAM binary Campfire may run, keyed by
-/// `<os>-<arch>` (see `BeamBinaries.currentPlatform`) and then by binary name
-/// without extension (`beam-wallet`, `wallet-api`, `beam-node`).
+/// Pinned SHA-256 of every BEAM binary Campfire ships, keyed by `<os>-<arch>`
+/// (see `BeamBinaries.currentPlatform`) and then by binary name without
+/// extension (`beam-wallet`, `wallet-api`, `beam-node`).
 ///
-/// `BeamBinaries` hashes a binary before every launch and refuses to run it
-/// when its platform, its name or its hash is missing here. Nothing is ever
-/// downloaded or updated at runtime; changing a binary means changing this
-/// file in a reviewed commit.
-///
-/// The `macos-arm64` values are the self-built HF6 binaries (tag
-/// `beam-7.5.14493`, reporting version 7.5.1) that BEAM Light Wallet ships
-/// today. Their `wallet-api` and `beam-node` listen on 0.0.0.0. Task B-BIN-1
-/// replaces these values with its loopback-patched builds and adds the Linux
-/// and Windows entries.
+/// These are the Campfire builds from `scripts/beam/core` (tag
+/// `beam-7.5.14493`, version 7.5.14493, `the project notes`): wallet-api
+/// and beam-node listen on 127.0.0.1 only, and wallet-api accepts
+/// `--privileged_shader_sha256`. `BeamBinaries` hashes a binary before every
+/// launch and refuses anything not pinned. Nothing is downloaded or updated
+/// at runtime; changing a binary means changing this file in a reviewed
+/// commit, together with `scripts/beam/core/manifest.json`.
 const Map<String, Map<String, String>> kBeamBinaryManifest = {
+  'macos-arm64': {
+    'beam-wallet':
+        'a09875941fb7e9934b6961593765e0bb9111529aba883c1594b52635f945d145',
+    'wallet-api':
+        'bef68d6284535b81ec4741cf2e4ca0cb84a2158da53083d867a451a7eb60133d',
+    'beam-node':
+        '1d1ad1a28499467fa356b32fa5d7b0d2a9c07d917821dffe2ed9cad1569b1ac8',
+  },
+  'linux-arm64': {
+    'beam-wallet':
+        '3a0fa1c14494680d334b838b2ab69e536d71dac69c8641ba14b68d9b5091dff1',
+    'wallet-api':
+        '6cd49cb4c23f8de5f9d0fc19fb603148fcfba450414fd94ae7153fe7e87a4b25',
+    'beam-node':
+        'e5317ac88a8b0d8ffb0ecbd75ccb59c189c3122db7aebdfb00880c6ce863be59',
+  },
+  'linux-x86_64': {
+    'beam-wallet':
+        '8d388c96728caf931a5d76baa126da42961728d2398136b64851b33175bb3615',
+    'wallet-api':
+        'f8f41c5e137d07b4f21d45c412b54e6806f77209d90f81dbfd542a24aef3540c',
+    'beam-node':
+        'd20218c9f3805ec9fa3c9c5a492d3501f1a19850f8fa54b5553d0be95984832d',
+  },
+};
+
+/// Development-only pins, accepted solely when `BEAM_BIN_DIR` is set: the
+/// stock-bind HF6 binaries BEAM Light Wallet ships (tag `beam-7.5.14493`,
+/// reporting 7.5.1). They listen on 0.0.0.0 and know no
+/// `--privileged_shader_sha256`, so a wallet on them cannot claim BANS
+/// payments. An installed app never sets `BEAM_BIN_DIR`, so it never runs
+/// these.
+const Map<String, Map<String, String>> kBeamDevBinaryManifest = {
   'macos-arm64': {
     'beam-wallet':
         'c694187b4b5e00afb30d2106a2bfd4303462af37f8764afee7c28abfdc1adebb',
@@ -31,6 +61,14 @@ const Map<String, Map<String, String>> kBeamBinaryManifest = {
         'd5aadc3f3758f1ff9bd433915c08d0e81c9388b11b84ec94d0f7eade2adb5a57',
   },
 };
+
+/// App shaders the Campfire wallet-api may run at privilege 1. BANS needs it
+/// to find and claim payments sent to the user's names (`get_PkEx`,
+/// `get_BlindSk`); every other shader, including any dApp's, stays at 0.
+/// Must equal `kBansShaderSha256` (a test checks it).
+const List<String> kBeamPrivilegedShaderSha256s = [
+  '99eb1dfb023d30c338e3c4a4c536b7695b48ca25e27f9ce5f659b6567241736d',
+];
 
 /// The Fork6 entry of BEAM's `Rules::get_SignatureStr()` on mainnet. A binary
 /// whose rules lack it stalls at block 3928665 forever (HF6, 2026-06-30).

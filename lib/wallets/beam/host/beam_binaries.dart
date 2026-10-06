@@ -46,9 +46,14 @@ class BeamBinaries {
   BeamBinaries({
     required String binDir,
     this._manifest = kBeamBinaryManifest,
+    this._devManifest = kBeamDevBinaryManifest,
+    bool? allowDevBuilds,
     String? platform,
   }) : binDir = p.normalize(p.absolute(binDir)),
-       platform = platform ?? currentPlatform();
+       platform = platform ?? currentPlatform(),
+       allowDevBuilds =
+           allowDevBuilds ??
+           (Platform.environment[binDirEnv]?.isNotEmpty ?? false);
 
   /// Binaries from [binDirEnv] if it is set (development and tests),
   /// otherwise from `<beamRoot>/bin`.
@@ -73,6 +78,19 @@ class BeamBinaries {
   final String platform;
 
   final Map<String, Map<String, String>> _manifest;
+  final Map<String, Map<String, String>> _devManifest;
+
+  /// Whether the development pins ([kBeamDevBinaryManifest]) are accepted.
+  /// Defaults to true only when `BEAM_BIN_DIR` is set, which an installed
+  /// app never does: it runs the Campfire builds and nothing else.
+  final bool allowDevBuilds;
+
+  /// SHA-256 of each binary as of its last successful [verify].
+  final Map<BeamBinary, String> _verified = {};
+
+  /// Whether each verified binary is a Campfire build (release pin) rather
+  /// than a development pin.
+  final Map<BeamBinary, bool> _campfire = {};
 
   /// Pinned binaries whose consensus probe passed, by SHA-256.
   static final Set<String> _consensusChecked = {};
@@ -91,8 +109,14 @@ class BeamBinaries {
 
   String pathOf(BeamBinary binary) => p.join(binDir, binary.fileName);
 
-  /// The pinned SHA-256 for [binary] on this platform, if any.
+  /// The release SHA-256 for [binary] on this platform, if any.
   String? pinnedHash(BeamBinary binary) => _manifest[platform]?[binary.id];
+
+  /// True when [binary] last verified against a release pin: a Campfire
+  /// build that listens on loopback only and accepts
+  /// `--privileged_shader_sha256`. False for a development pin, and before
+  /// [verify] has succeeded.
+  bool isCampfireBuild(BeamBinary binary) => _campfire[binary] ?? false;
 
   /// Checks [binary] against the manifest and returns its absolute path.
   ///
@@ -100,14 +124,16 @@ class BeamBinaries {
   /// [BeamHostError.binaryMissing] or [BeamHostError.binaryUntrusted].
   Future<String> verify(BeamBinary binary) async {
     final pinned = _manifest[platform];
-    if (pinned == null) {
+    final devPinned = allowDevBuilds ? _devManifest[platform] : null;
+    if (pinned == null && devPinned == null) {
       throw BeamHostException(
         BeamHostError.unsupportedPlatform,
         'No BEAM binaries are pinned for $platform',
       );
     }
-    final expected = pinned[binary.id];
-    if (expected == null) {
+    final expected = pinned?[binary.id]?.toLowerCase();
+    final devExpected = devPinned?[binary.id]?.toLowerCase();
+    if (expected == null && devExpected == null) {
       throw BeamHostException(
         BeamHostError.binaryUntrusted,
         '${binary.id} is not pinned for $platform',
@@ -146,13 +172,18 @@ class BeamBinaries {
     }
 
     final actual = await sha256OfFile(path);
-    if (actual != expected.toLowerCase()) {
+    final isRelease = actual == expected;
+    if (!isRelease && actual != devExpected) {
+      _verified.remove(binary);
+      _campfire.remove(binary);
       throw BeamHostException(
         BeamHostError.binaryUntrusted,
         '${binary.id} SHA-256 does not match the pinned value '
         '(got ${actual.substring(0, 16)}…)',
       );
     }
+    _verified[binary] = actual;
+    _campfire[binary] = isRelease;
     return path;
   }
 
@@ -167,7 +198,7 @@ class BeamBinaries {
     required String scratchParent,
   }) async {
     final path = await verify(binary);
-    final hash = pinnedHash(binary)!;
+    final hash = _verified[binary]!;
     if (_consensusChecked.contains(hash)) return path;
 
     final output = await _probe(binary, path, scratchParent);

@@ -40,6 +40,9 @@ dart "${APP_PROJECT_ROOT_DIR}/tool/gen_interfaces.dart" \
       TOR \
       BEAM
 
+# The desktop BEAM core runs as child processes; bundle its pinned binaries.
+bash "${APP_PROJECT_ROOT_DIR}/scripts/beam/core/stage_binaries.sh" "${1:-}"
+
 
 pushd "${APP_PROJECT_ROOT_DIR}"
 BUILT_COMMIT_HASH=$(git log -1 --pretty=format:"%H")

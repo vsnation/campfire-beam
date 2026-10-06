@@ -120,3 +120,6 @@ lib/wl_gen/generated/
 
 /assets/windows/mwebd.exe
 /tool/build
+
+# BEAM core binaries staged at configure time (scripts/beam/core/stage_binaries.sh)
+/assets/beam/bin/

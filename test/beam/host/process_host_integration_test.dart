@@ -25,6 +25,7 @@ import 'package:bip39/bip39.dart' as bip39;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:stackwallet/wallets/beam/host/beam_binaries.dart';
+import 'package:stackwallet/wallets/beam/host/beam_binaries_manifest.dart';
 import 'package:stackwallet/wallets/beam/host/beam_host.dart';
 import 'package:stackwallet/wallets/beam/host/beam_host_exception.dart';
 import 'package:stackwallet/wallets/beam/host/process_host.dart';
@@ -86,8 +87,13 @@ void main() {
           reason: '$what: seed phrase',
         );
         if (hexCheck) {
+          // The privileged shader hash on a Campfire build's argv is public.
+          var rest = text;
+          for (final hash in kBeamPrivilegedShaderSha256s) {
+            rest = rest.replaceAll(hash, '');
+          }
           expect(
-            RegExp(r'[0-9a-f]{64}').hasMatch(text),
+            RegExp(r'[0-9a-f]{64}').hasMatch(rest),
             isFalse,
             reason: '$what: 64-hex token (ACL key shape)',
           );

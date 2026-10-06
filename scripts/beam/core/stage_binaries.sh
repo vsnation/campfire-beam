@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Stage the pinned Campfire BEAM binaries into assets/beam/bin/<os>-<arch>/ so the
+# app bundles them (pubspec, BEAM flag) and installs them into <data>/beam/bin at
+# first start (lib/wallets/beam/host/bundled_binaries.dart).
+#
+#   stage_binaries.sh <platform>      platform: linux | macos | windows | android | ios
+#
+# Every folder the pubspec lists is created, empty when nothing applies, so the
+# build never fails on a missing asset directory. Only binaries whose SHA-256
+# equals scripts/beam/core/manifest.json are copied; anything else is refused.
+# Source: $BEAM_CORE_OUT (default ~/Desktop/Beam/beam-core-build/out), the output
+# of build_macos.sh / build_linux.sh. Nothing is downloaded here.
+set -euo pipefail
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+PLATFORM="${1:-}"
+SRC="${BEAM_CORE_OUT:-$HOME/Desktop/Beam/beam-core-build/out}"
+DEST="$REPO/assets/beam/bin"
+MANIFEST="$REPO/scripts/beam/core/manifest.json"
+
+# platform key in manifest.json -> folder name under $SRC
+declare -a KEYS=(macos-arm64 linux-arm64 linux-x86_64)
+src_dir() {
+  case "$1" in
+    macos-arm64) echo "$SRC/macos-arm64" ;;
+    linux-arm64) echo "$SRC/linux-aarch64" ;;
+    linux-x86_64) echo "$SRC/linux-x86_64" ;;
+  esac
+}
+
+for k in "${KEYS[@]}"; do
+  rm -rf "${DEST:?}/$k"
+  mkdir -p "$DEST/$k"
+done
+
+case "$PLATFORM" in
+  macos) WANT=(macos-arm64) ;;
+  linux) WANT=(linux-x86_64 linux-arm64) ;;
+  *) echo "stage_binaries: nothing to bundle for '${PLATFORM:-<none>}' (desktop core only)"; exit 0 ;;
+esac
+
+staged=0
+for k in "${WANT[@]}"; do
+  from="$(src_dir "$k")"
+  if [ ! -d "$from" ]; then
+    echo "stage_binaries: $k not built ($from missing) — skipped"
+    continue
+  fi
+  for b in beam-wallet wallet-api beam-node; do
+    want=$(python3 -I -c "import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]][sys.argv[3]]['sha256'])" "$MANIFEST" "$k" "$b")
+    got=$(shasum -a 256 "$from/$b" | cut -d' ' -f1)
+    if [ "$got" != "$want" ]; then
+      echo "stage_binaries: REFUSED $k/$b — sha256 $got does not match the pin" >&2
+      exit 1
+    fi
+    cp "$from/$b" "$DEST/$k/$b"
+    chmod 0644 "$DEST/$k/$b"   # an asset; the app installs it 0700
+    staged=$((staged + 1))
+  done
+  echo "stage_binaries: $k staged (3 binaries, pins verified)"
+done
+echo "stage_binaries: $staged binaries staged into assets/beam/bin"

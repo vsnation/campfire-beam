@@ -8,6 +8,7 @@
  */
 
 //ON
+import '../../wallets/beam/host/bundled_binaries.dart';
 import '../../wallets/beam/host/process_host.dart';
 //END_ON
 import '../../wallets/beam/host/beam_host.dart';
@@ -40,8 +41,10 @@ final class _LibBeamInterfaceImpl extends LibBeamInterface {
   bool get isAvailable => true;
 
   @override
-  BeamHost createHost({required String rootDir}) =>
-      ProcessHost(rootDir: rootDir);
+  BeamHost createHost({required String rootDir}) => ProcessHost(
+    rootDir: rootDir,
+    ensureBinaries: () => installBundledBeamBinaries(beamRoot: rootDir),
+  );
 }
 
 //END_ON

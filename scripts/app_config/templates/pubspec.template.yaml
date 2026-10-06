@@ -447,9 +447,12 @@ flutter:
 ## BEAM app shaders (amm, bans, airdrop, minter, blackhole). Each is pinned
 ## by SHA-256 and checked before first use (contracts/common/pinned_shader).
 #    - assets/beam/shaders/
-## Pinned BEAM core binaries for desktop, added by the binaries task. A
-## directory entry does not include its subdirectories, so each platform's
-## binaries folder is listed on its own line.
+## Pinned BEAM core binaries for desktop, staged per build platform by
+## scripts/beam/core/stage_binaries.sh (empty folders elsewhere). A directory
+## entry does not include its subdirectories, so each is listed.
+#    - assets/beam/bin/macos-arm64/
+#    - assets/beam/bin/linux-arm64/
+#    - assets/beam/bin/linux-x86_64/
 # %%END_ENABLE_BEAM%%
 
 import_sorter:

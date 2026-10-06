@@ -19,6 +19,7 @@ import 'package:path/path.dart' as p;
 import '../rpc/beam_transport.dart';
 import '../rpc/tcp_line_transport.dart';
 import 'beam_binaries.dart';
+import 'beam_binaries_manifest.dart';
 import 'beam_host.dart';
 import 'beam_host_exception.dart';
 import 'secret_file.dart';
@@ -77,6 +78,7 @@ class ProcessHost implements BeamHost {
     this.startupTimeout = const Duration(seconds: 20),
     this.cliTimeout = const Duration(minutes: 2),
     this.rescanTimeout = const Duration(minutes: 30),
+    this._ensureBinaries,
   }) : rootDir = p.normalize(p.absolute(rootDir)),
        binaries = binaries ?? BeamBinaries.locate(beamRoot: rootDir),
        _log = log ?? _noLog;
@@ -95,6 +97,12 @@ class ProcessHost implements BeamHost {
 
   final BeamTransportFactory? _transportFactory;
   final BeamHostLog _log;
+
+  /// Puts the binaries in place before the first operation, e.g. copying
+  /// the ones bundled with the app into `bin/`
+  /// (`installBundledBeamBinaries`). They are still verified before every
+  /// launch.
+  final Future<void> Function()? _ensureBinaries;
 
   /// Every open session of every host in this process.
   static final Set<ProcessSession> _sessions = {};
@@ -192,6 +200,7 @@ class ProcessHost implements BeamHost {
     await ensurePrivateDir(logsDir);
     await ensurePrivateDir(nodeDir);
     await ensurePrivateDir(walletsDir);
+    await _ensureBinaries?.call();
     final removed = await SecretFiles.sweep([runDir, nodeDir]);
     if (removed > 0) {
       _log('Removed $removed secret file(s) left by an earlier run');
@@ -621,6 +630,12 @@ class ProcessHost implements BeamHost {
           '--enable_lelantus',
           '--api_version=$kBeamApiVersion',
           '--request_bodies=${requestBodies ? 1 : 0}',
+          // Only the Campfire build knows this flag; the stock binary
+          // refuses to start with it. BANS needs privilege 1 to claim name
+          // payments; every other shader, including any dApp's, stays at 0.
+          if (binaries.isCampfireBuild(BeamBinary.walletApi))
+            '--privileged_shader_sha256='
+                '${kBeamPrivilegedShaderSha256s.join(',')}',
           '--log_level=info',
           '--file_log_level=info',
           '--log_cleanup_days=3',

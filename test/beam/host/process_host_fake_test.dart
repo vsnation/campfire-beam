@@ -19,6 +19,7 @@ import 'package:bip39/bip39.dart' as bip39;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:stackwallet/wallets/beam/host/beam_binaries.dart';
+import 'package:stackwallet/wallets/beam/host/beam_binaries_manifest.dart';
 import 'package:stackwallet/wallets/beam/host/beam_host.dart';
 import 'package:stackwallet/wallets/beam/host/beam_host_exception.dart';
 import 'package:stackwallet/wallets/beam/host/process_host.dart';
@@ -166,7 +167,13 @@ void main() {
     for (final line in text) {
       expect(line, isNot(contains(password)));
       expectNoPhrase(line);
-      expect(line, isNot(matches(RegExp(r'[0-9a-f]{64}'))));
+      // The privileged shader hash is public; any other 64-hex token on argv
+      // would be the ACL key.
+      var rest = line;
+      for (final hash in kBeamPrivilegedShaderSha256s) {
+        rest = rest.replaceAll(hash, '');
+      }
+      expect(rest, isNot(matches(RegExp(r'[0-9a-f]{64}'))));
     }
   }
 
@@ -314,6 +321,41 @@ void main() {
   }, skip: Platform.isWindows ? 'uses /bin/sh stand-ins' : false);
 
   group('wallet-api', () {
+    test('a development build is launched without the privileged-shader '
+        'flag, which it would refuse', () async {
+      final api = p.join(binDir, 'wallet-api');
+      final wallet = p.join(binDir, 'beam-wallet');
+      final devHost = ProcessHost(
+        rootDir: p.join(tmp.path, 'beam'),
+        binaries: BeamBinaries(
+          binDir: binDir,
+          platform: 'fake',
+          manifest: const {},
+          devManifest: {
+            'fake': {
+              'beam-wallet': await BeamBinaries.sha256OfFile(wallet),
+              'wallet-api': await BeamBinaries.sha256OfFile(api),
+            },
+          },
+          allowDevBuilds: true,
+        ),
+        startupTimeout: const Duration(seconds: 3),
+        cliTimeout: const Duration(seconds: 15),
+      );
+      await createWallet();
+      await expectLater(
+        devHost.openWallet(
+          walletDir: walletDir,
+          password: 'wrong-password-1',
+          node: BeamNodeEndpoint.parse('eu-nodes.mainnet.beam.mw:8100'),
+        ),
+        throwsA(_hostError(BeamHostError.wrongPassword)),
+      );
+      final launch = (await lines('argv.log')).last;
+      expect(launch, contains('--use_acl=1'));
+      expect(launch, isNot(contains('--privileged_shader_sha256')));
+    });
+
     test('wrong password is typed; secrets gone; lock released', () async {
       await createWallet();
       await expectLater(
@@ -341,6 +383,8 @@ void main() {
         '--log_level=info',
         '--file_log_level=info',
         '--node_addr=eu-nodes.mainnet.beam.mw:8100',
+        // A release pin: the Campfire build gets the BANS allowlist.
+        '--privileged_shader_sha256=${kBeamPrivilegedShaderSha256s.single}',
       ]) {
         expect(launch, contains(flag));
       }
