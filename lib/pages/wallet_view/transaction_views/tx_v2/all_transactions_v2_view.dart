@@ -38,6 +38,8 @@ import '../../../../wallets/crypto_currency/coins/solana.dart';
 import '../../../../wallets/isar/providers/eth/current_token_wallet_provider.dart';
 import '../../../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
+import '../../../../widgets/beam/tx/beam_transaction_card.dart';
+import '../../../../widgets/beam/tx/beam_tx_view.dart';
 import '../../../../widgets/conditional_parent.dart';
 import '../../../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../../../widgets/desktop/desktop_app_bar.dart';
@@ -830,7 +832,23 @@ class DesktopTransactionCardRow extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<DesktopTransactionCardRow> createState() =>
-      _DesktopTransactionCardRowState();
+      // BEAM wallets hold only BEAM transactions, so the state's kind
+      // never changes under one element.
+      // ignore: no_logic_in_create_state
+      transaction.isBeamTransaction
+      ? _BeamTransactionRowState()
+      : _DesktopTransactionCardRowState();
+}
+
+// BEAM: plain-language status and contract labels (lib/widgets/beam/tx/).
+class _BeamTransactionRowState
+    extends ConsumerState<DesktopTransactionCardRow> {
+  @override
+  Widget build(BuildContext context) => BeamTransactionRow(
+    transaction: widget.transaction,
+    view: BeamTxView.of(widget.transaction)!,
+    coin: ref.watch(pWalletCoin(widget.walletId)),
+  );
 }
 
 class _DesktopTransactionCardRowState

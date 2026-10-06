@@ -22,6 +22,8 @@ import '../../../../utilities/util.dart';
 import '../../../../wallets/crypto_currency/crypto_currency.dart';
 import '../../../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
+import '../../../../widgets/beam/tx/beam_transaction_card.dart';
+import '../../../../widgets/beam/tx/beam_tx_view.dart';
 import '../../../../widgets/coin_ticker_tag.dart';
 import '../../../../widgets/conditional_parent.dart';
 import '../../../../widgets/desktop/desktop_dialog.dart';
@@ -34,7 +36,23 @@ class TransactionCardV2 extends ConsumerStatefulWidget {
   final TransactionV2 transaction;
 
   @override
-  ConsumerState<TransactionCardV2> createState() => _TransactionCardStateV2();
+  ConsumerState<TransactionCardV2> createState() =>
+      // BEAM wallets hold only BEAM transactions, so the state's kind
+      // never changes under one element.
+      // ignore: no_logic_in_create_state
+      transaction.isBeamTransaction
+      ? _BeamTransactionCardState()
+      : _TransactionCardStateV2();
+}
+
+// BEAM: plain-language status and contract labels (lib/widgets/beam/tx/).
+class _BeamTransactionCardState extends ConsumerState<TransactionCardV2> {
+  @override
+  Widget build(BuildContext context) => BeamTransactionCard(
+    transaction: widget.transaction,
+    view: BeamTxView.of(widget.transaction)!,
+    coin: ref.watch(pWalletCoin(widget.transaction.walletId)),
+  );
 }
 
 class _TransactionCardStateV2 extends ConsumerState<TransactionCardV2> {

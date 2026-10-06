@@ -47,6 +47,7 @@ import '../../../../wallets/wallet/intermediate/cryptonote_wallet.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/rbf_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
 import '../../../../widgets/background.dart';
+import '../../../../widgets/beam/tx/beam_tx_details.dart';
 import '../../../../widgets/conditional_parent.dart';
 import '../../../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../../../widgets/custom_buttons/blue_text_button.dart';
@@ -82,7 +83,24 @@ class TransactionV2DetailsView extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<TransactionV2DetailsView> createState() =>
-      _TransactionV2DetailsViewState();
+      // BEAM wallets hold only BEAM transactions, so the state's kind
+      // never changes under one element.
+      // ignore: no_logic_in_create_state
+      transaction.isBeamTransaction
+      ? _BeamTransactionDetailsState()
+      : _TransactionV2DetailsViewState();
+}
+
+// BEAM: status in plain words, cancel / delete / payment proof, and the
+// kernel id the explorer uses (lib/widgets/beam/tx/).
+class _BeamTransactionDetailsState
+    extends ConsumerState<TransactionV2DetailsView> {
+  @override
+  Widget build(BuildContext context) => BeamTxDetails(
+    transaction: widget.transaction,
+    walletId: widget.walletId,
+    coin: widget.coin,
+  );
 }
 
 class _TransactionV2DetailsViewState

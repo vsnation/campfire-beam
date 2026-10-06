@@ -22,6 +22,7 @@ import '../../../../utilities/constants.dart';
 import '../../../../utilities/util.dart';
 import '../../../../wallets/crypto_currency/crypto_currency.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/cash_fusion_interface.dart';
+import '../../../../widgets/beam/tx/beam_no_transactions.dart';
 import '../../../../widgets/loading_indicator.dart';
 import '../../../../widgets/paginated_list_view.dart';
 import '../../sub_widgets/no_transactions_found.dart';
@@ -168,6 +169,10 @@ class _TransactionsV2ListState extends ConsumerState<TransactionsV2List> {
           );
         }
         if (_transactions.isEmpty) {
+          // BEAM: an empty history offers the way in (USER_PSYCHOLOGY §1.4).
+          if (coin is Beam) {
+            return BeamNoTransactions(walletId: widget.walletId);
+          }
           return const NoTransActionsFound();
         } else {
           _transactions.sort((a, b) {
