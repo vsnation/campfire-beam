@@ -1,0 +1,1 @@
+{"error": {"code": -32019, "data": "Error:  <- get_PkEx,res=00000002,gen=00000002,pID=8001f768,nID=00000020 <- InvokeExt=167 <- wasm/Run, Ip=000003b1", "message": "Contract call failed"}, "id": 7, "jsonrpc": "2.0"}

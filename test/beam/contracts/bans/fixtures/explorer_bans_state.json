@@ -1,0 +1,147 @@
+{
+ "h": 4068101,
+ "kind": "Bans v0",
+ "State": {
+  "Settings": {
+   "Activation height": {
+    "type": "height",
+    "value": 1896111
+   },
+   "Anon-Vault": {
+    "type": "cid",
+    "value": "a3385e50cf33afc9f769ee1d82d56b73046d680d343977f36d9a303d7bcdc4da"
+   },
+   "Dao-Vault": {
+    "type": "cid",
+    "value": "0066b12078623df132b691001b25d7eb94b207b42c018020c9e58152e21ecd25"
+   },
+   "Price oracle": {
+    "type": "cid",
+    "value": "4f160f01dcc6751e61d793279b803328d5332125fe8492e93ee8f3bfe9abe13b"
+   }
+  },
+  "Domains": {
+   "type": "table",
+   "value": [
+    [
+     {
+      "type": "th",
+      "value": "Name"
+     },
+     {
+      "type": "th",
+      "value": "Owner"
+     },
+     {
+      "type": "th",
+      "value": "Expiration height"
+     },
+     {
+      "type": "th",
+      "value": "Status"
+     },
+     {
+      "type": "th",
+      "value": "Sell price"
+     }
+    ],
+    [
+     "0xredbeard",
+     {
+      "type": "blob",
+      "value": "2d5fa415f0cd513a86cf47aa4c7c67c21f59f8ca8a8533e4a5dfe6205d812e5100"
+     },
+     {
+      "type": "height",
+      "value": 2422543
+     },
+     "Expired",
+     ""
+    ],
+    [
+     "11111",
+     {
+      "type": "blob",
+      "value": "830c53502cfcb93257c0aa0225e67b45cfeb277ba45d3639b69d1fb55a4a149601"
+     },
+     {
+      "type": "height",
+      "value": 2422412
+     },
+     "Expired",
+     [
+      {
+       "type": "aid",
+       "value": 0
+      },
+      {
+       "type": "amount",
+       "value": 100000000000
+      }
+     ]
+    ],
+    [
+     "beam",
+     {
+      "type": "blob",
+      "value": "72e368c016bec94e0aa0274aae5b6e9ef4bbb64d0ce1436acb134488570d51ef01"
+     },
+     {
+      "type": "height",
+      "value": 4918184
+     },
+     "",
+     ""
+    ],
+    [
+     "beamer",
+     {
+      "type": "blob",
+      "value": "49bea497ea8a36a8c20b36b1c38075beb49176a0d59e1034301e07ddc8117cfc01"
+     },
+     {
+      "type": "height",
+      "value": 3998572
+     },
+     "On Hold",
+     ""
+    ],
+    [
+     "foundation",
+     {
+      "type": "blob",
+      "value": "72e368c016bec94e0aa0274aae5b6e9ef4bbb64d0ce1436acb134488570d51ef01"
+     },
+     {
+      "type": "height",
+      "value": 4524174
+     },
+     "",
+     ""
+    ],
+    [
+     "nephrite",
+     {
+      "type": "blob",
+      "value": "18b1c34dbb1bb96ae29cb40290fb2e347c46abeb09a3cfbbe8ecd1a01589096200"
+     },
+     {
+      "type": "height",
+      "value": 4524205
+     },
+     "",
+     [
+      {
+       "type": "aid",
+       "value": 0
+      },
+      {
+       "type": "amount",
+       "value": 10000000000000
+      }
+     ]
+    ]
+   ]
+  }
+ }
+}
