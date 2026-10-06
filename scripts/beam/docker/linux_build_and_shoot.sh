@@ -93,7 +93,10 @@ if [ "${SKIP_BUILD:-0}" != "1" ]; then
 fi
 
 BUNDLE=/work/build/linux/x64/${BUILD_MODE}/bundle
-BIN="${BUNDLE}/${APP_ID}"
+# The executable is BINARY_NAME from the configured linux/CMakeLists.txt
+# (NEW_BASIC_NAME), which need not equal the app id (campfire -> campfirebeam).
+BIN_NAME=$(sed -n 's/^set(BINARY_NAME "\(.*\)")$/\1/p' /work/linux/CMakeLists.txt)
+BIN="${BUNDLE}/${BIN_NAME:-$APP_ID}"
 [ -x "$BIN" ] || { echo "missing binary $BIN"; ls "${BUNDLE}" || true; exit 1; }
 du -sh "$BUNDLE" | sed 's/^/bundle size: /'
 
