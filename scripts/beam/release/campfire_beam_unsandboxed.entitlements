@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!-- Test builds of Campfire for BEAM, distributed outside the App Store. Not
+     sandboxed: the BEAM core runs as child processes (wallet-api, beam-node)
+     that the app installs and launches, which App Sandbox blocks unless they
+     ship as signed, sandbox-inheriting helpers inside the bundle (planned for
+     release builds, B-REL-SANDBOX). -->
+<dict>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<true/>
+</dict>
+</plist>
