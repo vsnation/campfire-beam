@@ -16,6 +16,7 @@ Where Sparky was, and what replaces him:
   stack              (empty wallets / already running)    -> welcome
   stack_icon, coin_placeholder (wallet with coins)        -> send_me_beams
   coins.images/secondaries.beam (Add Beam wallet screen)  -> received_beams
+  colors.coin.beam                                        -> Campfire's coin colour (firo)
 """
 import io
 import json
@@ -55,6 +56,10 @@ def main() -> None:
         assets[key] = f'png/beam_girl/{sticker}.png'
     assets['coins']['images']['beam'] = f'png/beam_girl/{COIN_IMAGE}.png'
     assets['coins']['secondaries']['beam'] = f'png/beam_girl/{COIN_IMAGE}.png'
+    # Owner, 2026-10-06: keep Campfire's own look. BEAM's brand teal clashed with
+    # Campfire's warm palette on the balance card and everything else tinted by
+    # the coin colour, so BEAM takes the colour Campfire gives its own coin.
+    theme['colors']['coin']['beam'] = theme['colors']['coin']['firo']
 
     needed = sorted(set(PLACES.values()) | {COIN_IMAGE})
     new_files = {f'assets/png/beam_girl/{n}.png': png_bytes(n) for n in needed}
