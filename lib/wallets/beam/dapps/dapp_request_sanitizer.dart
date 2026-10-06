@@ -7,11 +7,14 @@
  *
  */
 
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:meta/meta.dart';
 
+import '../host/beam_binaries_manifest.dart';
 import '../rpc/beam_transport.dart';
 import 'dapp_errors.dart';
 import 'dapp_rpc.dart';
+import 'dapp_text.dart';
 
 /// Size limits on what a dApp may send.
 @immutable
@@ -24,6 +27,8 @@ class DappRequestLimits {
     this.maxCommentLength = 1024,
     this.maxAddressLength = 4096,
     this.maxInFlight = 64,
+    this.maxSignMessageLength = 4096,
+    this.maxKeyMaterialLength = 1024,
   });
 
   /// One request as text. The app shaders of the 9 bundled dApps are at
@@ -40,6 +45,12 @@ class DappRequestLimits {
 
   /// Requests one dApp may have waiting on the core at once.
   final int maxInFlight;
+
+  /// `sign_message` `message`: text shown in the approval sheet.
+  final int maxSignMessageLength;
+
+  /// `sign_message` `key_material`, in hex digits.
+  final int maxKeyMaterialLength;
 }
 
 /// Narrows what an allowed method may carry before it reaches wallet-api.
@@ -49,7 +60,15 @@ class DappRequestLimits {
 ///   unknown key; `create_tx: true` is refused with the core's own error
 ///   (`v6_1_api_parse.cpp:284-287`) and `create_tx` is always sent as
 ///   false, so a dApp can never start a contract transaction without
-///   `process_invoke_data` and its approval.
+///   `process_invoke_data` and its approval. `contract` bytes whose
+///   SHA-256 is on Campfire's privileged list ([privilegedShaderSha256s],
+///   the BANS app shader) are refused: Campfire's wallet-api runs those at
+///   privilege 1 for whoever sends them, which would let a dApp read the
+///   payments waiting for the user's names.
+/// * `sign_message`: only `message` and `key_material`, the key material as
+///   strict even-length hex. The core's `from_hex` stops at the first
+///   non-hex character (`utility/hex.cpp:56-90`); refusing anything else
+///   means the key checked here is the key the core derives.
 /// * `tx_send` and `process_invoke_data`: only the keys the approval sheet
 ///   accounts for are accepted, with checked types; anything else is
 ///   refused rather than silently forwarded, because what executes must be
@@ -59,9 +78,16 @@ class DappRequestLimits {
 /// * Every other method: `contract_file` is dropped, the rest is forwarded
 ///   for the core to validate.
 class DappRequestSanitizer {
-  const DappRequestSanitizer([this.limits = const DappRequestLimits()]);
+  const DappRequestSanitizer([
+    this.limits = const DappRequestLimits(),
+    this.privilegedShaderSha256s = kBeamPrivilegedShaderSha256s,
+  ]);
 
   final DappRequestLimits limits;
+
+  /// App shaders Campfire's wallet-api runs at privilege 1; never accepted
+  /// from a dApp.
+  final List<String> privilegedShaderSha256s;
 
   static const _invokeKeys = {
     'contract',
@@ -71,6 +97,7 @@ class DappRequestSanitizer {
     'unique',
   };
   static const _processKeys = {'data', 'confirm_comment'};
+  static const _signKeys = {'message', 'key_material'};
   static const _sendKeys = {
     'address',
     'value',
@@ -97,6 +124,7 @@ class DappRequestSanitizer {
   };
 
   static final _txId = RegExp(r'^[0-9a-fA-F]{32}$');
+  static final _hex = RegExp(r'^(?:[0-9a-fA-F]{2})+$');
 
   /// The params to forward for [request], or a [BeamRpcException].
   Map<String, Object?> sanitize(DappRpcRequest request) {
@@ -110,6 +138,8 @@ class DappRequestSanitizer {
         return _txSend(params);
       case 'ev_subunsub':
         return _evSubUnsub(params);
+      case 'sign_message':
+        return _signMessage(params);
       default:
         return Map.unmodifiable({
           for (final e in params.entries)
@@ -137,11 +167,20 @@ class DappRequestSanitizer {
     }
     out['create_tx'] = false;
     if (out.containsKey('contract')) {
-      out['contract'] = _bytes(
+      final shader = _bytes(
         out['contract'],
         'contract',
         limits.maxShaderBytes,
       );
+      final hash = crypto.sha256.convert(shader).toString();
+      if (privilegedShaderSha256s.contains(hash)) {
+        throw DappRpcErrors.error(
+          DappRpcErrors.notAllowed,
+          'Campfire refused this request: the app shader is one Campfire '
+          'reserves for its own name service. Nothing was run.',
+        );
+      }
+      out['contract'] = shader;
     }
     final args = out['args'];
     if (args != null &&
@@ -218,6 +257,31 @@ class DappRequestSanitizer {
       'txId': ?txId,
       'offline': ?offline,
     });
+  }
+
+  Map<String, Object?> _signMessage(Map<String, Object?> params) {
+    _onlyKeys(params, _signKeys);
+    final message = params['message'];
+    if (message is! String ||
+        message.isEmpty ||
+        message.length > limits.maxSignMessageLength) {
+      throw _params(
+        'message must be a non-empty string of at most '
+        '${limits.maxSignMessageLength}',
+      );
+    }
+    if (dappTextHasHidden(message)) {
+      // The sheet must show exactly what is signed; hidden characters
+      // cannot be shown.
+      throw _params('message must not contain control or bidi characters');
+    }
+    final key = params['key_material'];
+    if (key is! String ||
+        key.length > limits.maxKeyMaterialLength ||
+        !_hex.hasMatch(key)) {
+      throw _params('key_material must be an even number of hex digits');
+    }
+    return Map.unmodifiable({'message': message, 'key_material': key});
   }
 
   Map<String, Object?> _evSubUnsub(Map<String, Object?> params) {

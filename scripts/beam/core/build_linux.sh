@@ -46,6 +46,8 @@ for arch in "${ARCHES[@]}"; do
     # image store `ubuntu:22.04` is a multi-arch index and the legacy builder picks the
     # host's variant (arm64) for every --platform, then fails at COPY.
     case "$arch" in arm64) base="$UBUNTU_2204_ARM64" ;; amd64) base="$UBUNTU_2204_AMD64" ;; esac
+    # Only an image pinned by digest; a tag can be repointed upstream.
+    [[ "$base" =~ @sha256:[0-9a-f]{64}$ ]] || die "base image $base is not pinned by digest"
     log "== linux/${arch}: builder image ${image} from ${base}"
     t0=$(date +%s)
     docker pull -q --platform "linux/${arch}" "$base" >/dev/null

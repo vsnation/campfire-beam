@@ -211,6 +211,29 @@ void main() {
     expect(t.callsTo('tx_send'), hasLength(1), reason: 'never twice');
   });
 
+  test('two prepares at once build one payment; the second is refused '
+      '(L-1)', () async {
+    final w = await ready();
+    final m = BeamSendModel(backendFor(w), nameDebounce: Duration.zero);
+    addTearDown(m.dispose);
+    m.setRecipient(vectorAddress('regular'));
+    m.setAmountText('0.01', 'en_US');
+    final first = m.prepare(w.cryptoCurrency);
+    await expectLater(
+      m.prepare(w.cryptoCurrency),
+      throwsA(
+        isA<BeamWalletException>().having(
+          (e) => e.message,
+          'message',
+          contains('already being prepared'),
+        ),
+      ),
+    );
+    final review = await first;
+    expect(host.lastTransport!.callsTo('validate_address'), hasLength(1));
+    review.dispose();
+  });
+
   test('to a name: built and decoded without broadcasting; executed once, '
       'after resolving once more', () async {
     final w = await ready();

@@ -14,11 +14,15 @@
 //   Taps: … Review → Send: 1 more, plus the PIN.
 //
 // Exit-intent (§1.7):
-//   * "Am I sending the right token?" → the asset row names it with its
-//     number, and a copycat is flagged in red right here.
+//   * "Am I sending the right token?" → the amount, the asset row and the
+//     button name an unverified asset with its number ("250 FOMO #999"),
+//     and a copycat is flagged in red right here.
 //   * "Will it take FOMO for the fee?" → the fee row says it is BEAM.
 //   * "Did it go?" → success says so and the history shows it; a failure
 //     says what happened and that nothing was sent when that is certain.
+//     When it is not certain (the connection dropped), it says so, the Send
+//     button is gone for good and the screen leaves for the history: the
+//     same prepared payment can never be sent twice from here.
 
 import 'dart:async';
 
@@ -35,7 +39,9 @@ import '../../utilities/show_loading.dart';
 import '../../utilities/text_styles.dart';
 import '../../wallets/beam/assets/beam_asset_text.dart';
 import '../../wallets/beam/models/beam_address.dart';
+import '../../wallets/beam/rpc/beam_connection_exception.dart';
 import '../../wallets/beam/wallet/beam_send_rules.dart';
+import '../../wallets/beam/wallet/beam_wallet_errors.dart';
 import '../../wallets/crypto_currency/crypto_currency.dart';
 import '../../wallets/models/tx_data.dart';
 import '../../wallets/wallet/impl/sub_wallets/beam_asset_wallet.dart';
@@ -54,7 +60,9 @@ import 'sub_widgets/beam_asset_layout.dart';
 typedef BeamAssetAuthorizer = Future<bool> Function(BuildContext context);
 
 /// Shows the confirm screen (page on a phone, dialog on desktop). Completes
-/// with true once the payment was sent.
+/// with true once the payment was handed to the wallet: sent, or possibly
+/// sent (the outcome is unknown). Either way the form must not offer the
+/// same payment again.
 Future<bool?> showBeamAssetConfirm({
   required BuildContext context,
   required String walletId,
@@ -191,10 +199,27 @@ class BeamAssetConfirmView extends ConsumerStatefulWidget {
 class _BeamAssetConfirmViewState extends ConsumerState<BeamAssetConfirmView> {
   bool _sending = false;
 
+  /// The payment may have gone out. Once set it never clears: Send is gone
+  /// and only the way to the history is left.
+  bool _outcomeUnknown = false;
+
   BeamAssetContract get _asset => widget.assetWallet.asset;
 
+  /// Whether [error], thrown while sending, leaves it open whether the
+  /// payment went out (as `BeamSendReview.isOutcomeUnknown`).
+  static bool _isOutcomeUnknown(Object? error) =>
+      (error is BeamWalletException &&
+          error.problem == BeamWalletProblem.sendOutcomeUnknown) ||
+      error is BeamConnectionException ||
+      error is TimeoutException;
+
+  /// Leaves for the asset page, whose history shows what happened.
+  void _toHistory() {
+    if (mounted) Navigator.of(context).pop(true);
+  }
+
   Future<void> _send(String amountText) async {
-    if (_sending) return;
+    if (_sending || _outcomeUnknown) return;
     setState(() => _sending = true);
     try {
       if (!await widget.authorize(context) || !mounted) return;
@@ -215,15 +240,26 @@ class _BeamAssetConfirmViewState extends ConsumerState<BeamAssetConfirmView> {
       );
       if (!mounted) return;
       if (outcome?.tx == null) {
+        final unknown = _isOutcomeUnknown(outcome?.error);
+        // Before any await: nothing can send it again from here.
+        if (unknown) setState(() => _outcomeUnknown = true);
         await showDialog<void>(
           context: context,
           builder: (_) => StackOkDialog(
-            title: 'Payment not sent',
-            message: '${outcome?.error ?? 'Something went wrong. Try again.'}',
-            desktopPopRootNavigator: BeamAssetLayout.isDesktop(context),
+            title: unknown
+                ? BeamAssetText.sendUnknownTitle
+                : 'Payment not sent',
+            message: unknown
+                ? BeamAssetText.sendUnknown
+                : '${outcome?.error ?? 'Something went wrong. Try again.'}',
+            // Unknown: OK closes only this dialog; the screen then leaves
+            // for the history itself, with its result.
+            desktopPopRootNavigator:
+                unknown || BeamAssetLayout.isDesktop(context),
             maxWidth: BeamAssetLayout.isDesktop(context) ? 480 : null,
           ),
         );
+        if (unknown) _toHistory();
         return;
       }
       final nav = Navigator.of(context);
@@ -249,7 +285,9 @@ class _BeamAssetConfirmViewState extends ConsumerState<BeamAssetConfirmView> {
     );
     final recipient = widget.txData.recipients!.single;
     final fee = widget.txData.fee!;
-    final amountText = BeamAssetText.exact(
+    // "250 FOMO #999" for an unverified asset: the number is part of what
+    // is being sent, in the amount, the headline and the button.
+    final amountText = BeamAssetText.exactLabelled(
       recipient.amount,
       _asset,
       locale: locale,
@@ -349,13 +387,27 @@ class _BeamAssetConfirmViewState extends ConsumerState<BeamAssetConfirmView> {
         if (mode != null)
           row('How it arrives', Text(mode.explanation, style: valueStyle)),
         SizedBox(height: isDesktop ? 20 : 8),
-        PrimaryButton(
-          key: const Key('beamAssetConfirmSend'),
-          label: 'Send $amountText',
-          buttonHeight: isDesktop ? ButtonHeight.l : null,
-          enabled: !_sending,
-          onPressed: _sending ? null : () => _send(amountText),
-        ),
+        if (_outcomeUnknown) ...[
+          Text(
+            BeamAssetText.sendUnknown,
+            key: const Key('beamAssetConfirmUnknown'),
+            style: valueStyle.copyWith(color: colors.textError),
+          ),
+          SizedBox(height: isDesktop ? 20 : 8),
+          PrimaryButton(
+            key: const Key('beamAssetConfirmHistory'),
+            label: 'Check history',
+            buttonHeight: isDesktop ? ButtonHeight.l : null,
+            onPressed: _toHistory,
+          ),
+        ] else
+          PrimaryButton(
+            key: const Key('beamAssetConfirmSend'),
+            label: 'Send $amountText',
+            buttonHeight: isDesktop ? ButtonHeight.l : null,
+            enabled: !_sending,
+            onPressed: _sending ? null : () => _send(amountText),
+          ),
       ],
     );
 

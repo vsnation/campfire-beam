@@ -23,6 +23,7 @@ import 'beam_binaries_manifest.dart';
 import 'beam_host.dart';
 import 'beam_host_exception.dart';
 import 'secret_file.dart';
+import 'wallet_api_log_filter.dart';
 
 /// Builds the transport for a freshly started wallet-api on 127.0.0.1.
 typedef BeamTransportFactory = BeamTransport Function({
@@ -58,9 +59,11 @@ void _noLog(String _) {}
 /// Layout under [rootDir], every directory 0700:
 ///
 /// ```
-/// bin/            binaries (unless BEAM_BIN_DIR is set)
-/// wallets/<id>/   wallet.db, .wallet.lock
+/// bin/            binaries (unless a debug build honours BEAM_BIN_DIR)
+/// wallets/<id>/   wallet.db, .wallet.lock, logs/ (this wallet's
+///                 wallet-api console, filtered; goes with the wallet)
 /// run/            wallet-api CWD; transient .s-* secret files; logs/
+///                 (BEAM's own file log, warnings and errors only)
 /// node/           beam-node CWD (managed elsewhere; swept here)
 /// ```
 ///
@@ -108,7 +111,16 @@ class ProcessHost implements BeamHost {
   static final Set<ProcessSession> _sessions = {};
 
   String get runDir => p.join(rootDir, 'run');
+
+  /// wallet-api's working directory's `logs/`, where BEAM writes its own
+  /// file log (`api_*.log`, `--file_log_level=warning`).
   String get logsDir => p.join(runDir, 'logs');
+
+  /// Where the console log of [walletDir]'s wallet-api goes: inside the
+  /// wallet's own directory, so deleting the wallet deletes its logs too.
+  static String walletLogsDir(String walletDir) =>
+      p.join(p.normalize(p.absolute(walletDir)), 'logs');
+
   String get nodeDir => p.join(rootDir, 'node');
   String get walletsDir => p.join(rootDir, 'wallets');
 
@@ -208,9 +220,34 @@ class ProcessHost implements BeamHost {
     await _pruneLogs();
   }
 
+  /// Console logs written to run/logs by earlier versions held info-level
+  /// lines (amounts with endpoints, every address) and cannot be told apart
+  /// by wallet, so they are deleted outright. BEAM's own `api_*.log` files
+  /// are kept for three days (BEAM prunes them too, `--log_cleanup_days`).
   Future<void> _pruneLogs() async {
-    final cutoff = DateTime.now().subtract(const Duration(days: 3));
+    final cutoff = DateTime.now().subtract(_logRetention);
     await for (final entity in Directory(logsDir).list()) {
+      final name = p.basename(entity.path);
+      if (entity is! File || !name.endsWith('.log')) continue;
+      try {
+        if (name.startsWith('wallet-api-')) {
+          await entity.delete();
+        } else if (name.startsWith('api_') &&
+            (await entity.lastModified()).isBefore(cutoff)) {
+          await entity.delete();
+        }
+      } on FileSystemException {
+        // Next start tries again.
+      }
+    }
+  }
+
+  static const Duration _logRetention = Duration(days: 3);
+
+  /// Removes this wallet's wallet-api console logs older than three days.
+  static Future<void> _pruneWalletLogs(String dir) async {
+    final cutoff = DateTime.now().subtract(_logRetention);
+    await for (final entity in Directory(dir).list()) {
       final name = p.basename(entity.path);
       if (entity is! File ||
           !name.startsWith('wallet-api-') ||
@@ -222,7 +259,7 @@ class ProcessHost implements BeamHost {
           await entity.delete();
         }
       } on FileSystemException {
-        // Next start tries again.
+        // Next launch tries again.
       }
     }
   }
@@ -482,6 +519,7 @@ class ProcessHost implements BeamHost {
         ],
         workingDirectory: scratch.path,
         name: BeamBinary.wallet.id,
+        beforeSpawn: () => binaries.verifyUnchanged(BeamBinary.wallet),
         onLine: (line, self) {
           // Printed after the file is open, so unlinking it now is safe.
           if (line.startsWith('Reading config from') &&
@@ -601,12 +639,16 @@ class ProcessHost implements BeamHost {
         suffix: '.acl',
       );
       acl = aclFile;
+      final walletLogs = walletLogsDir(walletDir);
+      await ensurePrivateDir(walletLogs);
+      await _pruneWalletLogs(walletLogs);
       final childLog = _ChildLog(
         await createPrivateFile(
-          p.join(logsDir, 'wallet-api-${_stamp()}-$port.log'),
+          p.join(walletLogs, 'wallet-api-${_stamp()}-$port.log'),
         ),
       );
       log = childLog;
+      final fileFilter = BeamWalletApiLogFilter();
 
       final state = _StartupState();
       final cfgName = p.basename(configFile.path);
@@ -636,16 +678,24 @@ class ProcessHost implements BeamHost {
           if (binaries.isCampfireBuild(BeamBinary.walletApi))
             '--privileged_shader_sha256='
                 '${kBeamPrivilegedShaderSha256s.join(',')}',
+          // The console stays at info: the startup markers below are info
+          // lines. BEAM's own file log keeps warnings and errors only; at
+          // info it records every address and every amount with both
+          // endpoints. The console copy is filtered the same way.
           '--log_level=info',
-          '--file_log_level=info',
+          '--file_log_level=warning',
           '--log_cleanup_days=3',
         ],
         workingDirectory: runDir,
         name: BeamBinary.walletApi.id,
+        beforeSpawn: () => binaries.verifyUnchanged(BeamBinary.walletApi),
         onLine: (line, self) {
           final safe = _sanitize(line, secrets);
-          childLog.add(safe);
-          state.remember(safe);
+          final kept = fileFilter.fileLine(safe);
+          if (kept != null) {
+            childLog.add(kept);
+            state.remember(kept);
+          }
           if (line.startsWith('Reading config from') &&
               line.contains(cfgName)) {
             configFile.deleteSync();
@@ -1021,13 +1071,18 @@ class _Child {
   /// True once the process has exited and all its output was delivered.
   bool get hasExited => _exited;
 
+  /// [beforeSpawn] runs last, immediately before the exec: the binary's
+  /// final hash check ([BeamBinaries.verifyUnchanged]), so nothing else
+  /// sits between that check and the launch of the same path.
   static Future<_Child> start(
     String exe,
     List<String> args, {
     required String workingDirectory,
     required String name,
     required void Function(String line, _Child self) onLine,
+    Future<void> Function()? beforeSpawn,
   }) async {
+    if (beforeSpawn != null) await beforeSpawn();
     final Process process;
     try {
       process = await Process.start(
@@ -1102,6 +1157,11 @@ class _Child {
 /// and the child that has the database open. A lock whose owner is gone is
 /// stale; if its child is still running (an orphan of a crash) it is
 /// stopped before the wallet is opened again.
+///
+/// The orphan is recognised by pid, executable name **and** command line:
+/// it must carry `--wallet_path=<this wallet>/wallet.db`. A pid recycled by
+/// another app's `wallet-api` (BEAM Light Wallet's, say, on its own
+/// `wallet.db`) is left alone, as `_NodeLock` does for beam-node.
 class _WalletLock {
   _WalletLock._(this.dir, this._file);
 
@@ -1206,24 +1266,54 @@ class _WalletLock {
     final childExeValue = info['childExe'];
     final childExe = childExeValue is String ? childExeValue : null;
     if (child is int && childExe != null) {
-      if (await _pidRunning(child, childExe)) {
-        log('Stopping $childExe (pid $child) left running by an earlier run');
-        await _terminate(child, childExe);
+      if (Platform.isWindows) {
+        // tasklist shows no command line, so an orphan cannot be told from
+        // a recycled pid: refuse the wallet rather than kill or share.
         return _pidRunning(child, childExe);
+      }
+      final dbPath = p.join(p.dirname(file.path), 'wallet.db');
+      if (await _isOurChild(child, childExe, dbPath)) {
+        log('Stopping $childExe (pid $child) left running by an earlier run');
+        await _terminate(child, childExe, dbPath);
+        return _isOurChild(child, childExe, dbPath);
       }
     }
     return false;
   }
 
-  static Future<void> _terminate(int target, String exe) async {
+  /// [target] runs [exe] on this wallet: its command line names
+  /// `--wallet_path=<dbPath>`, as every wallet-api and beam-wallet this
+  /// host starts does. POSIX only (`ps -o command=`).
+  static Future<bool> _isOurChild(
+    int target,
+    String exe,
+    String dbPath,
+  ) async {
+    if (!await _pidRunning(target, exe)) return false;
+    final command = await _commandOf(target);
+    return command != null && command.contains('--wallet_path=$dbPath');
+  }
+
+  /// The full command line of [target], or null if it is not running.
+  static Future<String?> _commandOf(int target) async {
+    if (target <= 0) return null;
+    final ps = File('/bin/ps').existsSync() ? '/bin/ps' : 'ps';
+    final r = await Process.run(ps, ['-ww', '-p', '$target', '-o', 'command=']);
+    final out = '${r.stdout}'.trim();
+    return r.exitCode == 0 && out.isNotEmpty ? out : null;
+  }
+
+  static Future<void> _terminate(int target, String exe, String dbPath) async {
     Process.killPid(target, ProcessSignal.sigterm);
     for (var i = 0; i < 25; i++) {
-      if (!await _pidRunning(target, exe)) return;
+      if (!await _isOurChild(target, exe, dbPath)) return;
       await Future<void>.delayed(const Duration(milliseconds: 200));
     }
+    // Checked again just before: the pid may have been recycled meanwhile.
+    if (!await _isOurChild(target, exe, dbPath)) return;
     Process.killPid(target, ProcessSignal.sigkill);
     for (var i = 0; i < 10; i++) {
-      if (!await _pidRunning(target, exe)) return;
+      if (!await _isOurChild(target, exe, dbPath)) return;
       await Future<void>.delayed(const Duration(milliseconds: 200));
     }
   }

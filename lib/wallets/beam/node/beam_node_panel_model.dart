@@ -33,6 +33,7 @@ class BeamNodePanelSnapshot {
     this.disk,
     this.coreProblem,
     this.busy = false,
+    this.torEnabled = false,
   });
 
   /// The wallet's honest sync verdict (`BeamWallet.syncAssessment`).
@@ -60,6 +61,11 @@ class BeamNodePanelSnapshot {
   /// An action from the panel is in progress.
   final bool busy;
 
+  /// Campfire's Tor is on (`BeamPrivateNodePreference.torEnabled`). The
+  /// private node does not go through Tor, so it stays off unless the user
+  /// turns it on, and the panel says why.
+  final bool torEnabled;
+
   BeamNodePanelSnapshot copyWith({
     BeamSyncAssessment? assessment,
     BeamNodeEndpoint? node,
@@ -72,6 +78,7 @@ class BeamNodePanelSnapshot {
     String? coreProblem,
     bool clearCoreProblem = false,
     bool? busy,
+    bool? torEnabled,
   }) => BeamNodePanelSnapshot(
     assessment: assessment ?? this.assessment,
     node: clearNode ? null : node ?? this.node,
@@ -81,6 +88,7 @@ class BeamNodePanelSnapshot {
     disk: disk ?? this.disk,
     coreProblem: clearCoreProblem ? null : coreProblem ?? this.coreProblem,
     busy: busy ?? this.busy,
+    torEnabled: torEnabled ?? this.torEnabled,
   );
 
   @override
@@ -93,7 +101,8 @@ class BeamNodePanelSnapshot {
       other.privateNode == privateNode &&
       other.disk == disk &&
       other.coreProblem == coreProblem &&
-      other.busy == busy;
+      other.busy == busy &&
+      other.torEnabled == torEnabled;
 
   @override
   int get hashCode => Object.hash(
@@ -105,6 +114,7 @@ class BeamNodePanelSnapshot {
     disk,
     coreProblem,
     busy,
+    torEnabled,
   );
 }
 
@@ -230,6 +240,16 @@ abstract final class BeamNodePanelText {
   static const String notOnThisDevice =
       'This device uses public nodes. A private node runs on the desktop '
       'app.';
+
+  /// Why the private node is off while Tor is on.
+  static const String offForTor =
+      "Tor is on, and your private node can't use it: it talks to many other "
+      'BEAM nodes directly, and each of them sees your internet address. '
+      "Turn it on only if that's OK.";
+
+  /// Added to the private node's state while it runs with Tor on.
+  static const String runsOutsideTor =
+      'It talks to other BEAM nodes directly, not through Tor.';
 
   static String actionLabel(BeamNodePanelAction a) => switch (a) {
     BeamNodePanelAction.retry => 'Try again',
@@ -367,12 +387,34 @@ abstract final class BeamNodePanelModel {
     final st = s.privateNode;
     if (!s.privateNodeEnabled &&
         (st == null || st.phase == BeamPrivateNodePhase.off)) {
-      return const _Private(
-        title: 'Off',
-        detail: 'The wallet uses public nodes.',
-        tone: BeamNodeTone.neutral,
-      );
+      return s.torEnabled
+          ? const _Private(
+              title: 'Off while Tor is on',
+              detail: BeamNodePanelText.offForTor,
+              tone: BeamNodeTone.neutral,
+            )
+          : const _Private(
+              title: 'Off',
+              detail: 'The wallet uses public nodes.',
+              tone: BeamNodeTone.neutral,
+            );
     }
+    final state = _privateState(s, st);
+    if (!s.torEnabled) return state;
+    // Running (or about to) with Tor on: say every time that it is not
+    // covered by Tor.
+    final detail = state.detail;
+    return state.withDetail(
+      detail == null
+          ? BeamNodePanelText.runsOutsideTor
+          : '$detail ${BeamNodePanelText.runsOutsideTor}',
+    );
+  }
+
+  static _Private _privateState(
+    BeamNodePanelSnapshot s,
+    BeamPrivateNodeStatus? st,
+  ) {
     if (st == null || st.phase == BeamPrivateNodePhase.idle) {
       return _Private(
         title: 'Starting soon',
@@ -524,6 +566,16 @@ class _Private {
     this.secondary = const [],
     this.moment,
   });
+
+  _Private withDetail(String detail) => _Private(
+    title: title,
+    detail: detail,
+    progress: progress,
+    tone: tone,
+    primary: primary,
+    secondary: secondary,
+    moment: moment,
+  );
 
   final String title;
   final String? detail;

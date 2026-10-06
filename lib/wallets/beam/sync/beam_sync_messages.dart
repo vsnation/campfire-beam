@@ -40,6 +40,12 @@ abstract final class BeamSyncMessages {
   static const _sendingPaused = "Sending is paused until it's done.";
   static const _sendingOff = 'Sending is off until this is fixed.';
 
+  /// The degraded "synced" state ([BeamSynced.verified] false): the node is
+  /// connected and current, but no second source could confirm the height.
+  static const String unverifiedDetail =
+      "Can't double-check with the network right now. Your node is "
+      'connected and has the latest blocks, so sending works.';
+
   static BeamSyncMessage describe(BeamSyncAssessment a) {
     final private = a.node == BeamNodeKind.privateNode;
     final label = actionLabel(a.action);
@@ -74,9 +80,7 @@ abstract final class BeamSyncMessages {
       BeamSyncStalled() => _stalled(a, private, label),
       BeamSynced(:final verified) => BeamSyncMessage(
         title: 'Up to date',
-        detail: verified
-            ? null
-            : "Couldn't double-check with a second source right now.",
+        detail: verified ? null : unverifiedDetail,
         actionLabel: label,
       ),
     };

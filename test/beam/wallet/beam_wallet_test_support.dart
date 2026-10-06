@@ -186,6 +186,14 @@ class FakeBeamHost implements BeamHost {
   /// Thrown by the next [openWallet], once.
   Object? openError;
 
+  /// Whether a public session's core has reached its node: like a real
+  /// wallet-api, it then answers an `ev_subunsub` that includes
+  /// `ev_connection_changed` with a `node_connected: true` snapshot
+  /// (`v6_1_api_handle.cpp:129`). Without that the wallet is never
+  /// "synced". Owned (private node) sessions report nothing by themselves;
+  /// tests emit `own_node` for them.
+  bool reachNode = true;
+
   final Map<String, String> passwords = {};
   final Map<String, FakeBeamSession> open = {};
   final List<FakeBeamSession> sessions = [];
@@ -231,7 +239,23 @@ class FakeBeamHost implements BeamHost {
       throw StateError('wrong password');
     }
     if (open.containsKey(walletDir)) throw StateError('wallet in use');
-    final s = FakeBeamSession(this, node, FakeTransport(replies()), walletDir);
+    final r = replies();
+    final transport = FakeTransport(r);
+    if (r['ev_subunsub'] == true && !node.isOwned) {
+      transport.reply('ev_subunsub', (Map<String, Object?> params) {
+        if (reachNode && params['ev_connection_changed'] == true) {
+          scheduleMicrotask(() {
+            if (!transport.isConnected) return;
+            transport.emit('ev_connection_changed', {
+              'node_connected': true,
+              'own_node': false,
+            });
+          });
+        }
+        return true;
+      });
+    }
+    final s = FakeBeamSession(this, node, transport, walletDir);
     open[walletDir] = s;
     sessions.add(s);
     return s;

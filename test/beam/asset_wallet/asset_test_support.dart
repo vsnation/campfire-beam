@@ -150,9 +150,17 @@ class AssetCore {
   late Map<int, BigInt> assets;
   Map<int, BigInt> receiving = {};
 
+  /// Every `tx_send` the core was handed, including ones made to fail.
   final sent = <Map<String, Object?>>[];
   final calcChangeCalls = <Map<String, Object?>>[];
   String nextTxId = 'fe' * 16;
+
+  /// Thrown by `tx_send` after it is recorded in [sent] (null: it works),
+  /// e.g. a dropped connection after the core took the payment.
+  Object? txSendThrows;
+
+  /// Thrown by `tx_status` (null: it answers that the tx exists).
+  Object? txStatusThrows;
 
   /// The fee calc_change answers with (groth).
   int explicitFee = 100000;
@@ -269,10 +277,15 @@ class AssetCore {
     'generate_tx_id': (Map<String, Object?> _) => nextTxId,
     'tx_send': (Map<String, Object?> params) {
       sent.add(params);
+      final fail = txSendThrows;
+      if (fail != null) throw fail;
       return {'txId': params['txId']};
     },
-    'tx_status': (Map<String, Object?> params) =>
-        txJson(txId: params['txId']! as String, status: 0),
+    'tx_status': (Map<String, Object?> params) {
+      final fail = txStatusThrows;
+      if (fail != null) throw fail;
+      return txJson(txId: params['txId']! as String, status: 0);
+    },
   };
 }
 

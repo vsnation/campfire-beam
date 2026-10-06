@@ -128,11 +128,32 @@ abstract final class BansKey {
     return k;
   }
 
-  /// A short, recognisable form for confirmation screens:
+  /// A short, recognisable form for screens that only inform:
   /// `72e368c0…570d51ef01` becomes `72e3…51ef`.
+  ///
+  /// Only 32 bits: a made-up key with the same 8 characters takes hours to
+  /// find on one computer, so never use it to verify a key; see
+  /// [checkCode].
   static String fingerprint(String key) {
     if (key.length < 12) return key;
     final end = key.length - 2;
     return '${key.substring(0, 4)}…${key.substring(end - 4, end)}';
   }
+
+  /// What two people read to each other before an irreversible transfer:
+  /// the first 8 and the last 8 characters of the key (the parity byte
+  /// aside), in four groups of four. `72e368c0…570d51ef01` becomes
+  /// `72e3 68c0 … 570d 51ef`.
+  ///
+  /// 64 bits: making up a key that matches all 16 characters takes about
+  /// 2^64 tries, out of reach where [fingerprint]'s 2^32 is not.
+  static String checkCode(String key) {
+    if (key.length < 20) return key;
+    final end = key.length - 2;
+    String group(int from) => key.substring(from, from + 4);
+    return '${group(0)} ${group(4)} … ${group(end - 8)} ${group(end - 4)}';
+  }
+
+  /// How many characters [checkCode] asks people to compare.
+  static const checkCodeLength = 16;
 }

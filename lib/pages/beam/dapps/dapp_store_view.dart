@@ -203,7 +203,11 @@ class _DappStoreViewState extends ConsumerState<DappStoreView> {
     }
     if (!mounted) return;
     final existing = c.existingFor(package);
-    final ok = await _confirmFromFile(package, existing);
+    final ok = await _confirmFromFile(
+      package,
+      existing,
+      copies: c.bundledNameCopiedBy(package),
+    );
     if (ok != true || !mounted) return;
     try {
       await c.installPackage(package, replace: existing != null);
@@ -256,8 +260,9 @@ class _DappStoreViewState extends ConsumerState<DappStoreView> {
 
   Future<bool?> _confirmFromFile(
     DappPackage package,
-    DappInstallation? existing,
-  ) {
+    DappInstallation? existing, {
+    String? copies,
+  }) {
     final m = package.manifest;
     final lines = [
       "Version ${m.version ?? "not given"} · "
@@ -265,9 +270,14 @@ class _DappStoreViewState extends ConsumerState<DappStoreView> {
       if (existing != null)
         "Replaces the installed version "
             "${existing.manifest.version ?? "(no version)"}.",
+      if (copies != null)
+        "Its name matches $copies, one of the dApps Campfire checks, but it "
+            "is a different app.",
       "Campfire did not check this dApp: it is not one of the bundled "
-          "dApps. Install it only if you trust where it came from. It still "
-          "can't move money without your approval.",
+          "dApps. Install it only if you trust where it came from. Payments, "
+          "contract calls and signatures it asks for still come to Campfire "
+          "for your approval, but it can read some wallet details without "
+          "asking, and what you approve can't be undone.",
     ];
     return _confirm(
       title: "Install ${m.name}?",
@@ -576,7 +586,9 @@ class _DappStoreViewState extends ConsumerState<DappStoreView> {
                 label: "Install from file",
                 width: desktop ? 200 : null,
                 buttonHeight: desktop ? ButtonHeight.s : null,
-                height: desktop ? null : 40,
+                // 40 clipped the label by 2 px on phones; 46 as the other
+                // phone buttons here.
+                height: desktop ? null : 46,
                 onPressed: _installFromFile,
               ),
             ],

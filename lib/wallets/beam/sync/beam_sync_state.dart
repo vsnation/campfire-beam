@@ -22,6 +22,21 @@
 ///    [BeamSyncRules.maxExplorerLag] blocks ahead of the wallet.
 /// 5. The wallet is past the hard-fork height when the chain is. A node frozen
 ///    at 3928665 (pre-HF6 rules) is out of consensus, whatever else it says.
+/// 6. The core has reached its node in this session
+///    (`ev_connection_changed.node_connected == true`). `is_in_sync` is
+///    computed from the stored tip's age alone (`v6_1_api_handle.cpp:176`),
+///    so a wallet reopened within ten minutes, or just moved to a node that
+///    does not answer, reports it before hearing from any node. Not reported
+///    yet (`null`) is not enough.
+///
+/// When no fresh explorer can confirm the height (none answers, its own tip
+/// is old, or it lags the wallet), rules 1–3, 5 and 6 still have to pass and
+/// the verdict is [BeamSynced] with [BeamSynced.verified] false: spending is
+/// allowed, and the wording says the height could not be double-checked
+/// (ARCHITECTURE.md §5, Sync). Blocking every send while a third-party
+/// explorer is down would hand that explorer a switch over the wallet, and it
+/// cannot put the wallet on a dead fork: the binaries are pinned to the HF6
+/// rules and a forged chain needs mainnet proof of work.
 ///
 /// No height constant ever *grants* "synced"; the fork height is only used
 /// to deny it and to explain why.
@@ -66,7 +81,8 @@ class BeamWalletSyncInput {
   /// header the core knows. Null when not reported yet.
   final int? headerTipHeight;
 
-  /// `ev_connection_changed.node_connected`. Null when not reported yet.
+  /// `ev_connection_changed.node_connected`. Null when not reported yet in
+  /// this session; only `true` allows [BeamSynced].
   final bool? nodeConnected;
 
   /// `ev_connection_changed.own_node`: the node holds this wallet's owner
@@ -87,6 +103,15 @@ class BeamWalletSyncInput {
     headerTipHeight: headerTipHeight ?? this.headerTipHeight,
     nodeConnected: nodeConnected ?? this.nodeConnected,
     ownNode: ownNode ?? this.ownNode,
+  );
+
+  /// The same chain state with the connection unknown: what a new session
+  /// (another wallet-api, maybe another node) knows until its core reports.
+  BeamWalletSyncInput withoutConnection() => BeamWalletSyncInput(
+    currentHeight: currentHeight,
+    currentStateTimestamp: currentStateTimestamp,
+    isInSync: isInSync,
+    headerTipHeight: headerTipHeight,
   );
 
   @override
@@ -431,11 +456,14 @@ final class BeamSyncStalled extends BeamSyncAssessment {
   ];
 }
 
-/// Following the chain. Spending is allowed.
+/// Following the chain, with the core connected to its node. Spending is
+/// allowed.
 ///
-/// [verified] is false when no fresh explorer could confirm the height: the
-/// core's own checks passed, but with reduced confidence ([explorerCheck]
-/// says why). Spending is still allowed then, as the rules require.
+/// [verified] is false in the degraded state: no fresh explorer could confirm
+/// the height ([explorerCheck] says why), so only the core's own checks
+/// passed — a connected node, a fresh tip and no unapplied headers. Spending
+/// is still allowed then, and the wording says the height could not be
+/// double-checked (see the library comment).
 final class BeamSynced extends BeamSyncAssessment {
   const BeamSynced({
     required super.node,
@@ -561,6 +589,17 @@ BeamSyncAssessment assessBeamSync({
       headerOk &&
       check != BeamExplorerCheck.aheadOfWallet &&
       !belowFork) {
+    // Everything the stored chain state can say is fine, but the core has
+    // not reached a node in this session yet: its `is_in_sync` only means
+    // the stored tip is recent. Wait for `node_connected == true`.
+    if (wallet.nodeConnected != true) {
+      return BeamSyncConnecting(
+        node: kind,
+        explorerCheck: check,
+        walletHeight: height,
+        networkHeight: networkHeight,
+      );
+    }
     return BeamSynced(
       node: kind,
       explorerCheck: check,

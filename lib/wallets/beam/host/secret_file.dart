@@ -23,6 +23,7 @@ const String kSecretPrefix = '.s-';
 // Dart has no octal literals. 0x1c0 = 0700, 0x180 = 0600, 0x3f = 0077,
 // 0x1ff = 0777.
 const int _modeDir = 0x1c0;
+const int _modeExecutable = 0x1c0;
 const int _modeFile = 0x180;
 const int _groupOtherBits = 0x3f;
 const int _permissionBits = 0x1ff;
@@ -41,10 +42,20 @@ String _randomHex(int bytes) {
   return buffer.toString();
 }
 
+/// `chmod` by absolute path, never through PATH (a PATH entry could
+/// substitute its own). macOS and Linux both have `/bin/chmod`; `/usr/bin`
+/// covers a merged-/usr system without the `/bin` link.
+const List<String> kChmodPaths = ['/bin/chmod', '/usr/bin/chmod'];
+
 Future<void> _chmod(String mode, String path) async {
   if (!_posix) return;
-  // An absolute path so a PATH entry cannot substitute its own chmod.
-  final exe = File('/bin/chmod').existsSync() ? '/bin/chmod' : 'chmod';
+  final exe = kChmodPaths.firstWhere(
+    (c) => File(c).existsSync(),
+    orElse: () => throw const BeamHostException(
+      BeamHostError.insecurePath,
+      'chmod not found in /bin or /usr/bin',
+    ),
+  );
   final result = await Process.run(exe, [mode, path]);
   if (result.exitCode != 0) {
     throw BeamHostException(
@@ -107,6 +118,13 @@ Future<Directory> ensurePrivateDir(String path) async {
 Future<void> setOwnerOnly(String path) async {
   await _chmod('600', path);
   await _expectMode(path, _modeFile);
+}
+
+/// Sets an existing file to 0700 (owner may read, write and execute; nobody
+/// else anything) and verifies it. No-op on Windows.
+Future<void> setOwnerExecutable(String path) async {
+  await _chmod('700', path);
+  await _expectMode(path, _modeExecutable);
 }
 
 /// Creates a new, empty, non-secret but private (0600) file, e.g. a log.

@@ -15,6 +15,7 @@ import 'package:stackwallet/wallets/beam/dapps/dapp_consent.dart';
 import 'package:stackwallet/wallets/beam/rpc/fake_transport.dart';
 
 import '../contracts/dex/dex_fixtures.dart';
+import 'dapp_invoke_builder.dart';
 import 'dapp_session_fixtures.dart';
 
 void main() {
@@ -36,12 +37,13 @@ void main() {
     String? confirm,
     Object id = 1,
     bool approve = true,
+    List<int>? data,
   }) async {
     final s = testSession(t, policy);
     final before = policy.shown.length;
     final pending = s.handle(
       rq(id, 'process_invoke_data', {
-        'data': rawDataVector(vector),
+        'data': data ?? rawDataVector(vector),
         'confirm_comment': ?confirm,
       }),
     );
@@ -82,8 +84,20 @@ void main() {
       expect(policy.shown.single.dappMessage, 'Amm trade');
     });
 
+    // The recorded add-liquidity vector is dependent (HFT), which a dApp
+    // may no longer submit (dapp_contract_policy_test.dart); the same
+    // amounts as a plain call.
     test('add liquidity: two assets out, LP token in', () async {
-      await contractCall('add_dependent');
+      await contractCall(
+        '',
+        data: invokeData([
+          invokeEntry(
+            contractId: dexCid,
+            method: 5,
+            spend: {0: 10000000, 174: 81173706, 175: -33347624},
+          ),
+        ]),
+      );
       final r = policy.shown.single;
       expect(r.pays, [
         DappAssetAmount(0, g(10000000)),
@@ -113,7 +127,10 @@ void main() {
     });
 
     test('a deployment is shown as one', () async {
-      await contractCall('edges');
+      await contractCall(
+        '',
+        data: invokeData([invokeEntry(contractId: null, method: 0)]),
+      );
       final r = policy.shown.single;
       expect(r.calls.single.deploys, isTrue);
       expect(r.contractIds, isEmpty);

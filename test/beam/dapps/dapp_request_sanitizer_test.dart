@@ -7,7 +7,11 @@
  *
  */
 
+import 'dart:io';
+
+import 'package:crypto/crypto.dart' as crypto;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stackwallet/wallets/beam/contracts/bans/bans_constants.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_request_sanitizer.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_rpc.dart';
 import 'package:stackwallet/wallets/beam/rpc/beam_transport.dart';
@@ -250,6 +254,98 @@ void main() {
           ],
         }),
         '{"a":[{"y":null,"z":true}],"b":1}',
+      );
+    });
+  });
+
+  // Security review part 2, M-1: Campfire's wallet-api runs the BANS app
+  // shader at privilege 1 for whoever sends its bytes (patch 0002 grants
+  // privilege by the hash of `contract`), so a dApp sending them could read
+  // every payment waiting for the user's names.
+  group('M-1: privileged shaders', () {
+    final bans = File('assets/beam/shaders/$kBansShaderName').readAsBytesSync();
+
+    test('the bundled BANS shader is the privileged one', () {
+      expect(crypto.sha256.convert(bans).toString(), kBansShaderSha256);
+    });
+
+    test('a dApp sending the BANS shader bytes is refused', () {
+      expect(
+        () => run('invoke_contract', {
+          'contract': bans,
+          'args': 'role=user,action=view,cid=$kBansCid',
+        }),
+        rpcError(-32020, contains('reserves for its own name service')),
+      );
+    });
+
+    test('one byte different is just another shader (privilege 0)', () {
+      final other = [...bans]..[100] ^= 1;
+      expect(
+        run('invoke_contract', {'contract': other, 'args': 'a=b'})['contract'],
+        other,
+      );
+    });
+
+    test('the list comes from the binaries manifest, and is injectable', () {
+      final custom = DappRequestSanitizer(const DappRequestLimits(), [
+        crypto.sha256.convert([1, 2, 3]).toString(),
+      ]);
+      expect(
+        () => custom.sanitize(
+          const DappRpcRequest(1, 'invoke_contract', {
+            'contract': [1, 2, 3],
+          }),
+        ),
+        rpcError(-32020),
+      );
+    });
+  });
+
+  // M-7: what a dApp may ask the wallet to sign.
+  group('sign_message', () {
+    test('only message and key_material, exactly', () {
+      expect(run('sign_message', {'message': 'hi', 'key_material': 'aB01'}), {
+        'message': 'hi',
+        'key_material': 'aB01',
+      });
+      expect(
+        () => run('sign_message', {
+          'message': 'hi',
+          'key_material': 'aa',
+          'extra': 1,
+        }),
+        rpcError(-32602),
+      );
+    });
+
+    test('key_material must be even-length hex: the core stops at the '
+        'first non-hex digit, so anything else could sign with a key '
+        'other than the one checked', () {
+      for (final bad in ['', 'a', 'abc', 'zz', 'aa zz', '0xaa', 'aa\u0000']) {
+        expect(
+          () => run('sign_message', {'message': 'hi', 'key_material': bad}),
+          rpcError(-32602),
+          reason: bad,
+        );
+      }
+    });
+
+    test('a message with hidden characters is refused: the sheet must '
+        'show exactly what is signed', () {
+      for (final bad in ['pay \u202e01 BEAM', 'a\u0000b', 'x\u200by', '']) {
+        expect(
+          () => run('sign_message', {'message': bad, 'key_material': 'aa'}),
+          rpcError(-32602),
+          reason: bad,
+        );
+      }
+      expect(
+        run('sign_message', {
+          'message': 'line 1\nline 2',
+          'key_material': 'aa',
+        }),
+        containsPair('message', 'line 1\nline 2'),
       );
     });
   });

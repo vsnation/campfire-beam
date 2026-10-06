@@ -238,6 +238,9 @@ class BeamNodeProcess implements BeamPrivateNode {
     );
 
     final Process process;
+    // The last hash, right before the exec of the same path: nothing else
+    // sits between the check and the launch.
+    await binaries.verifyUnchanged(BeamBinary.node);
     try {
       process = await Process.start(exe, args, workingDirectory: nodeDir);
     } on ProcessException catch (e) {

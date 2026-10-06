@@ -64,7 +64,11 @@ class BeamAssetSelectItem extends ConsumerWidget {
         : asset.name;
     final value = holding.valueGroth;
     final valueText = value != null
-        ? BeamAssetText.beamEstimate(value, locale: locale)
+        ? BeamAssetText.valueEstimate(
+            value,
+            sale: holding.saleValue,
+            locale: locale,
+          )
         : marketKnown
         ? BeamAssetText.noPrice
         : '';

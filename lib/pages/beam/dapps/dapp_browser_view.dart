@@ -16,8 +16,11 @@
 // 3. Taps from app open: wallet → dApps → Open = 3.
 //
 // Exit-intent (§1.7) — what would make an impatient person close the app:
-// * A wallet popup out of nowhere: a request that arrives while the user
-//   is not touching the page shows a banner, not the sheet.
+// * A wallet popup out of nowhere: every request first shows a banner. If
+//   the user just tapped the page (the request is probably theirs) the
+//   banner opens the review after a short visible delay; otherwise it waits
+//   for "Review". The page never decides when the sheet appears.
+// * A request Campfire refuses: says so, and that nothing was sent.
 // * A blank page while it loads: "Opening <dApp>…" with progress.
 // * A platform without the dApp window: says so, and offers the way back.
 // * A link that silently leaves the wallet: links to other sites ask first,
@@ -25,7 +28,6 @@
 
 import 'dart:async';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -43,7 +45,9 @@ import '../../../wallets/beam/dapps/host/dapp_approval_model.dart';
 import '../../../wallets/beam/dapps/host/dapp_host.dart';
 import '../../../wallets/beam/dapps/host/dapp_host_session.dart';
 import '../../../widgets/background.dart';
+import '../../../widgets/beam/dapps/dapp_approval_banner.dart';
 import '../../../widgets/beam/dapps/dapp_approval_sheet.dart';
+import '../../../widgets/beam/dapps/dapp_tap_tracker.dart';
 import '../../../widgets/beam/dapps/dapp_webview.dart';
 import '../../../widgets/conditional_parent.dart';
 import '../../../widgets/custom_buttons/app_bar_icon_button.dart';
@@ -52,7 +56,6 @@ import '../../../widgets/desktop/desktop_dialog.dart';
 import '../../../widgets/desktop/desktop_scaffold.dart';
 import '../../../widgets/desktop/primary_button.dart';
 import '../../../widgets/desktop/secondary_button.dart';
-import '../../../widgets/rounded_container.dart';
 import '../../../widgets/rounded_white_container.dart';
 import '../../../widgets/stack_dialog.dart';
 
@@ -68,8 +71,9 @@ class DappBrowserView extends ConsumerStatefulWidget {
 
   static const String routeName = "/beamDappBrowser";
 
-  /// A request that arrives this long after the user last touched the page
-  /// is announced with a banner instead of opening the sheet by itself.
+  /// A request that arrives within this long of the user's last tap on the
+  /// page opens its review after [DappApprovalBanner.openDelay]; a later one
+  /// waits for "Review". Taps only: scrolls and drags do not count.
   static const gestureWindow = Duration(seconds: 10);
 
   final DappHost host;
@@ -89,9 +93,10 @@ class DappBrowserView extends ConsumerStatefulWidget {
 }
 
 class _PendingBanner {
-  _PendingBanner(this.model);
+  _PendingBanner(this.model, {this.autoOpenAfter});
 
   final DappApprovalModel model;
+  final Duration? autoOpenAfter;
   final answer = Completer<bool>();
 }
 
@@ -100,9 +105,10 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
   DappWebviewGlue? _glue;
   bool _loading = true;
   String? _failure;
-  DateTime? _lastTouch;
+  final _taps = DappTapTracker();
   _PendingBanner? _banner;
   bool _disposed = false;
+  DateTime? _lastRefusalNotice;
 
   bool get _desktop => widget.desktop ?? Util.isDesktop;
   bool get _available => widget.webviewAvailable ?? dappWebviewAvailable();
@@ -196,10 +202,31 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
 
   void _onActivity(DappActivity activity) {
     if (!mounted) return;
+    if (activity.kind == DappActivityKind.refused) {
+      // One notice every few seconds: a page must not be able to bury the
+      // screen in them.
+      final now = DateTime.now();
+      final last = _lastRefusalNotice;
+      if (last != null && now.difference(last) < const Duration(seconds: 4)) {
+        return;
+      }
+      _lastRefusalNotice = now;
+      unawaited(
+        showFloatingFlushBar(
+          type: FlushBarType.warning,
+          message:
+              "${activity.dapp.name}: ${activity.detail ?? "Campfire "
+                  "refused a request. Nothing was sent."}",
+          context: context,
+        ),
+      );
+      return;
+    }
     final what = switch (activity.kind) {
       DappActivityKind.signedMessage =>
         "signed a message with a key from this wallet",
       DappActivityKind.sentMessage => "sent a message from this wallet",
+      DappActivityKind.refused => "had a request refused",
     };
     unawaited(
       showFloatingFlushBar(
@@ -210,28 +237,30 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
     );
   }
 
-  /// The presenter's UI: banner first unless the user just touched the
-  /// page, then the sheet.
+  /// The presenter's UI: always the banner first, then the sheet. The
+  /// banner opens the review by itself, after a visible delay, only when
+  /// the user just tapped the page.
   Future<bool> _showApproval(DappApprovalModel model) async {
     if (!mounted || model.request.isCancelled) return false;
-    final touched = _lastTouch;
-    final recent =
-        touched != null &&
-        DateTime.now().difference(touched) < DappBrowserView.gestureWindow;
-    if (!recent) {
-      final banner = _PendingBanner(model);
-      setState(() => _banner = banner);
-      unawaited(
-        model.request.cancelled.then((_) {
-          if (!banner.answer.isCompleted) banner.answer.complete(false);
-        }),
-      );
-      final review = await banner.answer.future;
-      if (mounted && identical(_banner, banner)) {
-        setState(() => _banner = null);
-      }
-      if (!review || !mounted || model.request.isCancelled) return false;
+    final recent = _taps.tappedWithin(
+      DappBrowserView.gestureWindow,
+      DateTime.now(),
+    );
+    final banner = _PendingBanner(
+      model,
+      autoOpenAfter: recent ? DappApprovalBanner.openDelay : null,
+    );
+    setState(() => _banner = banner);
+    unawaited(
+      model.request.cancelled.then((_) {
+        if (!banner.answer.isCompleted) banner.answer.complete(false);
+      }),
+    );
+    final review = await banner.answer.future;
+    if (mounted && identical(_banner, banner)) {
+      setState(() => _banner = null);
     }
+    if (!review || !mounted || model.request.isCancelled) return false;
     final ok = await showDappApprovalSheet(
       context,
       model,
@@ -243,7 +272,9 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
       unawaited(
         showFloatingFlushBar(
           type: FlushBarType.success,
-          message: "Approved. Campfire is sending it to the network.",
+          message: model.isSignMessage
+              ? "Approved. Campfire signed the message."
+              : "Approved. Campfire is sending it to the network.",
           context: context,
         ),
       );
@@ -447,7 +478,18 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_banner != null) _ApprovalBanner(banner: _banner!),
+        if (_banner != null)
+          DappApprovalBanner(
+            // A new request gets a new banner (and a new countdown).
+            key: ObjectKey(_banner),
+            dappName: _banner!.model.dappName,
+            isDesktop: desktop,
+            autoOpenAfter: _banner!.autoOpenAfter,
+            onAnswer: (v) {
+              final b = _banner;
+              if (b != null && !b.answer.isCompleted) b.answer.complete(v);
+            },
+          ),
         if (_loading)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -468,66 +510,15 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
               ? const SizedBox.shrink()
               : Listener(
                   behavior: HitTestBehavior.translucent,
-                  onPointerDown: (_) => _lastTouch = DateTime.now(),
-                  onPointerSignal: (event) {
-                    if (event is PointerScrollEvent) {
-                      _lastTouch = DateTime.now();
-                    }
-                  },
+                  onPointerDown: (e) =>
+                      _taps.down(e.pointer, e.position, DateTime.now()),
+                  onPointerUp: (e) =>
+                      _taps.up(e.pointer, e.position, DateTime.now()),
+                  onPointerCancel: (e) => _taps.cancel(e.pointer),
                   child: glue.widget(),
                 ),
         ),
       ],
-    );
-  }
-}
-
-class _ApprovalBanner extends StatelessWidget {
-  const _ApprovalBanner({required this.banner});
-
-  final _PendingBanner banner;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<StackColors>()!;
-    final desktop = Util.isDesktop;
-    void answer(bool v) {
-      if (!banner.answer.isCompleted) banner.answer.complete(v);
-    }
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      child: RoundedContainer(
-        color: colors.popupBG,
-        borderColor: colors.textFieldDefaultBG,
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                "${banner.model.dappName} asks for your approval",
-                style: STextStyles.w600_14(context)
-                    .copyWith(color: colors.textDark),
-              ),
-            ),
-            const SizedBox(width: 8),
-            SecondaryButton(
-              key: const Key("dappBannerReject"),
-              label: "Reject",
-              width: 80,
-              buttonHeight: desktop ? ButtonHeight.s : ButtonHeight.l,
-              onPressed: () => answer(false),
-            ),
-            const SizedBox(width: 8),
-            PrimaryButton(
-              key: const Key("dappBannerReview"),
-              label: "Review",
-              width: 84,
-              buttonHeight: desktop ? ButtonHeight.s : ButtonHeight.l,
-              onPressed: () => answer(true),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

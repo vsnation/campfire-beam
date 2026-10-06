@@ -20,8 +20,9 @@
 // Exit-intent (§1.7) — what could make an impatient person leave:
 // * "Where do I get the key?" — the first line says where the receiving
 //   wallet shows it.
-// * "Did I paste the right thing?" — the key's short fingerprint is shown
-//   large, to read out and compare with the other wallet.
+// * "Did I paste the right thing?" — 16 characters of the key (64 bits,
+//   `BansKey.checkCode`) are shown large, to read out and compare with the
+//   other wallet. Fewer could be matched by a made-up key.
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -236,14 +237,16 @@ class _BeamNameTransferViewState extends State<BeamNameTransferView> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    BansKey.fingerprint(key),
+                    BansKey.checkCode(key),
                     key: const Key('names-transfer-fingerprint'),
                     style: STextStyles.pageTitleH1(context),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Read these characters to the receiving wallet\'s '
-                    'owner. Their Names screen shows the same ones.',
+                    'Read all ${BansKey.checkCodeLength} characters to the '
+                    "receiving wallet's owner. Their Receive a name screen "
+                    'shows the same ones. If even one differs, stop: the '
+                    'key you pasted is not theirs.',
                     style: STextStyles.smallMed12(context)
                         .copyWith(color: colors.textSubtitle1),
                   ),

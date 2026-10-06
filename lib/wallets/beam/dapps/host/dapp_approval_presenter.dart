@@ -73,7 +73,11 @@ class DappApprovalPresenter implements DappConsentPolicy {
   /// The sheet's model for [request], with lookups done.
   Future<DappApprovalModel> buildModel(DappConsentRequest request) async {
     final unknown = {
-      for (final a in [...request.pays, ...request.receives])
+      for (final a in [
+        ...request.pays,
+        ...request.receives,
+        for (final c in request.calls) ...[...c.pays, ...c.receives],
+      ])
         if (!BeamAssetCatalog.verified.containsKey(a.assetId)) a.assetId,
     };
     final lookups = await Future.wait([

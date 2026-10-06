@@ -118,11 +118,15 @@ class BeamSyncMonitor {
     if (_foreground) _startPolling();
   }
 
-  /// The core was pointed at another node. History is reset so the new node
-  /// gets its own grace period.
+  /// The core was pointed at another node (a new session). History is reset
+  /// so the new node gets its own grace period, and what the old session
+  /// said about its node connection is forgotten: until the new core reports
+  /// `node_connected`, the last chain state alone cannot make the wallet
+  /// "synced" (it may be minutes old and the new node unreachable).
   void setNode(BeamNodeKind node) {
     if (_disposed) return;
     _node = node;
+    _wallet = _wallet?.withoutConnection();
     _resetProgress();
     _emit();
   }

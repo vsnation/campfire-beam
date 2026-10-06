@@ -61,7 +61,11 @@ class BeamAssetValue {
       );
     }
     return BeamAssetValue(
-      BeamAssetText.beamEstimate(value, locale: locale),
+      BeamAssetText.valueEstimate(
+        value,
+        sale: market.pricer.isSaleValue(asset.assetId),
+        locale: locale,
+      ),
       price == null
           ? null
           : BeamAssetText.fiatEstimate(

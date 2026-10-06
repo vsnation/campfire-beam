@@ -56,11 +56,18 @@ class BeamDexDeps {
     required this.balances,
     required this.authenticate,
     this.metadataOf = _noMetadata,
+    this.hiddenAssetIds = _noneHidden,
     this.fiat,
     this.onSyncAction,
     this.isDesktop,
     BeamDexPoolStore? pools,
   }) : pools = pools ?? BeamDexPoolStore(dex);
+
+  /// The assets the user hid from the wallet's asset list
+  /// (`BeamHiddenAssets.read`). Asset pickers leave them out.
+  final Set<int> Function() hiddenAssetIds;
+
+  static Set<int> _noneHidden() => const {};
 
   /// The AMM service for this wallet.
   final BeamDexService dex;
@@ -113,16 +120,25 @@ class BeamDexDeps {
     return null;
   }
 
-  /// "BEAM/FOMO", in pool order.
+  /// The ticker as the DEX writes it in a sentence: "FOMO" for a verified
+  /// asset, "FOMO #999" for anything else, because anyone can mint an
+  /// asset and call it FOMO.
+  String assetLabel(int assetId) {
+    final d = display(assetId);
+    if (d.verified || d.symbol == d.idLabel) return d.symbol;
+    return '${d.symbol} ${d.idLabel}';
+  }
+
+  /// "BEAM/FOMO", in pool order ("BEAM/FOMO #999" for a copy).
   String pairLabel(BeamPool pool) =>
-      '${display(pool.aid1).symbol}/${display(pool.aid2).symbol}';
+      '${assetLabel(pool.aid1)}/${assetLabel(pool.aid2)}';
 
   /// How an asset is named in a sentence. LP tokens are named after their
   /// pool, because their own metadata is a meaningless "Asset #175".
   String assetName(int assetId) {
     final pool = poolOfLpToken(assetId);
     if (pool != null) return '${pairLabel(pool)} pool tokens';
-    return display(assetId).symbol;
+    return assetLabel(assetId);
   }
 }
 

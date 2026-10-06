@@ -128,5 +128,19 @@ void main() {
     test('fingerprint skips the parity byte', () {
       expect(BansKey.fingerprint(beamKey), '72e3…51ef');
     });
+
+    test('the check code read out before a transfer is 64 bits: 16 hex '
+        'characters, in four groups, parity byte aside (M-2)', () {
+      final code = BansKey.checkCode(beamKey);
+      expect(code, '72e3 68c0 … 570d 51ef');
+      final hex = code.replaceAll(RegExp('[^0-9a-f]'), '');
+      expect(hex.length, BansKey.checkCodeLength);
+      expect(hex.length * 4, greaterThanOrEqualTo(64));
+      // A key that matches the old 8-character fingerprint but not the
+      // other 8 characters no longer compares equal.
+      final grind = '72e3${'0' * 56}51ef01';
+      expect(BansKey.fingerprint(grind), BansKey.fingerprint(beamKey));
+      expect(BansKey.checkCode(grind), isNot(code));
+    });
   });
 }

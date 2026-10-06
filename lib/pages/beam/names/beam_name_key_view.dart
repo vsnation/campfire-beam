@@ -14,7 +14,9 @@
 // 3. Taps from app open: Names (1) → Receive a name (2) → Copy (3).
 //
 // Exit-intent (§1.7): "Is it safe to share?" — yes, and the one thing it
-// reveals (which names this wallet owns) is said plainly.
+// reveals (which names this wallet owns) is said plainly. "How do I know
+// the name comes to me?" — the sender reads out 16 characters
+// (`BansKey.checkCode`) and this screen shows the same ones.
 
 import 'dart:async';
 
@@ -107,9 +109,20 @@ class _BeamNameKeyViewState extends State<BeamNameKeyView> {
                   QR(data: key, size: 180),
                   const SizedBox(height: 12),
                   Text(
-                    BansKey.fingerprint(key),
+                    BansKey.checkCode(key),
                     key: const Key('names-key-fingerprint'),
+                    textAlign: TextAlign.center,
                     style: STextStyles.pageTitleH1(context),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Whoever gives you a name reads out '
+                    '${BansKey.checkCodeLength} characters. They must match '
+                    'these, every one.',
+                    key: const Key('names-key-check-hint'),
+                    textAlign: TextAlign.center,
+                    style: STextStyles.smallMed12(context)
+                        .copyWith(color: colors.textDark3),
                   ),
                   const SizedBox(height: 8),
                   SelectableText(

@@ -23,11 +23,14 @@ import '../../../models/paymint/fee_object_model.dart';
 import '../../../services/event_bus/events/global/blocks_remaining_event.dart';
 import '../../../services/event_bus/events/global/node_connection_status_changed_event.dart';
 import '../../../services/event_bus/events/global/refresh_percent_changed_event.dart';
+import '../../../services/event_bus/events/global/tor_status_changed_event.dart';
 import '../../../services/event_bus/events/global/wallet_sync_status_changed_event.dart';
 import '../../../services/event_bus/global_event_bus.dart';
+import '../../../services/tor_service.dart';
 import '../../../utilities/amount/amount.dart';
 import '../../../utilities/flutter_secure_storage_interface.dart';
 import '../../../utilities/logger.dart';
+import '../../../utilities/test_beam_node_connection.dart';
 import '../../beam/api/beam_api.dart';
 import '../../beam/host/beam_binaries.dart';
 import '../../beam/host/beam_host.dart';
@@ -38,6 +41,7 @@ import '../../beam/models/beam_address.dart';
 import '../../beam/models/beam_transaction.dart';
 import '../../beam/models/beam_wallet_status.dart';
 import '../../beam/node/beam_private_node_coordinator.dart';
+import '../../beam/node/beam_private_node_preference.dart';
 import '../../beam/rpc/beam_connection_exception.dart';
 import '../../beam/rpc/beam_transport.dart';
 import '../../beam/sync/beam_sync_monitor.dart';
@@ -114,6 +118,7 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   BeamPrivateNodeCoordinator? _coordinator;
   StreamSubscription<BeamSession?>? _coordinatorSessionSub;
   StreamSubscription<BeamPrivateNodeStatus>? _coordinatorStatusSub;
+  StreamSubscription<TorPreferenceChangedEvent>? _torSub;
   BeamPrivateNodeStatus? _privateNodeStatus;
   Timer? _coordinatorTimer;
   bool _coordinatorReplacing = false;
@@ -912,6 +917,15 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     _coordinatorStatusSub = coordinator.statuses.listen(
       (s) => _onCoordinatorStatus(s, gen),
     );
+    // beam-node does not go through Tor: switching Tor on stops it unless
+    // the user turned it on with Tor on (BeamPrivateNodePreference).
+    _torSub = GlobalEventBus.instance.on<TorPreferenceChangedEvent>().listen((
+      _,
+    ) async {
+      final c = _coordinator;
+      if (c == null || gen != _generation) return;
+      await c.setEnabled(await environment.privateNodeSetting.read());
+    });
     unawaited(coordinator.start());
   }
 
@@ -966,6 +980,8 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     _coordinatorSessionSub = null;
     await _coordinatorStatusSub?.cancel();
     _coordinatorStatusSub = null;
+    await _torSub?.cancel();
+    _torSub = null;
     _coordinatorReplacing = false;
     if (c != null) {
       try {
@@ -1040,6 +1056,22 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     final connected = _tracker?.nodeConnected;
     if (_api != null && connected != null) return connected;
     final node = _preferredEndpoint();
+    if (campfireTorEnabled()) {
+      // With Tor on, never a direct connection (it would show this device's
+      // address to the node outside Tor): through Tor's SOCKS proxy, with
+      // the name resolved by Tor. Tor not up: getProxyInfo throws, "no".
+      try {
+        final result = await testBeamNodeConnection(
+          host: node.host,
+          port: node.port,
+          proxyInfo: TorService.sharedInstance.getProxyInfo(),
+          timeout: const Duration(seconds: 15),
+        );
+        return result == BeamNodeTestResult.beamNode;
+      } catch (_) {
+        return false;
+      }
+    }
     try {
       final socket = await Socket.connect(
         node.host,

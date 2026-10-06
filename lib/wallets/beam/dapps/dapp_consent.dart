@@ -13,8 +13,12 @@ import 'dart:collection';
 import 'package:meta/meta.dart';
 
 import '../contracts/common/invoke_data.dart';
+import 'dapp_contract_policy.dart';
 import 'dapp_errors.dart';
 import 'dapp_identity.dart';
+
+export 'dapp_contract_policy.dart'
+    show DappContractRefusal, DappContractRefused;
 
 /// What a dApp asks the user to approve.
 enum DappConsentKind {
@@ -24,6 +28,11 @@ enum DappConsentKind {
   /// `process_invoke_data`: a contract transaction the dApp prepared with
   /// `invoke_contract`.
   contract,
+
+  /// `sign_message`: a signature with a key derived from this wallet. No
+  /// funds move and no fee is paid, but it proves this wallet holds the
+  /// key, so the user decides.
+  signMessage,
 }
 
 /// An amount of one asset, in its smallest unit. Always positive: the
@@ -51,11 +60,16 @@ class DappAssetAmount {
 /// One contract call inside a contract transaction.
 @immutable
 class DappContractCall {
-  const DappContractCall({
+  DappContractCall({
     required this.contractId,
     required this.method,
     required this.shaderComment,
-  });
+    List<DappAssetAmount> pays = const [],
+    List<DappAssetAmount> receives = const [],
+    List<String> signatureKeyHashes = const [],
+  }) : pays = List.unmodifiable(pays),
+       receives = List.unmodifiable(receives),
+       signatureKeyHashes = List.unmodifiable(signatureKeyHashes);
 
   /// Lowercase hex, or null when the call deploys a new contract.
   final String? contractId;
@@ -67,17 +81,68 @@ class DappContractCall {
   /// the dApp, so this is dApp text too.
   final String shaderComment;
 
+  /// What this call alone locks into its contract from the wallet, per
+  /// asset. Not netted against the other calls: a call that takes funds
+  /// out of one contract and a call that locks them into another both
+  /// show, even when the wallet's balance ends where it started.
+  final List<DappAssetAmount> pays;
+
+  /// What this call alone unlocks from its contract into the wallet.
+  final List<DappAssetAmount> receives;
+
+  /// The keys the wallet signs this call with (`m_vSig` hashes). A signed
+  /// call can change or move what the wallet holds in that contract under
+  /// that key, with no funds leaving the wallet.
+  final List<String> signatureKeyHashes;
+
   bool get deploys => contractId == null;
+
+  /// The wallet signs this call with one of its own keys.
+  bool get signs => signatureKeyHashes.isNotEmpty;
+
+  /// This call moves funds between the wallet and its contract.
+  bool get movesFunds => pays.isNotEmpty || receives.isNotEmpty;
 
   @override
   bool operator ==(Object other) =>
       other is DappContractCall &&
       other.contractId == contractId &&
       other.method == method &&
-      other.shaderComment == shaderComment;
+      other.shaderComment == shaderComment &&
+      _sameList(other.pays, pays) &&
+      _sameList(other.receives, receives) &&
+      _sameList(other.signatureKeyHashes, signatureKeyHashes);
 
   @override
-  int get hashCode => Object.hash(contractId, method, shaderComment);
+  int get hashCode => Object.hash(
+    contractId,
+    method,
+    shaderComment,
+    Object.hashAll(pays),
+    Object.hashAll(receives),
+    Object.hashAll(signatureKeyHashes),
+  );
+}
+
+/// The signature half of a `sign_message` approval.
+@immutable
+class DappSignDetails {
+  const DappSignDetails({required this.message, required this.keyMaterial});
+
+  /// The text to sign, exactly as the dApp sent it. Written by the dApp.
+  final String message;
+
+  /// The key id the wallet derives the signing key from (`key_material`),
+  /// lowercase hex. Chosen by the dApp.
+  final String keyMaterial;
+}
+
+bool _sameList(List<Object> a, List<Object> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
 
 /// The payment half of a `tx_send` approval.
@@ -137,6 +202,7 @@ class DappConsentRequest {
     this.dappMessage,
     List<DappContractCall> calls = const [],
     this.send,
+    this.sign,
   }) : pays = List.unmodifiable(pays),
        receives = List.unmodifiable(receives),
        calls = List.unmodifiable(calls);
@@ -169,6 +235,9 @@ class DappConsentRequest {
   /// The payment, for [DappConsentKind.send].
   final DappSendDetails? send;
 
+  /// The message and key, for [DappConsentKind.signMessage].
+  final DappSignDetails? sign;
+
   /// SHA-256 of the canonical request that will execute.
   final String digest;
 
@@ -184,8 +253,23 @@ class DappConsentRequest {
     if (!_cancelled.isCompleted) _cancelled.complete();
   }
 
-  /// No funds move; only the fee is paid.
-  bool get isFeeOnly => pays.isEmpty && receives.isEmpty;
+  /// Nothing the wallet holds is touched; only the fee is paid. True only
+  /// when no call moves funds — each call on its own, not the net, since
+  /// one call can take funds out of a contract and another lock them into
+  /// a different one — and no call signs with a wallet key, since a signed
+  /// call can give away what that key holds in a contract with no funds
+  /// moving at all.
+  bool get isFeeOnly =>
+      kind == DappConsentKind.contract &&
+      pays.isEmpty &&
+      receives.isEmpty &&
+      calls.every((c) => !c.movesFunds && !c.signs);
+
+  /// The calls the wallet signs with one of its keys.
+  List<DappContractCall> get signingCalls => [
+    for (final c in calls)
+      if (c.signs) c,
+  ];
 
   /// The contract ids involved, in call order, without repeats.
   List<String> get contractIds => [
@@ -341,12 +425,15 @@ class DappContractSummary {
     required this.fullComment,
   });
 
-  /// Throws [FormatException] for invoke data it cannot fully read.
+  /// Throws [FormatException] for invoke data it cannot fully read, and
+  /// [DappContractRefused] for data a dApp may not submit
+  /// ([DappContractPolicy]): neither may reach the user or the core.
   factory DappContractSummary.decode(List<int> rawData) {
     final d = BeamInvokeData.decode(rawData);
     if (d.entries.isEmpty) {
       throw const FormatException('raw_data: no contract calls');
     }
+    DappContractPolicy.check(d);
     return DappContractSummary(
       pays: _sorted(d.pays),
       receives: _sorted(d.receives),
@@ -357,6 +444,9 @@ class DappContractSummary {
             contractId: e.contractId,
             method: e.method,
             shaderComment: e.comment,
+            pays: _sorted(e.pays),
+            receives: _sorted(e.receives),
+            signatureKeyHashes: e.signatureKeyHashes,
           ),
       ],
       // ContractInvokeDataBase::get_FullComment (bvm/invoke_data.cpp:299).
@@ -374,18 +464,11 @@ class DappContractSummary {
     for (final k in m.keys.toList()..sort()) DappAssetAmount(k, m[k]!),
   ];
 
-  /// True when [request] shows exactly these amounts, fee and calls.
+  /// True when [request] shows exactly these amounts, fee and calls
+  /// (including each call's own flows and signing keys).
   bool matches(DappConsentRequest request) =>
       _sameList(pays, request.pays) &&
       _sameList(receives, request.receives) &&
       fee == request.fee &&
       _sameList(calls, request.calls);
-
-  static bool _sameList(List<Object> a, List<Object> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
 }

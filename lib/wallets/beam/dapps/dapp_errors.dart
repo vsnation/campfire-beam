@@ -43,16 +43,25 @@ enum DappInstallError {
   /// An entry name is absolute, escapes the package, or is otherwise not a
   /// plain relative path.
   unsafePath,
+
+  /// A package from a file uses the `guid` of a bundled dApp but is not its
+  /// pinned package. It would inherit that dApp's origin, browser storage
+  /// and transaction scope, and look exactly like it.
+  reservedGuid,
 }
 
 /// A `.dapp` package could not be read, installed or removed.
 class DappInstallException implements Exception {
-  const DappInstallException(this.error, this.message);
+  const DappInstallException(this.error, this.message, {this.dappName});
 
   final DappInstallError error;
 
   /// For logs and support; never contains file contents.
   final String message;
+
+  /// For [DappInstallError.reservedGuid]: the bundled dApp the file
+  /// claims to be.
+  final String? dappName;
 
   @override
   String toString() => 'DappInstallException(${error.name}): $message';

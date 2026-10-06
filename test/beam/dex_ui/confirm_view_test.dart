@@ -18,8 +18,10 @@ import 'package:stackwallet/wallets/beam/contracts/dex/beam_dex_quotes.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/beam_dex_service.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_args.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_constants.dart';
+import 'package:stackwallet/wallets/beam/models/beam_asset_info.dart';
 import 'package:stackwallet/wallets/beam/rpc/beam_connection_exception.dart';
 import 'package:stackwallet/wallets/beam/sync/beam_sync_state.dart';
+import 'package:stackwallet/widgets/beam/dex/dex_asset_picker.dart';
 import 'package:stackwallet/widgets/beam/dex/dex_deps.dart';
 import 'package:stackwallet/widgets/desktop/primary_button.dart';
 
@@ -98,6 +100,94 @@ void main() {
     expect(o.gate.reasons, hasLength(1));
     expect(o.fake.executed, hasLength(1));
     expect(o.prepared.isExecuted, isTrue);
+  });
+
+  group('assets Campfire does not vouch for (M-5)', () {
+    // A made-up asset #999 whose metadata copies FOMO's name and ticker.
+    const copycat = 999;
+    BeamAssetMetadata? metadata(int id) => id == copycat
+        ? BeamAssetMetadata.parse('STD:SCH_VER=1;N=FOMO;SN=FOMO;UN=FOMO')
+        : null;
+
+    test('sentences name it with its number, so a copy never reads like '
+        'the real one', () {
+      final deps = makeDeps(DexUiFake({}), metadataOf: metadata);
+      expect(deps.assetName(174), 'FOMO');
+      expect(deps.assetName(copycat), 'FOMO #$copycat');
+      expect(
+        deps.pairLabel(recordedPool(0, 174, BeamPoolKind.high)),
+        'BEAM/FOMO',
+      );
+      // An asset with no metadata is its number, not "#999 #999".
+      expect(makeDeps(DexUiFake({})).assetName(copycat), '#$copycat');
+    });
+
+    testWidgets('the confirmation names it with its number and warns '
+        'before the button', (tester) async {
+      final args = DexArgs.createPool(
+        aidA: 0,
+        aidB: copycat,
+        kind: BeamPoolKind.high,
+      );
+      final fake = DexUiFake({
+        DexArgs.poolsView(): () => recorded('pools_view'),
+        args: () => built(rawVector('create_pool')),
+      });
+      final deps = makeDeps(
+        fake,
+        balances: {0: beam('12.5')},
+        metadataOf: metadata,
+      );
+      final prepared = await fake.service.prepareCreatePool(
+        aidA: 0,
+        aidB: copycat,
+        kind: BeamPoolKind.high,
+      );
+      await pumpDex(tester, BeamDexConfirmView(deps: deps, prepared: prepared));
+      await tester.pump();
+      expect(find.text('Create the BEAM/FOMO #$copycat pool'), findsOneWidget);
+      expect(
+        find.byKey(const Key('dex-confirm-unverified-$copycat')),
+        findsOneWidget,
+      );
+      expect(find.text('Not the verified FOMO (#174)'), findsOneWidget);
+      expect(find.textContaining('This is FOMO #$copycat.'), findsOneWidget);
+      expect(find.byKey(const Key('dex-confirm-unverified-0')), findsNothing);
+      await settleImages(tester);
+      await expectLater(
+        find.byKey(goldenKey),
+        matchesGoldenFile('goldens/confirm_mobile_copycat.png'),
+      );
+    });
+
+    test(
+      'assets the user hid are not offered by the DEX picker (L-14)',
+      () async {
+        final fake = DexUiFake({
+          DexArgs.poolsView(): () => recorded('pools_view'),
+        });
+        final all = makeDeps(fake);
+        await all.pools.refresh();
+        expect(dexTradableAssets(all), containsAll([0, 174, 37]));
+        final some = makeDeps(fake, hidden: {37, 0});
+        await some.pools.refresh();
+        final listed = dexTradableAssets(some);
+        expect(listed, isNot(contains(37)));
+        expect(listed.first, 0, reason: 'BEAM is never hidden');
+        expect(listed, contains(174));
+      },
+    );
+
+    testWidgets('the real asset gets no warning', (tester) async {
+      final o = await open(tester);
+      expect(
+        textOf(tester, const Key('dex-confirm-receives-174')),
+        contains('FOMO'),
+      );
+      expect(find.textContaining('not verified'), findsNothing);
+      expect(find.textContaining('Not the verified'), findsNothing);
+      expect(o.prepared.isExecuted, isFalse);
+    });
   });
 
   testWidgets('a send that may or may not have gone out is never retried', (

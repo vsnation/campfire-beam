@@ -7,7 +7,10 @@
  *
  */
 
+import 'package:flutter/widgets.dart' show Characters;
+
 import '../models/beam_asset_info.dart';
+import 'beam_asset_lookalike.dart';
 
 /// A Confidential Asset Campfire vouches for: its name, ticker, colour and a
 /// bundled icon are shown as genuine.
@@ -55,7 +58,9 @@ class BeamAssetDisplay {
   final int? color;
 
   /// The verified asset whose ticker or name this unverified asset copies,
-  /// e.g. someone's own "FOMO". The UI says "Not the verified FOMO (#174)".
+  /// e.g. someone's own "FOMO", "FОМО" (Cyrillic), "F0MO", "wFOMO" or
+  /// "Pepe #174" ([BeamLookalike.copiedKey]). The UI says "Not the verified
+  /// FOMO (#174)".
   final int? impersonates;
 
   /// Always shown next to unverified assets.
@@ -77,6 +82,24 @@ abstract final class BeamAssetCatalog {
 
   static String genericIcon(int assetId) =>
       '$_generic/asset-${assetId % genericIconCount}.svg';
+
+  /// Generic icons a verified asset already wears (RFC, #6, has no icon
+  /// of its own and shows `asset-6`).
+  static final Set<String> _verifiedIcons = {
+    for (final k in verified.values)
+      if (k.icon == null) genericIcon(k.id),
+  };
+
+  /// [genericIcon] for an asset Campfire does not vouch for, skipping any
+  /// icon a verified asset wears: #26, #46… would otherwise look exactly
+  /// like RFC (#6). Depends only on the id.
+  static String unverifiedIcon(int assetId) {
+    for (var i = 0; i < genericIconCount; i++) {
+      final icon = genericIcon(assetId + i);
+      if (!_verifiedIcons.contains(icon)) return icon;
+    }
+    return missingIcon;
+  }
 
   /// For an asset id the network does not know.
   static const missingIcon = '$_generic/asset-err.svg';
@@ -178,21 +201,15 @@ abstract final class BeamAssetCatalog {
     ),
   };
 
-  /// Control, zero-width and text-direction characters (U+202A-U+202E,
-  /// U+2066-U+2069 can make one ticker render as another).
-  static final _invisible = RegExp(
-    r'[\u0000-\u001F\u007F-\u009F\u200B-\u200F'
-    r'\u202A-\u202E\u2066-\u2069\uFEFF]',
-  );
-
   static const _maxName = 32;
   static const _maxSymbol = 8;
 
   /// How to show [assetId]. Unverified assets take their name and ticker
   /// from on-chain [metadata], cleaned of anything that is not printable,
   /// cut to a sane length, and never get an icon or colour of their own:
-  /// they get the desktop wallet's [genericIcon] for their id. Verified
-  /// assets without a bundled icon get one too.
+  /// they get the desktop wallet's generic icon for their id
+  /// ([unverifiedIcon]). Verified assets without a bundled icon get one
+  /// too.
   static BeamAssetDisplay display(int assetId, BeamAssetMetadata? metadata) {
     final known = verified[assetId];
     if (known != null) {
@@ -205,44 +222,130 @@ abstract final class BeamAssetCatalog {
         color: known.color,
       );
     }
-    final name = _clean(metadata?.name, _maxName);
-    final symbol = _clean(
-      metadata?.unitName ?? metadata?.shortName,
-      _maxSymbol,
-    );
+    final rawName = metadata?.name;
+    final rawSymbol = metadata?.unitName ?? metadata?.shortName;
+    final name = _clean(rawName, _maxName);
+    final symbol = _clean(rawSymbol, _maxSymbol);
     return BeamAssetDisplay(
       assetId: assetId,
-      name: name ?? 'Asset #$assetId',
-      symbol: symbol ?? '#$assetId',
+      name: name ?? placeholderName(assetId),
+      symbol: symbol ?? placeholderSymbol(assetId),
       verified: false,
-      icon: genericIcon(assetId),
+      icon: unverifiedIcon(assetId),
       color: genericColor(assetId),
-      impersonates: _copied(name, symbol),
+      // Judged on the raw text: cleaning drops a borrowed "#174".
+      impersonates: impersonationOf(rawName, rawSymbol),
     );
   }
 
-  static int? _copied(String? name, String? symbol) {
-    String norm(String s) =>
-        s.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-    final n = name == null ? null : norm(name);
-    final s = symbol == null ? null : norm(symbol);
-    for (final k in verified.values) {
-      final ks = norm(k.symbol);
-      final kn = norm(k.name);
-      if ((s != null && s.isNotEmpty && (s == ks || s == kn)) ||
-          (n != null && n.isNotEmpty && (n == ks || n == kn))) {
-        return k.id;
-      }
-    }
-    return null;
+  /// "Asset #557": an unverified asset whose metadata gave no name.
+  static String placeholderName(int assetId) => 'Asset #$assetId';
+
+  /// "#557": an unverified asset whose metadata gave no ticker.
+  static String placeholderSymbol(int assetId) => '#$assetId';
+
+  /// The verified asset an unverified asset named [name] with ticker
+  /// [symbol] copies, or null ([BeamLookalike.copiedKey]).
+  static int? impersonationOf(String? name, String? symbol) =>
+      BeamLookalike.copiedKey<int>(name, symbol, {
+        for (final k in verified.values) k.id: (symbol: k.symbol, name: k.name),
+      });
+
+  /// A cached unverified row's name and ticker under today's rules: cleaned
+  /// again and checked again for a copied verified asset. Rows cached by an
+  /// older version keep whatever it let through (a borrowed "#174", a
+  /// look-alike it did not flag) until this runs. Placeholders stay as
+  /// they are.
+  static ({String name, String symbol, int? impersonates}) relook(
+    int assetId,
+    String name,
+    String symbol,
+  ) {
+    final keepName = name == placeholderName(assetId);
+    final keepSymbol = symbol == placeholderSymbol(assetId);
+    final cleanName = keepName ? name : _clean(name, _maxName);
+    final cleanSymbol = keepSymbol ? symbol : _clean(symbol, _maxSymbol);
+    return (
+      name: cleanName ?? placeholderName(assetId),
+      symbol: cleanSymbol ?? placeholderSymbol(assetId),
+      impersonates: impersonationOf(
+        keepName ? null : name,
+        keepSymbol ? null : symbol,
+      ),
+    );
   }
 
-  /// Printable ASCII and common letters only, trimmed, at most [max] chars;
-  /// null when nothing usable is left. On-chain names are attacker text.
+  // ------------------------------------------------------------- cleaning
+
+  /// What a name may be built from: letters, digits, punctuation and
+  /// symbols of any script. Everything else is dropped: controls, format
+  /// characters (zero-width, bidi overrides, U+061C, U+2060-U+206F, soft
+  /// hyphen, tag characters), line and paragraph separators, private-use
+  /// and unassigned code points.
+  static final _printable = RegExp(r'^[\p{L}\p{N}\p{P}\p{S}]$', unicode: true);
+  static final _space = RegExp(r'^[\p{Zs}\t]$', unicode: true);
+  static final _mark = RegExp(r'^\p{M}$', unicode: true);
+
+  /// Letters and marks that render as nothing (Hangul fillers, the braille
+  /// blank, Khmer inherent vowels, the combining grapheme joiner, variation
+  /// selectors), so a name cannot look empty or hide characters.
+  static bool _blank(int r) =>
+      r == 0x115F ||
+      r == 0x1160 ||
+      r == 0x3164 ||
+      r == 0xFFA0 ||
+      r == 0x2800 ||
+      r == 0x17B4 ||
+      r == 0x17B5 ||
+      r == 0x034F ||
+      (r >= 0x180B && r <= 0x180F) ||
+      (r >= 0xFE00 && r <= 0xFE0F) ||
+      (r >= 0xE0100 && r <= 0xE01EF);
+
+  /// At most this many combining marks per character: enough for accented
+  /// letters and Indic scripts, too few to paint over the line below.
+  static const _maxMarksPerCharacter = 2;
+
+  /// `#`, `＃`, `﹟`: kept out of names entirely, so "Pepe #174" can never
+  /// sit next to Campfire's real "#999".
+  static const _numberSigns = {'#', '\uFF03', '\uFE5F'};
+
+  /// A raw metadata field longer than this is cut before cleaning.
+  static const _maxRaw = 512;
+
+  /// Printable characters only (an allow-list, [_printable]), any run of
+  /// spaces as one, no borrowed "#174" (Campfire's id label is Campfire's),
+  /// trimmed and cut to at most [max] characters as people see them
+  /// (grapheme clusters, so a cut never splits one); null when nothing
+  /// usable is left. On-chain names are attacker text.
   static String? _clean(String? raw, int max) {
     if (raw == null) return null;
-    final kept = raw.replaceAll(_invisible, '').trim();
+    var text = raw.length > _maxRaw ? raw.substring(0, _maxRaw) : raw;
+    text = text.replaceAll(BeamLookalike.idLabel, ' ');
+    final out = StringBuffer();
+    for (final cluster in Characters(text)) {
+      var base = false;
+      var marks = 0;
+      for (final r in cluster.runes) {
+        final c = String.fromCharCode(r);
+        if (_blank(r)) continue;
+        if (_mark.hasMatch(c)) {
+          if (base && marks < _maxMarksPerCharacter) {
+            out.write(c);
+            marks++;
+          }
+        } else if (_space.hasMatch(c)) {
+          out.write(' ');
+          base = false;
+        } else if (_printable.hasMatch(c) && !_numberSigns.contains(c)) {
+          out.write(c);
+          base = true;
+        }
+      }
+    }
+    final kept = out.toString().replaceAll(RegExp(' {2,}'), ' ').trim();
     if (kept.isEmpty) return null;
-    return kept.length > max ? '${kept.substring(0, max - 1)}…' : kept;
+    final chars = Characters(kept);
+    return chars.length > max ? '${chars.take(max - 1)}…' : kept;
   }
 }

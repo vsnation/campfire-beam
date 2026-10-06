@@ -29,6 +29,8 @@ import 'package:stackwallet/wallets/beam/assets/beam_asset_registry.dart';
 import 'package:stackwallet/wallets/beam/assets/beam_asset_text.dart';
 import 'package:stackwallet/wallets/beam/assets/beam_hidden_assets.dart';
 import 'package:stackwallet/wallets/beam/models/beam_asset_info.dart';
+import 'package:stackwallet/wallets/beam/rpc/beam_connection_exception.dart';
+import 'package:stackwallet/wallets/beam/rpc/beam_transport.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_tx_mapper.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_errors.dart';
 import 'package:stackwallet/wallets/models/tx_data.dart';
@@ -196,7 +198,9 @@ void main() {
       expect(jsonDecode(tx.otherData!), {
         'assetId': 174,
         'addressType': 'regular',
+        'txId': 'fe' * 16,
       });
+      expect(BeamAssetWallet.preparedTxId(tx), 'fe' * 16);
       expect(BeamAssetWallet.preparedAddressType(tx)?.wireName, 'regular');
       expect(h.core.calcChangeCalls.last['asset_id'], 174);
       expect(h.core.sent, isEmpty);
@@ -218,6 +222,109 @@ void main() {
       expect(sent['txId'], 'fe' * 16);
       expect(sent.containsKey('offline'), isFalse);
       expect(wallet.isBusy, isFalse);
+    });
+
+    group('one prepared payment, one payment (M-6)', () {
+      test('the tx id is fixed at prepare: confirm sends that one, never '
+          'a new one', () async {
+        final fomo = assetWallet(174);
+        final tx = await fomo.prepareSend(txData: _pay(payee, g(12.5)));
+        h.core.nextTxId = 'ab' * 16; // a new id would be this
+        final done = await fomo.confirmSend(txData: tx);
+        expect(h.core.sent.single['txId'], 'fe' * 16);
+        expect(done.txid, 'fe' * 16);
+      });
+
+      test('outcome unknown: a second confirm of the same payment is looked '
+          'up, never handed to tx_send again', () async {
+        final fomo = assetWallet(174);
+        final tx = await fomo.prepareSend(txData: _pay(payee, g(12.5)));
+        // The core took it, the reply was lost, and it cannot be asked.
+        h.core.txSendThrows = const BeamConnectionException('reply lost');
+        h.core.txStatusThrows = const BeamConnectionException('restarting');
+        await expectLater(
+          fomo.confirmSend(txData: tx),
+          throwsA(
+            _problem(
+              BeamWalletProblem.sendOutcomeUnknown,
+              'Check your transaction history',
+            ),
+          ),
+        );
+        expect(h.core.sent, hasLength(1));
+
+        // Tapping Send again (or any caller retrying) while still unknown.
+        h.core.txSendThrows = null;
+        await expectLater(
+          fomo.confirmSend(txData: tx),
+          throwsA(
+            _problem(
+              BeamWalletProblem.sendOutcomeUnknown,
+              'already handed to the wallet',
+            ),
+          ),
+        );
+        expect(h.core.sent, hasLength(1), reason: 'no second tx_send');
+
+        // Once the core answers, the retry reports the one payment.
+        h.core.txStatusThrows = null;
+        final done = await fomo.confirmSend(txData: tx);
+        expect(done.txid, 'fe' * 16);
+        expect(h.core.sent, hasLength(1), reason: 'still one tx_send');
+        expect(wallet.isBusy, isFalse);
+      });
+
+      test('a sent payment confirmed again is not sent again', () async {
+        final fomo = assetWallet(174);
+        final tx = await fomo.prepareSend(txData: _pay(payee, g(1)));
+        await fomo.confirmSend(txData: tx);
+        final again = await fomo.confirmSend(txData: tx);
+        expect(again.txid, 'fe' * 16);
+        expect(h.core.sent, hasLength(1));
+      });
+
+      test('a plain refusal sent nothing, so the same payment may be tried '
+          'again, with the same tx id', () async {
+        final fomo = assetWallet(174);
+        final tx = await fomo.prepareSend(txData: _pay(payee, g(1)));
+        h.core.txSendThrows = const BeamRpcException(-32603, 'Node busy');
+        await expectLater(
+          fomo.confirmSend(txData: tx),
+          throwsA(_problem(BeamWalletProblem.sendRejected, 'not sent')),
+        );
+        h.core.txSendThrows = null;
+        await fomo.confirmSend(txData: tx);
+        expect(
+          [for (final s in h.core.sent) s['txId']],
+          ['fe' * 16, 'fe' * 16],
+        );
+      });
+
+      test('the core already has the tx id (another screen sent it): '
+          'reported as that payment, not as "not sent"', () async {
+        final fomo = assetWallet(174);
+        final tx = await fomo.prepareSend(txData: _pay(payee, g(1)));
+        h.core.txSendThrows = const BeamRpcException(
+          -32602,
+          'Provided transaction ID already exists in the wallet.',
+        );
+        final done = await assetWallet(174).confirmSend(txData: tx);
+        expect(done.txid, 'fe' * 16);
+        expect(h.core.sent, hasLength(1));
+      });
+
+      test('a payment without the prepared tx id is refused', () async {
+        final fomo = assetWallet(174);
+        final tx = await fomo.prepareSend(txData: _pay(payee, g(1)));
+        final stripped = tx.copyWith(
+          otherData: jsonEncode({'assetId': 174, 'addressType': 'regular'}),
+        );
+        await expectLater(
+          fomo.confirmSend(txData: stripped),
+          throwsA(_problem(BeamWalletProblem.other, 'not prepared')),
+        );
+        expect(h.core.sent, isEmpty);
+      });
     });
 
     test(

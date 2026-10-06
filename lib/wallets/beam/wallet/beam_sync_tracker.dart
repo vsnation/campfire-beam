@@ -102,11 +102,16 @@ class BeamSyncTracker {
   }
 
   /// A new session (another wallet-api, maybe another node): what the old
-  /// one said about its connection no longer holds.
+  /// one said about its connection no longer holds. The last chain state is
+  /// kept but re-emitted without the connection, so the sync verdict waits
+  /// for the new core's `node_connected`, and that report is not swallowed
+  /// as a repeat of the old session's input.
   void resetConnection() {
     _nodeConnected = null;
     _ownNode = null;
     _scan = null;
+    final input = _input;
+    if (input != null) _emit(input.withoutConnection());
   }
 
   Future<void> dispose() => _controller.close();

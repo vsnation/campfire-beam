@@ -102,6 +102,13 @@ aclc=$(cat "$acl")
     '$_readConfig'
     r'''
 echo "I ACL file successfully loaded"
+# What a real wallet-api prints at info level: the wallet's history.
+# Every value is synthetic (repeated patterns), never a real address.
+echo "I 2026-10-06.12:00:00.000 WalletID d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1"
+echo "I 2026-10-06.12:00:00.000 New Wallet address generated: e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0e0f"
+echo "I 2026-10-06.12:00:00.000 7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a7a Sending 0.1 BEAM (fee: 0.001 BEAM), my EP EpEpEpEpEpEpEpEpEpEpEpEpEpEpEpEpEpEpEpEpEpEp, peer EP PqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPqPq"
+echo "I 2026-10-06.12:00:00.000 Current state is 4100000-0123456789abcdef"
+echo "W 2026-10-06.12:00:00.000 Unable to resolve node address: eu-nodes.mainnet.beam.mw:8100"
 if printf '%s\n' "$aclc" | grep -Eq '^[0-9a-f]{64}:write$'; then
   echo acl-format-ok >> "$here/evidence.log"
 fi
@@ -130,6 +137,50 @@ Future<int> _deadPid() async {
 Future<bool> _running(int pid) async {
   final r = await Process.run('ps', ['-p', '$pid', '-o', 'comm=']);
   return r.exitCode == 0 && '${r.stdout}'.trim().isNotEmpty;
+}
+
+/// A long-running process whose name is `sh` (macOS reports a script's
+/// interpreter, Linux the script's own name) and whose command line carries
+/// `--wallet_path=[dbPath]`, the way a wallet-api orphan's does.
+Future<Process> _fakeWalletChild(String dir, String dbPath) async {
+  await Directory(dir).create(recursive: true);
+  final script = await _writeExe(
+    p.join(dir, 'sh'),
+    "#!/bin/sh\ntrap 'exit 0' TERM\nwhile :; do sleep 0.1; done\n",
+  );
+  return Process.start(script, ['--wallet_path=$dbPath']);
+}
+
+/// Swaps a binary on disk right after [prepare] verified it: what another
+/// local process could do between the hash and the launch.
+class _SwappingBinaries extends BeamBinaries {
+  _SwappingBinaries({
+    required super.binDir,
+    required String super.platform,
+    required super.manifest,
+    required this.replacement,
+  });
+
+  final String replacement;
+  final List<BeamBinary> recheckedBeforeSpawn = [];
+
+  @override
+  Future<String> prepare(
+    BeamBinary binary, {
+    required String scratchParent,
+  }) async {
+    final path = await super.prepare(binary, scratchParent: scratchParent);
+    if (binary == BeamBinary.walletApi) {
+      await File(path).writeAsString(replacement);
+    }
+    return path;
+  }
+
+  @override
+  Future<String> verifyUnchanged(BeamBinary binary) {
+    recheckedBeforeSpawn.add(binary);
+    return super.verifyUnchanged(binary);
+  }
 }
 
 void main() {
@@ -381,7 +432,8 @@ void main() {
         '--api_version=7.4',
         '--request_bodies=0',
         '--log_level=info',
-        '--file_log_level=info',
+        // BEAM's own file log: no info-level history (finding 6).
+        '--file_log_level=warning',
         '--node_addr=eu-nodes.mainnet.beam.mw:8100',
         // A release pin: the Campfire build gets the BANS allowlist.
         '--privileged_shader_sha256=${kBeamPrivilegedShaderSha256s.single}',
@@ -394,17 +446,44 @@ void main() {
       expect(await secretEntries(), isEmpty);
       expect(SecretFiles.livePaths, isEmpty);
 
-      // The captured console log is private and holds no password.
-      final logs = await Directory(host.logsDir)
+      // The captured console log is private, holds no password, and lives
+      // in the wallet's own folder, so deleting the wallet deletes it.
+      expect(
+        await Directory(host.logsDir)
+            .list()
+            .where((e) => p.basename(e.path).startsWith('wallet-api-'))
+            .toList(),
+        isEmpty,
+      );
+      final walletLogs = ProcessHost.walletLogsDir(walletDir);
+      expect(p.isWithin(walletDir, walletLogs), isTrue);
+      expect(await posixMode(walletLogs), 0x1c0);
+      final logs = await Directory(walletLogs)
           .list()
           .where((e) => p.basename(e.path).startsWith('wallet-api-'))
           .toList();
       expect(logs, hasLength(1));
       expect(await posixMode(logs.single.path), 0x180);
-      expect(
-        await File(logs.single.path).readAsString(),
-        isNot(contains('wrong-password-1')),
-      );
+      final logText = await File(logs.single.path).readAsString();
+      expect(logText, isNot(contains('wrong-password-1')));
+      // The wallet's history never reaches the file (finding 6); startup
+      // markers, heights and warnings do.
+      expect(logText, contains('ACL file successfully loaded'));
+      expect(logText, contains('Current state is 4100000-0123456789abcdef'));
+      expect(logText, contains('Unable to resolve node address'));
+      for (final leak in [
+        'WalletID',
+        'address generated',
+        'Sending',
+        'my EP',
+        'peer EP',
+        '0.1 BEAM',
+        'e0e0e0e0e0e0e0e0',
+        'd1d1d1d1d1d1d1d1',
+      ]) {
+        expect(logText, isNot(contains(leak)), reason: leak);
+      }
+      expect(logText, isNot(matches(RegExp(r'[A-Za-z0-9]{32,}'))));
 
       // The lock was released: the wallet can be used again.
       expect(
@@ -445,6 +524,45 @@ void main() {
       // `exec sleep` kept the stand-in's pid; it must be gone.
       final pid = int.parse((await lines('pids.log')).last);
       expect(await _running(pid), isFalse);
+      expect(await secretEntries(), isEmpty);
+    });
+
+    test('a binary swapped after its hash check is refused before it is '
+        'launched (finding 5)', () async {
+      final api = p.join(binDir, 'wallet-api');
+      final wallet = p.join(binDir, 'beam-wallet');
+      final swapping = _SwappingBinaries(
+        binDir: binDir,
+        platform: 'fake',
+        manifest: {
+          'fake': {
+            'beam-wallet': await BeamBinaries.sha256OfFile(wallet),
+            'wallet-api': await BeamBinaries.sha256OfFile(api),
+          },
+        },
+        replacement:
+            '#!/bin/sh\n$_rules\necho swapped-binary-ran >> '
+            '"\$(dirname "\$0")/evidence.log"\nexit 0\n',
+      );
+      final swapHost = ProcessHost(
+        rootDir: p.join(tmp.path, 'beam'),
+        binaries: swapping,
+        startupTimeout: const Duration(seconds: 3),
+      );
+      await createWallet();
+      await expectLater(
+        swapHost.openWallet(
+          walletDir: walletDir,
+          password: password,
+          node: BeamNodeEndpoint.parse('eu-nodes.mainnet.beam.mw:8100'),
+        ),
+        throwsA(_hostError(BeamHostError.binaryUntrusted)),
+      );
+      expect(swapping.recheckedBeforeSpawn, contains(BeamBinary.walletApi));
+      expect(
+        await lines('evidence.log'),
+        isNot(contains('swapped-binary-ran')),
+      );
       expect(await secretEntries(), isEmpty);
     });
 
@@ -512,13 +630,16 @@ void main() {
 
     test('an orphaned child of a dead owner is stopped first', () async {
       await createWallet();
-      final orphan = await Process.start('sleep', ['30']);
+      final orphan = await _fakeWalletChild(
+        p.join(tmp.path, 'orphan'),
+        p.join(walletDir, 'wallet.db'),
+      );
       await File(p.join(walletDir, '.wallet.lock')).writeAsString(
         jsonEncode({
           'pid': await _deadPid(),
           'exe': 'campfire',
           'child': orphan.pid,
-          'childExe': 'sleep',
+          'childExe': 'sh',
         }),
       );
       expect(
@@ -527,6 +648,34 @@ void main() {
       );
       await orphan.exitCode.timeout(const Duration(seconds: 5));
       expect(await _running(orphan.pid), isFalse);
+    });
+
+    test('a recorded child pid now running another wallet-api (another '
+        "app's wallet) is left alone (finding 8)", () async {
+      await createWallet();
+      // Same executable name, same pid as recorded, different wallet.db.
+      final other = await _fakeWalletChild(
+        p.join(tmp.path, 'other-app'),
+        p.join(tmp.path, 'other-app', 'wallets', 'w1', 'wallet.db'),
+      );
+      try {
+        await File(p.join(walletDir, '.wallet.lock')).writeAsString(
+          jsonEncode({
+            'pid': await _deadPid(),
+            'exe': 'campfire',
+            'child': other.pid,
+            'childExe': 'sh',
+          }),
+        );
+        expect(
+          await host.exportOwnerKey(walletDir: walletDir, password: password),
+          isNotEmpty,
+        );
+        expect(await _running(other.pid), isTrue);
+      } finally {
+        other.kill();
+        await other.exitCode;
+      }
     });
 
     test('a pid recycled by an unrelated program is not a holder', () async {

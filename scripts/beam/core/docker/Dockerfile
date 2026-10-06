@@ -7,11 +7,14 @@
 #
 # Built by scripts/beam/core/build_linux.sh, which stages the two tarballs into
 # the build context after checking their SHA-256. Image tag: beamcore-builder:*.
-# BASE_IMAGE is ubuntu:22.04 pulled for the target platform and tagged
-# beamcore-base:ubuntu22.04-<arch> by build_linux.sh. Naming it explicitly matters:
-# the classic builder otherwise reuses whatever platform the local ubuntu:22.04 tag
-# points at (arm64 on Apple Silicon) and then fails the COPY platform check.
-ARG BASE_IMAGE=ubuntu:22.04
+# BASE_IMAGE is always pinned by digest, never a floating tag: build_linux.sh
+# passes the per-platform ubuntu:22.04 manifest digest for the target arch.
+# Naming the platform's own manifest matters: the classic builder otherwise
+# reuses whatever platform the local ubuntu:22.04 tag points at (arm64 on Apple
+# Silicon) and then fails the COPY platform check. The default below is the
+# multi-arch index digest those per-platform digests were taken from, for a
+# direct `docker build`.
+ARG BASE_IMAGE=ubuntu@sha256:5ec03bb3441e8b0bf3b4f9cd4629a1ae763010dc3035bb8da3ae6cf026486401
 FROM ${BASE_IMAGE}
 
 ARG BOOST_TARBALL=boost_1_90_0.tar.bz2

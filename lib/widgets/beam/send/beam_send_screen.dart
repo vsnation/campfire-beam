@@ -251,7 +251,22 @@ class BeamSendPageState extends State<BeamSendPage> {
 
   bool _desktop(BuildContext context) => BeamSendLayout.isDesktop(context);
 
+  /// Set synchronously by the first tap and cleared when the confirmation
+  /// closes: a second activation that lands first (same frame, a held key)
+  /// returns instead of building a second payment.
+  bool _reviewing = false;
+
   Future<void> _review() async {
+    if (_reviewing) return;
+    _reviewing = true;
+    try {
+      await _buildAndConfirm();
+    } finally {
+      _reviewing = false;
+    }
+  }
+
+  Future<void> _buildAndConfirm() async {
     FocusScope.of(context).unfocus();
     final desktop = _desktop(context);
     var cancelled = false;

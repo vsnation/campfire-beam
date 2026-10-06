@@ -23,6 +23,10 @@
 // Exit-intent (§1.7) — what could make an impatient person leave:
 // * "Is this a scam?" — the destination is the DEX contract, named and
 //   shortened, and the total leaving the wallet is in one coloured box.
+// * "Is this the real FOMO?" — an asset Campfire does not vouch for is
+//   named with its number everywhere on this screen ("FOMO #999"), and a
+//   warning above the amounts says it is not verified, or which verified
+//   asset it copies, as the swap form does.
 // * A surprise fee — the network fee is its own line, from the built tx.
 // * Pool creation's 10 BEAM deposit — a warning and a tick box before the
 //   button works.
@@ -33,6 +37,7 @@ import 'package:flutter/material.dart';
 
 import '../../../themes/stack_colors.dart';
 import '../../../utilities/text_styles.dart';
+import '../../../wallets/beam/assets/beam_asset_catalog.dart';
 import '../../../wallets/beam/contracts/dex/beam_dex_quotes.dart';
 import '../../../wallets/beam/contracts/dex/beam_dex_service.dart';
 import '../../../wallets/beam/contracts/dex/beam_ratio.dart';
@@ -147,7 +152,38 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
   String _pair() {
     final lo = _aid1 < _aid2 ? _aid1 : _aid2;
     final hi = _aid1 < _aid2 ? _aid2 : _aid1;
-    return '${deps.display(lo).symbol}/${deps.display(hi).symbol}';
+    return '${deps.assetLabel(lo)}/${deps.assetLabel(hi)}';
+  }
+
+  /// Assets on this screen Campfire does not vouch for, BEAM first then by
+  /// id. LP tokens are left out: the DEX contract itself names those.
+  List<int> get _unverified => [
+    for (final a in _order({...p.pays.keys, ...p.receives.keys, _aid1, _aid2}))
+      if (a != 0 && !deps.display(a).verified && deps.poolOfLpToken(a) == null)
+        a,
+  ];
+
+  Widget _unverifiedNotice(int assetId) {
+    final d = deps.display(assetId);
+    final copied = d.impersonates == null
+        ? null
+        : BeamAssetCatalog.verified[d.impersonates];
+    final label = deps.assetLabel(assetId);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DexNotice(
+        key: Key('dex-confirm-unverified-$assetId'),
+        kind: DexNoticeKind.warning,
+        title: copied == null
+            ? '$label is not verified'
+            : 'Not the verified ${copied.symbol} (#${copied.id})',
+        detail:
+            '${copied == null ? 'It' : 'This is $label. It'} is not one '
+            'Campfire vouches for: anyone can create an asset with any '
+            'name. Check the number ${d.idLabel} with whoever sent you '
+            'here before you confirm.',
+      ),
+    );
   }
 
   String get _cta => switch (p.action) {
@@ -352,6 +388,7 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
           Text(_heading, style: STextStyles.desktopTextMedium(context)),
           const SizedBox(height: 16),
         ],
+        for (final a in _unverified) _unverifiedNotice(a),
         if (p.action == BeamDexAction.createPool) ...[
           _depositWarning(context),
           const SizedBox(height: 12),

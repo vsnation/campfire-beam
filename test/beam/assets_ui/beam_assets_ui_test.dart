@@ -40,6 +40,7 @@ import 'package:stackwallet/wallets/beam/assets/beam_asset_registry.dart';
 import 'package:stackwallet/wallets/beam/assets/beam_asset_text.dart';
 import 'package:stackwallet/wallets/beam/assets/beam_hidden_assets.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_balance_mapper.dart';
+import 'package:stackwallet/wallets/beam/wallet/beam_wallet_errors.dart';
 import 'package:stackwallet/wallets/models/tx_data.dart';
 import 'package:stackwallet/wallets/wallet/impl/beam_wallet.dart';
 import 'package:stackwallet/wallets/wallet/impl/sub_wallets/beam_asset_wallet.dart';
@@ -61,6 +62,28 @@ TxData _pay(String address, BigInt amount) => TxData(
 
 Future<void> _golden(String name) =>
     expectLater(find.byKey(goldenKey), matchesGoldenFile('goldens/$name.png'));
+
+String? textOf(WidgetTester tester, Key key) {
+  final w = tester.widget(find.byKey(key));
+  return w is Text ? (w.data ?? w.textSpan?.toPlainText()) : null;
+}
+
+/// An asset wallet whose core took the payment and then could not be
+/// asked about it: every confirm ends with "outcome unknown".
+class _UnsureAssetWallet extends BeamAssetWallet {
+  _UnsureAssetWallet(super.parent, super.asset);
+
+  int confirmCalls = 0;
+
+  @override
+  Future<TxData> confirmSend({required TxData txData}) async {
+    confirmCalls++;
+    throw const BeamWalletException(
+      BeamWalletProblem.sendOutcomeUnknown,
+      'The connection dropped while sending.',
+    );
+  }
+}
 
 void main() {
   late Directory tmp;
@@ -522,7 +545,74 @@ void main() {
         find.textContaining('Not the verified FOMO (#174)'),
         findsOneWidget,
       );
+      // The number is part of what is sent: amount and button carry it.
+      expect(
+        textOf(tester, const Key('beamAssetConfirmAmount')),
+        '250 FOMO #$fakeFomoId',
+      );
+      expect(find.text('Send 250 FOMO #$fakeFomoId'), findsOneWidget);
       await _golden('asset_confirm_copycat_phone');
+    });
+
+    testWidgets('outcome unknown: says so, never offers Send again, and '
+        'leaves for the history (M-6)', (tester) async {
+      final unsure = _UnsureAssetWallet(wallet, contracts[174]!);
+      bool? result;
+      var asked = 0;
+      await pumpAssets(
+        tester,
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                key: const Key('open'),
+                onPressed: () async {
+                  result = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) => BeamAssetConfirmView(
+                        walletId: wallet.walletId,
+                        assetWallet: unsure,
+                        txData: fomoTx,
+                        authorize: (_) async {
+                          asked++;
+                          return true;
+                        },
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+        wallet: wallet,
+        desktop: false,
+      );
+      await tester.tap(find.byKey(const Key('open')));
+      await settle(tester);
+
+      await tester.tap(find.byKey(const Key('beamAssetConfirmSend')));
+      await tester.pumpAndSettle();
+      expect(unsure.confirmCalls, 1);
+      expect(find.text('Not sure it was sent'), findsOneWidget);
+      expect(find.text('Payment not sent'), findsNothing);
+      expect(
+        find.textContaining("We couldn't confirm it went out"),
+        findsWidgets,
+      );
+      // Behind the dialog the Send button is already gone for good.
+      expect(find.byKey(const Key('beamAssetConfirmSend')), findsNothing);
+      expect(find.byKey(const Key('beamAssetConfirmHistory')), findsOneWidget);
+      await _golden('asset_confirm_unknown_phone');
+
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      // Back to the asset page (its history), as handed to the wallet.
+      expect(find.byType(BeamAssetConfirmView), findsNothing);
+      expect(result, isTrue);
+      expect(unsure.confirmCalls, 1);
+      expect(asked, 1);
     });
 
     testWidgets('desktop confirm; a failed send says what happened', (

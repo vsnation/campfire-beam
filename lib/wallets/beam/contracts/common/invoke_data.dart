@@ -131,6 +131,30 @@ class BeamInvokeEntry {
 
   bool get isDependent => flags & BeamInvokeData.flagDependent != 0;
 
+  /// The entry asks the core to store the app body and args it was built
+  /// with, so the core can re-run them later (`Flags::SaveAppInvoke`). Only
+  /// the first entry's flag is acted on (`bvm/invoke_data.h:200-204`).
+  bool get savesAppInvoke => flags & BeamInvokeData.flagSaveAppInvoke != 0;
+
+  /// The entry carries an explicit spend ceiling for a rebuild
+  /// (`Flags::SaveSpendMax`). Only the first entry's flag is acted on.
+  bool get savesSpendMax => flags & BeamInvokeData.flagSaveSpendMax != 0;
+
+  /// What this entry alone takes from the wallet, per asset (positive
+  /// [spend] values). Unlike [BeamInvokeData.pays], nothing is netted
+  /// against the other entries.
+  Map<int, BigInt> get pays => Map.unmodifiable({
+    for (final s in spend.entries)
+      if (s.value > BigInt.zero) s.key: s.value,
+  });
+
+  /// What this entry alone gives the wallet, per asset (negated negative
+  /// [spend] values).
+  Map<int, BigInt> get receives => Map.unmodifiable({
+    for (final s in spend.entries)
+      if (s.value < BigInt.zero) s.key: -s.value,
+  });
+
   bool get isAdvanced => flags & BeamInvokeData.flagAdvanced != 0;
 
   /// Always false for a decoded entry: [BeamInvokeData.decode] refuses
@@ -244,6 +268,18 @@ class BeamInvokeData {
   /// The network fee in BEAM groth (`get_FullFee`).
   BigInt get fee =>
       entries.fold(BigInt.zero, (sum, e) => sum + e.fee);
+
+  /// True when the core may rebuild this transaction after it is approved
+  /// and sign something else: an entry is dependent (HFT), or the data
+  /// stores an app body or a spend ceiling to re-run
+  /// (`contract_transaction.cpp:610-690`). Set on any entry, not only the
+  /// first, so a caller refusing rebuildable data errs on the safe side.
+  bool get isRebuildable => entries.any(
+    (e) =>
+        e.flags &
+            (flagDependent | flagSaveAppInvoke | flagSaveSpendMax) !=
+        0,
+  );
 
   /// The kernel comments, in order, empty ones left out.
   List<String> get comments => List.unmodifiable([

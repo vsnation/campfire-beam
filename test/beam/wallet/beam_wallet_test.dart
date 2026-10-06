@@ -490,6 +490,24 @@ void main() {
       expect(w.syncAssessment, isA<BeamSynced>());
     });
 
+    test('honest sync: a fresh stored tip is not "synced" until the core '
+        'has reached its node', () async {
+      host.reachNode = false;
+      final w = await newWallet();
+      await w.open();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+      // is_in_sync is true and the explorer agrees, but no node yet.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(w.syncAssessment, isA<BeamSyncConnecting>());
+      expect(w.canSpend, isFalse);
+      host.lastTransport!.emit('ev_connection_changed', {
+        'node_connected': true,
+        'own_node': false,
+      });
+      await w.whenCanSend.timeout(const Duration(seconds: 5));
+      expect(w.syncAssessment, isA<BeamSynced>());
+    });
+
     test('"BEAM core not installed": open() still returns, the state says '
         'so in plain words, refresh does not throw', () async {
       final w = await newWallet();

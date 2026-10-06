@@ -32,20 +32,33 @@ import 'package:stackwallet/wallets/beam/dapps/host/dapp_watched_consent_queue.d
 import 'package:stackwallet/wallets/beam/models/beam_asset_info.dart';
 import 'package:stackwallet/wallets/beam/rpc/fake_transport.dart';
 import 'package:stackwallet/widgets/beam/dapps/dapp_approval_sheet.dart';
+import 'package:stackwallet/widgets/desktop/primary_button.dart';
 
 import '../contracts/dex/dex_fixtures.dart';
+import '../dapps/dapp_invoke_builder.dart';
 import '../dapps/dapp_session_fixtures.dart';
 import 'dapp_ui_harness.dart';
 
 const _dexGuid = 'db851322f6674a6da3e84e9953db2ffd';
 const _origin = 'http://127.0.0.1:40000';
 
+/// The bundled Beam DEX dApp, installed from its pinned package.
 const _dex = DappIdentity(
   guid: _dexGuid,
   name: 'Beam DEX',
   origin: _origin,
   startUrl: '$_origin/app/index.html',
   version: '1.0.0',
+  checkedByCampfire: true,
+);
+
+/// A dApp installed from a file.
+const _sideloaded = DappIdentity(
+  guid: 'ab12ab12ab12ab12ab12ab12ab12ab12',
+  name: 'Yield Farm',
+  origin: 'http://127.0.0.1:40001',
+  startUrl: 'http://127.0.0.1:40001/index.html',
+  version: '0.9.1',
 );
 
 /// Not a real wallet's address: 33 bytes of a counting pattern.
@@ -61,10 +74,16 @@ List<int> _realTrade() {
 }
 
 class _Rig {
-  _Rig(this.tester, {required this.desktop, this.auth = true});
+  _Rig(
+    this.tester, {
+    required this.desktop,
+    this.auth = true,
+    this.identity = _dex,
+  });
 
   final WidgetTester tester;
   final bool desktop;
+  final DappIdentity identity;
   bool? auth;
   late final FakeTransport core;
   late final FakeWalletLink link;
@@ -82,6 +101,7 @@ class _Rig {
   }) async {
     core = FakeTransport({
       'process_invoke_data': (Map<String, Object?> p) => {'txid': txId(++sent)},
+      'sign_message': {'signature': 'ab' * 65},
       'validate_address': {
         'is_valid': true,
         'is_mine': false,
@@ -99,9 +119,9 @@ class _Rig {
     presenter = DappApprovalPresenter(link);
     queue = DappWatchedConsentQueue(presenter);
     session = DappSession(
-      identity: _dex,
+      identity: identity,
       apiVersion: DappApiVersion.v7_4,
-      transport: link.dappTransport(_dex),
+      transport: link.dappTransport(identity),
       consent: queue,
     );
     await tester.pumpWidget(
@@ -143,10 +163,22 @@ class _Rig {
     };
   }
 
+  /// The sheet is on screen and Approve takes taps (after
+  /// [DappApprovalSheet.armDelay]), as the user sees it a moment later.
   Future<void> settle() async {
     await tester.pumpAndSettle();
+    await tester.pump(DappApprovalSheet.armDelay);
     await precacheImages(tester);
   }
+
+  /// The sheet has just appeared: Approve does not take taps yet.
+  Future<void> justOpened() async {
+    await tester.pumpAndSettle();
+  }
+
+  bool get approveEnabled => tester
+      .widget<PrimaryButton>(find.byKey(DappApprovalSheet.approveKey))
+      .enabled;
 }
 
 void main() {
@@ -175,7 +207,7 @@ void main() {
       expect(find.text('0.111 BEAM'), findsOneWidget, reason: 'total out');
       expect(find.text('Message from Beam DEX'), findsOneWidget);
       expect(find.text('“Swap 0.1 BEAM for FOMO”'), findsOneWidget);
-      expect(find.text(dappShortHex(dexCid)), findsOneWidget);
+      expect(find.text('Beam DEX · ${dappShortHex(dexCid)}'), findsOneWidget);
       expect(find.text('Approve swap'), findsOneWidget);
       expect(find.text('Reject'), findsOneWidget);
       expect(rig.link.holds, 1, reason: 'node switch held while on screen');
@@ -197,34 +229,47 @@ void main() {
       expect(rig.link.releases, 1);
     });
 
-    testWidgets('a real mainnet-built DEX trade on desktop', (tester) async {
+    testWidgets('a real mainnet-built DEX trade from a dApp is refused '
+        'before any sheet: it is HFT data the core could rebuild', (
+      tester,
+    ) async {
       await loadCampfireFonts(tester);
       setSurface(tester, const Size(1280, 900));
       final rig = _Rig(tester, desktop: true);
       await rig.pump(balances: {0: g(500000000)});
-      final raw = _realTrade();
-      final summary = DappContractSummary.decode(raw);
 
-      final answer = rig.ask('process_invoke_data', {'data': raw});
+      final answer = rig.ask('process_invoke_data', {'data': _realTrade()});
+      await rig.justOpened();
+      expect(find.byType(DappApprovalSheet), findsNothing);
+      final res = await answer();
+      expect(errorCode(res), -32020);
+      expect(errorData(res), contains("can't show you what would be signed"));
+      expect(errorData(res), contains('use Swap in Campfire'));
+      expect(rig.core.callsTo('process_invoke_data'), isEmpty);
+      expect(rig.link.holds, 0, reason: 'nothing was put to the user');
+    });
+
+    testWidgets('a DEX trade on desktop', (tester) async {
+      await loadCampfireFonts(tester);
+      setSurface(tester, const Size(1280, 900));
+      final rig = _Rig(tester, desktop: true);
+      await rig.pump(balances: {0: g(500000000)});
+
+      final answer = rig.ask('process_invoke_data', {
+        'data': rawDataVector('trade_plain'),
+      });
       await rig.settle();
 
-      for (final p in summary.pays) {
-        expect(
-          find.text(
-            '−${dappFormatAmount(p.amount)} '
-            '${p.assetId == 0 ? 'BEAM' : 'FOMO'}',
-          ),
-          findsOneWidget,
-        );
-      }
-      expect(find.text('${dappFormatAmount(summary.fee)} BEAM'), findsWidgets);
-      expect(summary.fee >= g(1100000), isTrue);
+      expect(find.text('−0.1 BEAM'), findsOneWidget);
+      expect(find.text('+0.80368764 FOMO'), findsOneWidget);
       expect(find.text('“Amm trade”'), findsOneWidget);
       expect(find.text('Review request'), findsOneWidget);
+      expect(find.text('Beam DEX · ${dappShortHex(dexCid)}'), findsOneWidget);
+      expect(find.textContaining('not checked by Campfire'), findsNothing);
 
       await expectLater(
         find.byKey(const ValueKey('golden')),
-        matchesGoldenFile('goldens/approval_dex_trade_real_desktop.png'),
+        matchesGoldenFile('goldens/approval_dex_trade_desktop.png'),
       );
 
       await tester.tap(find.byKey(DappApprovalSheet.rejectKey));
@@ -330,7 +375,7 @@ void main() {
         'data': rawDataVector('trade_plain'),
       });
       final b = rig.ask('process_invoke_data', {
-        'data': rawDataVector('add_dependent'),
+        'data': rawDataVector('create_pool'),
       });
       final c = rig.ask('process_invoke_data', {
         'data': rawDataVector('withdraw'),
@@ -444,6 +489,190 @@ void main() {
       expect(errorCode(res), -32021);
       expect(find.byType(DappApprovalSheet), findsNothing);
       expect(rig.core.callsTo('process_invoke_data'), isEmpty);
+    });
+  });
+
+  // Security review part 2, M-8: a page can time its request so the
+  // user's next tap lands where Approve appears.
+  group('tap-jacking', () {
+    testWidgets('Approve takes no taps right after the sheet appears', (
+      tester,
+    ) async {
+      await loadCampfireFonts(tester);
+      setSurface(tester, const Size(375, 812));
+      final rig = _Rig(tester, desktop: false);
+      await rig.pump(balances: {0: g(500000000)});
+      final answer = rig.ask('process_invoke_data', {
+        'data': rawDataVector('trade_plain'),
+      });
+      await rig.justOpened();
+      expect(find.byType(DappApprovalSheet), findsOneWidget);
+      expect(rig.approveEnabled, isFalse);
+      await tester.tap(
+        find.byKey(DappApprovalSheet.approveKey),
+        warnIfMissed: false,
+      );
+      await tester.pump();
+      expect(rig.authAsked, 0, reason: 'the early tap did nothing');
+
+      await tester.pump(DappApprovalSheet.armDelay);
+      expect(rig.approveEnabled, isTrue);
+      await tester.tap(find.byKey(DappApprovalSheet.approveKey));
+      expect(resultOf(await answer()), {'txid': txId(1)});
+      expect(rig.authAsked, 1);
+    });
+
+    testWidgets('a layout change (another request queues) re-arms the '
+        'delay', (tester) async {
+      await loadCampfireFonts(tester);
+      setSurface(tester, const Size(375, 812));
+      final rig = _Rig(tester, desktop: false);
+      await rig.pump(balances: {0: g(500000000)});
+      final a = rig.ask('process_invoke_data', {
+        'data': rawDataVector('trade_plain'),
+      });
+      await rig.settle();
+      expect(rig.approveEnabled, isTrue);
+
+      // The page queues a second request: the "1 more request waiting"
+      // note pushes Approve down.
+      final b = rig.ask('process_invoke_data', {
+        'data': rawDataVector('withdraw'),
+      });
+      await tester.pump();
+      await tester.pump();
+      expect(
+        find.text('1 more request waiting after this one'),
+        findsOneWidget,
+      );
+      expect(rig.approveEnabled, isFalse);
+      await tester.tap(
+        find.byKey(DappApprovalSheet.approveKey),
+        warnIfMissed: false,
+      );
+      await tester.pump();
+      expect(rig.authAsked, 0);
+
+      await tester.pump(DappApprovalSheet.armDelay);
+      expect(rig.approveEnabled, isTrue);
+      await tester.tap(find.byKey(DappApprovalSheet.rejectKey));
+      expect(errorCode(await a()), -32021);
+      await rig.settle();
+      await tester.tap(find.byKey(DappApprovalSheet.rejectKey));
+      expect(errorCode(await b()), -32021);
+      expect(rig.core.callsTo('process_invoke_data'), isEmpty);
+    });
+  });
+
+  // Security review part 2, H-1: the sheet used to net all calls and say
+  // "No funds move" while one call emptied a contract and another locked
+  // the funds elsewhere.
+  group('each call on its own', () {
+    testWidgets('two calls that net to zero: each one\'s flows, the key '
+        'it signs with, and an unchecked dApp', (tester) async {
+      await loadCampfireFonts(tester);
+      setSurface(tester, const Size(375, 812));
+      final rig = _Rig(tester, desktop: false, identity: _sideloaded);
+      await rig.pump(balances: {0: g(500000000)});
+
+      final answer = rig.ask('process_invoke_data', {
+        'data': invokeData([
+          invokeEntry(
+            contractId: cid(0xa1),
+            method: 3,
+            spend: {0: -1000000000},
+            sigs: ['c7' * 32],
+          ),
+          invokeEntry(contractId: dexCid, method: 7, spend: {0: 1000000000}),
+        ]),
+        'confirm_comment': 'Harvest your rewards',
+      });
+      await rig.settle();
+
+      expect(find.textContaining('No funds move'), findsNothing);
+      expect(find.textContaining('Nothing you hold moves'), findsNothing);
+      expect(
+        find.text('Asks you to approve 2 contract calls. Check what each '
+            'one moves.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Call 1 · Contract a1a1a1a1…a1a1a1 · method 3'),
+        findsOneWidget,
+      );
+      expect(find.text('Call 2 · Beam DEX · method 7'), findsOneWidget);
+      expect(find.text('+10 BEAM'), findsOneWidget);
+      expect(find.text('−10 BEAM'), findsOneWidget);
+      expect(find.text("Signs with your wallet's key"), findsOneWidget);
+      expect(
+        find.textContaining('Call 1 signs with your wallet\'s key for '
+            'Contract a1a1a1a1…a1a1a1'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('paid into another contract'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Installed from a file · not checked by Campfire'),
+        findsOneWidget,
+      );
+      expect(find.text('Approve contract calls'), findsOneWidget);
+
+      await expectLater(
+        find.byKey(const ValueKey('golden')),
+        matchesGoldenFile('goldens/approval_two_calls_mobile.png'),
+      );
+
+      await tester.tap(find.byKey(DappApprovalSheet.rejectKey));
+      expect(errorCode(await answer()), -32021);
+      expect(rig.core.callsTo('process_invoke_data'), isEmpty);
+    });
+  });
+
+  // M-7: a signature used to need no approval at all.
+  group('sign_message', () {
+    testWidgets('the message, the key, and "Sign message"', (tester) async {
+      await loadCampfireFonts(tester);
+      setSurface(tester, const Size(375, 812));
+      final rig = _Rig(tester, desktop: false, identity: _sideloaded);
+      await rig.pump(balances: {0: g(500000000)});
+
+      final answer = rig.ask('sign_message', {
+        'message': 'Log in to Yield Farm\nNonce 81f3',
+        'key_material': '6b3f1a2000aa00bb00cc00dd00ee00ffc09e11',
+      });
+      await rig.settle();
+
+      expect(
+        find.text('Asks you to sign a message with a key from this wallet.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Message to sign, from Yield Farm'),
+        findsOneWidget,
+      );
+      expect(find.text('“Log in to Yield Farm\nNonce 81f3”'), findsOneWidget);
+      expect(
+        find.text('Key id 6b3f1a20…c09e11, chosen by Yield Farm'),
+        findsOneWidget,
+      );
+      expect(find.text('Network fee'), findsNothing);
+      expect(find.text('Total leaving your wallet'), findsNothing);
+      expect(find.text('Sign message'), findsOneWidget);
+
+      await expectLater(
+        find.byKey(const ValueKey('golden')),
+        matchesGoldenFile('goldens/approval_sign_message_mobile.png'),
+      );
+
+      await tester.tap(find.byKey(DappApprovalSheet.approveKey));
+      expect(resultOf(await answer()), {'signature': 'ab' * 65});
+      expect(rig.authAsked, 1);
+      expect(rig.core.lastParams('sign_message'), {
+        'message': 'Log in to Yield Farm\nNonce 81f3',
+        'key_material': '6b3f1a2000aa00bb00cc00dd00ee00ffc09e11',
+      });
     });
   });
 

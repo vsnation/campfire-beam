@@ -262,8 +262,10 @@ void main() {
             '--ip_whitelist + ACL guard it until B-BIN-1 patches the bind',
           );
         }
-        // The captured console log is private.
-        final logs = await Directory(host.logsDir).list().toList();
+        // The captured console log is private and lives with the wallet.
+        final logs = await Directory(
+          ProcessHost.walletLogsDir(walletDir),
+        ).list().toList();
         for (final f in logs.whereType<File>()) {
           if (p.basename(f.path).startsWith('wallet-api-')) {
             expect(await posixMode(f.path), 0x180);

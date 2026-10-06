@@ -70,6 +70,12 @@ class BeamAssetWallet extends Wallet<Beam> {
 
   BeamGateLease? _preparedLease;
 
+  /// Tx ids of prepared payments already handed to the core, whatever came
+  /// back. A prepared payment carries its tx id from [prepareSend], so a
+  /// second [confirmSend] of it is looked up instead of sent again (the
+  /// core also refuses a tx id it already has).
+  final Set<String> _handedOff = {};
+
   int get assetId => asset.assetId;
   String get tokenAddress => asset.address;
   String get tokenName => asset.name;
@@ -218,9 +224,12 @@ class BeamAssetWallet extends Wallet<Beam> {
   /// Validates and prices a payment of this asset; never broadcasts.
   ///
   /// The returned [TxData] carries the BEAM fee in [TxData.fee] and
-  /// `{"assetId": id, "addressType": type}` in [TxData.otherData]. Holds
-  /// the parent's node switch until [confirmSend] (or ten minutes), so the
-  /// private node cannot restart the core under the confirm screen.
+  /// `{"assetId": id, "addressType": type, "txId": id}` in
+  /// [TxData.otherData]. The tx id is generated here, once per prepared
+  /// payment, so however often [confirmSend] is called for it the core sees
+  /// one payment. Holds the parent's node switch until [confirmSend] (or ten
+  /// minutes), so the private node cannot restart the core under the
+  /// confirm screen.
   @override
   Future<TxData> prepareSend({required TxData txData}) async {
     final lease = parent.holdNodeSwitch(
@@ -295,6 +304,8 @@ class BeamAssetWallet extends Wallet<Beam> {
         );
       }
 
+      final txId = await api.generateTxId();
+
       _preparedLease?.release();
       _preparedLease = lease;
       return txData.copyWith(
@@ -308,6 +319,7 @@ class BeamAssetWallet extends Wallet<Beam> {
         otherData: jsonEncode({
           'assetId': assetId,
           'addressType': validation.type.wireName,
+          'txId': txId,
         }),
       );
     } catch (e) {
@@ -316,17 +328,24 @@ class BeamAssetWallet extends Wallet<Beam> {
     }
   }
 
-  /// Sends what [prepareSend] priced (`tx_send` with this asset's id) and
-  /// returns its tx id. The id is generated first, so a dropped connection
-  /// is looked up instead of risking a second payment.
+  /// Sends what [prepareSend] priced (`tx_send` with this asset's id and
+  /// the tx id generated there) and returns its tx id.
+  ///
+  /// A prepared payment reaches `tx_send` at most once: a dropped
+  /// connection is looked up (`tx_status`), and a second call for the same
+  /// prepared payment, after any outcome but a plain refusal, is only looked
+  /// up, never sent. When the lookup cannot tell, it throws
+  /// [BeamWalletProblem.sendOutcomeUnknown].
   @override
   Future<TxData> confirmSend({required TxData txData}) async {
     final lease = parent.holdNodeSwitch('confirm asset send');
     try {
       final recipient = txData.recipients?.singleOrNull;
       final fee = txData.fee;
+      final txId = preparedTxId(txData);
       if (recipient == null ||
           fee == null ||
+          txId == null ||
           _preparedAsset(txData) != assetId) {
         throw const BeamWalletException(
           BeamWalletProblem.other,
@@ -344,9 +363,19 @@ class BeamAssetWallet extends Wallet<Beam> {
         );
       }
       final api = _requireApi();
+      if (_handedOff.contains(txId)) {
+        // Already with the core: report it, never send it again.
+        final sent = await _lookUpSent(
+          api,
+          txId,
+          'This payment was already handed to the wallet. Check your '
+          'transaction history before sending again.',
+        );
+        return txData.copyWith(txid: sent);
+      }
       BeamSendRules.checkSynced(parent.syncAssessment);
 
-      final txId = await api.generateTxId();
+      _handedOff.add(txId);
       String sentId;
       try {
         sentId = await api.txSend(
@@ -358,12 +387,19 @@ class BeamAssetWallet extends Wallet<Beam> {
           txId: txId,
         );
       } on BeamRpcException catch (e) {
-        throw BeamWalletException(
-          e.message.toLowerCase().contains('funds')
-              ? BeamWalletProblem.insufficientFunds
-              : BeamWalletProblem.sendRejected,
-          'The payment was not sent: ${e.message}',
-        );
+        if (e.message.toLowerCase().contains('already exists')) {
+          // The core has this tx id: it was handed over before.
+          sentId = await _lookUpSent(api, txId);
+        } else {
+          // A plain refusal: nothing was started, so it may be tried again.
+          _handedOff.remove(txId);
+          throw BeamWalletException(
+            e.message.toLowerCase().contains('funds')
+                ? BeamWalletProblem.insufficientFunds
+                : BeamWalletProblem.sendRejected,
+            'The payment was not sent: ${e.message}',
+          );
+        }
       } on BeamConnectionException {
         sentId = await _lookUpSent(api, txId);
       } on TimeoutException {
@@ -392,6 +428,19 @@ class BeamAssetWallet extends Wallet<Beam> {
     }
   }
 
+  /// The tx id [prepareSend] generated for this payment.
+  static String? preparedTxId(TxData txData) {
+    final other = txData.otherData;
+    if (other == null) return null;
+    try {
+      final decoded = jsonDecode(other);
+      final id = decoded is Map ? decoded['txId'] : null;
+      return id is String && id.isNotEmpty ? id : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// The address type [prepareSend] found, for the confirm screen.
   static BeamAddressType? preparedAddressType(TxData txData) {
     final other = txData.otherData;
@@ -405,16 +454,18 @@ class BeamAssetWallet extends Wallet<Beam> {
     }
   }
 
-  static Future<String> _lookUpSent(BeamApi api, String txId) async {
-    try {
-      return (await api.txStatus(txId)).txId;
-    } catch (_) {
-      throw const BeamWalletException(
-        BeamWalletProblem.sendOutcomeUnknown,
+  static Future<String> _lookUpSent(
+    BeamApi api,
+    String txId, [
+    String message =
         "The connection dropped while sending, so it's not certain whether "
         'the payment went out. Check your transaction history before '
         'sending again.',
-      );
+  ]) async {
+    try {
+      return (await api.txStatus(txId)).txId;
+    } catch (_) {
+      throw BeamWalletException(BeamWalletProblem.sendOutcomeUnknown, message);
     }
   }
 }

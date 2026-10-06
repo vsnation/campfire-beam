@@ -32,6 +32,7 @@ import 'package:stackwallet/wallets/beam/contracts/common/shader_output.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/beam_dex_service.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/beam_pool.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_constants.dart';
+import 'package:stackwallet/wallets/beam/models/beam_asset_info.dart';
 import 'package:stackwallet/wallets/beam/models/beam_wallet_status.dart';
 import 'package:stackwallet/wallets/beam/rpc/fake_transport.dart';
 import 'package:stackwallet/wallets/beam/sync/beam_sync_state.dart';
@@ -193,10 +194,14 @@ BeamDexDeps makeDeps(
   bool desktop = false,
   FakeGate? gate,
   BeamDexFiat? fiat,
+  BeamAssetMetadata? Function(int assetId)? metadataOf,
+  Set<int> hidden = const {},
 }) {
   final g = gate ?? FakeGate();
   return BeamDexDeps(
     dex: fake.service,
+    metadataOf: metadataOf ?? (_) => null,
+    hiddenAssetIds: () => hidden,
     sync: ValueNotifier<BeamSyncAssessment>(sync),
     balances: ValueNotifier<Map<int, BeamAssetTotals>>({
       for (final e in balances.entries) e.key: totals(e.key, e.value),

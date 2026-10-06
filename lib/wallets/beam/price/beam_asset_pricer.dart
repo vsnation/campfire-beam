@@ -7,6 +7,7 @@
  *
  */
 
+import '../assets/beam_asset_catalog.dart';
 import '../contracts/dex/beam_pool.dart';
 import '../contracts/dex/beam_ratio.dart';
 
@@ -16,24 +17,39 @@ import '../contracts/dex/beam_ratio.dart';
 /// Each asset is priced from its deepest BEAM pool: the pool, of any kind,
 /// holding the most BEAM. LightWallet took the first pool it found, so a
 /// shallow pool could set the price of an asset that also trades deeply.
-/// Pools holding less than [minBeamReserve] are ignored entirely: a pool
-/// anyone can seed with a few groth would otherwise let them set the value
-/// shown for a user's holdings.
 ///
-/// Values are spot (mid) prices from the reserves, before fees and price
-/// impact, and are labelled as estimates in the UI. A holding is valued in
-/// groth directly as `amount * beamReserve / assetReserve`, so an asset's
-/// decimals are never needed to value it. Most assets on chain declare
-/// none we can trust.
+/// Anyone can create an asset and a pool for it, and set its price with
+/// the first deposit (1 BEAM against 1 groth of the asset prices a unit at
+/// 1 BEAM). So the two kinds of asset are valued differently:
+///
+/// * A verified asset ([BeamAssetCatalog.verified]) is valued at the spot
+///   (mid) price of its deepest pool holding at least [minBeamReserve].
+/// * Any other asset needs a pool holding at least
+///   [minUnverifiedBeamReserve] (1,000 BEAM), and is valued at what that
+///   pool would actually pay for the holding: the constant-product output
+///   `beamReserve × amount / (assetReserve + amount)`, before the pool fee.
+///   That is always less than the pool's BEAM, so no airdrop of a spam
+///   asset can show as worth more than the BEAM someone locked in its pool.
+///   The UI marks such values ([isSaleValue]).
+///
+/// Values are estimates either way and are labelled so in the UI. A holding
+/// is valued in groth directly from the reserves, so an asset's decimals
+/// are never needed to value it. Most assets on chain declare none we can
+/// trust.
 class BeamAssetPricer {
   BeamAssetPricer(
     Iterable<BeamPool> pools, {
     BigInt? minBeamReserve,
-  }) : minBeamReserve = minBeamReserve ?? _oneBeam {
+    BigInt? minUnverifiedBeamReserve,
+    bool Function(int assetId)? isVerified,
+  }) : minBeamReserve = minBeamReserve ?? _oneBeam,
+       minUnverifiedBeamReserve =
+           minUnverifiedBeamReserve ?? defaultMinUnverifiedBeamReserve,
+       _isVerified = isVerified ?? BeamAssetCatalog.verified.containsKey {
     final deepest = <int, BeamPool>{};
     for (final pool in pools) {
       if (pool.aid1 != 0 || pool.isEmpty) continue;
-      if (pool.tok1 < this.minBeamReserve || pool.tok2 <= BigInt.zero) {
+      if (pool.tok1 < _minReserveFor(pool.aid2) || pool.tok2 <= BigInt.zero) {
         continue;
       }
       final current = deepest[pool.aid2];
@@ -50,16 +66,36 @@ class BeamAssetPricer {
 
   static final _oneBeam = BigInt.from(100000000);
 
-  /// Pools below this BEAM reserve never set a price.
+  /// 1,000 BEAM: the least a pool must hold before it may value an asset
+  /// Campfire does not vouch for.
+  static final BigInt defaultMinUnverifiedBeamReserve =
+      BigInt.from(1000) * _oneBeam;
+
+  /// Pools below this BEAM reserve never set a verified asset's price.
   final BigInt minBeamReserve;
+
+  /// Pools below this BEAM reserve never value an unverified asset.
+  final BigInt minUnverifiedBeamReserve;
+
+  final bool Function(int assetId) _isVerified;
 
   late final Map<int, BeamPool> _beamPools;
   late final Map<int, BeamPool> _byLpToken;
 
+  BigInt _minReserveFor(int assetId) =>
+      _isVerified(assetId) ? minBeamReserve : minUnverifiedBeamReserve;
+
   /// The pool that prices [assetId], or null when no BEAM pool qualifies.
   BeamPool? pricingPool(int assetId) => _beamPools[assetId];
 
-  /// Groth per smallest unit of [assetId]. BEAM is exactly one.
+  /// True when [valueInGroth] values [assetId] as a sale into its pool (an
+  /// unverified asset), not at a verified asset's spot price.
+  bool isSaleValue(int assetId) =>
+      assetId != 0 && !_isVerified(assetId) && _beamPools[assetId] != null;
+
+  /// Groth per smallest unit of [assetId] at its pool's spot price. BEAM is
+  /// exactly one. For an unverified asset this is the pool's quote, not
+  /// what a holding is worth: see [valueInGroth].
   BeamRatio? grothPerUnit(int assetId) {
     if (assetId == 0) return BeamRatio.one;
     final pool = _beamPools[assetId];
@@ -77,16 +113,31 @@ class BeamAssetPricer {
   }
 
   /// What [amount] smallest units of [assetId] are worth in groth, rounded
-  /// down. LP tokens are valued as their share of both pool reserves. Null
-  /// when the asset cannot be priced.
+  /// down: spot for a verified asset, what its pool would pay for an
+  /// unverified one ([isSaleValue]). LP tokens are valued as their share of
+  /// both pool reserves, each side valued the same way. Null when the asset
+  /// cannot be priced.
   BigInt? valueInGroth(int assetId, BigInt amount) {
     if (amount <= BigInt.zero) return BigInt.zero;
     if (assetId == 0) return amount;
-    final direct = grothPerUnit(assetId);
-    if (direct != null) return _floor(direct * BeamRatio(amount, BigInt.one));
+    final direct = _directValue(assetId, amount);
+    if (direct != null) return direct;
     final pool = _byLpToken[assetId];
     if (pool != null) return _lpValue(pool, amount);
     return null;
+  }
+
+  BigInt? _directValue(int assetId, BigInt amount) {
+    final pool = _beamPools[assetId];
+    if (pool == null) return null;
+    if (_isVerified(assetId)) {
+      return _floor(
+        BeamRatio(pool.tok1, pool.tok2) * BeamRatio(amount, BigInt.one),
+      );
+    }
+    // Sold into the pool: x·y = k, so the BEAM out is tok1·a / (tok2 + a),
+    // always below the pool's BEAM reserve.
+    return pool.tok1 * amount ~/ (pool.tok2 + amount);
   }
 
   BigInt? _lpValue(BeamPool pool, BigInt lpAmount) {
@@ -101,9 +152,8 @@ class BeamAssetPricer {
   }
 
   BigInt? _sideValue(int assetId, BigInt reserve) {
-    final perUnit = grothPerUnit(assetId);
-    if (perUnit == null) return null;
-    return _floor(perUnit * BeamRatio(reserve, BigInt.one));
+    if (assetId == 0) return reserve;
+    return _directValue(assetId, reserve);
   }
 
   /// Values every holding in [balances] (asset id → smallest units).

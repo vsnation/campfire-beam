@@ -252,4 +252,67 @@ void main() {
       matchesGoldenFile('goldens/browser_unavailable_mobile.png'),
     );
   });
+
+  // Security review part 2, H-1: the install dialog for a file promised
+  // "It still can't move money without your approval".
+  testWidgets('installing from a file: what is true, and a copied name', (
+    tester,
+  ) async {
+    await loadCampfireFonts(tester);
+    // Tall enough that the list builds "Install from file" at the bottom.
+    setSurface(tester, const Size(375, 2400));
+    final c = await controller(tester, installSome: false);
+    final file = File('${root.path}/picked.dapp');
+    await tester.runAsync(
+      () => file.writeAsBytes(
+        testPackage(
+          manifest: {
+            'guid': ownGuid,
+            'name': 'Beam DEX',
+            'version': '2.0.0',
+            'icon': null,
+          },
+        ),
+      ),
+    );
+    final l = link(root);
+    await tester.pumpWidget(
+      campfireApp(
+        home: DappStoreView(
+          host: hostFor(l),
+          controller: c,
+          desktop: false,
+          webviewAvailable: true,
+          pickFile: () async => file.path,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.byKey(const Key('dappInstallFromFile')));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    });
+    await tester.pumpAndSettle();
+
+    expect(find.text('Install Beam DEX?'), findsOneWidget);
+    expect(find.textContaining("can't move money"), findsNothing);
+    expect(
+      find.textContaining(
+        'Payments, contract calls and signatures it asks for still come to '
+        'Campfire for your approval, but it can read some wallet details '
+        "without asking, and what you approve can't be undone.",
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining(
+        'Its name matches Beam DEX, one of the dApps Campfire checks, but '
+        'it is a different app.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    c.dispose();
+  });
 }

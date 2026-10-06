@@ -38,6 +38,20 @@ Future<String> _writeExe(String path, String body) async {
   return path;
 }
 
+/// Counts the final hash checks [prepare] makes before spawning.
+class _CountingBinaries extends BeamBinaries {
+  _CountingBinaries({required super.binDir, required super.manifest})
+    : super(platform: 'test-os');
+
+  final List<BeamBinary> rechecks = [];
+
+  @override
+  Future<String> verifyUnchanged(BeamBinary binary) {
+    rechecks.add(binary);
+    return super.verifyUnchanged(binary);
+  }
+}
+
 void main() {
   group('platformKey', () {
     test('maps desktop ABIs to manifest keys', () {
@@ -46,8 +60,11 @@ void main() {
       expect(BeamBinaries.platformKey(Abi.linuxX64), 'linux-x86_64');
       expect(BeamBinaries.platformKey(Abi.linuxArm64), 'linux-arm64');
       expect(BeamBinaries.platformKey(Abi.windowsX64), 'windows-x86_64');
+      // Android runs wallet-api only (no private node on phones).
+      expect(BeamBinaries.platformKey(Abi.androidArm64), 'android-arm64');
+      expect(BeamBinaries.platformKey(Abi.androidX64), 'android-x86_64');
       expect(
-        BeamBinaries.platformKey(Abi.androidArm64),
+        BeamBinaries.platformKey(Abi.androidArm),
         startsWith('unsupported-'),
       );
     });
@@ -65,18 +82,16 @@ void main() {
     test('pins the Campfire builds for every desktop platform we build', () {
       for (final platform in ['macos-arm64', 'linux-arm64', 'linux-x86_64']) {
         final pins = kBeamBinaryManifest[platform]!;
-        expect(
-          pins.keys.toSet(),
-          {'beam-wallet', 'wallet-api', 'beam-node'},
-          reason: platform,
-        );
+        expect(pins.keys.toSet(), {
+          'beam-wallet',
+          'wallet-api',
+          'beam-node',
+        }, reason: platform);
       }
     });
 
     test('development pins never overlap release pins', () {
-      final release = {
-        for (final m in kBeamBinaryManifest.values) ...m.values,
-      };
+      final release = {for (final m in kBeamBinaryManifest.values) ...m.values};
       for (final m in kBeamDevBinaryManifest.values) {
         for (final hash in m.values) {
           expect(release, isNot(contains(hash)));
@@ -87,11 +102,9 @@ void main() {
     test('the app pins exactly what scripts/beam/core built', () {
       // manifest.json is written by the binary build; the Dart manifest is
       // what the app trusts. They must never drift apart.
-      final built =
-          jsonDecode(
-                File('scripts/beam/core/manifest.json').readAsStringSync(),
-              )
-              as Map<String, dynamic>;
+      final built = jsonDecode(
+        File('scripts/beam/core/manifest.json').readAsStringSync(),
+      ) as Map<String, dynamic>;
       for (final platform in kBeamBinaryManifest.keys) {
         final pins = kBeamBinaryManifest[platform]!;
         final fromBuild = (built[platform] as Map).cast<String, dynamic>();
@@ -127,6 +140,54 @@ void main() {
     test('defaults to <root>/bin', () {
       final b = BeamBinaries.locate(beamRoot: '/data/beam', environment: {});
       expect(b.binDir, p.normalize('/data/beam/bin'));
+      expect(b.allowDevBuilds, isFalse);
+      expect(b.requirePrivateDir, isTrue);
+    });
+
+    // Security review finding 4: a release build must not be pointed at
+    // other binaries (and the development pins) through its environment.
+    test('a release build ignores BEAM_BIN_DIR and the development pins', () {
+      final b = BeamBinaries.locate(
+        beamRoot: '/data/beam',
+        environment: {'BEAM_BIN_DIR': '/opt/beam-bin'},
+        overridesAllowed: false,
+      );
+      expect(b.binDir, p.normalize('/data/beam/bin'));
+      expect(b.allowDevBuilds, isFalse);
+      expect(b.requirePrivateDir, isTrue);
+      expect(
+        BeamBinaries.devBinDir(const {
+          'BEAM_BIN_DIR': '/opt/beam-bin',
+        }, overridesAllowed: false),
+        isNull,
+      );
+    });
+
+    test('a debug or profile build honours BEAM_BIN_DIR', () {
+      final b = BeamBinaries.locate(
+        beamRoot: '/data/beam',
+        environment: {'BEAM_BIN_DIR': '/opt/beam-bin'},
+        overridesAllowed: true,
+      );
+      expect(b.binDir, p.normalize('/opt/beam-bin'));
+      expect(b.allowDevBuilds, isTrue);
+      expect(b.requirePrivateDir, isFalse);
+      expect(
+        BeamBinaries.devBinDir(const {
+          'BEAM_BIN_DIR': '',
+        }, overridesAllowed: true),
+        isNull,
+      );
+    });
+
+    test('overrides follow the build mode: on under flutter test, off in a '
+        'release build without the BEAM_DEV_BINARIES define', () {
+      expect(
+        BeamBinaries.devOverridesAllowed,
+        !const bool.fromEnvironment('dart.vm.product') ||
+            const bool.fromEnvironment(BeamBinaries.devBinariesDefine),
+      );
+      expect(BeamBinaries.devOverridesAllowed, isTrue);
     });
   });
 
@@ -289,6 +350,63 @@ void main() {
       );
       // The probe's scratch directory is gone.
       expect(await Directory(runDir).list().toList(), isEmpty);
+    });
+
+    // Security review finding 5: the last hash happens right before the
+    // exec and must match the hash that was verified.
+    test('verifyUnchanged accepts the verified file and refuses one changed '
+        'since', () async {
+      final b = binaries({'wallet-api': goodHash});
+      await expectLater(
+        b.verifyUnchanged(BeamBinary.walletApi),
+        throwsA(_hostError(BeamHostError.binaryUntrusted)),
+        reason: 'never verified',
+      );
+      await b.verify(BeamBinary.walletApi);
+      expect(await b.verifyUnchanged(BeamBinary.walletApi), good);
+      await File(good).writeAsString('# swapped\n', mode: FileMode.append);
+      await expectLater(
+        b.verifyUnchanged(BeamBinary.walletApi),
+        throwsA(_hostError(BeamHostError.binaryUntrusted)),
+      );
+      // Forgotten: a later launch needs a fresh verify.
+      expect(b.isCampfireBuild(BeamBinary.walletApi), isFalse);
+    });
+
+    test('prepare re-checks the hash right before the consensus probe', () {
+      final b = _CountingBinaries(
+        binDir: binDir,
+        manifest: {
+          'test-os': {'wallet-api': goodHash},
+        },
+      );
+      return b.prepare(BeamBinary.walletApi, scratchParent: runDir).then((_) {
+        expect(b.rechecks, [BeamBinary.walletApi]);
+      });
+    });
+
+    test('the app bin folder must be private (0700)', () async {
+      BeamBinaries private() => BeamBinaries(
+        binDir: binDir,
+        manifest: {
+          'test-os': {'wallet-api': goodHash},
+        },
+        platform: 'test-os',
+        requirePrivateDir: true,
+      );
+      await Process.run('chmod', ['755', binDir]);
+      await expectLater(
+        private().verify(BeamBinary.walletApi),
+        throwsA(_hostError(BeamHostError.insecurePath)),
+      );
+      await Process.run('chmod', ['700', binDir]);
+      expect(await private().verify(BeamBinary.walletApi), good);
+      // A development folder is the developer's business.
+      await Process.run('chmod', ['755', binDir]);
+      expect(
+        await binaries({'wallet-api': goodHash}).verify(BeamBinary.walletApi),
+        good,
+      );
     });
 
     test('prepare refuses a binary without HF6 rules', () async {

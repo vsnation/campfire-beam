@@ -24,19 +24,25 @@ class DappIdentity {
     required this.startUrl,
     this.version,
     this.publisher,
+    this.checkedByCampfire = false,
   });
 
   /// For a dApp installed from [manifest] and served at [origin]
-  /// (`http://127.0.0.1:<port>`).
-  factory DappIdentity.fromManifest(DappManifest manifest, String origin) =>
-      DappIdentity(
-        guid: manifest.guid,
-        name: manifest.name,
-        origin: origin,
-        startUrl: '$origin/${manifest.startPath}',
-        version: manifest.version,
-        publisher: manifest.publisher,
-      );
+  /// (`http://127.0.0.1:<port>`). [checkedByCampfire]: the installed
+  /// package is a bundled one, byte for byte.
+  factory DappIdentity.fromManifest(
+    DappManifest manifest,
+    String origin, {
+    bool checkedByCampfire = false,
+  }) => DappIdentity(
+    guid: manifest.guid,
+    name: manifest.name,
+    origin: origin,
+    startUrl: '$origin/${manifest.startPath}',
+    version: manifest.version,
+    publisher: manifest.publisher,
+    checkedByCampfire: checkedByCampfire,
+  );
 
   /// Canonical 32-hex guid.
   final String guid;
@@ -49,6 +55,12 @@ class DappIdentity {
   final String startUrl;
   final String? version;
   final String? publisher;
+
+  /// The package is one of the bundled dApps Campfire pins by SHA-256.
+  /// False for anything installed from a file: the approval sheet then
+  /// says Campfire did not check it, since its name is whatever the file
+  /// says.
+  final bool checkedByCampfire;
 
   /// The core's app id for this dApp: `"appid:" + hex(SHA-256(name ‖ 0 ‖
   /// url ‖ 0))`, as `GenerateAppID` computes it

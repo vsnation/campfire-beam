@@ -155,6 +155,39 @@ final _cases = <_Case>[
     node: BeamNodeKind.privateNode,
     expect: (a) => expect(a.action, BeamSyncAction.usePublicNode),
   ),
+  // Security review finding 3: `is_in_sync` comes from the stored tip's age
+  // alone, so a wallet reopened within 10 minutes reports it before
+  // wallet-api has reached any node.
+  _Case(
+    'reopened: stored tip fresh, explorer agrees, node not reached yet -> '
+    'connecting, cannot spend',
+    wallet: _wallet(connected: null),
+    explorer: _explorer(),
+    expect: (a) {
+      expect(a, isA<BeamSyncConnecting>(), reason: '$a');
+      expect(a.canSpend, isFalse);
+      expect(a.walletHeight, _tip);
+      expect(a.explorerCheck, BeamExplorerCheck.agrees);
+    },
+  ),
+  _Case(
+    'node not reached and explorer down -> connecting, cannot spend',
+    wallet: _wallet(connected: null),
+    explorer: null,
+    expect: (a) {
+      expect(a, isA<BeamSyncConnecting>(), reason: '$a');
+      expect(a.canSpend, isFalse);
+    },
+  ),
+  _Case(
+    'own node reported but node_connected not yet -> connecting',
+    wallet: _wallet(connected: null, ownNode: true),
+    explorer: _explorer(),
+    expect: (a) {
+      expect(a, isA<BeamSyncConnecting>(), reason: '$a');
+      expect(a.node, BeamNodeKind.privateNode);
+    },
+  ),
 
   // --- synced ------------------------------------------------------------
   _Case(
@@ -574,6 +607,31 @@ void main() {
       }
     });
 
+    test('"synced" needs node_connected == true; withoutConnection() forgets '
+        'it and nothing else', () {
+      final connected = _wallet(ownNode: true);
+      expect(
+        assessBeamSync(wallet: connected, explorer: _explorer(), now: _now),
+        isA<BeamSynced>(),
+      );
+      final unknown = connected.withoutConnection();
+      expect(unknown.nodeConnected, isNull);
+      expect(unknown.ownNode, isNull);
+      expect(unknown.currentHeight, connected.currentHeight);
+      expect(unknown.currentStateTimestamp, connected.currentStateTimestamp);
+      expect(unknown.isInSync, connected.isInSync);
+      expect(unknown.headerTipHeight, connected.headerTipHeight);
+      for (final explorer in [_explorer(), null]) {
+        final a = assessBeamSync(
+          wallet: unknown,
+          explorer: explorer,
+          now: _now,
+        );
+        expect(a, isA<BeamSyncConnecting>());
+        expect(a.canSpend, isFalse);
+      }
+    });
+
     test('a hardcoded height never grants "synced"', () {
       // Way past the fork, but the core is not in sync and the tip is old.
       final a = assessBeamSync(
@@ -700,9 +758,24 @@ void main() {
       final verified = describe(_wallet(), _explorer());
       expect(verified.title, 'Up to date');
       expect(verified.detail, isNull);
-      final unverified = describe(_wallet(), null);
-      expect(unverified.title, 'Up to date');
-      expect(unverified.detail, contains("Couldn't double-check"));
+      // The degraded state (ARCHITECTURE §5, Sync) is labelled as such.
+      for (final explorer in [
+        null,
+        _explorer(height: _tip - 30, tipAge: const Duration(minutes: 30)),
+        _explorer(height: _tip - 20),
+      ]) {
+        final unverified = describe(_wallet(), explorer);
+        expect(unverified.title, 'Up to date');
+        expect(
+          unverified.detail,
+          startsWith("Can't double-check with the network right now."),
+        );
+      }
+      // Not reached a node yet: no "Up to date" at all.
+      expect(
+        describe(_wallet(connected: null), _explorer()).title,
+        'Connecting to the BEAM network',
+      );
     });
 
     test('no jargon in any message', () {

@@ -48,7 +48,10 @@ void main() {
   ];
 
   group('recorded mainnet pools', () {
-    final pricer = BeamAssetPricer(recorded);
+    // These check which pool prices an asset; the 1,000 BEAM floor for
+    // unverified assets is lowered to 1 BEAM so mainnet's smaller pools
+    // still take part (the floor is checked in its own group below).
+    final pricer = BeamAssetPricer(recorded, minUnverifiedBeamReserve: _beam);
 
     BeamPool deepestBeamPool(int aid) => recorded
         .where((p) => p.aid1 == 0 && p.aid2 == aid && !p.isEmpty)
@@ -77,10 +80,7 @@ void main() {
     test('a holding is valued without knowing the asset decimals', () {
       final p = pricer.pricingPool(174)!;
       final amount = _g(80368764); // what 0.1 BEAM bought in the DEX test
-      expect(
-        pricer.valueInGroth(174, amount),
-        amount * p.tok1 ~/ p.tok2,
-      );
+      expect(pricer.valueInGroth(174, amount), amount * p.tok1 ~/ p.tok2);
     });
 
     test('BEAM is worth itself', () {
@@ -118,10 +118,7 @@ void main() {
       // 10 BEAM against 1000 whole units of a 2-decimal asset:
       // 0.01 BEAM per whole unit.
       final pricer = BeamAssetPricer([_pool(0, 7, 10 * 100000000, 100000)]);
-      expect(
-        pricer.beamPerWholeUnit(7, 2),
-        BeamRatio(BigInt.one, _g(100)),
-      );
+      expect(pricer.beamPerWholeUnit(7, 2), BeamRatio(BigInt.one, _g(100)));
     });
 
     test('values round down, never up', () {
@@ -149,6 +146,73 @@ void main() {
     test('empty and zero holdings are worth zero', () {
       final pricer = BeamAssetPricer(const []);
       expect(pricer.valueInGroth(7, BigInt.zero), BigInt.zero);
+    });
+  });
+
+  group('assets anyone can mint and price (M-4)', () {
+    const spam = 999;
+
+    test('1 BEAM against 1 groth no longer makes an airdrop worth '
+        '100,000,000 BEAM', () {
+      final pricer = BeamAssetPricer([_pool(0, spam, 100000000, 1)]);
+      // One whole unit, as an airdrop would send.
+      expect(pricer.valueInGroth(spam, _beam), isNull);
+      final p = pricer.portfolio({0: _beam, spam: _beam});
+      expect(p.totalGroth, _beam);
+      expect(p.unpriced, [spam]);
+    });
+
+    test('an unverified asset needs a pool of 1,000 BEAM; a verified one '
+        'does not', () {
+      final pricer = BeamAssetPricer([
+        _pool(0, spam, 999 * 100000000, 1000),
+        _pool(0, 7, 2 * 100000000, 1000, lp: 901),
+      ]);
+      expect(
+        BeamAssetPricer.defaultMinUnverifiedBeamReserve,
+        _g(1000 * 100000000),
+      );
+      expect(pricer.pricingPool(spam), isNull);
+      expect(pricer.valueInGroth(spam, _g(10)), isNull);
+      expect(pricer.valueInGroth(7, _g(10)), _g(2 * 100000000 * 10 ~/ 1000));
+    });
+
+    test('valued at what its pool would pay: never more than the BEAM in '
+        'it, and marked as such', () {
+      // 1,000 BEAM against 1 groth: at spot one whole unit would be
+      // "worth" 100,000,000,000 BEAM.
+      final pool = _pool(0, spam, 1000 * 100000000, 1);
+      final pricer = BeamAssetPricer([pool]);
+      final v = pricer.valueInGroth(spam, _beam)!;
+      expect(v, pool.tok1 * _beam ~/ (pool.tok2 + _beam));
+      expect(v < pool.tok1, isTrue);
+      expect(pricer.isSaleValue(spam), isTrue);
+      // A verified asset keeps its spot price.
+      expect(
+        BeamAssetPricer([_pool(0, 7, 5 * 100000000, 10)]).isSaleValue(7),
+        isFalse,
+      );
+      expect(pricer.isSaleValue(0), isFalse);
+    });
+
+    test('a deep, honest pool still values a small holding close to its '
+        'price', () {
+      // 10,000 BEAM against 1,000,000 units: 0.01 BEAM a unit.
+      final pricer = BeamAssetPricer([
+        _pool(0, spam, 10000 * 100000000, 1000000 * 100000000),
+      ]);
+      // 100 units: 1 BEAM at spot; what the pool pays is 0.9999 BEAM.
+      expect(pricer.valueInGroth(spam, _g(100 * 100000000)), _g(99990000));
+    });
+
+    test('a pool share of a spam pool is worth at most the pool\'s BEAM', () {
+      final pricer = BeamAssetPricer([
+        _pool(0, spam, 1000 * 100000000, 1, ctl: 100, lp: 950),
+      ]);
+      // The whole pool: its BEAM plus the spam side sold back into it.
+      final whole = pricer.valueInGroth(950, _g(100))!;
+      expect(whole <= _g(2 * 1000 * 100000000), isTrue);
+      expect(whole >= _g(1000 * 100000000), isTrue);
     });
   });
 }

@@ -14,7 +14,9 @@
 //    "Approve withdrawal" / "Approve request"; secondary "Reject".
 // 3. Taps: 1 to approve + Campfire's PIN or password (2), from the moment
 //    the sheet opens. Back, swipe-down, outside tap and the close button
-//    all reject.
+//    all reject. Approve takes no taps for [DappApprovalSheet.armDelay]
+//    after the sheet appears or its layout changes, so a tap aimed at the
+//    dApp page cannot land on it; biometrics never start by themselves.
 //
 // Exit-intent (§1.7) — what would make an impatient person close the app:
 // * A popup they did not expect. The dApp page shows a banner instead of
@@ -50,6 +52,7 @@ import '../../rounded_container.dart';
 import '../../rounded_white_container.dart';
 import 'dapp_asset_icon.dart';
 import 'dapp_avatar.dart';
+import 'dapp_manual_biometrics.dart';
 
 /// Campfire's PIN (mobile) or password (desktop) check. True: passed;
 /// false: wrong PIN or password; null: the user backed out.
@@ -134,7 +137,7 @@ Future<bool?> dappCampfireAuthenticate(BuildContext context) async {
     context,
     RouteGenerator.getRoute<bool>(
       shouldUseMaterialRoute: RouteGenerator.useMaterialPageRoute,
-      builder: (_) => const LockscreenView(
+      builder: (_) => LockscreenView(
         showBackButton: true,
         popOnSuccess: true,
         routeOnSuccessArguments: true,
@@ -142,6 +145,9 @@ Future<bool?> dappCampfireAuthenticate(BuildContext context) async {
         biometricsCancelButtonString: "CANCEL",
         biometricsLocalizedReason: "Authenticate to approve this dApp request",
         biometricsAuthenticationTitle: "Approve dApp request",
+        // Face ID / fingerprint only after the user taps "Use biometrics":
+        // never a glance that approves what a page put under their finger.
+        biometrics: DappManualBiometrics(),
       ),
       settings: const RouteSettings(name: "/dappApprovalLockscreen"),
     ),
@@ -165,17 +171,72 @@ class DappApprovalSheet extends StatefulWidget {
   static const approveKey = Key('dappApprovalApprove');
   static const rejectKey = Key('dappApprovalReject');
 
+  /// How long Approve ignores taps after the sheet appears, and again after
+  /// its layout changes (another request joins the queue): a tap meant for
+  /// the dApp page must not become an approval.
+  static const armDelay = Duration(milliseconds: 700);
+
   @override
   State<DappApprovalSheet> createState() => _DappApprovalSheetState();
 }
 
 class _DappApprovalSheetState extends State<DappApprovalSheet> {
   bool _busy = false;
+  bool _armed = false;
+  Timer? _armTimer;
+  int? _pendingSeen;
   ModalRoute<Object?>? _route;
+
+  /// Approve takes taps again only [DappApprovalSheet.armDelay] from now.
+  /// [rebuild]: false when called where a build follows anyway
+  /// (`didUpdateWidget`), which must not call `setState`.
+  void _arm({bool rebuild = true}) {
+    _armTimer?.cancel();
+    if (_armed) {
+      if (rebuild) {
+        setState(() => _armed = false);
+      } else {
+        _armed = false;
+      }
+    }
+    _armTimer = Timer(DappApprovalSheet.armDelay, () {
+      if (mounted) setState(() => _armed = true);
+    });
+  }
+
+  void _pendingChanged() {
+    final now = widget.pending?.value;
+    // The queue note above the buttons appears, changes or goes: the
+    // layout moved, so wait again before Approve takes a tap.
+    if (now != _pendingSeen) {
+      _pendingSeen = now;
+      _arm();
+    }
+  }
+
+  @override
+  void didUpdateWidget(DappApprovalSheet old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.pending, widget.pending)) {
+      old.pending?.removeListener(_pendingChanged);
+      widget.pending?.addListener(_pendingChanged);
+    }
+    if (!identical(old.model, widget.model)) _arm(rebuild: false);
+  }
+
+  @override
+  void dispose() {
+    _armTimer?.cancel();
+    widget.pending?.removeListener(_pendingChanged);
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
+    _pendingSeen = widget.pending?.value;
+    widget.pending?.addListener(_pendingChanged);
+    _arm(rebuild: false);
     // The dApp was closed or reloaded: the request is gone, so is the
     // sheet, even if the PIN screen is on top of it.
     unawaited(
@@ -198,7 +259,7 @@ class _DappApprovalSheetState extends State<DappApprovalSheet> {
   }
 
   Future<void> _approve() async {
-    if (_busy || !widget.model.canApprove) return;
+    if (_busy || !_armed || !widget.model.canApprove) return;
     setState(() => _busy = true);
     try {
       final ok = await widget.authenticate(context);
@@ -232,7 +293,7 @@ class _DappApprovalSheetState extends State<DappApprovalSheet> {
     final approve = PrimaryButton(
       key: DappApprovalSheet.approveKey,
       label: m.cta,
-      enabled: m.canApprove && !_busy,
+      enabled: m.canApprove && !_busy && _armed,
       buttonHeight: desktop ? ButtonHeight.l : null,
       height: desktop ? null : 46,
       onPressed: _approve,
@@ -352,8 +413,21 @@ class _SheetBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final m = model;
+    if (m.isSignMessage) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Header(model: m, isDesktop: isDesktop),
+          const SizedBox(height: 16),
+          _SignCard(model: m),
+          const SizedBox(height: 8),
+        ],
+      );
+    }
     final warnings = [
       if (m.blockedReason != null) m.blockedReason!,
+      ...m.signingWarnings,
+      ?m.passThroughWarning,
       ...m.lookalikeWarnings,
       for (final s in m.shortfallWarnings)
         '$s Add funds to this wallet, then try again in ${m.dappName}.',
@@ -363,7 +437,9 @@ class _SheetBody extends StatelessWidget {
       children: [
         _Header(model: m, isDesktop: isDesktop),
         const SizedBox(height: 16),
-        _MoneyCard(model: m, isDesktop: isDesktop),
+        m.showsCalls
+            ? _CallsCard(model: m, isDesktop: isDesktop)
+            : _MoneyCard(model: m, isDesktop: isDesktop),
         for (final w in warnings) ...[
           const SizedBox(height: 8),
           _Warning(text: w),
@@ -420,6 +496,22 @@ class _Header extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  if (model.notCheckedByCampfire) ...[
+                    const SizedBox(height: 4),
+                    RoundedContainer(
+                      color: colors.warningBackground,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      radiusMultiplier: 0.5,
+                      child: Text(
+                        "Installed from a file · not checked by Campfire",
+                        style: STextStyles.w500_10(context)
+                            .copyWith(color: colors.warningForeground),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -471,7 +563,7 @@ class _MoneyCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.all(12),
               child: Text(
-                "No funds move. You pay only the network fee.",
+                "Nothing you hold moves. You pay only the network fee.",
                 style: STextStyles.smallMed14(context)
                     .copyWith(color: colors.textDark),
               ),
@@ -653,10 +745,17 @@ class _TotalBox extends StatelessWidget {
 /// The dApp's own words, never styled as Campfire's: quoted, in italics, in
 /// a box with a side bar, under a label naming who wrote it.
 class _DappMessage extends StatelessWidget {
-  const _DappMessage({required this.dappName, required this.message});
+  const _DappMessage({
+    required this.dappName,
+    required this.message,
+    this.label,
+  });
 
   final String dappName;
   final String message;
+
+  /// Overrides "Message from <dApp>".
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
@@ -664,7 +763,10 @@ class _DappMessage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text("Message from $dappName", style: STextStyles.smallMed12(context)),
+        Text(
+          label ?? "Message from $dappName",
+          style: STextStyles.smallMed12(context),
+        ),
         const SizedBox(height: 2),
         Text(
           "Written by the dApp. Campfire did not write or check it.",
@@ -727,7 +829,9 @@ class _ContractsState extends State<_Contracts> {
               children: [
                 Expanded(
                   child: Text(
-                    dappShortHex(id),
+                    m.contractNameOf(id) == null
+                        ? "Unknown contract · ${dappShortHex(id)}"
+                        : "${m.contractNameOf(id)} · ${dappShortHex(id)}",
                     style: STextStyles.itemSubtitle12(context),
                   ),
                 ),
@@ -760,6 +864,114 @@ class _ContractsState extends State<_Contracts> {
             style: STextStyles.w500_10(context)
                 .copyWith(color: colors.textSubtitle1),
           ),
+      ],
+    );
+  }
+}
+
+/// Each contract call on its own, when there is more than one: what it
+/// alone takes from or gives the wallet, and whether the wallet signs it.
+class _CallsCard extends StatelessWidget {
+  const _CallsCard({required this.model, required this.isDesktop});
+
+  final DappApprovalModel model;
+  final bool isDesktop;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<StackColors>()!;
+    Widget divider() => Container(height: 1, color: colors.background);
+    Widget note(String text) => Padding(
+      padding: const EdgeInsets.fromLTRB(12, 2, 12, 10),
+      child: Text(
+        text,
+        style: STextStyles.w500_12(context)
+            .copyWith(color: colors.textSubtitle1),
+      ),
+    );
+    return RoundedWhiteContainer(
+      padding: EdgeInsets.zero,
+      borderColor: colors.background,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final c in model.calls) ...[
+            if (c.number > 1) divider(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+              child: Text(c.title, style: STextStyles.smallMed12(context)),
+            ),
+            for (final l in c.pays)
+              _AssetRow(line: l, outgoing: true, isDesktop: isDesktop),
+            for (final l in c.receives)
+              _AssetRow(line: l, outgoing: false, isDesktop: isDesktop),
+            if (!c.movesFunds) note("Moves no funds"),
+            if (c.signs) note("Signs with your wallet's key"),
+          ],
+          divider(),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Text("Network fee", style: STextStyles.smallMed12(context)),
+                const Spacer(),
+                SelectableText(
+                  model.fee.text,
+                  style: STextStyles.itemSubtitle12(context),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A `sign_message` request: the message, the key, and what a signature
+/// can and cannot do.
+class _SignCard extends StatelessWidget {
+  const _SignCard({required this.model});
+
+  final DappApprovalModel model;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<StackColors>()!;
+    final key = model.request.sign?.keyMaterial ?? "";
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _DappMessage(
+          dappName: model.dappName,
+          message: model.message ?? "",
+          label: "Message to sign, from ${model.dappName}",
+        ),
+        const SizedBox(height: 16),
+        Text("Signing key", style: STextStyles.smallMed12(context)),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                "Key id ${model.signKeyText}, chosen by ${model.dappName}",
+                style: STextStyles.itemSubtitle12(context),
+              ),
+            ),
+            SimpleCopyButton(data: key),
+          ],
+        ),
+        const SizedBox(height: 12),
+        RoundedContainer(
+          color: colors.textFieldDefaultBG,
+          child: Text(
+            "A signature proves this wallet holds that key, for example to "
+            "log in. It moves no funds and costs no fee. Sign only if you "
+            "trust ${model.dappName} with that proof.",
+            style: STextStyles.w500_12(context)
+                .copyWith(color: colors.textDark3),
+          ),
+        ),
       ],
     );
   }

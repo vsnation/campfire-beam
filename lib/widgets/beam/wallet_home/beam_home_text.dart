@@ -260,15 +260,20 @@ abstract final class BeamHomeText {
 
   /// The portfolio lines from the cached per-asset totals and, once it is
   /// known, the DEX pricer. [fiat] formats a BEAM amount in the user's
-  /// currency, or is null when prices are off.
+  /// currency, or is null when prices are off. Assets the user [hidden]
+  /// (spam, dust) are neither counted nor valued, as in the asset list.
   static BeamPortfolioText? portfolio({
     required Map<int, BeamCachedAssetTotals> totals,
     BeamAssetPricer? pricer,
     String? Function(BigInt groth)? fiat,
+    Set<int> hidden = const {},
   }) {
     final held = <int, BigInt>{
       for (final e in totals.entries)
-        if (e.key != 0 && e.value.total > BigInt.zero) e.key: e.value.total,
+        if (e.key != 0 &&
+            !hidden.contains(e.key) &&
+            e.value.total > BigInt.zero)
+          e.key: e.value.total,
     };
     if (held.isEmpty) return null;
     final n = held.length;

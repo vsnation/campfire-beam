@@ -62,14 +62,18 @@ void main() {
   });
   tearDown(() => tmp.delete(recursive: true));
 
-  Future<int> install(_Bundle bundle, {Map<String, String>? env}) =>
-      installBundledBeamBinaries(
-        beamRoot: root,
-        bundle: bundle,
-        platform: platform,
-        manifest: pins,
-        environment: env ?? const {},
-      );
+  Future<int> install(
+    _Bundle bundle, {
+    Map<String, String>? env,
+    bool? overridesAllowed,
+  }) => installBundledBeamBinaries(
+    beamRoot: root,
+    bundle: bundle,
+    platform: platform,
+    manifest: pins,
+    environment: env ?? const {},
+    overridesAllowed: overridesAllowed,
+  );
 
   test('installs every pinned binary 0700 into a 0700 bin folder', () async {
     final n = await install(_Bundle(assetsFor(bodies)));
@@ -141,5 +145,49 @@ void main() {
     final bundle = _Bundle(assetsFor(bodies));
     expect(await install(bundle, env: {'BEAM_BIN_DIR': '/dev/bins'}), 0);
     expect(bundle.loads, 0);
+  });
+
+  // Security review finding 4.
+  test('a release build installs its own binaries even with BEAM_BIN_DIR '
+      'set', () async {
+    final bundle = _Bundle(assetsFor(bodies));
+    expect(
+      await install(
+        bundle,
+        env: {'BEAM_BIN_DIR': '/dev/bins'},
+        overridesAllowed: false,
+      ),
+      3,
+    );
+    for (final b in BeamBinary.values) {
+      expect(
+        await File(p.join(root, 'bin', b.fileName)).readAsBytes(),
+        bodies[b],
+      );
+    }
+  });
+
+  // Security review finding 5.
+  test('an existing bin folder other users can enter is made 0700 again',
+      () async {
+    await install(_Bundle(assetsFor(bodies)));
+    await Process.run('/bin/chmod', ['755', p.join(root, 'bin')]);
+    expect(await install(_Bundle(assetsFor(bodies))), 0);
+    expect(await posixMode(p.join(root, 'bin')), 0x1c0);
+  });
+
+  test('chmod is never looked up through PATH', () {
+    expect(kChmodPaths, everyElement(startsWith('/')));
+    final hostDir = Directory('lib/wallets/beam');
+    final pathChmod = RegExp(
+      r'''Process\.(run|start)\(\s*['"]chmod['"]''',
+    );
+    final offenders = [
+      for (final f in hostDir.listSync(recursive: true).whereType<File>())
+        if (f.path.endsWith('.dart') &&
+            pathChmod.hasMatch(f.readAsStringSync()))
+          f.path,
+    ];
+    expect(offenders, isEmpty);
   });
 }

@@ -17,10 +17,13 @@
 // (names_register_test.dart), and the real BeamBansService decodes and
 // checks them exactly as it would a core's.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/pages/beam/names/beam_name_confirm_view.dart';
 import 'package:stackwallet/pages/beam/names/beam_name_detail_view.dart';
+import 'package:stackwallet/pages/beam/names/beam_name_key_view.dart';
 import 'package:stackwallet/pages/beam/names/beam_name_register_view.dart';
 import 'package:stackwallet/pages/beam/names/beam_name_sell_view.dart';
 import 'package:stackwallet/pages/beam/names/beam_name_transfer_view.dart';
@@ -72,6 +75,17 @@ Map<String, Object?> _routes() => {
 
 bool _enabled(WidgetTester tester, Key key) =>
     tester.widget<PrimaryButton>(find.byKey(key)).enabled;
+
+/// A PIN gate that answers only when the test says so.
+class _HeldGate extends FakeGate {
+  final hold = Completer<bool?>();
+
+  @override
+  Future<bool?> call(BuildContext context, {required String reason}) {
+    reasons.add(reason);
+    return hold.future;
+  }
+}
 
 void main() {
   late NamesUiFake fake;
@@ -218,10 +232,12 @@ void main() {
       beamOwnerKey,
     );
     await settle(tester);
+    // 64 bits to compare, not the 32 a made-up key can match (M-2).
     expect(
       textOf(tester, const Key('names-transfer-fingerprint')),
-      '72e3…51ef',
+      '72e3 68c0 … 570d 51ef',
     );
+    expect(find.textContaining('Read all 16 characters'), findsOneWidget);
     expect(find.text("This can't be undone"), findsOneWidget);
     expect(_enabled(tester, const Key('names-transfer-cta')), isTrue);
     expectOnScreen(tester, const Key('names-transfer-cta'), phone);
@@ -231,14 +247,24 @@ void main() {
     await settle(tester);
     expect(find.byType(BeamNameConfirmView), findsOneWidget);
     expect(fake.seenArgs.last, contains('pkOwner=$beamOwnerKey'));
-    expect(textOf(tester, const Key('names-confirm-fingerprint')), '72e3…51ef');
+    expect(
+      textOf(tester, const Key('names-confirm-fingerprint')),
+      '72e3 68c0 … 570d 51ef',
+    );
+    expect(
+      find.text(
+        'I checked all 16 characters, 72e3 68c0 … 570d 51ef, with the '
+        'receiving wallet.',
+      ),
+      findsOneWidget,
+    );
     expect(textOf(tester, const Key('names-confirm-fee')), '0.011 BEAM');
     expect(textOf(tester, const Key('names-confirm-total')), '0.011 BEAM');
     // Not until the box is ticked.
     expect(_enabled(tester, const Key('names-confirm-cta')), isFalse);
     expect(
       textOf(tester, const Key('names-cta-reason')),
-      'Tick the box once the key matches.',
+      'Tick the box once all 16 characters match.',
     );
     await golden(tester, 'confirm_transfer_mobile');
 
@@ -251,6 +277,42 @@ void main() {
     await settle(tester);
     expect(fake.executed, [setOwnerRaw('alice', beamOwnerKey)]);
     expect((popped! as BeamNameSent).action, BansAction.setOwner);
+  });
+
+  testWidgets('receive a name: the same 16 characters the sender reads '
+      'out (M-2)', (tester) async {
+    await launch(tester, (c) => BeamNameKeyView.show(c, deps));
+    // fakeMyKey is this wallet's key in the recorded my_key answer.
+    expect(
+      textOf(tester, const Key('names-key-fingerprint')),
+      BansKey.checkCode(fakeMyKey),
+    );
+    expect(BansKey.checkCode(fakeMyKey), '5a5a 5a5a … 5a5a 5a5a');
+    expect(
+      textOf(tester, const Key('names-key-check-hint')),
+      contains('16 characters'),
+    );
+    await golden(tester, 'key_mobile');
+  });
+
+  testWidgets('a double tap opens one PIN gate and pays once (L-1)', (
+    tester,
+  ) async {
+    final gate = _HeldGate();
+    await openDetail(tester, _alice, gate: gate);
+    await tester.tap(find.byKey(const Key('names-detail-cta')));
+    await settle(tester);
+    expect(find.byType(BeamNameConfirmView), findsOneWidget);
+
+    // Both land before the gate answers (or any frame is drawn).
+    await tester.tap(find.byKey(const Key('names-confirm-cta')));
+    await tester.tap(find.byKey(const Key('names-confirm-cta')));
+    expect(gate.reasons, ['Authenticate to renew alice']);
+
+    gate.hold.complete(true);
+    await settle(tester);
+    expect(fake.executed, [extendRaw('alice', 1, price5)]);
+    expect((popped! as BeamNameSent).action, BansAction.extend);
   });
 
   testWidgets('sell: price and asset, then the listing to confirm', (

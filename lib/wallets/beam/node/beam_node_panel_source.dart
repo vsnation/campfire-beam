@@ -65,6 +65,7 @@ class BeamWalletNodePanelSource implements BeamNodePanelSource {
       privateNodeEnabled: _preference.defaultValue,
       privateNode: wallet.privateNodeStatus,
       coreProblem: wallet.coreProblem?.message,
+      torEnabled: _preference.torEnabled,
     );
     _subs.add(wallet.syncAssessments.listen((_) => _rebuild()));
     _subs.add(
@@ -147,6 +148,7 @@ class BeamWalletNodePanelSource implements BeamNodePanelSource {
       disk: status?.disk ?? _disk,
       coreProblem: wallet.coreProblem?.message,
       busy: _busy,
+      torEnabled: _preference.torEnabled,
     );
     if (next == _current) return;
     _current = next;

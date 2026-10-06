@@ -19,15 +19,17 @@ import 'dex_deps.dart';
 import 'dex_format.dart';
 import 'dex_widgets.dart';
 
-/// Every asset that trades in a pool with liquidity, LP tokens left out:
-/// BEAM first, then verified assets by pool depth, then the rest by id.
+/// Every asset that trades in a pool with liquidity, LP tokens and assets
+/// the user hid left out: BEAM first, then verified assets by pool depth,
+/// then the rest by id.
 List<int> dexTradableAssets(BeamDexDeps deps) {
   final live = deps.pools.live;
   final lp = deps.pools.lpTokens;
+  final hidden = deps.hiddenAssetIds();
   final depth = <int, BigInt>{};
   for (final p in live) {
     for (final a in [p.aid1, p.aid2]) {
-      if (lp.contains(a)) continue;
+      if (lp.contains(a) || (a != 0 && hidden.contains(a))) continue;
       final beamSide = p.aid1 == 0 ? p.tok1 : BigInt.zero;
       final d = depth[a];
       if (d == null || beamSide > d) depth[a] = beamSide;

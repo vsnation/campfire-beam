@@ -95,7 +95,11 @@ class DappHostSession {
       wallet: wallet,
       consent: consent,
       server: server,
-      identity: DappIdentity.fromManifest(installation.manifest, server.origin),
+      identity: DappIdentity.fromManifest(
+        installation.manifest,
+        server.origin,
+        checkedByCampfire: bundled != null,
+      ),
       bundled: bundled,
       token: token,
       onActivity: onActivity,

@@ -167,7 +167,40 @@ class DappStoreController extends ChangeNotifier {
         'package is $length bytes',
       );
     }
-    return DappPackage.read(await file.readAsBytes(), limits: limits);
+    final package = DappPackage.read(
+      await file.readAsBytes(),
+      limits: limits,
+    );
+    _refuseBundledGuid(package);
+    return package;
+  }
+
+  /// A file may not take a bundled dApp's identity unless it is that dApp's
+  /// pinned package byte for byte: it would get its origin, its browser
+  /// storage and its transaction scope, and the store, browser and approval
+  /// sheet would name it exactly like the checked one.
+  void _refuseBundledGuid(DappPackage package) {
+    final b = _bundled(package.manifest.guid);
+    if (b != null && b.sha256 != package.sha256) {
+      throw DappInstallException(
+        DappInstallError.reservedGuid,
+        'the file uses the guid of the bundled ${b.name}',
+        dappName: b.name,
+      );
+    }
+  }
+
+  /// The bundled dApp whose name [package] copies under another guid, or
+  /// null. The install dialog warns about it.
+  String? bundledNameCopiedBy(DappPackage package) {
+    final name = package.manifest.name.trim().toLowerCase();
+    for (final e in _catalogue) {
+      if (e.guid != package.manifest.guid &&
+          e.name.trim().toLowerCase() == name) {
+        return e.name;
+      }
+    }
+    return null;
   }
 
   /// The installed dApp [package] would replace, if any.
@@ -178,13 +211,21 @@ class DappStoreController extends ChangeNotifier {
     return null;
   }
 
+  /// Installs a package the user picked ([readFile]).
   Future<DappInstallation> installPackage(
     DappPackage package, {
     bool replace = false,
-  }) => _whileBusy(
-    package.manifest.guid,
-    () => installer.install(package, replace: replace),
-  );
+  }) {
+    try {
+      _refuseBundledGuid(package);
+    } catch (e) {
+      return Future.error(e);
+    }
+    return _whileBusy(
+      package.manifest.guid,
+      () => installer.install(package, replace: replace),
+    );
+  }
 
   Future<void> uninstall(String guid) =>
       _whileBusy(guid, () => installer.uninstall(guid));
@@ -256,6 +297,11 @@ String dappInstallErrorText(Object error, {required String name}) {
       DappInstallError.unsupported =>
         '$name needs a newer wallet than this version of Campfire.',
       DappInstallError.alreadyInstalled => '$name is already installed.',
+      DappInstallError.reservedGuid =>
+        'This file claims to be ${error.dappName ?? 'a dApp Campfire '
+                'checks'}, but it is not the package Campfire checked, so '
+            'nothing was installed. Install ${error.dappName ?? 'it'} from '
+            'the Available list instead.',
       DappInstallError.folderPrepFailed || DappInstallError.extractFailed =>
         "Campfire couldn't save $name on this device. Check that there is "
             'free space, then try again.',

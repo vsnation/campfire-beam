@@ -9,6 +9,13 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 MANIFEST="${CORE_SCRIPTS_DIR}/manifest.json"
+
+# Never pin binaries built from a BEAM tree that was not the pinned commit
+# plus our patches (common.sh, BEAM_ALLOW_MODIFIED_SOURCE).
+if [[ -f "${OUT_ROOT}/.modified_source" ]]; then
+    sed 's/^/    /' "${OUT_ROOT}/.modified_source" >&2
+    die "out/ holds binaries built from a modified BEAM tree (above). Reset the tree, delete ${OUT_ROOT}, rebuild, then run this again"
+fi
 tmp="$(mktemp)"
 trap 'rm -f "$tmp"' EXIT
 

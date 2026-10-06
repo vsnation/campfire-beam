@@ -10,6 +10,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stackwallet/wallets/beam/contracts/airdrop/airdrop_constants.dart';
+import 'package:stackwallet/wallets/beam/contracts/bans/bans_constants.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_api_version.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_consent.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_session.dart';
@@ -486,14 +488,64 @@ void main() {
       expect(errorCode(await s.handle(rq(2, 'send_message'))), -32601);
     });
 
-    test('sign_message is reported to the UI', () async {
-      final seen = <DappActivity>[];
-      final s = testSession(t, policy, onActivity: seen.add);
-      await s.handle(
+    // Security review part 2, M-7: sign_message used to run with no
+    // consent (a flushbar afterwards), and with the BANS contract id as
+    // key material it signed as the owner of the user's names.
+    test('sign_message asks first, showing the message and the key; '
+        'approved, exactly that is signed', () async {
+      final s = testSession(t, policy);
+      final pending = s.handle(
+        rq(1, 'sign_message', {
+          'message': 'Log in to Example',
+          'key_material': 'AbCd01',
+        }),
+      );
+      await policy.waitShown(1);
+      expect(t.callsTo('sign_message'), isEmpty, reason: 'nothing before');
+      final r = policy.shown.single;
+      expect(r.kind, DappConsentKind.signMessage);
+      expect(r.sign!.message, 'Log in to Example');
+      expect(r.sign!.keyMaterial, 'abcd01');
+      expect(r.pays, isEmpty);
+      expect(r.fee, BigInt.zero);
+      policy.answer(0, true);
+      expect(resultOf(await pending), {'signature': 'aa'});
+      expect(t.lastParams('sign_message'), {
+        'message': 'Log in to Example',
+        'key_material': 'AbCd01',
+      });
+    });
+
+    test('sign_message rejected: -32021 and nothing is signed', () async {
+      final s = testSession(t, policy);
+      final pending = s.handle(
         rq(1, 'sign_message', {'message': 'hi', 'key_material': 'aa'}),
       );
-      expect(seen.single.kind, DappActivityKind.signedMessage);
-      expect(seen.single.dapp.name, 'Test dApp');
+      await policy.waitShown(1);
+      policy.answer(0, false);
+      expect(errorCode(await pending), -32021);
+      expect(t.callsTo('sign_message'), isEmpty);
+    });
+
+    test('sign_message with the key of the user\'s names or airdrops is '
+        'refused without asking', () async {
+      final seen = <DappActivity>[];
+      final s = testSession(t, policy, onActivity: seen.add);
+      for (final key in [
+        kBansCid,
+        kBansCid.toUpperCase(),
+        '${kAirdropContractId}00',
+        'ad2a',
+      ]) {
+        final res = await s.handle(
+          rq(1, 'sign_message', {'message': 'hi', 'key_material': key}),
+        );
+        expect(errorCode(res), -32020, reason: key);
+        expect(errorData(res), contains('Nothing was signed'));
+      }
+      expect(policy.shown, isEmpty);
+      expect(t.callsTo('sign_message'), isEmpty);
+      expect(seen.map((a) => a.kind).toSet(), {DappActivityKind.refused});
     });
 
     test('the app id follows the core formula', () {

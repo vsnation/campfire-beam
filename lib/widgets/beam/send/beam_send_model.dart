@@ -409,6 +409,14 @@ class BeamSendModel extends ChangeNotifier {
   /// address, `preparePay` (resolve, build, decode, resolve again) for a
   /// name. Throws a message the screen shows as is; never sends.
   Future<BeamSendReview> prepare(CryptoCurrency coin) async {
+    if (_preparing) {
+      // One payment is built at a time; a second call is never a second
+      // payment.
+      throw const BeamWalletException(
+        BeamWalletProblem.other,
+        'This payment is already being prepared.',
+      );
+    }
     final blocking = issue;
     if (blocking != null) {
       throw BeamWalletException(BeamWalletProblem.other, blocking.message);

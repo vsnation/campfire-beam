@@ -17,28 +17,38 @@ import '../rpc/beam_connection_exception.dart';
 import '../rpc/beam_transport.dart';
 import 'dapp_api_version.dart';
 import 'dapp_consent.dart';
+import 'dapp_contract_policy.dart';
 import 'dapp_errors.dart';
 import 'dapp_identity.dart';
 import 'dapp_method_gate.dart';
 import 'dapp_request_sanitizer.dart';
 import 'dapp_rpc.dart';
 import 'dapp_scope.dart';
+import 'dapp_wallet_keys.dart';
 
 /// Something a dApp did that needs no approval in the core but that the
 /// user may want to hear about (research/04 §7.4.7).
 enum DappActivityKind {
-  /// `sign_message`: a signature with a key derived from this wallet.
+  /// `sign_message`: a signature with a key derived from this wallet. Not
+  /// reported any more: `sign_message` now asks the user first.
   signedMessage,
 
   /// `send_message`: an SBBS message sent from this wallet.
   sentMessage,
+
+  /// Campfire refused a request before it reached the user or the core;
+  /// [DappActivity.detail] says why, in plain language.
+  refused,
 }
 
 class DappActivity {
-  const DappActivity(this.kind, this.dapp);
+  const DappActivity(this.kind, this.dapp, {this.detail});
 
   final DappActivityKind kind;
   final DappIdentity dapp;
+
+  /// For [DappActivityKind.refused]: what was refused and why.
+  final String? detail;
 }
 
 /// One running dApp page and the wallet.
@@ -50,9 +60,12 @@ class DappActivity {
 ///    ([DappMethodGate]): unknown `-32601`, blocked `-32020`;
 /// 3. parameter rules ([DappRequestSanitizer]): no `contract_file`, no
 ///    `create_tx: true`, no hidden parameters on payments;
-/// 4. for `tx_send` and `process_invoke_data`, a [DappConsentRequest] built
-///    from the exact parameters that will execute, put to the user through
-///    [consent]; rejection is `-32021`;
+/// 4. for `tx_send`, `process_invoke_data` and `sign_message`, a
+///    [DappConsentRequest] built from the exact parameters that will
+///    execute, put to the user through [consent]; rejection is `-32021`.
+///    Contract data a dApp may not submit ([DappContractPolicy]) and
+///    signatures with Campfire's own keys ([DappWalletKeys]) are refused
+///    with `-32020` before anyone is asked;
 /// 5. scoping: the dApp sees and touches only the transactions and
 ///    addresses it created ([DappScope]), and gets no balances from
 ///    `wallet_status`, as the core does for apps;
@@ -292,10 +305,7 @@ class DappSession {
         await _rememberTxFrom(r);
         return r;
       case 'sign_message':
-        onActivity?.call(
-          DappActivity(DappActivityKind.signedMessage, identity),
-        );
-        return _call(req.method, params);
+        return _signMessage(req, params);
       case 'send_message':
         onActivity?.call(DappActivity(DappActivityKind.sentMessage, identity));
         return _call(req.method, params);
@@ -388,6 +398,9 @@ class DappSession {
         DappRpcErrors.notAllowed,
         'Campfire cannot show this contract call: ${e.message}',
       );
+    } on DappContractRefused catch (e) {
+      _refused(e.message);
+      throw DappRpcErrors.error(DappRpcErrors.notAllowed, e.message);
     }
     final floor = BeamContractFee.minimum * BigInt.from(summary.calls.length);
     if (summary.fee < floor) {
@@ -426,6 +439,51 @@ class DappSession {
     await _rememberTxFrom(r);
     return r;
   }
+
+  Future<Object?> _signMessage(
+    DappRpcRequest req,
+    Map<String, Object?> params,
+  ) async {
+    final message = params['message']! as String;
+    final key = params['key_material']! as String;
+    final keyBytes = [
+      for (var i = 0; i < key.length; i += 2)
+        int.parse(key.substring(i, i + 2), radix: 16),
+    ];
+    final use = DappWalletKeys.reservedUseOfMaterial(keyBytes);
+    if (use != null) {
+      final why =
+          'Campfire refused to sign: the key asked for controls $use. '
+          'Nothing was signed.';
+      _refused(why);
+      throw DappRpcErrors.error(DappRpcErrors.notAllowed, why);
+    }
+    final canonical = canonicalJson({
+      'method': 'sign_message',
+      'params': params,
+    });
+    final request = DappConsentRequest(
+      kind: DappConsentKind.signMessage,
+      dapp: identity,
+      requestId: req.id,
+      pays: const [],
+      receives: const [],
+      fee: BigInt.zero,
+      digest: sha256Hex(canonical),
+      dappMessage: message,
+      sign: DappSignDetails(message: message, keyMaterial: key.toLowerCase()),
+    );
+    final exec = await _approved(request, canonical, (p) {
+      return p['message'] == message &&
+          p['key_material'] == key &&
+          p.length == 2;
+    });
+    return _call('sign_message', exec);
+  }
+
+  void _refused(String why) => onActivity?.call(
+    DappActivity(DappActivityKind.refused, identity, detail: why),
+  );
 
   /// Puts [request] to the user. On approval, returns the parameters to
   /// execute, re-read from [canonical] and re-checked: the digest of the

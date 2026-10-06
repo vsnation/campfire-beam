@@ -24,14 +24,26 @@ import 'beam_units.dart';
 /// [loadMetadata] can fetch it) and always with its id, since anyone can
 /// mint an asset and call it anything.
 class BeamAssetNames extends ChangeNotifier {
-  BeamAssetNames({this.loadMetadata});
+  BeamAssetNames({this.loadMetadata, Set<int> Function()? hiddenAssetIds})
+    : _hidden = hiddenAssetIds;
 
   /// Reads each unverified asset's metadata from the wallet core.
-  factory BeamAssetNames.fromApi(BeamApi api) => BeamAssetNames(
+  /// [hiddenAssetIds] are the assets the user hid from the wallet's asset
+  /// list (`BeamHiddenAssets.read`), which pickers leave out.
+  factory BeamAssetNames.fromApi(
+    BeamApi api, {
+    Set<int> Function()? hiddenAssetIds,
+  }) => BeamAssetNames(
     loadMetadata: (id) async => (await api.getAssetInfo(id)).metadata,
+    hiddenAssetIds: hiddenAssetIds,
   );
 
   final Future<BeamAssetMetadata?> Function(int assetId)? loadMetadata;
+  final Set<int> Function()? _hidden;
+
+  /// The user hid [assetId] (spam, dust). BEAM is never hidden.
+  bool isHidden(int assetId) =>
+      assetId != 0 && (_hidden?.call().contains(assetId) ?? false);
 
   final _metadata = <int, BeamAssetMetadata?>{};
   final _tried = <int>{};
@@ -173,8 +185,31 @@ Future<Map<int, BigInt>> beamAvailableBalances(BeamApi api) async {
   return out;
 }
 
+/// [assets] as a picker lists them: hidden ones left out, BEAM first, then
+/// verified assets, then the rest, each by id. An asset anyone can mint
+/// never lists above FOMO just because its id is lower.
+List<BeamHeldAsset> beamPickerOrder(
+  List<BeamHeldAsset> assets,
+  BeamAssetNames names,
+) {
+  int rank(int id) => id == 0
+      ? 0
+      : BeamAssetCatalog.verified.containsKey(id)
+      ? 1
+      : 2;
+  return [
+    for (final a in assets)
+      if (!names.isHidden(a.assetId)) a,
+  ]..sort((a, b) {
+    final r = rank(a.assetId).compareTo(rank(b.assetId));
+    return r != 0 ? r : a.assetId.compareTo(b.assetId);
+  });
+}
+
 /// Lets the user pick one of [assets]: a bottom sheet on a phone, a dialog
-/// on desktop. Null when dismissed.
+/// on desktop. Null when dismissed. Ordered and filtered by
+/// [beamPickerOrder]; when assets were left out because the user hid them,
+/// a line says so and where to show them again.
 Future<int?> showBeamAssetPicker({
   required BuildContext context,
   required List<BeamHeldAsset> assets,
@@ -182,6 +217,8 @@ Future<int?> showBeamAssetPicker({
   required String title,
 }) {
   final desktop = BeamLayoutScope.isDesktop(context);
+  final shown = beamPickerOrder(assets, names);
+  final hiddenCount = assets.length - shown.length;
   Widget list(BuildContext context) => Column(
     mainAxisSize: MainAxisSize.min,
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -200,7 +237,7 @@ Future<int?> showBeamAssetPicker({
           shrinkWrap: true,
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
           children: [
-            for (final a in assets)
+            for (final a in shown)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: RoundedWhiteContainer(
@@ -211,6 +248,19 @@ Future<int?> showBeamAssetPicker({
                     subtitle:
                         'You have ${names.amount(a.assetId, a.available)}',
                   ),
+                ),
+              ),
+            if (hiddenCount > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  hiddenCount == 1
+                      ? '1 asset you hid is not listed. Show it again from '
+                            'the asset list.'
+                      : '$hiddenCount assets you hid are not listed. Show '
+                            'them again from the asset list.',
+                  key: const ValueKey('beam-asset-picker-hidden'),
+                  style: STextStyles.label(context),
                 ),
               ),
           ],

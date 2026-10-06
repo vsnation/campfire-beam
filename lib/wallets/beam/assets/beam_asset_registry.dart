@@ -50,8 +50,9 @@ abstract final class BeamAssetRegistry {
         decimals: decimals,
         verified: false,
         metadataKnown: true,
-        // The desktop wallet's generic icon for the LP token's id.
-        iconAsset: BeamAssetCatalog.genericIcon(assetId),
+        // The desktop wallet's generic icon for the LP token's id (never
+        // one a verified asset wears).
+        iconAsset: BeamAssetCatalog.unverifiedIcon(assetId),
         color: BeamAssetCatalog.genericColor(assetId),
         poolAssetA: pool.aid1,
         poolAssetB: pool.aid2,
@@ -74,21 +75,30 @@ abstract final class BeamAssetRegistry {
   }
 
   /// [row] with today's catalogue look (icon, colour, verified), which a
-  /// cached row may predate. Everything learnt from the chain is kept.
+  /// cached row may predate. What was learnt from the chain is kept, but an
+  /// unverified asset's name and ticker are cleaned and checked for a
+  /// copied verified asset again ([BeamAssetCatalog.relook]): a stricter
+  /// check, or a newly verified asset, applies to rows cached before it.
   static BeamAssetContract refreshLook(BeamAssetContract row) {
-    final look = BeamAssetCatalog.display(row.assetId, null);
     final verified = BeamAssetCatalog.verified.containsKey(row.assetId);
+    final look = BeamAssetCatalog.display(row.assetId, null);
+    final pool = row.isPoolShare;
+    final text = verified || pool
+        ? null
+        : BeamAssetCatalog.relook(row.assetId, row.name, row.symbol);
     return BeamAssetContract(
       address: row.address,
       assetId: row.assetId,
-      name: verified ? look.name : row.name,
-      symbol: verified ? look.symbol : row.symbol,
+      name: verified ? look.name : (text?.name ?? row.name),
+      symbol: verified ? look.symbol : (text?.symbol ?? row.symbol),
       decimals: BeamAssetInfo.decimalsFor(row.assetId),
       verified: verified,
       metadataKnown: row.metadataKnown,
-      iconAsset: look.icon,
+      iconAsset: pool
+          ? BeamAssetCatalog.unverifiedIcon(row.assetId)
+          : look.icon,
       color: look.color,
-      impersonates: verified ? null : row.impersonates,
+      impersonates: text?.impersonates,
       poolAssetA: row.poolAssetA,
       poolAssetB: row.poolAssetB,
       poolKind: row.poolKind,

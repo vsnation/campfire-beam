@@ -43,6 +43,7 @@ class BeamAssetHolding {
     required this.hidden,
     required this.priced,
     this.valueGroth,
+    this.saleValue = false,
   });
 
   final BeamAssetContract contract;
@@ -54,8 +55,12 @@ class BeamAssetHolding {
   /// The DEX prices it. False while prices are unknown too.
   final bool priced;
 
-  /// What [totals] is worth in groth (spot estimate), when [priced].
+  /// What [totals] is worth in groth (estimate), when [priced].
   final BigInt? valueGroth;
+
+  /// [valueGroth] is what its pool would pay for it (an unverified asset,
+  /// `BeamAssetPricer.isSaleValue`), not a verified asset's spot price.
+  final bool saleValue;
 
   int get assetId => contract.assetId;
 
@@ -102,9 +107,10 @@ abstract final class BeamAssetHoldings {
   /// BEAM (asset 0) excluded: it is the wallet itself.
   ///
   /// [contracts] are the cached rows (an asset without one is shown from
-  /// the catalogue until it is cached). Ordered by estimated value, highest
-  /// first; unpriced holdings after the priced ones, verified first, then
-  /// by id.
+  /// the catalogue until it is cached). Verified assets and pool shares
+  /// come first, by estimated value, highest first; then other priced
+  /// assets by value, so no asset anyone can mint and price tops the list;
+  /// then unpriced holdings, verified first, then by id.
   static List<BeamAssetHolding> build({
     required Map<int, BeamCachedAssetTotals> totals,
     required Map<int, BeamAssetContract> contracts,
@@ -136,6 +142,8 @@ abstract final class BeamAssetHoldings {
           hidden: hidden.contains(t.assetId),
           priced: value != null,
           valueGroth: value,
+          saleValue:
+              value != null && (market?.pricer.isSaleValue(t.assetId) ?? false),
         ),
       );
     }
@@ -143,7 +151,15 @@ abstract final class BeamAssetHoldings {
     return List.unmodifiable(out);
   }
 
+  /// 0: a priced verified asset or pool share, 1: another priced asset,
+  /// 2: unpriced.
+  static int _rank(BeamAssetHolding h) => h.valueGroth == null
+      ? 2
+      : (h.contract.verified || h.contract.isPoolShare ? 0 : 1);
+
   static int _order(BeamAssetHolding a, BeamAssetHolding b) {
+    final rank = _rank(a).compareTo(_rank(b));
+    if (rank != 0) return rank;
     final av = a.valueGroth, bv = b.valueGroth;
     if (av != null && bv != null && av != bv) return bv.compareTo(av);
     if (av != null && bv == null) return -1;

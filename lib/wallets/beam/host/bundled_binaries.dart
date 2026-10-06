@@ -33,24 +33,39 @@ const String kBeamBinaryAssetDir = 'assets/beam/bin';
 /// cheap after the first start.
 ///
 /// Returns how many binaries were written. Returns 0 without touching
-/// anything when `BEAM_BIN_DIR` is set (development runs binaries from
-/// there) or when this build bundles none for the platform; the host then
+/// anything when this build honours a set `BEAM_BIN_DIR` (development runs
+/// binaries from there; a release build ignores the variable, see
+/// [BeamBinaries.devOverridesAllowed]) or when no binaries are pinned for the
+/// platform. When this build bundles none, nothing is written and the host
 /// reports the core as missing instead of failing later.
+///
+/// An existing `<beamRoot>/bin` is (re)set to 0700 on every call:
+/// `BeamBinaries` refuses to launch from a folder other users can write to.
+///
+/// [overridesAllowed] replaces [BeamBinaries.devOverridesAllowed], for tests.
 Future<int> installBundledBeamBinaries({
   required String beamRoot,
   AssetBundle? bundle,
   String? platform,
   Map<String, Map<String, String>> manifest = kBeamBinaryManifest,
   Map<String, String>? environment,
+  bool? overridesAllowed,
 }) async {
   final env = environment ?? Platform.environment;
-  if ((env[BeamBinaries.binDirEnv] ?? '').isNotEmpty) return 0;
+  if (BeamBinaries.devBinDir(env, overridesAllowed: overridesAllowed) !=
+      null) {
+    return 0;
+  }
   final key = platform ?? BeamBinaries.currentPlatform();
   final pins = manifest[key];
   if (pins == null) return 0;
 
   final assets = bundle ?? rootBundle;
   final binDir = p.join(beamRoot, 'bin');
+  if (await Directory(binDir).exists()) {
+    await ensurePrivateDir(beamRoot);
+    await ensurePrivateDir(binDir);
+  }
   var written = 0;
   for (final binary in BeamBinary.values) {
     final pin = pins[binary.id]?.toLowerCase();
@@ -83,15 +98,8 @@ Future<int> installBundledBeamBinaries({
     final tmp = File(p.join(binDir, '.${binary.fileName}.$pid.tmp'));
     try {
       await tmp.writeAsBytes(bytes, flush: true);
-      if (!Platform.isWindows) {
-        final chmod = await Process.run('chmod', ['700', tmp.path]);
-        if (chmod.exitCode != 0) {
-          throw BeamHostException(
-            BeamHostError.insecurePath,
-            'Could not make ${binary.id} executable',
-          );
-        }
-      }
+      // chmod by absolute path: a PATH entry could substitute its own.
+      await setOwnerExecutable(tmp.path);
       await tmp.rename(target);
     } finally {
       if (await tmp.exists()) await tmp.delete();

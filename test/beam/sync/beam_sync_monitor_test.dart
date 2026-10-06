@@ -74,12 +74,13 @@ void main() {
     Duration age = const Duration(seconds: 30),
     bool isInSync = true,
     int? headerTip,
+    bool? connected = true,
   }) => BeamWalletSyncInput(
     currentHeight: height,
     currentStateTimestamp: now.subtract(age),
     isInSync: isInSync,
     headerTipHeight: headerTip ?? height,
-    nodeConnected: true,
+    nodeConnected: connected,
   );
 
   /// Lets queued microtasks (stream events, explorer futures) run.
@@ -304,6 +305,40 @@ void main() {
     await settle();
     expect(monitor.current, isA<BeamSyncCatchingUp>());
     expect(monitor.current.node, BeamNodeKind.privateNode);
+  });
+
+  // Security review finding 3: after a (re)open or node switch, the last
+  // chain state may be fresh while the new wallet-api has not reached any
+  // node. The old session's `node_connected` must not carry over.
+  test('a new session forgets the old node connection: not synced until '
+      'the new core reports node_connected', () async {
+    monitor.start();
+    await settle();
+    wallet.add(status(_tip));
+    await settle();
+    expect(monitor.current, isA<BeamSynced>());
+
+    monitor.setNode(BeamNodeKind.publicNode);
+    await settle();
+    expect(monitor.current, isA<BeamSyncConnecting>());
+    expect(monitor.current.canSpend, isFalse);
+    expect(monitor.current.walletHeight, _tip);
+
+    // The explorer keeps agreeing; still no spend without the node.
+    timers.single.fire();
+    await settle();
+    expect(monitor.current.canSpend, isFalse);
+
+    // The new core's first status, connection not reported yet.
+    wallet.add(status(_tip, connected: null));
+    await settle();
+    expect(monitor.current, isA<BeamSyncConnecting>());
+
+    // ev_connection_changed: node_connected == true.
+    wallet.add(status(_tip));
+    await settle();
+    expect(monitor.current, isA<BeamSynced>());
+    expect(monitor.current.canSpend, isTrue);
   });
 
   test('a wallet stream error does not kill the monitor', () async {

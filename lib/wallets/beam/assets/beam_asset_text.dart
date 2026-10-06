@@ -61,6 +61,37 @@ abstract final class BeamAssetText {
     return '$trimmed ${asset.symbol}';
   }
 
+  /// The ticker as money-moving screens name it: "FOMO" for a verified
+  /// asset, "FOMO #999" for anything else, so a copy never reads like the
+  /// asset it copies.
+  static String symbolLabel(BeamAssetContract asset) =>
+      asset.verified || asset.symbol == asset.idLabel
+      ? asset.symbol
+      : '${asset.symbol} ${asset.idLabel}';
+
+  /// [exact] with [symbolLabel]: "12.5 FOMO", "250 FOMO #999" (confirm
+  /// headlines and buttons).
+  static String exactLabelled(
+    Amount value,
+    BeamAssetContract asset, {
+    required String locale,
+  }) {
+    final plain = exact(value, asset, locale: locale);
+    final unit = ' ${asset.symbol}';
+    final number = plain.endsWith(unit)
+        ? plain.substring(0, plain.length - unit.length)
+        : plain;
+    return '$number ${symbolLabel(asset)}';
+  }
+
+  /// After a send whose outcome is unknown (the connection dropped and the
+  /// wallet could not be asked afterwards).
+  static const String sendUnknownTitle = 'Not sure it was sent';
+  static const String sendUnknown =
+      "We couldn't confirm it went out: the connection to the wallet "
+      "dropped while sending. Check this asset's history before sending "
+      'again. Nothing more will be sent from this screen.';
+
   /// "0.001 BEAM", trailing zeros dropped.
   static String beam(BigInt groth, {required String locale}) =>
       _units(groth, 'BEAM', locale);
@@ -120,6 +151,21 @@ abstract final class BeamAssetText {
     }
     return '≈ ${beam(rounded, locale: locale)}';
   }
+
+  /// "≈ 12.5 BEAM if sold now": an unverified asset's value, which is what
+  /// its pool would pay for the whole holding, not a price anyone vouches
+  /// for (`BeamAssetPricer.isSaleValue`).
+  static String saleEstimate(BigInt groth, {required String locale}) =>
+      '${beamEstimate(groth, locale: locale)} if sold now';
+
+  /// [beamEstimate], or [saleEstimate] when [sale].
+  static String valueEstimate(
+    BigInt groth, {
+    required bool sale,
+    required String locale,
+  }) => sale
+      ? saleEstimate(groth, locale: locale)
+      : beamEstimate(groth, locale: locale);
 
   /// Fiat for [groth] at [beamPrice] per BEAM: "≈ $12.34"-style text with
   /// Campfire's currency code after it.

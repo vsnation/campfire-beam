@@ -12,6 +12,8 @@ import 'package:meta/meta.dart';
 import '../../assets/beam_asset_catalog.dart';
 import '../../models/beam_asset_info.dart';
 import '../dapp_consent.dart';
+import '../dapp_text.dart';
+import '../dapp_wallet_keys.dart';
 
 /// What a request does to the wallet, in the words the sheet uses.
 enum DappApprovalKind {
@@ -27,7 +29,15 @@ enum DappApprovalKind {
   /// A contract sends funds to the wallet, nothing leaves but the fee.
   withdrawal,
 
-  /// No funds move; only the network fee is paid.
+  /// Contract calls that move funds between contracts, or sign with a
+  /// wallet key, while the wallet's own balance may not change: each call
+  /// is shown on its own.
+  contractCall,
+
+  /// `sign_message`: a signature, no funds, no fee.
+  signMessage,
+
+  /// Nothing the wallet holds is touched; only the network fee is paid.
   feeOnly,
 }
 
@@ -57,6 +67,48 @@ class DappAssetLine {
   }
 }
 
+/// One contract call as the sheet lists it: what it alone moves, and
+/// whether the wallet signs it.
+@immutable
+class DappCallLine {
+  const DappCallLine({
+    required this.number,
+    required this.contractId,
+    required this.contractName,
+    required this.method,
+    required this.pays,
+    required this.receives,
+    required this.signs,
+  });
+
+  /// 1-based position in the transaction.
+  final int number;
+
+  /// Null for a deployment.
+  final String? contractId;
+
+  /// "Beam DEX", or null for a contract Campfire does not know.
+  final String? contractName;
+  final int method;
+  final List<DappAssetLine> pays;
+  final List<DappAssetLine> receives;
+
+  /// The wallet signs this call with one of its keys.
+  final bool signs;
+
+  /// "Beam DEX", "New contract", or "Contract 729fe098…ef9cbf".
+  String get contractLabel {
+    final id = contractId;
+    if (id == null) return 'New contract';
+    return contractName ?? 'Contract ${dappShortHex(id)}';
+  }
+
+  /// "Call 2 · Beam DEX · method 7".
+  String get title => 'Call $number · $contractLabel · method $method';
+
+  bool get movesFunds => pays.isNotEmpty || receives.isNotEmpty;
+}
+
 /// Everything the approval sheet shows for one [DappConsentRequest].
 ///
 /// Amounts, fee and contract ids come from [request], which `DappSession`
@@ -76,6 +128,7 @@ class DappApprovalModel {
     required this.lookalikes,
     required this.blockedReason,
     required this.available,
+    required this.calls,
   });
 
   /// [metadata]: on-chain metadata of the assets Campfire does not vouch
@@ -94,17 +147,38 @@ class DappApprovalModel {
 
     final pays = [for (final a in request.pays) line(a)];
     final receives = [for (final a in request.receives) line(a)];
+    final calls = [
+      for (final (i, c) in request.calls.indexed)
+        DappCallLine(
+          number: i + 1,
+          contractId: c.contractId,
+          contractName: dappContractName(c.contractId),
+          method: c.method,
+          pays: [for (final a in c.pays) line(a)],
+          receives: [for (final a in c.receives) line(a)],
+          signs: c.signs,
+        ),
+    ];
+    final movingCalls = calls.where((c) => c.movesFunds).length;
     final DappApprovalKind kind;
     if (request.kind == DappConsentKind.send) {
       kind = DappApprovalKind.payment;
+    } else if (request.kind == DappConsentKind.signMessage) {
+      kind = DappApprovalKind.signMessage;
+    } else if (movingCalls > 1) {
+      // The net hides which contract gets what: one call can empty a
+      // contract and the next lock the same funds into another.
+      kind = DappApprovalKind.contractCall;
     } else if (pays.isNotEmpty && receives.isNotEmpty) {
       kind = DappApprovalKind.swap;
     } else if (pays.isNotEmpty) {
       kind = DappApprovalKind.contractPayment;
     } else if (receives.isNotEmpty) {
       kind = DappApprovalKind.withdrawal;
-    } else {
+    } else if (request.isFeeOnly) {
       kind = DappApprovalKind.feeOnly;
+    } else {
+      kind = DappApprovalKind.contractCall;
     }
 
     final required = request.required;
@@ -121,7 +195,11 @@ class DappApprovalModel {
     ];
     final seen = <int>{};
     final lookalikes = [
-      for (final l in [...pays, ...receives])
+      for (final l in [
+        ...pays,
+        ...receives,
+        for (final c in calls) ...[...c.pays, ...c.receives],
+      ])
         if (l.asset.impersonates != null && seen.add(l.asset.assetId)) l.asset,
     ];
 
@@ -134,8 +212,13 @@ class DappApprovalModel {
       totalOut: List.unmodifiable(totalOut),
       shortfall: List.unmodifiable(shortfall),
       lookalikes: List.unmodifiable(lookalikes),
-      blockedReason: spendBlockedReason,
+      // A signature moves nothing: a wallet that may not spend can still
+      // sign.
+      blockedReason: kind == DappApprovalKind.signMessage
+          ? null
+          : spendBlockedReason,
       available: available == null ? null : Map.unmodifiable(available),
+      calls: List.unmodifiable(calls),
     );
   }
 
@@ -167,11 +250,22 @@ class DappApprovalModel {
   /// Spendable balances the shortfall was computed from; null when unknown.
   final Map<int, BigInt>? available;
 
+  /// Each contract call with its own flows, in order.
+  final List<DappCallLine> calls;
+
+  /// Show each call on its own: there is more than one, so a net total
+  /// would hide which contract gets what.
+  bool get showsCalls => calls.length > 1;
+
   bool get canApprove =>
       shortfall.isEmpty && blockedReason == null && !request.isCancelled;
 
-  String get dappName => request.dapp.name;
+  String get dappName => dappDisplayText(request.dapp.name, maxLength: 64);
   String get origin => request.dapp.origin;
+
+  /// The dApp was installed from a file: Campfire did not check it, and its
+  /// name is whatever the file says.
+  bool get notCheckedByCampfire => !request.dapp.checkedByCampfire;
 
   /// "http://127.0.0.1:40000 · version 1.0.0".
   String get originLine {
@@ -185,6 +279,9 @@ class DappApprovalModel {
     DappApprovalKind.payment => 'Approve payment',
     DappApprovalKind.contractPayment => 'Approve payment',
     DappApprovalKind.withdrawal => 'Approve withdrawal',
+    DappApprovalKind.contractCall =>
+      calls.length > 1 ? 'Approve contract calls' : 'Approve contract call',
+    DappApprovalKind.signMessage => 'Sign message',
     DappApprovalKind.feeOnly => 'Approve request',
   };
 
@@ -196,14 +293,38 @@ class DappApprovalModel {
       'Asks you to approve a payment to a contract.',
     DappApprovalKind.withdrawal =>
       'Asks you to approve funds coming to your wallet.',
+    DappApprovalKind.contractCall =>
+      calls.length > 1
+          ? 'Asks you to approve ${calls.length} contract calls. Check what '
+                'each one moves.'
+          : "Asks you to approve a contract call signed with your wallet's "
+                'key.',
+    DappApprovalKind.signMessage =>
+      'Asks you to sign a message with a key from this wallet.',
     DappApprovalKind.feeOnly => 'Asks you to approve a contract call.',
   };
 
-  /// The dApp's own words (`confirm_comment` or the shader's comment).
-  /// Never shown as Campfire's.
+  /// The dApp's own words (`confirm_comment`, the shader's comment, or the
+  /// message to sign), cleaned of control and bidi characters. Never shown
+  /// as Campfire's.
   String? get message {
-    final m = request.dappMessage?.trim();
-    return m == null || m.isEmpty ? null : m;
+    final m = request.dappMessage;
+    if (m == null) return null;
+    // A message to sign is shown whole (the sanitizer caps it, and refuses
+    // hidden characters): the user must see everything they sign.
+    final t = dappDisplayText(m, maxLength: isSignMessage ? m.length : 1024);
+    return t.isEmpty ? null : t;
+  }
+
+  /// "Beam DEX" for a contract Campfire knows, else null.
+  String? contractNameOf(String contractId) => dappContractName(contractId);
+
+  bool get isSignMessage => kind == DappApprovalKind.signMessage;
+
+  /// The key a signature uses, as "6b3f1a20…c09e11", for [isSignMessage].
+  String? get signKeyText {
+    final k = request.sign?.keyMaterial;
+    return k == null ? null : dappShortHex(k);
   }
 
   bool get isPayment => request.kind == DappConsentKind.send;
@@ -228,6 +349,34 @@ class DappApprovalModel {
       'public_offline' => 'Public offline address',
       _ => 'Address type not recognised',
     };
+  }
+
+  /// One warning per call the wallet signs: a signed call can change or
+  /// move what the wallet holds in that contract with no funds moving.
+  List<String> get signingWarnings => [
+    for (final c in calls)
+      if (c.signs)
+        '${calls.length > 1 ? 'Call ${c.number}' : 'This call'} signs with '
+            "your wallet's key for ${c.contractLabel}. It can change or move "
+            'what you hold in that contract.',
+  ];
+
+  /// Set when funds one call takes out of a contract are paid into another
+  /// contract by a different call.
+  String? get passThroughWarning {
+    final inn = <int>{};
+    final out = <int>{};
+    for (final c in calls) {
+      for (final r in c.receives) {
+        inn.add(r.asset.assetId);
+      }
+      for (final p in c.pays) {
+        out.add(p.asset.assetId);
+      }
+    }
+    if (calls.length < 2 || inn.intersection(out).isEmpty) return null;
+    return 'Funds one call takes out of a contract are paid into another '
+        'contract by a different call. Check where they end up.';
   }
 
   /// Why each look-alike asset is not what its name says.

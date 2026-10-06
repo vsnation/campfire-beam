@@ -27,8 +27,9 @@
 // * "Why is $10 1,162 BEAM?" — the dollar price sits next to the BEAM
 //   amount with one line saying who sets it and why it is paid in BEAM.
 // * A surprise fee — the network fee is its own line, from the built tx.
-// * "Did I just give my name to a stranger?" — a transfer shows the key's
-//   fingerprint in large type, says it cannot be undone, and needs a tick.
+// * "Did I just give my name to a stranger?" — a transfer shows 16
+//   characters of the key (64 bits, `BansKey.checkCode`) in large type,
+//   says it cannot be undone, and needs a tick that all 16 were checked.
 // * "Buying a name for 100,000 BEAM and it expires next month?" — a
 //   purchase says, before signing, that it does not renew the name.
 // * A price that changed under the user — never signed silently; the new
@@ -106,6 +107,12 @@ class _BeamNameConfirmViewState extends State<BeamNameConfirmView> {
   bool _showBlocks = false;
   String? _error;
   String? _gateMessage;
+
+  /// Set synchronously by the first tap, before the PIN / password gate
+  /// opens, and cleared when this attempt ends. A second activation that
+  /// lands first (same frame, a held key) returns at once instead of
+  /// opening a second gate, which could pay twice.
+  bool _inFlight = false;
 
   BeamNamesDeps get deps => widget.deps;
   BansSummary get s => _p.summary;
@@ -222,10 +229,24 @@ class _BeamNameConfirmViewState extends State<BeamNameConfirmView> {
       a.periods == b.periods;
 
   Future<void> _confirm() async {
+    if (_inFlight) return;
     setState(() {
+      _inFlight = true;
       _gateMessage = null;
       _error = null;
     });
+    try {
+      await _authorizeAndSend();
+    } finally {
+      if (mounted) {
+        setState(() => _inFlight = false);
+      } else {
+        _inFlight = false;
+      }
+    }
+  }
+
+  Future<void> _authorizeAndSend() async {
     final ok = await deps.authenticate(context, reason: _authReason);
     if (!mounted) return;
     if (ok != true) {
@@ -582,7 +603,7 @@ class _BeamNameConfirmViewState extends State<BeamNameConfirmView> {
               ),
               const SizedBox(height: 4),
               Text(
-                BansKey.fingerprint(s.ownerKey!),
+                BansKey.checkCode(s.ownerKey!),
                 key: const Key('names-confirm-fingerprint'),
                 style: STextStyles.pageTitleH1(context),
               ),
@@ -600,8 +621,8 @@ class _BeamNameConfirmViewState extends State<BeamNameConfirmView> {
           kind: NamesNoticeKind.warning,
           title: "This can't be undone",
           detail:
-              '$_name will belong to the wallet with key '
-              '${BansKey.fingerprint(s.ownerKey!)}. Only that wallet can '
+              '$_name will belong to the wallet whose key reads '
+              '${BansKey.checkCode(s.ownerKey!)}. Only that wallet can '
               'give it back.',
         ),
       ]);
@@ -621,8 +642,8 @@ class _BeamNameConfirmViewState extends State<BeamNameConfirmView> {
         ? (v) => setState(() => _ack = v ?? false)
         : null,
     title: Text(
-      'I checked ${BansKey.fingerprint(s.ownerKey!)} with the receiving '
-      'wallet.',
+      'I checked all ${BansKey.checkCodeLength} characters, '
+      '${BansKey.checkCode(s.ownerKey!)}, with the receiving wallet.',
       style: STextStyles.smallMed12(context),
     ),
   );
@@ -685,14 +706,14 @@ class _BeamNameConfirmViewState extends State<BeamNameConfirmView> {
         buttonKey: const Key('names-confirm-cta'),
         label: _cta,
         onPressed: null,
-        reason: 'Tick the box once the key matches.',
+        reason: 'Tick the box once all 16 characters match.',
       );
     }
     return NamesPrimaryAction(
       deps: deps,
       buttonKey: const Key('names-confirm-cta'),
       label: _cta,
-      onPressed: _confirm,
+      onPressed: _inFlight ? null : _confirm,
     );
   }
 }

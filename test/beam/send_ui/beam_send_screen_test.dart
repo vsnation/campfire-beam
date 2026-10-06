@@ -177,6 +177,25 @@ void main() {
       await _golden(tester, 'phone_03_address_confirm');
     });
 
+    testWidgets('two activations of Send in one frame build one payment, '
+        'with no "Nothing was sent" for the second (L-1)', (tester) async {
+      final b = await _open(tester, desktop: false);
+      await _type(tester, _to, _regular);
+      await _type(tester, _amount, '0.5');
+      // Two activations before any frame is drawn (a repeated Enter key, a
+      // double tap faster than the building dialog's barrier appears).
+      final send = tester.widget<TextButton>(find.byKey(_send)).onPressed!;
+      send();
+      send();
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('Confirm transaction'), findsOneWidget);
+      expect(find.text('Nothing was sent'), findsNothing);
+      expect(b.log, ['prepareSend']);
+    });
+
     testWidgets('a name: skeleton while looking it up, then the owner card', (
       tester,
     ) async {
