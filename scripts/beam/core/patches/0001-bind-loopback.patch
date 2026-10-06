@@ -1,0 +1,60 @@
+Campfire for BEAM: wallet-api and beam-node listen on 127.0.0.1 only.
+
+wallet-api: bind the API server to loopback (stock binds 0.0.0.0; --ip_whitelist
+closes a socket only after accept, so the port is still reachable on the LAN).
+
+beam-node: bind the P2P listener to loopback, turn off the UDP LAN beacon (it binds
+0.0.0.0 and advertises the listen port), and do not send PeerInfoSelf while listening
+on loopback, so remote peers do not record and gossip this host as a reachable node.
+Outbound connections, and therefore sync and fast sync, are unchanged.
+
+Applies to tag beam-7.5.14493 (9c4366aae08e7fbde7bc8d65f828a0deace68bfc) with patch -p1.
+
+diff --git a/beam/cli.cpp b/beam/cli.cpp
+index 8dbbbfdf3..697ca8234 100644
+--- a/beam/cli.cpp
++++ b/beam/cli.cpp
+@@ -390,7 +390,11 @@ int main(int argc, char* argv[])
+ 					node.m_Cfg.m_Observer = &observer;
+ 
+ 					node.m_Cfg.m_Listen.port(port);
+-					node.m_Cfg.m_Listen.ip(INADDR_ANY);
++					// Campfire: wallet-private node. Accept P2P connections from this machine only
++					// (our wallet-api). Outbound connections to peers, and so sync, are unaffected.
++					node.m_Cfg.m_Listen.ip(io::Address::LOCALHOST.ip());
++					// The UDP LAN beacon binds 0.0.0.0 and advertises a port no other host can reach.
++					node.m_Cfg.m_BeaconPeriod_ms = 0;
+ 					node.m_Cfg.m_sPathLocal = vm[cli::STORAGE].as<string>();
+ 
+ 					if (Rules::get().m_Consensus == Rules::Consensus::PoW)
+diff --git a/node/node.cpp b/node/node.cpp
+index ea8e48ed2..94f37d3c1 100644
+--- a/node/node.cpp
++++ b/node/node.cpp
+@@ -1586,7 +1586,10 @@ void Node::Peer::OnConnectedSecure()
+ 
+ 	m_Flags |= Flags::Connected;
+ 
+-	if (!(Flags::Accepted & m_Flags) && m_This.m_Cfg.m_Listen.port())
++	// Campfire: a node listening on loopback only must not ask remote peers to connect back
++	// (they would record and gossip this host's IP as a reachable node). Peers already
++	// handle a node that sends no port ("No PI port").
++	if (!(Flags::Accepted & m_Flags) && m_This.m_Cfg.m_Listen.port() && ((m_This.m_Cfg.m_Listen.ip() >> 24) != 127))
+ 	{
+ 		// we've connected to the peer, let it now know our port
+ 		proto::PeerInfoSelf msgPi;
+diff --git a/wallet/api/cli/api_cli.cpp b/wallet/api/cli/api_cli.cpp
+index dfcadf8a0..e0edb18e0 100644
+--- a/wallet/api/cli/api_cli.cpp
++++ b/wallet/api/cli/api_cli.cpp
+@@ -862,7 +862,9 @@ int main(int argc, char* argv[])
+         }
+ 
+         io::Reactor::Ptr reactor = io::Reactor::create();
+-        io::Address listenTo = io::Address().port(options.port);
++        // Campfire: listen on loopback only. Stock binds 0.0.0.0, and --ip_whitelist
++        // only drops a peer after accept(), so the port stays reachable from the LAN.
++        io::Address listenTo = io::Address::localhost().port(options.port);
+         io::Reactor::Scope scope(*reactor);
+         io::Reactor::GracefulIntHandler gih(*reactor);
+ 
