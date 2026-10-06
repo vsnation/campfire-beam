@@ -133,6 +133,34 @@ void main() {
       expect(p.total, r'With assets ≈ 23 BEAM · $0.20 (estimate)');
       expect(p.note, '1 asset has no price');
     });
+
+    test('hidden assets are neither counted nor valued (M-4)', () {
+      // A spam airdrop with its own deep pool, hidden by the user, and the
+      // unpriced #205, hidden too.
+      final withSpam = {...totals, 999: assetTotals(999, 1)};
+      final pricer = BeamAssetPricer([
+        beamPool(174, 10000, 1000000),
+        beamPool(999, 5000, 0.00000001, lp: 901),
+      ]);
+      final visible = BeamHomeText.portfolio(
+        totals: withSpam,
+        pricer: pricer,
+        hidden: {999, 205},
+      )!;
+      expect(visible.total, 'With assets ≈ 23 BEAM (estimate)');
+      expect(visible.note, isNull);
+
+      // Everything hidden but BEAM: the line goes, as for a BEAM-only
+      // wallet.
+      expect(
+        BeamHomeText.portfolio(
+          totals: withSpam,
+          pricer: pricer,
+          hidden: {174, 205, 999},
+        ),
+        isNull,
+      );
+    });
   });
 
   group('sync banner', () {

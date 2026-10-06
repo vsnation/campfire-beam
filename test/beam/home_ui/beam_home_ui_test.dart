@@ -123,7 +123,8 @@ void main() {
 
       expect(find.byKey(const Key('beamHomeSpendable')), findsOneWidget);
       expect(_text('12.5'), findsWidgets);
-      expect(_text('0.11 USD'), findsOneWidget);
+      // On the card, and on the dashboard's BEAM row.
+      expect(_text('0.11 USD'), findsNWidgets(2));
       expect(_text('arriving'), findsOneWidget);
       expect(_text('With assets ≈ 23 BEAM'), findsOneWidget);
       expect(_text('1 asset has no price'), findsOneWidget);

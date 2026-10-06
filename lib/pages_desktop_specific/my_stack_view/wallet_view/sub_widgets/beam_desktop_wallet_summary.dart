@@ -13,6 +13,10 @@
 // lib/widgets/beam/wallet_home/beam_home_widgets.dart.
 
 import 'package:flutter/material.dart';
+
+import '../../../../wallets/beam/assets/beam_asset_providers.dart'
+    show pBeamHiddenAssetIds;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../pages/wallet_view/sub_widgets/wallet_refresh_button.dart';
@@ -44,6 +48,7 @@ class BeamDesktopWalletSummary extends ConsumerWidget {
         totals: totals,
         format: ref.watch(pBeamHomeFormat(walletId)),
         home: home,
+        hidden: ref.watch(pBeamHiddenAssetIds(walletId)),
       ),
       refreshButton: WalletRefreshButton(
         walletId: walletId,

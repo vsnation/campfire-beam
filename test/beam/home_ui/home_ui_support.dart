@@ -45,6 +45,10 @@ import 'package:stackwallet/wallets/beam/contracts/dex/beam_pool.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_constants.dart';
 import 'package:stackwallet/wallets/beam/node/beam_private_node_coordinator.dart';
 import 'package:stackwallet/wallets/beam/price/beam_asset_pricer.dart';
+import 'package:stackwallet/wallets/beam/assets/beam_asset_holdings.dart';
+import 'package:stackwallet/wallets/beam/assets/beam_asset_providers.dart'
+    show pBeamAssetHoldings, pBeamAssetMarket, pBeamHiddenAssetIds;
+import 'package:stackwallet/wallets/beam/assets/beam_asset_registry.dart';
 import 'package:stackwallet/wallets/beam/sync/beam_sync_state.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_balance_mapper.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_sync_tracker.dart';
@@ -460,6 +464,32 @@ List<Override> homeOverrides({
     coinCardProvider.overrideWithProvider((_) => Provider((_) => null)),
     pCoinColor.overrideWithProvider((_) => StateProvider((_) => color)),
     if (auth != null) pBeamClaimAuthGate.overrideWithValue(auth.gate),
+    // The dashboard's asset list and the hidden set, from the same totals
+    // and pools (the app reads them from Isar, which this harness does not
+    // open).
+    pBeamHiddenAssetIds.overrideWithProvider((_) => Provider((_) => <int>{})),
+    pBeamAssetMarket.overrideWithProvider(
+      (_) => FutureProvider(
+        (_) async => source.pools.isEmpty
+            ? null
+            : BeamAssetMarket(source.pools, readAt: DateTime.now()),
+      ),
+    ),
+    pBeamAssetHoldings.overrideWithProvider(
+      (_) => Provider(
+        (_) => BeamAssetHoldings.build(
+          totals: {0: _beamTotals(balance), ...totals},
+          contracts: {
+            for (final id in totals.keys)
+              if (id != 0) id: BeamAssetRegistry.build(id),
+          },
+          hidden: const {},
+          market: source.pools.isEmpty
+              ? null
+              : BeamAssetMarket(source.pools, readAt: DateTime.now()),
+        ),
+      ),
+    ),
   ];
 }
 

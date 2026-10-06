@@ -46,7 +46,10 @@ import '../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../../wallets/wallet/supporting/beam_wallet_info_extension.dart';
 import '../../desktop/desktop_dialog.dart';
 import '../../desktop/desktop_dialog_close_button.dart';
+import '../../../wallets/beam/assets/beam_asset_providers.dart'
+    show pBeamHiddenAssetIds;
 import 'beam_claim_sheet.dart';
+import 'beam_dashboard_assets.dart';
 import 'beam_home_controller.dart';
 import 'beam_home_source.dart';
 import 'beam_home_text.dart';
@@ -138,6 +141,7 @@ BeamBalanceLines beamBalanceLines({
   required Map<int, BeamCachedAssetTotals> totals,
   required BeamHomeFormat format,
   required BeamHomeController home,
+  Set<int> hidden = const {},
 }) {
   final pending = balance.pendingSpendable;
   final holdsAssets = totals.entries.any(
@@ -155,6 +159,8 @@ BeamBalanceLines beamBalanceLines({
       totals: totals,
       pricer: home.pricer,
       fiat: format.price == null ? null : format.fiatOfGroth,
+      // Assets the user hid are not counted in the total.
+      hidden: hidden,
     ),
     reservePortfolio: holdsAssets,
   );
@@ -184,6 +190,7 @@ class BeamWalletSummaryInfo extends ConsumerWidget {
       totals: totals,
       format: ref.watch(pBeamHomeFormat(walletId)),
       home: home,
+      hidden: ref.watch(pBeamHiddenAssetIds(walletId)),
     );
     return BeamBalanceCardContent(
       lines: lines,
@@ -256,6 +263,11 @@ class BeamHomeExtras extends ConsumerWidget {
             a,
             isDesktop: isDesktop,
           ),
+        ),
+        // Everything of value in the wallet, each one tap from Send.
+        Padding(
+          padding: const EdgeInsets.only(top: 14),
+          child: BeamDashboardAssets(walletId: walletId, isDesktop: isDesktop),
         ),
       ],
     );

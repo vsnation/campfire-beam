@@ -96,15 +96,34 @@ final pBeamAssetContracts = Provider<Map<int, BeamAssetContract>>(
   (ref) => ref.watch(_contractsWatcher).value,
 );
 
+/// Bumped when a background price refresh lands, so [pBeamAssetMarket]
+/// rebuilds with the new prices (Riverpod 1 has no `invalidateSelf`).
+final _pBeamAssetMarketVersion = StateProvider.family<int, String>(
+  (ref, walletId) => 0,
+);
+
 /// DEX prices and LP tokens for [walletId]'s asset screens; null while they
-/// cannot be read (core still connecting). Invalidate to re-read.
+/// cannot be read (core still connecting). Refresh to re-read.
 final pBeamAssetMarket = FutureProvider.family<BeamAssetMarket?, String>((
   ref,
   walletId,
 ) async {
+  ref.watch(_pBeamAssetMarketVersion(walletId));
   final wallet = ref.watch(pBeamWallet(walletId));
   if (wallet == null) return null;
   final source = BeamAssetMarketSource.of(wallet);
+  final saved = source.last;
+  if (saved != null && !source.isFresh()) {
+    // Show the saved prices at once and refresh behind them; the refresh
+    // rebuilds this provider when it lands (and is fresh, so no loop).
+    unawaited(
+      source.read().then(
+        (_) => ref.read(_pBeamAssetMarketVersion(walletId).state).state++,
+        onError: (Object _) {},
+      ),
+    );
+    return saved;
+  }
   try {
     return await source.read();
   } catch (_) {
