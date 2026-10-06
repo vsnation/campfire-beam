@@ -18,8 +18,10 @@ import '../../../models/isar/models/isar_models.dart';
 import '../../../themes/stack_colors.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../utilities/util.dart';
+import '../../../wallets/crypto_currency/crypto_currency.dart';
 import '../../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../../widgets/background.dart';
+import '../../../widgets/beam/receive/beam_address_list.dart';
 import '../../../widgets/conditional_parent.dart';
 import '../../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../../widgets/loading_indicator.dart';
@@ -259,7 +261,12 @@ class _WalletAddressesViewState extends ConsumerState<WalletAddressesView> {
             //   height: isDesktop ? 20 : 16,
             // ),
             Expanded(
-              child: FutureBuilder(
+              child: coin is Beam
+                  ? BeamAddressList(
+                      walletId: widget.walletId,
+                      desktop: isDesktop,
+                    )
+                  : FutureBuilder(
                 future: _search(_searchString),
                 builder: (context, AsyncSnapshot<List<int>> snapshot) {
                   if (snapshot.connectionState == ConnectionState.done &&

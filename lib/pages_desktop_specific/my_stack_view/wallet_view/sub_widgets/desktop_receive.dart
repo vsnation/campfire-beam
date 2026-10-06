@@ -39,6 +39,7 @@ import '../../../../utilities/util.dart';
 import '../../../../wallets/crypto_currency/crypto_currency.dart';
 import '../../../../wallets/isar/providers/eth/current_token_wallet_provider.dart';
 import '../../../../wallets/isar/providers/wallet_info_provider.dart';
+import '../../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../../../wallets/wallet/impl/bitcoin_wallet.dart';
 import '../../../../wallets/wallet/impl/epiccash_wallet.dart';
 import '../../../../wallets/wallet/impl/mimblewimblecoin_wallet.dart';
@@ -49,6 +50,7 @@ import '../../../../wallets/wallet/wallet_mixin_interfaces/multi_address_interfa
 import '../../../../wallets/wallet/wallet_mixin_interfaces/mweb_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/view_only_option_interface.dart';
+import '../../../../widgets/beam/receive/beam_receive_panel.dart';
 import '../../../../widgets/conditional_parent.dart';
 import '../../../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../../../widgets/custom_loading_overlay.dart';
@@ -536,6 +538,14 @@ class _DesktopReceiveState extends ConsumerState<DesktopReceive> {
     final wallet = ref.watch(
       pWallets.select((value) => value.getWallet(walletId)),
     );
+
+    if (wallet is BeamWallet) {
+      return BeamReceivePanel(
+        walletId: walletId,
+        desktop: true,
+        clipboard: clipboard,
+      );
+    }
 
     final bool canGen;
     if (wallet is ViewOnlyOptionInterface &&
