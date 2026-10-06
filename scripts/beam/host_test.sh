@@ -140,9 +140,28 @@ if [ "$DO_TEST" = 1 ]; then
   fi
   [ "$TEST_RC" = 0 ] || RC=1
   if [ "$COPY_GOLDENS" = 1 ]; then
-    # Bring (re)generated golden PNGs back into the real tree.
-    rsync -a --include '*/' --include 'goldens/*.png' --exclude '*' "$WORK_PHYS/test/" "$REPO/test/"
-    log "copied goldens back into $REPO/test"
+    # Bring (re)generated golden PNGs back into the real tree, but only
+    # those of what this run tested: several workers share the tree, and
+    # copying every goldens/ folder back overwrote their fresh images with
+    # this workdir's stale copies.
+    copied=0; paths=()
+    for t in "${TEST_ARGS[@]}"; do
+      case "$t" in -*) ;; *) paths+=("$t") ;; esac
+    done
+    [ "${#paths[@]}" -gt 0 ] || paths=(test)   # whole suite: every golden
+    for t in "${paths[@]}"; do
+      t="${t%/}"
+      [ -e "$WORK_PHYS/$t" ] || continue
+      if [ -d "$WORK_PHYS/$t" ]; then
+        src="$WORK_PHYS/$t"; dst="$REPO/$t"
+      else
+        src="$(dirname "$WORK_PHYS/$t")"; dst="$(dirname "$REPO/$t")"
+      fi
+      mkdir -p "$dst"
+      rsync -a --include '*/' --include 'goldens/*.png' --exclude '*' "$src/" "$dst/"
+      copied=$((copied + 1))
+    done
+    log "copied goldens back for $copied tested path(s)"
   fi
 fi
 T_END=$(ts)
