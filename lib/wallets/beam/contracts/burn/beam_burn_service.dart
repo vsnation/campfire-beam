@@ -12,6 +12,7 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 
 import '../../api/beam_api.dart';
+import '../common/contract_args.dart';
 import '../common/invoke_data.dart';
 import '../common/pinned_shader.dart';
 import '../common/shader_output.dart';
@@ -359,13 +360,5 @@ class BeamBurnService {
     return true;
   }
 
-  static List<int> _le(BigInt value, int n) {
-    var v = value;
-    final out = <int>[];
-    for (var i = 0; i < n; i++) {
-      out.add((v & BigInt.from(0xff)).toInt());
-      v >>= 8;
-    }
-    return out;
-  }
+  static List<int> _le(BigInt value, int n) => BeamArgsWriter.le(value, n);
 }

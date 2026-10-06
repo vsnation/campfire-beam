@@ -32,6 +32,11 @@ class BeamApi {
 
   final BeamTransport transport;
 
+  /// One shader lane per transport, shared by every [BeamApi] over it.
+  static final _shaderLanes = Expando<_SerialLane>('beam shader calls');
+
+  _SerialLane get _shaderLane => _shaderLanes[transport] ??= _SerialLane();
+
   Future<Object?> _call(
     String method, [
     Map<String, Object?> params = const {},
@@ -338,6 +343,15 @@ class BeamApi {
   /// transaction itself; `false` returns `raw_data` for
   /// [processInvokeData], after a confirmation step. A contract call costs at
   /// least 0.011 BEAM, computed by the core.
+  ///
+  /// Calls on one [transport] run one at a time, in the order they were
+  /// made, whichever [BeamApi] (and so whichever service) makes them. The
+  /// core runs one app shader at a time: API 6.0 refuses an overlapping
+  /// call ("Previous shader call is still in progress",
+  /// `v6_api_handle.cpp:836`), and 6.1+ queues it in a `priority_queue`
+  /// keyed on priority alone (`shaders_manager.h:99-110`), so calls of equal
+  /// priority could run in any order. [timeout] counts from when this call
+  /// is sent, not from when it was queued behind others.
   Future<BeamInvokeResult> invokeContract({
     required bool createTx,
     String? args,
@@ -349,18 +363,26 @@ class BeamApi {
     if (contractBytes != null && contractBytes.isEmpty) {
       throw ArgumentError.value(contractBytes, 'contractBytes', 'empty');
     }
-    final r = await _callMap('invoke_contract', {
+    final params = <String, Object?>{
       'contract': ?contractBytes,
       'args': ?args,
       'create_tx': createTx,
       'priority': ?priority,
       'unique': ?unique,
-    }, timeout);
+    };
+    final r = await _shaderLane.run(
+      () => _callMap('invoke_contract', params, timeout),
+    );
     return BeamInvokeResult.fromJson(r);
   }
 
   /// Broadcasts the transaction [invokeContract] prepared with
   /// `createTx: false`. Returns the tx id.
+  ///
+  /// Not queued behind [invokeContract]: the core starts the transaction
+  /// directly (`ShadersManager::ProcessTxData`, no shader runs, and the
+  /// handler has no in-progress check, `v6_api_handle.cpp:909-912`), so a
+  /// confirmed send never waits for a background view to finish.
   Future<String> processInvokeData(
     List<int> data, {
     String? confirmComment,
@@ -386,5 +408,17 @@ class BeamApi {
       throw ArgumentError.value(v, name, 'above 2^63-1');
     }
     return v.toInt();
+  }
+}
+
+/// Runs tasks one after another, in the order they were queued. A task that
+/// fails does not hold up the ones queued behind it.
+class _SerialLane {
+  Future<void> _tail = Future<void>.value();
+
+  Future<T> run<T>(Future<T> Function() task) {
+    final result = _tail.then((_) => task());
+    _tail = result.then<void>((_) {}, onError: (Object _) {});
+    return result;
   }
 }

@@ -15,6 +15,8 @@
 /// Oracle2 median, so every BEAM amount is read from the chain at quote time.
 library;
 
+import '../common/pinned_shader.dart';
+
 /// Mainnet BANS contract (`kind: "Bans v0"`, deployed at 1,890,525).
 const String kBansCid =
     'af4550f1f8a6051ffeffea06e0cb978f8076fdfc2101d2273d4e62c86540bc5e';
@@ -28,8 +30,19 @@ const String kBansShaderSha256 =
 /// Size of the pinned app shader in bytes.
 const int kBansShaderSize = 34666;
 
+/// The app shader's file name under `assets/beam/shaders/`.
+const String kBansShaderName = 'bans_app.wasm';
+
 /// Where the pinned app shader is bundled.
-const String kBansShaderAsset = 'assets/beam/shaders/bans_app.wasm';
+const String kBansShaderAsset = 'assets/beam/shaders/$kBansShaderName';
+
+/// The pinned BANS app shader, read from [source].
+PinnedShader bansAppShader(ShaderSource source) => PinnedShader(
+  name: kBansShaderName,
+  sha256: kBansShaderSha256,
+  size: kBansShaderSize,
+  source: source,
+);
 
 /// `Domain::s_MinLen` / `s_MaxLen` (`contract.h:38-39`).
 const int kBansNameMinLength = 3;

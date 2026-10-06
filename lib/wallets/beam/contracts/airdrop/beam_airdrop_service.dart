@@ -17,6 +17,7 @@ import '../../api/beam_api.dart';
 import '../../models/beam_call_results.dart';
 import '../../models/beam_transaction.dart';
 import '../../rpc/beam_transport.dart';
+import '../common/contract_args.dart';
 import '../common/invoke_data.dart';
 import '../common/pinned_shader.dart';
 import '../common/shader_output.dart';
@@ -1039,13 +1040,5 @@ class BeamAirdropService {
       [for (final x in b) x.toRadixString(16).padLeft(2, '0')].join();
 
   /// [value] (an int or a BigInt) as [n] little-endian bytes.
-  static List<int> _le(Object value, int n) {
-    var v = value is BigInt ? value : BigInt.from(value as int);
-    final out = <int>[];
-    for (var i = 0; i < n; i++) {
-      out.add((v & BigInt.from(0xff)).toInt());
-      v >>= 8;
-    }
-    return out;
-  }
+  static List<int> _le(Object value, int n) => BeamArgsWriter.le(value, n);
 }

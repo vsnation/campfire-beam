@@ -17,6 +17,72 @@ import 'bans_fixtures.dart';
 
 const _tip = 4068103;
 
+/// Shader bytes from a callback, standing in for the app's asset bundle.
+class _BytesSource implements ShaderSource {
+  _BytesSource(this._bytes);
+
+  final List<int> Function() _bytes;
+
+  @override
+  Future<Uint8List> read(String name) async {
+    expect(name, kBansShaderName);
+    return Uint8List.fromList(_bytes());
+  }
+}
+
+/// yas compacted unsigned / signed, as `raw_data` carries them.
+List<int> _u(int v) {
+  if (v < 128) return [0x80 | v];
+  final b = <int>[];
+  for (var x = v; x > 0; x >>= 8) {
+    b.add(x & 0xff);
+  }
+  return [b.length, ...b];
+}
+
+List<int> _s(int v) {
+  final a = v.abs();
+  final sign = v < 0 ? 0x80 : 0;
+  if (a < 64) return [sign | 0x40 | a];
+  final b = <int>[];
+  for (var x = a; x > 0; x >>= 8) {
+    b.add(x & 0xff);
+  }
+  return [sign | b.length, ...b];
+}
+
+List<int> _hexBytes(String h) => [
+  for (var i = 0; i < h.length; i += 2)
+    int.parse(h.substring(i, i + 2), radix: 16),
+];
+
+/// An Anon-Vault receive the way the BANS shader builds it for a claim
+/// (`vault_anon/app_impl.h:440`): an advanced kernel (flags Adv |
+/// HasCommitment) that carries its own fee and validity window.
+List<int> _advancedClaim({required int amount, required int fee}) => [
+  ..._u(1),
+  ..._u(0x80000000 | 0x11),
+  ..._u(BansMethod.vaultWithdraw),
+  ..._u(3),
+  9,
+  9,
+  9,
+  ..._u(0),
+  ..._u(0),
+  ..._u(BansKernelComment.receiveAnon.length),
+  ...BansKernelComment.receiveAnon.codeUnits,
+  ..._u(1),
+  ..._u(0),
+  ..._s(-amount),
+  ..._hexBytes(vaultCid),
+  ..._u(_tip),
+  ..._u(15),
+  ..._u(fee),
+  ...List.filled(65, 1), // signature
+  ...List.filled(32, 2), // key preimage hash
+  ...List.filled(33, 3), // kernel commitment
+];
+
 Map<String, Object?> _walletStatus({int height = _tip, bool inSync = true}) => {
   'current_height': height,
   'current_state_hash': 'ab' * 32,
@@ -58,7 +124,7 @@ void main() {
   void setUpService(
     Map<String, Object?> invoke, {
     BeamExplorerClient? explorer,
-    BansShaderLoader? shader,
+    PinnedShader? shader,
   }) {
     t = FakeTransport({
       'wallet_status': _walletStatus(),
@@ -387,6 +453,51 @@ void main() {
       );
     });
 
+    test('claim all: advanced vault receives, fee fixed in the kernel',
+        () async {
+      final raw = _advancedClaim(amount: 480000000000, fee: 1100000);
+      setUpService({
+        'view_params': 'view_params',
+        'receive_all': {
+          'output': '{}',
+          'raw_data': raw,
+          'txid': '0' * 32,
+        },
+      });
+      final p = await svc.prepareClaimAll();
+      final s = p.summary;
+      expect(p.action, BansAction.claimAll);
+      expect(s.youPay, isEmpty);
+      expect(s.youReceive, [BansAmount(0, BigInt.from(480000000000))]);
+      expect(s.fee, BigInt.from(1100000));
+      expect(s.contractId, vaultCid);
+      expect(s.comments, [BansKernelComment.receiveAnon]);
+      expect(p.invokeData.entries.single.isAdvanced, isTrue);
+      expect(p.invokeData.entries.single.maxHeight, BigInt.from(_tip + 15));
+      expect(t.callsTo('process_invoke_data'), isEmpty);
+    });
+
+    test('an advanced kernel anywhere but a claim is refused', () async {
+      setUpService({
+        'view_params': 'view_params',
+        'my_key': 'my_key',
+        'domain_register': {
+          'output': '{}',
+          'raw_data': _advancedClaim(amount: 5, fee: 1100000),
+        },
+      });
+      await expectLater(
+        svc.prepareRegister(BansName(quotedName5), 1),
+        throwsA(
+          isA<BansUnexpectedTransaction>().having(
+            (e) => e.detail,
+            'detail',
+            contains('undecodable'),
+          ),
+        ),
+      );
+    });
+
     test('claim sale proceeds with nothing waiting', () async {
       setUpService({
         'view_params': 'view_params',
@@ -447,26 +558,45 @@ void main() {
       )..[100] ^= 1;
       setUpService(
         {'view_name': 'view_name_beam'},
-        shader: BansShaderLoader(() async => bad),
+        shader: bansAppShader(_BytesSource(() => bad)),
       );
       await expectLater(
         svc.resolve(BansName('beam')),
-        throwsA(isA<BansShaderMismatch>()),
+        throwsA(
+          isA<BansShaderMismatch>().having(
+            (e) => e.actualSize,
+            'actualSize',
+            kBansShaderSize,
+          ),
+        ),
       );
       expect(t.callsTo('invoke_contract'), isEmpty);
     });
 
     test('the source is read once and verified bytes are cached', () async {
       var reads = 0;
-      final loader = BansShaderLoader(() async {
-        reads++;
-        return File('assets/beam/shaders/bans_app.wasm').readAsBytesSync();
-      });
+      final loader = bansAppShader(
+        _BytesSource(() {
+          reads++;
+          return File('assets/beam/shaders/bans_app.wasm').readAsBytesSync();
+        }),
+      );
       final a = await loader.load();
       final b = await loader.load();
       expect(reads, 1);
       expect(identical(a, b), isTrue);
       expect(() => a[0] = 0, throwsUnsupportedError);
+      // Concurrent first loads share one read.
+      reads = 0;
+      final fresh = bansAppShader(
+        _BytesSource(() {
+          reads++;
+          return File('assets/beam/shaders/bans_app.wasm').readAsBytesSync();
+        }),
+      );
+      final both = await Future.wait([fresh.load(), fresh.load()]);
+      expect(reads, 1);
+      expect(identical(both[0], both[1]), isTrue);
     });
   });
 

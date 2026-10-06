@@ -16,9 +16,9 @@
 
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
-import 'package:stackwallet/wallets/beam/contracts/bans/bans_shader.dart';
+import 'package:stackwallet/wallets/beam/contracts/bans/bans_constants.dart';
+import 'package:stackwallet/wallets/beam/contracts/common/pinned_shader.dart';
 
 const fakeMyKey =
     '5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a00';
@@ -55,8 +55,5 @@ List<int> bansRaw(String name) => [
 ];
 
 /// The pinned shader as committed in the repo.
-BansShaderLoader repoShader() => BansShaderLoader(
-  () async => Uint8List.fromList(
-    File('assets/beam/shaders/bans_app.wasm').readAsBytesSync(),
-  ),
-);
+PinnedShader repoShader() =>
+    bansAppShader(const FileShaderSource('assets/beam/shaders'));

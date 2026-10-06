@@ -98,6 +98,13 @@ class DappSession {
   final _subscribed = <String>{};
   final _notifications = StreamController<String>.broadcast();
   Future<void> _shaderTail = Future.value();
+
+  /// The app shader this dApp sent last. wallet-api keeps one compiled
+  /// shader per process and reuses it for any call that omits `contract`,
+  /// and that shader may belong to another dApp or to the wallet's own
+  /// privileged BANS module. A call without `contract` therefore gets this
+  /// dApp's own bytes back, never whatever ran last.
+  List<int>? _ownShader;
   int _inFlight = 0;
   bool _closed = false;
 
@@ -218,7 +225,8 @@ class DappSession {
       case 'process_invoke_data':
         return _contract(req, params);
       case 'invoke_contract':
-        return _oneShaderAtATime(() => _call(req.method, params));
+        final call = _withOwnShader(params);
+        return _oneShaderAtATime(() => _call(req.method, call));
       case 'ev_subunsub':
         final r = await _call(req.method, params);
         for (final e in params.entries) {
@@ -528,6 +536,22 @@ class DappSession {
   }
 
   // ----------------------------------------------------------- forwarding
+
+  Map<String, Object?> _withOwnShader(Map<String, Object?> params) {
+    final contract = params['contract'];
+    if (contract is List<int>) {
+      _ownShader = contract;
+      return params;
+    }
+    final own = _ownShader;
+    if (own == null) {
+      throw DappRpcErrors.error(
+        DappRpcErrors.invalidParams,
+        'Send the app shader with the first contract call',
+      );
+    }
+    return Map.unmodifiable({...params, 'contract': own});
+  }
 
   Future<Object?> _call(String method, Map<String, Object?> params) =>
       transport.call(method, params);

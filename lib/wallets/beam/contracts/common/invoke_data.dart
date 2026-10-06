@@ -19,6 +19,10 @@ import 'package:meta/meta.dart';
 /// 1706-1759`); mainnet is far past HF3. `process_invoke_data` pays exactly
 /// this (`wallet/core/contract_transaction.cpp:737`), and wallet-api's own
 /// confirmation info reports the same sum (`v6_api_parse.cpp:939`).
+///
+/// An advanced entry is the exception: it carries its own fee, fixed when
+/// the shader built it, and the core pays that unchanged
+/// (`contract_transaction.cpp:734`); see [BeamInvokeEntry.advancedFee].
 abstract final class BeamContractFee {
   static const _output = 18000;
   static const _kernel = 10000;
@@ -70,7 +74,14 @@ class BeamInvokeEntry {
     required this.comment,
     required this.spend,
     this.parentHeight,
-  });
+    this.signatureKeyHashes = const [],
+    this.advancedFee,
+    this.minHeight,
+    this.maxHeight,
+  }) : assert(
+         (flags & BeamInvokeData.flagAdvanced != 0) == (advancedFee != null),
+         'an advanced entry, and only one, carries its own fee',
+       );
 
   final int flags;
 
@@ -103,35 +114,69 @@ class BeamInvokeEntry {
   /// Set for a dependent (HFT) call: the height of the context it builds on.
   final BigInt? parentHeight;
 
+  /// The keys the core signs this call with (`m_vSig`), one per signature:
+  /// each is the 32-byte hash of a shader-chosen key id, lowercase hex. The
+  /// wallet derives the actual key from it, so these are the same for every
+  /// wallet running the same shader and are not secret.
+  final List<String> signatureKeyHashes;
+
+  /// Advanced entries only (a kernel the app shader co-signed itself, such
+  /// as an Anon-Vault receive): the fee fixed inside it, in groth. The core
+  /// pays exactly this (`contract_transaction.cpp:734`).
+  final BigInt? advancedFee;
+
+  /// Advanced entries only: the heights the kernel is valid between.
+  final BigInt? minHeight;
+  final BigInt? maxHeight;
+
   bool get isDependent => flags & BeamInvokeData.flagDependent != 0;
 
-  BigInt get fee => BeamContractFee.forEntry(
-    argsBytes: args.length,
-    dataBytes: dataLength,
-    spendAssets: spend.keys,
-    charge: charge,
-  );
+  bool get isAdvanced => flags & BeamInvokeData.flagAdvanced != 0;
+
+  /// Always false for a decoded entry: [BeamInvokeData.decode] refuses
+  /// multisigned calls.
+  bool get isMultisigned => flags & BeamInvokeData.flagMultisigned != 0;
+
+  BigInt get fee =>
+      advancedFee ??
+      BeamContractFee.forEntry(
+        argsBytes: args.length,
+        dataBytes: dataLength,
+        spendAssets: spend.keys,
+        charge: charge,
+      );
 }
 
 /// A decoded `invoke_contract` `raw_data` (`bvm2::ContractInvokeData`,
 /// `bvm/invoke_data.h`), serialized by the core with yas `binary |
-/// no_header | elittle | compacted`.
+/// no_header | elittle | compacted` (`utility/serialize.h:39`).
+///
+/// Compacted integers (`3rdparty/yas/detail/io/binary_streams.hpp:
+/// 254-324`): unsigned is one byte `0x80 | v` when `v < 128`, otherwise a
+/// byte `n` and `n` little-endian bytes; signed is one byte
+/// `0x40 | sign << 7 | |v|` when `|v| < 64`, otherwise `sign << 7 | n` and
+/// `n` little-endian bytes of `|v|`. Fixed-size arrays (hashes, contract
+/// ids, points as `X[32] || Y[1]`) are raw; vectors, strings and maps carry
+/// a compacted length first.
 ///
 /// This is what `process_invoke_data` will execute, so a confirmation
 /// screen shows [pays], [receives] and [fee] from here rather than from an
 /// earlier quote. The same three numbers are what wallet-api derives for its
 /// own confirmation (`v6_api_parse.cpp:900-951`).
 ///
-/// Only plain and dependent single-signer calls are decoded. Advanced,
-/// multisigned and commitment-carrying entries, unknown flags and trailing
-/// bytes all raise [FormatException]: a screen must not summarise what it
-/// cannot fully read.
+/// [decode] reads plain and dependent calls. Advanced entries (with their
+/// kernel commitment) are read only when the caller opts in; multisigned
+/// entries, unknown flags and trailing bytes always raise
+/// [FormatException]: a screen must not summarise what it cannot fully read.
 @immutable
 class BeamInvokeData {
   const BeamInvokeData({
     required this.entries,
     this.appArgs,
     this.spendMax,
+    this.appShader,
+    this.contractShader,
+    this.appPrivilege,
   });
 
   static const flagAdvanced = 0x01;
@@ -158,6 +203,18 @@ class BeamInvokeData {
 
   /// An explicit spend ceiling the app set, when present.
   final Map<int, BigInt>? spendMax;
+
+  /// The app shader the core re-runs when it rebuilds a dependent call
+  /// (`AppInvokeData.m_App`), when present. Compare it with the pinned
+  /// shader before trusting a rebuild.
+  final Uint8List? appShader;
+
+  /// The contract body stored with [appShader] (`m_Contract`), when present.
+  final Uint8List? contractShader;
+
+  /// The privilege the core re-runs [appShader] at (`m_Privilege`), when
+  /// present. Anything above 0 lets the shader use wallet keys directly.
+  final int? appPrivilege;
 
   /// Net funds over all entries (`get_FullSpend`): positive = paid,
   /// negative = received. Zero entries are dropped.
@@ -188,28 +245,47 @@ class BeamInvokeData {
   BigInt get fee =>
       entries.fold(BigInt.zero, (sum, e) => sum + e.fee);
 
-  static BeamInvokeData decode(List<int> rawData) {
+  /// The kernel comments, in order, empty ones left out.
+  List<String> get comments => List.unmodifiable([
+    for (final e in entries)
+      if (e.comment.isNotEmpty) e.comment,
+  ]);
+
+  /// Decodes [rawData] completely or throws [FormatException].
+  ///
+  /// [allowAdvanced]: also read advanced entries (`Flags::Adv`, with the
+  /// kernel commitment the core stores alongside, `Flags::HasCommitment`).
+  /// Only a caller that expects them should pass true: the BANS claim reads
+  /// Anon-Vault receives, which are advanced. Their fee is the one fixed in
+  /// the kernel ([BeamInvokeEntry.advancedFee]).
+  static BeamInvokeData decode(
+    List<int> rawData, {
+    bool allowAdvanced = false,
+  }) {
     final r = _YasReader(rawData);
     final count = r.seqSize(minElementBytes: 4);
     final entries = <BeamInvokeEntry>[];
     for (var i = 0; i < count; i++) {
-      entries.add(_entry(r));
+      entries.add(_entry(r, allowAdvanced: allowAdvanced));
     }
 
     Map<String, String>? appArgs;
     Map<int, BigInt>? spendMax;
+    Uint8List? appShader;
+    Uint8List? contractShader;
+    int? appPrivilege;
     if (entries.isNotEmpty) {
       final flags = entries.first.flags;
       if (flags & flagSaveAppInvoke != 0) {
-        r.byteBuffer(); // app shader body
-        r.byteBuffer(); // contract shader body
+        appShader = Uint8List.fromList(r.byteBuffer());
+        contractShader = Uint8List.fromList(r.byteBuffer());
         final n = r.seqSize(minElementBytes: 2);
         appArgs = {};
         for (var i = 0; i < n; i++) {
           final k = r.string();
           appArgs[k] = r.string();
         }
-        r.u32(); // privilege
+        appPrivilege = r.u32();
       }
       if (flags & flagSaveSpendMax != 0) spendMax = r.fundsMap();
     }
@@ -222,10 +298,16 @@ class BeamInvokeData {
       entries: List.unmodifiable(entries),
       appArgs: appArgs == null ? null : Map.unmodifiable(appArgs),
       spendMax: spendMax,
+      appShader: appShader?.asUnmodifiableView(),
+      contractShader: contractShader?.asUnmodifiableView(),
+      appPrivilege: appPrivilege,
     );
   }
 
-  static BeamInvokeEntry _entry(_YasReader r) {
+  static BeamInvokeEntry _entry(
+    _YasReader r, {
+    required bool allowAdvanced,
+  }) {
     const hasFlags = 0x80000000;
     final first = r.u32();
     var flags = 0;
@@ -238,13 +320,21 @@ class BeamInvokeData {
       throw FormatException('raw_data: unknown entry flags 0x'
           '${flags.toRadixString(16)}');
     }
-    if (flags & _unsupported != 0) {
+    final refused = allowAdvanced ? flagMultisigned : _unsupported;
+    if (flags & refused != 0) {
       throw FormatException('raw_data: unsupported entry flags 0x'
           '${flags.toRadixString(16)} (advanced, multisig or commitment)');
     }
+    // The core stores a commitment only for an advanced kernel
+    // (`invoke_data.cpp:148-152`).
+    if (flags & flagHasCommitment != 0 && flags & flagAdvanced == 0) {
+      throw const FormatException(
+        'raw_data: a kernel commitment on a non-advanced entry',
+      );
+    }
     final args = r.byteBuffer();
     final sigs = r.seqSize(minElementBytes: 32);
-    r.skip(32 * sigs);
+    final sigKeys = [for (var i = 0; i < sigs; i++) _hex(r.take(32))];
     final charge = r.u32();
     final comment = r.string();
     final spend = r.fundsMap();
@@ -255,11 +345,23 @@ class BeamInvokeData {
     } else {
       dataLength = r.byteBuffer().length;
     }
+    BigInt? advancedFee;
+    BigInt? minHeight;
+    BigInt? maxHeight;
+    if (flags & flagAdvanced != 0) {
+      // m_Adv: HeightRange (min, then max - min), fee, signature (nonce
+      // point 33 + scalar 32), key preimage hash 32.
+      minHeight = r.u64();
+      maxHeight = (minHeight + r.u64()) & _u64Mask;
+      advancedFee = r.u64();
+      r.skip(33 + 32 + 32);
+    }
     BigInt? parentHeight;
     if (flags & flagDependent != 0) {
       parentHeight = r.u64();
       r.skip(32); // parent context hash
     }
+    if (flags & flagHasCommitment != 0) r.skip(33);
     return BeamInvokeEntry(
       flags: flags,
       method: method,
@@ -271,8 +373,15 @@ class BeamInvokeData {
       comment: comment,
       spend: spend,
       parentHeight: parentHeight,
+      signatureKeyHashes: List.unmodifiable(sigKeys),
+      advancedFee: advancedFee,
+      minHeight: minHeight,
+      maxHeight: maxHeight,
     );
   }
+
+  /// `Height` is unsigned 64-bit; `HeightRange` adds in that width.
+  static final _u64Mask = (BigInt.one << 64) - BigInt.one;
 
   static String _hex(List<int> bytes) =>
       [for (final b in bytes) b.toRadixString(16).padLeft(2, '0')].join();

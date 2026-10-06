@@ -5,7 +5,8 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/wallets/beam/contracts/bans/bans_constants.dart';
-import 'package:stackwallet/wallets/beam/contracts/bans/beam_invoke_data.dart';
+import 'package:stackwallet/wallets/beam/contracts/common/contract_args.dart';
+import 'package:stackwallet/wallets/beam/contracts/common/invoke_data.dart';
 
 import 'bans_fixtures.dart';
 
@@ -67,7 +68,7 @@ void main() {
       expect(e.contractId, kBansCid);
       expect(e.charge, 80150);
       expect(e.comment, BansKernelComment.register);
-      expect(e.signatureKeyCount, 0);
+      expect(e.signatureCount, 0);
       expect(e.spend, {0: BigInt.from(116213166091)});
       // Register args: pkOwner[33] periods[1] nameLen[1] name
       final r = BeamArgsReader(e.args);
@@ -76,7 +77,7 @@ void main() {
       final len = r.u8();
       expect(String.fromCharCodes(r.bytes(len)), quotedName5);
       expect(r.atEnd, isTrue);
-      expect(d.fullSpend, {0: BigInt.from(116213166091)});
+      expect(d.spend, {0: BigInt.from(116213166091)});
       expect(d.fee, BigInt.from(1100000));
     });
 
@@ -99,11 +100,11 @@ void main() {
           BigInt.from(10).pow(9) ~/
           BigInt.from(8604877);
       expect(
-        BeamInvokeData.decode(bansRaw('register5')).fullSpend[0],
+        BeamInvokeData.decode(bansRaw('register5')).spend[0],
         price(10, 1),
       );
       expect(
-        BeamInvokeData.decode(bansRaw('register4')).fullSpend[0],
+        BeamInvokeData.decode(bansRaw('register4')).spend[0],
         price(120, 2),
       );
     });
@@ -166,7 +167,7 @@ void main() {
         ...entry(spend: {0: 700, 7: 9}),
       ];
       final d = BeamInvokeData.decode(bytes);
-      expect(d.fullSpend, {0: BigInt.from(1200), 7: BigInt.from(9)});
+      expect(d.spend, {0: BigInt.from(1200), 7: BigInt.from(9)});
       // second entry: 2 outputs -> still under the 100,000 floor
       expect(d.fee, BigInt.from(2 * 1100000));
     });
@@ -176,17 +177,17 @@ void main() {
           BeamInvokeData.decode([...u(1), ...bytes]).entries.single;
       // no BEAM spend: one asset output + one BEAM change output
       expect(
-        BeamContractFee.forEntry(one(entry(spend: {7: 5}))),
+        one(entry(spend: {7: 5})).fee,
         BigInt.from(100000 + 1000000),
       );
       // charge above the minimum: 10 groth per unit
       expect(
-        BeamContractFee.forEntry(one(entry(charge: 300000))),
+        one(entry(charge: 300000)).fee,
         BigInt.from(100000 + 3000000),
       );
       // 40,000 argument bytes: 7,232 above the free 32 KiB at 50 each
       expect(
-        BeamContractFee.forEntry(one(entry(args: List.filled(40000, 1)))),
+        one(entry(args: List.filled(40000, 1))).fee,
         BigInt.from(18000 + 10000 + 7232 * 50 + 1000000),
       );
     });
@@ -194,7 +195,7 @@ void main() {
     test('flags: an advanced entry carries its own fee', () {
       final bytes = [
         ...u(1),
-        ...u(0x80000000 | BeamInvokeEntry.flagAdvanced),
+        ...u(0x80000000 | BeamInvokeData.flagAdvanced),
         ...u(3),
         ...blob([9]),
         ...u(0),
@@ -210,14 +211,16 @@ void main() {
         ...List.filled(65, 1), // sig
         ...List.filled(32, 2), // hvSk
       ];
-      final d = BeamInvokeData.decode(bytes);
+      // Only a caller that expects advanced entries (BANS claims) reads one.
+      expect(() => BeamInvokeData.decode(bytes), throwsFormatException);
+      final d = BeamInvokeData.decode(bytes, allowAdvanced: true);
       final e = d.entries.single;
       expect(e.isAdvanced, isTrue);
       expect(e.method, 3);
-      expect(e.minHeight, 4068103);
-      expect(e.maxHeight, 4068118);
+      expect(e.minHeight, BigInt.from(4068103));
+      expect(e.maxHeight, BigInt.from(4068118));
       expect(d.fee, BigInt.from(1100000));
-      expect(d.fullSpend, {0: BigInt.from(-480000000000)});
+      expect(d.spend, {0: BigInt.from(-480000000000)});
     });
 
     test('rejects trailing, truncated and absurd data', () {

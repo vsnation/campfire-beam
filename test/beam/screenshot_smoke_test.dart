@@ -2,9 +2,10 @@
 // device or a display: flutter_tester renders off-screen and matchesGoldenFile
 // writes / compares the image.
 //
-// It pumps real app widgets (PrimaryButton, SecondaryButton, RoundedWhiteContainer,
-// STextStyles) themed with Campfire's own default theme
-// (asset_sources/default_themes/campfire/light.zip) and the bundled Inter fonts.
+// It pumps real app widgets (PrimaryButton, SecondaryButton,
+// RoundedWhiteContainer, STextStyles) themed with Campfire's own default
+// theme (asset_sources/default_themes/campfire/light.zip) and the bundled
+// Inter fonts.
 //
 // Write or refresh the golden:
 //   flutter test --update-goldens test/beam/screenshot_smoke_test.dart
@@ -111,7 +112,8 @@ void main() {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Rendered by flutter_tester with the Campfire light theme.',
+                        'Rendered by flutter_tester with the Campfire '
+                        'light theme.',
                         style: STextStyles.desktopTextExtraExtraSmall(context),
                       ),
                       const SizedBox(height: 24),

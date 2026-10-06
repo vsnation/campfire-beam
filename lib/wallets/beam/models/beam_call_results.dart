@@ -76,9 +76,10 @@ class BeamInvokeResult {
 
   factory BeamInvokeResult.fromJson(Map<String, Object?> json) {
     final raw = json['raw_data'];
+    final txId = BeamJson.nonEmpty(json, 'txid');
     return BeamInvokeResult(
       output: BeamJson.optString(json, 'output') ?? '',
-      txId: BeamJson.nonEmpty(json, 'txid'),
+      txId: txId == null || _allZero.hasMatch(txId) ? null : txId,
       rawData: raw == null
           ? null
           : List<int>.unmodifiable(
@@ -92,6 +93,13 @@ class BeamInvokeResult {
 
   /// The app shader's output, usually JSON text.
   final String output;
+
+  /// The transaction the core started, or null when it started none.
+  /// wallet-api answers a `create_tx: false` call (and a shader that built
+  /// nothing) with an all-zero `TxID` (32 hex zeros), which is not a
+  /// transaction and maps to null here.
   final String? txId;
   final List<int>? rawData;
+
+  static final _allZero = RegExp(r'^0+$');
 }

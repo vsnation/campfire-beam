@@ -444,8 +444,12 @@ flutter:
 # %%END_ENABLE_MWEBDEXE%%
 
 # %%ENABLE_BEAM%%
-## Pinned BEAM core binaries for desktop, added by the binaries task:
-##    - assets/beam/
+## BEAM app shaders (amm, bans, airdrop, minter, blackhole). Each is pinned
+## by SHA-256 and checked before first use (contracts/common/pinned_shader).
+#    - assets/beam/shaders/
+## Pinned BEAM core binaries for desktop, added by the binaries task. A
+## directory entry does not include its subdirectories, so each platform's
+## binaries folder is listed on its own line.
 # %%END_ENABLE_BEAM%%
 
 import_sorter:

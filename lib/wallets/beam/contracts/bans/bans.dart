@@ -13,12 +13,15 @@
 /// Start at `BeamBansService`.
 library;
 
+export '../common/contract_args.dart' show BeamArgsReader;
+export '../common/invoke_data.dart'
+    show BeamContractFee, BeamInvokeData, BeamInvokeEntry;
+export '../common/pinned_shader.dart'
+    show FileShaderSource, PinnedShader, PinnedShaderException, ShaderSource;
 export 'bans_args.dart';
 export 'bans_constants.dart';
 export 'bans_exceptions.dart';
 export 'bans_models.dart';
 export 'bans_name.dart';
 export 'bans_service.dart';
-export 'bans_shader.dart';
 export 'bans_timeline.dart';
-export 'beam_invoke_data.dart';

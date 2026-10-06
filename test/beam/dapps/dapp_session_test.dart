@@ -110,7 +110,12 @@ void main() {
         return c.future;
       });
       final s = testSession(t, policy);
-      final a = s.handle(rq(1, 'invoke_contract', {'args': 'a=1'}));
+      final a = s.handle(
+        rq(1, 'invoke_contract', {
+          'contract': [1],
+          'args': 'a=1',
+        }),
+      );
       final b = s.handle(rq(2, 'invoke_contract', {'args': 'a=2'}));
       await Future<void>.delayed(const Duration(milliseconds: 20));
       expect(t.callsTo('invoke_contract'), hasLength(1));
@@ -120,6 +125,36 @@ void main() {
       expect(t.callsTo('invoke_contract'), hasLength(2));
       gates[1].complete({'output': '2'});
       expect(resultOf(await b), {'output': '2'});
+    });
+
+    test('a call without a shader reuses only this dApp\'s shader', () async {
+      final s = testSession(t, policy);
+      final first = await s.handle(rq(1, 'invoke_contract', {'args': 'a=1'}));
+      expect(errorCode(first), -32602);
+      expect(t.callsTo('invoke_contract'), isEmpty);
+
+      await s.handle(
+        rq(2, 'invoke_contract', {
+          'contract': [7, 7],
+          'args': 'a=2',
+        }),
+      );
+      await s.handle(rq(3, 'invoke_contract', {'args': 'a=3'}));
+      expect(t.lastParams('invoke_contract')['contract'], [7, 7]);
+    });
+
+    test('one dApp never inherits another dApp\'s shader', () async {
+      final a = testSession(t, policy);
+      final b = testSession(t, policy);
+      await a.handle(
+        rq(1, 'invoke_contract', {
+          'contract': [1, 1],
+          'args': 'x=1',
+        }),
+      );
+      final res = await b.handle(rq(2, 'invoke_contract', {'args': 'x=2'}));
+      expect(errorCode(res), -32602);
+      expect(t.callsTo('invoke_contract'), hasLength(1));
     });
 
     test('a lost connection is reported as an unknown outcome', () async {

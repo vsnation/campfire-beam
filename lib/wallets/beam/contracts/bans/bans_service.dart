@@ -8,6 +8,7 @@
  */
 
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:meta/meta.dart';
 
@@ -16,14 +17,16 @@ import '../../explorer/beam_explorer_client.dart';
 import '../../explorer/explorer_table.dart';
 import '../../models/beam_call_results.dart';
 import '../../rpc/beam_transport.dart';
+import '../common/asset_shader_source.dart';
+import '../common/contract_args.dart';
+import '../common/invoke_data.dart';
+import '../common/pinned_shader.dart';
 import 'bans_args.dart';
 import 'bans_constants.dart';
 import 'bans_exceptions.dart';
 import 'bans_models.dart';
 import 'bans_name.dart';
-import 'bans_shader.dart';
 import 'bans_timeline.dart';
-import 'beam_invoke_data.dart';
 
 /// What a prepared BANS transaction does.
 enum BansAction {
@@ -271,18 +274,22 @@ class BansPrepared {
 /// Every call runs the pinned app shader with `create_tx: false`, so the
 /// core returns the transaction instead of sending it. [execute] is the
 /// only method that sends anything.
+///
+/// [shader] defaults to the bundled `assets/beam/shaders/bans_app.wasm`
+/// (see [bansAppShader]); a file that is not the pinned build is never run
+/// and surfaces as [BansShaderMismatch].
 class BeamBansService {
   BeamBansService(
     this._api,
     this._explorer, {
-    BansShaderLoader? shader,
+    PinnedShader? shader,
     this.args = BansArgs.mainnet,
     this.callTimeout = const Duration(seconds: 90),
-  }) : _shader = shader ?? BansShaderLoader.asset();
+  }) : _shader = shader ?? bansAppShader(AssetShaderSource());
 
   final BeamApi _api;
   final BeamExplorerClient? _explorer;
-  final BansShaderLoader _shader;
+  final PinnedShader _shader;
   final BansArgs args;
 
   /// Per shader call. `view_domain` over every name returns about 58 KB.
@@ -563,7 +570,7 @@ class BeamBansService {
   Future<BansPrepared> prepareClaimAll() async {
     final p = await params();
     final a = args.receiveAll();
-    final built = await _build(a);
+    final built = await _build(a, claim: true);
     return _claim(BansAction.claimAll, a, built, p.vaultCid);
   }
 
@@ -572,7 +579,7 @@ class BeamBansService {
   Future<BansPrepared> prepareClaimSaleProceeds(int assetId) async {
     final p = await params();
     final a = args.receive(assetId: assetId);
-    final built = await _build(a);
+    final built = await _build(a, claim: true);
     return _claim(BansAction.claimSaleProceeds, a, built, p.vaultCid);
   }
 
@@ -653,7 +660,12 @@ class BeamBansService {
   }
 
   Future<BeamInvokeResult> _invoke(String a) async {
-    final shader = await _shader.load();
+    final Uint8List shader;
+    try {
+      shader = await _shader.load();
+    } on PinnedShaderException catch (e) {
+      throw BansShaderMismatch(e.actualSha256 ?? '', e.actualSize ?? 0);
+    }
     try {
       return await _api.invokeContract(
         createTx: false,
@@ -669,7 +681,11 @@ class BeamBansService {
 
   Future<String> _read(String a) async => (await _invoke(a)).output;
 
-  Future<_Built> _build(String a) async {
+  /// Builds [a] and decodes the result. Only a [claim] may contain
+  /// advanced entries: claims withdraw from the Anon-Vault with kernels the
+  /// shader co-signs (`vault_anon/app_impl.h:430-440`); nothing else BANS
+  /// builds is one, so anywhere else an advanced entry is refused.
+  Future<_Built> _build(String a, {bool claim = false}) async {
     final r = await _invoke(a);
     BansOutput.decode(r.output); // throws BansShaderRefused
     final raw = r.rawData;
@@ -678,7 +694,7 @@ class BeamBansService {
     }
     final BeamInvokeData data;
     try {
-      data = BeamInvokeData.decode(raw);
+      data = BeamInvokeData.decode(raw, allowAdvanced: claim);
     } on FormatException catch (e) {
       throw BansUnexpectedTransaction('undecodable: ${e.message}');
     }
@@ -707,7 +723,7 @@ class BeamBansService {
         'claims withdraw from the BANS vault',
       );
     }
-    final spend = d.fullSpend;
+    final spend = d.spend;
     _expect(spend.values.every((v) => v < BigInt.zero), 'claims only receive');
     return _prepared(action, a, built, BansSummary(
       action: action,

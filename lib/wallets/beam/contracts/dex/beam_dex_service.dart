@@ -117,10 +117,10 @@ class BeamPreparedDexCall {
 ///    the decoded amounts and fee and the user has passed Campfire's PIN
 ///    gate.
 ///
-/// wallet-api runs one shader at a time and fails an overlapping
-/// `invoke_contract` ("Previous shader call is still in progress"), so this
-/// service queues its own calls. Other services on the same wallet-api need
-/// the same discipline.
+/// The core runs one app shader at a time; `BeamApi.invokeContract`
+/// already sends every service's shader calls on a connection one after
+/// another. This service also queues its own calls, so an [execute] never
+/// overtakes a build it asked for earlier.
 class BeamDexService {
   BeamDexService(
     this.api,

@@ -38,9 +38,17 @@ class FileShaderSource implements ShaderSource {
 
 /// Thrown when shader bytes do not match their pinned hash or size.
 class PinnedShaderException implements Exception {
-  const PinnedShaderException(this.message);
+  const PinnedShaderException(
+    this.message, {
+    this.actualSha256,
+    this.actualSize,
+  });
 
   final String message;
+
+  /// What was read instead, when the bytes were read at all.
+  final String? actualSha256;
+  final int? actualSize;
 
   @override
   String toString() => 'PinnedShaderException: $message';
@@ -72,31 +80,43 @@ class PinnedShader {
   /// Lowercase hex SHA-256 of the exact file.
   final String sha256;
 
-  /// Expected length in bytes, checked before hashing when given.
+  /// Expected length in bytes, checked along with the hash when given.
   final int? size;
 
   final ShaderSource source;
 
   Uint8List? _verified;
+  Future<Uint8List>? _inFlight;
 
   /// The verified shader bytes (an unmodifiable view).
   ///
-  /// Throws [PinnedShaderException] when the bytes differ from the pin.
-  Future<Uint8List> load() async {
+  /// Concurrent calls share one read of [source]. Throws
+  /// [PinnedShaderException] when the bytes differ from the pin; a later
+  /// call reads the source again.
+  Future<Uint8List> load() {
     final cached = _verified;
-    if (cached != null) return cached;
+    if (cached != null) return Future.value(cached);
+    return _inFlight ??= _readAndVerify().whenComplete(
+      () => _inFlight = null,
+    );
+  }
 
+  Future<Uint8List> _readAndVerify() async {
     final bytes = await source.read(name);
+    final actual = digestOf(bytes);
     final expectedSize = size;
     if (expectedSize != null && bytes.length != expectedSize) {
       throw PinnedShaderException(
         '$name: ${bytes.length} bytes, pinned $expectedSize',
+        actualSha256: actual,
+        actualSize: bytes.length,
       );
     }
-    final actual = digestOf(bytes);
     if (actual != sha256) {
       throw PinnedShaderException(
         '$name: sha256 $actual does not match pinned $sha256',
+        actualSha256: actual,
+        actualSize: bytes.length,
       );
     }
     // Copy, so a source that keeps a reference cannot change them later.
