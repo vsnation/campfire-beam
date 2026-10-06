@@ -124,7 +124,7 @@ void main() {
       final c = code(5);
       voucher(c, 0, g(50000000));
       await pumpBeamPage(tester, claimView());
-      expect(find.text('Claim voucher'), findsOneWidget);
+      expect(find.text('Claim code'), findsOneWidget);
       expect(_enabled(tester, 'claim-cta'), isFalse);
 
       await tester.enterText(find.byKey(const ValueKey('claim-code-field')), c);
@@ -225,7 +225,7 @@ void main() {
       );
       await tester.pump();
       expect(service.isBusy, isFalse);
-      expect(find.text('Claim voucher'), findsOneWidget);
+      expect(find.text('Claim code'), findsOneWidget);
     });
 
     testWidgets('desktop: a token voucher, fee paid in BEAM', (tester) async {

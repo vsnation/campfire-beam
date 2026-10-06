@@ -141,11 +141,16 @@ class BeamTotalRow extends StatelessWidget {
     required this.label,
     required this.value,
     this.valueKey,
+    this.confirm = true,
   });
 
   final String label;
   final String value;
   final Key? valueKey;
+
+  /// False on a form, before anything is confirmed: a plain card, not the
+  /// confirm screen's green (which reads as "done").
+  final bool confirm;
 
   @override
   Widget build(BuildContext context) {
@@ -155,9 +160,11 @@ class BeamTotalRow extends StatelessWidget {
         (desktop
                 ? STextStyles.desktopTextExtraExtraSmall(context)
                 : STextStyles.titleBold12(context))
-            .copyWith(color: colors.textConfirmTotalAmount);
+            .copyWith(
+              color: confirm ? colors.textConfirmTotalAmount : colors.textDark,
+            );
     return RoundedContainer(
-      color: colors.snackBarBackSuccess,
+      color: confirm ? colors.snackBarBackSuccess : colors.popupBG,
       padding: const EdgeInsets.all(12),
       child: LayoutBuilder(
         builder: (context, box) => Row(

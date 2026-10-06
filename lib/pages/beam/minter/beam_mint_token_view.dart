@@ -374,6 +374,7 @@ class _BeamMintTokenViewState extends State<BeamMintTokenView> {
           label: 'Creating a token costs',
           value: cost == null ? '…' : '${beam(cost)} + network fee',
           valueKey: const ValueKey('mint-cost-total'),
+          confirm: false,
         ),
         if (_tooPoor) ...[
           const BeamGap(),

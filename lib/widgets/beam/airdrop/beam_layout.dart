@@ -48,7 +48,9 @@ class BeamLayoutScope extends InheritedWidget {
 ///   arrow, the content scrolling, and [bottom] pinned under it so the
 ///   primary button is on screen without scrolling (USER_PSYCHOLOGY §1.3);
 /// * desktop: [DesktopScaffold] + [DesktopAppBar], content centred at
-///   [desktopMaxWidth].
+///   [desktopMaxWidth], and [bottom] right under the content when it fits
+///   (never a window-height gap between a field and its button), pinned
+///   under it only when the content has to scroll.
 class BeamPageScaffold extends StatelessWidget {
   const BeamPageScaffold({
     super.key,
@@ -117,9 +119,10 @@ class BeamPageScaffold extends StatelessWidget {
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: desktopMaxWidth),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
+                Flexible(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
                     child: body,

@@ -70,7 +70,7 @@ class BeamClaimVoucherView extends StatefulWidget {
   });
 
   static const routeName = '/beamClaimVoucher';
-  static const title = 'Claim a voucher';
+  static const title = 'Claim a code';
 
   /// This wallet's airdrop service (one instance per wallet).
   final BeamAirdropService service;
@@ -284,7 +284,7 @@ class _BeamClaimVoucherViewState extends State<BeamClaimVoucherView>
         label = 'Check code';
         action = _check;
       } else {
-        label = 'Claim voucher';
+        label = 'Claim code';
       }
       return BeamPageScaffold(
         title: BeamClaimVoucherView.title,
@@ -353,7 +353,7 @@ class _BeamClaimVoucherViewState extends State<BeamClaimVoucherView>
     return BeamTextField(
       fieldKey: const ValueKey('claim-code-field'),
       controller: _code,
-      label: 'Voucher code',
+      label: 'Code',
       hint: 'XXXX-XXXX-XXXX-XXXX',
       style: voucherCodeStyle(context),
       textCapitalization: TextCapitalization.characters,
@@ -396,7 +396,7 @@ class _BeamClaimVoucherViewState extends State<BeamClaimVoucherView>
     return BeamNotice(
       key: const ValueKey('claim-loss-warning'),
       kind: BeamNoticeKind.warning,
-      title: 'This voucher is worth less than the fee',
+      title: 'This code is worth less than the fee',
       message:
           'It gives ${beam(gives)} and the network fee to claim it is '
           '${beam(s.networkFee)}, so your balance goes down by '
@@ -414,7 +414,7 @@ class _BeamClaimVoucherViewState extends State<BeamClaimVoucherView>
         RoundedWhiteContainer(
           child: BeamAssetTitle(
             display: _names.display(s.assetId),
-            subtitle: 'Voucher found — not claimed yet',
+            subtitle: 'Code found — not claimed yet',
           ),
         ),
         const BeamGap(8),
