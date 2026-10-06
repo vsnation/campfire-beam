@@ -27,8 +27,20 @@ src_dir() {
   esac
 }
 
+pin() {
+  python3 -I -c "import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]][sys.argv[3]]['sha256'])" "$MANIFEST" "$1" "$2"
+}
+# True when $DEST/$1 already holds all three binaries with matching pins
+# (staged on the host before a container build, where $SRC is not visible).
+already_staged() {
+  for b in beam-wallet wallet-api beam-node; do
+    [ -f "$DEST/$1/$b" ] || return 1
+    got=$( (shasum -a 256 "$DEST/$1/$b" 2>/dev/null || sha256sum "$DEST/$1/$b") | cut -d' ' -f1)
+    [ "$got" = "$(pin "$1" "$b")" ] || return 1
+  done
+}
+
 for k in "${KEYS[@]}"; do
-  rm -rf "${DEST:?}/$k"
   mkdir -p "$DEST/$k"
 done
 
@@ -38,16 +50,27 @@ case "$PLATFORM" in
   *) echo "stage_binaries: nothing to bundle for '${PLATFORM:-<none>}' (desktop core only)"; exit 0 ;;
 esac
 
+# Folders for other platforms are emptied so a build never bundles them.
+for k in "${KEYS[@]}"; do
+  case " ${WANT[*]} " in *" $k "*) ;; *) rm -f "$DEST/$k"/* ;; esac
+done
+
 staged=0
 for k in "${WANT[@]}"; do
   from="$(src_dir "$k")"
   if [ ! -d "$from" ]; then
-    echo "stage_binaries: $k not built ($from missing) — skipped"
+    if already_staged "$k"; then
+      echo "stage_binaries: $k already staged (pins verified)"
+      staged=$((staged + 3))
+    else
+      rm -f "$DEST/$k"/*
+      echo "stage_binaries: $k not built ($from missing) — skipped"
+    fi
     continue
   fi
   for b in beam-wallet wallet-api beam-node; do
-    want=$(python3 -I -c "import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]][sys.argv[3]]['sha256'])" "$MANIFEST" "$k" "$b")
-    got=$(shasum -a 256 "$from/$b" | cut -d' ' -f1)
+    want=$(pin "$k" "$b")
+    got=$( (shasum -a 256 "$from/$b" 2>/dev/null || sha256sum "$from/$b") | cut -d' ' -f1)
     if [ "$got" != "$want" ]; then
       echo "stage_binaries: REFUSED $k/$b — sha256 $got does not match the pin" >&2
       exit 1

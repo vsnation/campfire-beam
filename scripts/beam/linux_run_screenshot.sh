@@ -37,6 +37,10 @@ docker volume create "$VOL_WORK" >/dev/null
 docker volume create "$VOL_PUB" >/dev/null
 
 echo "== build + run + screenshot"
+# The container cannot see the BEAM core build output, so stage the pinned Linux
+# binaries here; configure inside the container keeps them (pins re-checked).
+bash "$REPO/scripts/beam/core/stage_binaries.sh" linux
+
 docker run --rm --platform "$PLATFORM" \
   --shm-size=1g \
   -v "$REPO:/src:ro" \
