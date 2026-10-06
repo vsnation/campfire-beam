@@ -1237,6 +1237,19 @@ abstract class SWB {
     }
   }
 
+  /// Whether a backed-up node belongs to a coin this build ships.
+  @visibleForTesting
+  static bool isNodeForConfiguredCoin(Map<String, dynamic> nodeData) {
+    final coinName = nodeData['coinName'];
+    if (coinName is! String) return false;
+    try {
+      AppConfig.getCryptoCurrencyByPrettyName(coinName);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<void> _restoreNodes(
     List<dynamic>? nodes,
     List<dynamic>? primaryNodes,
@@ -1253,6 +1266,10 @@ abstract class SWB {
 
       for (final node in nodes) {
         final nodeData = Map<String, dynamic>.from(node as Map);
+        // Like contacts, nodes of coins this build does not ship are skipped:
+        // NodeService cannot resolve their coin, so cancelling the restore
+        // would throw while deleting them and the cancel would never finish.
+        if (!isNodeForConfiguredCoin(nodeData)) continue;
         await nodeService.save(
           NodeModel.fromStackBackup(nodeData, legacyPrimaryNodeIds: primaryIds),
           nodeData["password"] as String?,
