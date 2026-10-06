@@ -120,10 +120,10 @@ void main() {
     expect(txs.length, lessThanOrEqualTo(5));
 
     final assets = await api.assetsList();
-    final withDecimals = assets.where((a) => a.decimals != null).length;
+    final labelled = assets.where((a) => a.metadata.nthRatio != null).length;
     print(
-      'assets_list: ${assets.length} assets, $withDecimals with known '
-      'decimals',
+      'assets_list: ${assets.length} assets, $labelled with an NTH_RATIO '
+      'label (informational; all shown with 8 decimals)',
     );
     expect(assets, isNotEmpty);
 

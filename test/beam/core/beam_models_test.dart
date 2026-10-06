@@ -324,28 +324,19 @@ void main() {
       expect(compared, raw.length);
     });
 
-    test('decimals come only from NTH_RATIO powers of ten', () {
-      int? d(String? ratio) => BeamAssetMetadata.parse(
-        'STD:SCH_VER=1;N=T;SN=T;UN=T;NTHUN=t'
-        '${ratio == null ? '' : ';NTH_RATIO=$ratio'}',
-      ).decimals;
-      expect(d('100000000'), 8);
-      expect(d('1'), 0);
-      expect(d('10'), 1);
-      expect(d('1000000000000'), 12);
-      expect(d('21000000'), isNull);
-      expect(d('0'), isNull);
-      expect(d('abc'), isNull);
-      expect(d(null), isNull);
-      expect(BeamAssetInfo.decimalsFor(0, null), 8);
-      expect(BeamAssetInfo.decimalsFor(7, null), isNull);
-
-      final ratios = {
-        for (final a in assets) a.metadata.values['NTH_RATIO']: a.decimals,
-      };
-      expect(ratios['100000000'], 8);
-      expect(ratios[null], isNull);
-      expect(ratios['21000000'], isNull);
+    test('every asset uses 8 decimals, whatever NTH_RATIO says', () {
+      // The core has no ratio field and the official wallet never scales by
+      // it; CROWN declares NTH_RATIO=1000 and is still shown with 8.
+      final crown = BeamAssetMetadata.parse(
+        'STD:SCH_VER=1;N=GOTHIC CROWN;SN=CROWN;UN=CROWN;NTHUN=CRWN;'
+        'NTH_RATIO=1000',
+      );
+      expect(crown.nthRatio, BigInt.from(1000));
+      expect(BeamAssetInfo.decimalsFor(0), 8);
+      expect(BeamAssetInfo.decimalsFor(4), 8);
+      for (final a in assets) {
+        expect(a.decimals, 8, reason: 'asset ${a.assetId}');
+      }
     });
 
     test('get_asset_info 174 (FOMO)', () {
@@ -366,7 +357,7 @@ void main() {
       final plain = BeamAssetMetadata.parse('just a label');
       expect(plain.isStdPrefixed, isFalse);
       expect(plain.values, isEmpty);
-      expect(plain.decimals, isNull);
+      expect(plain.nthRatio, isNull);
       final url = BeamAssetMetadata.parse(
         'STD:N=X;OPT_SITE_URL=https://a/?q=1',
       );

@@ -13,8 +13,7 @@ import 'beam_json.dart';
 
 /// A Confidential Asset as `get_asset_info` / `assets_list` describe it.
 ///
-/// Asset 0 (BEAM itself) never comes back from these calls; [decimalsFor]
-/// covers it.
+/// Asset 0 (BEAM itself) never comes back from these calls.
 @immutable
 class BeamAssetInfo {
   const BeamAssetInfo({
@@ -62,17 +61,23 @@ class BeamAssetInfo {
   final bool? coreSaysStd;
 
   /// See [decimalsFor].
-  int? get decimals => decimalsFor(assetId, metadata);
+  int get decimals => decimalsFor(assetId);
 
-  /// Decimal places for amounts of [assetId]: 8 for BEAM; for any other asset
-  /// only what its `NTH_RATIO` states. Null means unknown, and the caller must
-  /// not guess 8.
-  static int? decimalsFor(int assetId, BeamAssetMetadata? metadata) =>
-      assetId == beamAssetId ? beamDecimals : metadata?.decimals;
+  /// Decimal places for amounts of [assetId]: always 8.
+  ///
+  /// Every Confidential Asset uses BEAM's groth scale (`Rules::Coin`,
+  /// 10^8 smallest units per unit). The core has no ratio field at all —
+  /// its standard metadata keys are N, SN, UN, NTHUN and OPT_*
+  /// (`wallet/core/assets_utils.cpp`) — and the official desktop wallet reads
+  /// only the smallest unit's *name* (`beam-ui ui/model/assets_manager.cpp`).
+  /// A metadata `NTH_RATIO` is a label some issuers add; showing CROWN
+  /// (`NTH_RATIO=1000`) with 3 decimals would make its balances 10^5 larger
+  /// than in every other BEAM wallet.
+  static int decimalsFor(int assetId) => beamDecimals;
 }
 
-/// Parsed asset metadata: `STD:SCH_VER=1;N=..;SN=..;UN=..;NTHUN=..;
-/// NTH_RATIO=..;OPT_*=..`.
+/// Parsed asset metadata: `STD:SCH_VER=1;N=..;SN=..;UN=..;NTHUN=..;OPT_*=..`
+/// (plus non-standard keys such as `NTH_RATIO`, kept as-is in [values]).
 ///
 /// Mirrors `WalletAssetMeta::Parse` (`wallet/core/assets_utils.cpp`): only
 /// text starting with `STD:` has fields; entries are split on `;` and each
@@ -112,19 +117,7 @@ class BeamAssetMetadata {
   String? get logoUrl => values['OPT_LOGO_URL'];
   String? get faviconUrl => values['OPT_FAVICON_URL'];
 
-  /// How many smallest units make one whole unit.
+  /// The issuer's `NTH_RATIO` label, informational only: no BEAM wallet
+  /// scales amounts by it (see [BeamAssetInfo.decimalsFor]).
   BigInt? get nthRatio => BigInt.tryParse(values['NTH_RATIO'] ?? '');
-
-  /// log10 of [nthRatio] when it is an exact power of ten (1 → 0,
-  /// 100000000 → 8). Null when the ratio is missing, zero, or not a power of
-  /// ten (e.g. 21000000): there is no honest decimal rendering for those.
-  int? get decimals {
-    final ratio = nthRatio;
-    if (ratio == null || ratio <= BigInt.zero) return null;
-    final s = ratio.toString();
-    if (s[0] != '1' || s.substring(1).replaceAll('0', '').isNotEmpty) {
-      return null;
-    }
-    return s.length - 1;
-  }
 }

@@ -19,7 +19,6 @@ void main() {
       name: 'Campfire Coin',
       shortName: 'CFC',
       unitName: 'CFC',
-      decimals: 6,
       shortDescription: 'A test token = fun, maybe.',
       color: '#25C2A0',
       siteUrl: 'https://example.org/cfc?x=1',
@@ -27,11 +26,11 @@ void main() {
     expect(
       m.encode(),
       'STD:SCH_VER=1;N=Campfire Coin;SN=CFC;UN=CFC;NTHUN=groth;'
-      'NTH_RATIO=1000000;OPT_SHORT_DESC=A test token = fun, maybe.;'
+      'NTH_RATIO=100000000;OPT_SHORT_DESC=A test token = fun, maybe.;'
       'OPT_COLOR=#25C2A0;OPT_SITE_URL=https://example.org/cfc?x=1',
     );
-    expect(m.nthRatio, BigInt.from(1000000));
-    expect(m.supplyOf(BigInt.from(21)), BigInt.from(21000000));
+    expect(BeamTokenMetadata.nthRatio, BigInt.from(100000000));
+    expect(m.supplyOf(BigInt.from(21)), BigInt.from(2100000000));
   });
 
   test('the recorded mainnet build used exactly this text', () {
@@ -184,24 +183,10 @@ void main() {
       }
     });
 
-    test('decimals 0 to 8', () {
+    test('NTH_RATIO is always the groth scale every wallet displays', () {
       expect(
-        BeamTokenMetadata(
-          name: 'A',
-          shortName: 'B',
-          unitName: 'B',
-          decimals: 0,
-        ).encode(),
-        contains(';NTH_RATIO=1'),
-      );
-      expect(
-        () => BeamTokenMetadata(
-          name: 'A',
-          shortName: 'B',
-          unitName: 'B',
-          decimals: 9,
-        ),
-        _bad(TokenMetadataField.decimals),
+        BeamTokenMetadata(name: 'A', shortName: 'B', unitName: 'B').encode(),
+        contains(';NTH_RATIO=100000000'),
       );
     });
   });
@@ -221,14 +206,5 @@ void main() {
       expect(BeamTokenMetadata.parseFields('not standard'), isNull);
     });
 
-    test('decimals only from an exact power of ten', () {
-      expect(BeamTokenMetadata.decimalsOf(cto), 8);
-      expect(BeamTokenMetadata.decimalsOf('STD:NTH_RATIO=1'), 0);
-      expect(BeamTokenMetadata.decimalsOf('STD:NTH_RATIO=1000'), 3);
-      for (final r in ['0', '25', '010', '1e8', '']) {
-        expect(BeamTokenMetadata.decimalsOf('STD:NTH_RATIO=$r'), isNull);
-      }
-      expect(BeamTokenMetadata.decimalsOf('STD:N=X'), isNull);
-    });
   });
 }

@@ -17,7 +17,6 @@ enum TokenMetadataField {
   shortName,
   unitName,
   nthUnitName,
-  decimals,
   shortDescription,
   longDescription,
   color,
@@ -43,7 +42,7 @@ class TokenMetadataException implements Exception {
 ///
 /// ```
 /// STD:SCH_VER=1;N=<name>;SN=<short>;UN=<unit>;NTHUN=<smallest unit>;
-/// NTH_RATIO=<10^decimals>[;OPT_SHORT_DESC=…][;OPT_LONG_DESC=…]
+/// NTH_RATIO=100000000[;OPT_SHORT_DESC=…][;OPT_LONG_DESC=…]
 /// [;OPT_COLOR=#RRGGBB][;OPT_SITE_URL=…][;OPT_PDF_URL=…][;OPT_LOGO_URL=…]
 /// ```
 ///
@@ -65,9 +64,11 @@ class TokenMetadataException implements Exception {
 /// ends the value at a `"` and treats `\` as an escape, so `"` and `\` are
 /// refused everywhere, as are control characters.
 ///
-/// `NTH_RATIO` is not read by the core; wallets (LightWallet, Campfire)
-/// take an asset's decimals from it. `OPT_LOGO_URL` is LightWallet's key
-/// for an icon; the core ignores unknown keys.
+/// `NTH_RATIO` is not read by the core, and every BEAM wallet shows assets
+/// on the groth scale (8 decimals), so it is always written as 10^8 to
+/// match what wallets display; offering other "decimals" would only make
+/// the label disagree with every balance. `OPT_LOGO_URL` is LightWallet's
+/// key for an icon; the core ignores unknown keys.
 @immutable
 class BeamTokenMetadata {
   BeamTokenMetadata({
@@ -75,7 +76,6 @@ class BeamTokenMetadata {
     required this.shortName,
     required this.unitName,
     this.nthUnitName = 'groth',
-    this.decimals = 8,
     this.shortDescription,
     this.longDescription,
     this.color,
@@ -90,7 +90,6 @@ class BeamTokenMetadata {
   static const maxShortNameLength = 6;
   static const maxUnitNameLength = 8;
   static const maxNthUnitNameLength = 16;
-  static const maxDecimals = 8;
   static const maxShortDescriptionBytes = 128;
   static const maxLongDescriptionBytes = 1024;
   static const maxUrlLength = 512;
@@ -110,9 +109,6 @@ class BeamTokenMetadata {
   /// Name of the smallest unit, `NTHUN`, e.g. `groth`.
   final String nthUnitName;
 
-  /// Digits after the point: `NTH_RATIO` = 10^[decimals].
-  final int decimals;
-
   final String? shortDescription;
   final String? longDescription;
 
@@ -122,8 +118,8 @@ class BeamTokenMetadata {
   final String? pdfUrl;
   final String? logoUrl;
 
-  /// `10^decimals`.
-  BigInt get nthRatio => BigInt.from(10).pow(decimals);
+  /// Always 10^8: the groth scale every BEAM wallet displays.
+  static final BigInt nthRatio = BigInt.from(100000000);
 
   /// The metadata string, exactly as it will be stored on chain.
   String encode() {
@@ -181,12 +177,6 @@ class BeamTokenMetadata {
       TokenMetadataField.nthUnitName,
       'Smallest unit name',
     );
-    if (decimals < 0 || decimals > maxDecimals) {
-      throw const TokenMetadataException(
-        TokenMetadataField.decimals,
-        'Decimals must be 0 to $maxDecimals.',
-      );
-    }
     _text(
       shortDescription,
       maxShortDescriptionBytes,
@@ -277,14 +267,4 @@ class BeamTokenMetadata {
     return out;
   }
 
-  /// The decimals an asset declares through `NTH_RATIO`, when it is an
-  /// exact power of ten from 1 to 10^18; otherwise null (the caller must
-  /// not guess 8).
-  static int? decimalsOf(String metadata) {
-    final ratio = parseFields(metadata)?['NTH_RATIO'];
-    if (ratio == null || !RegExp(r'^1(0{0,18})$').hasMatch(ratio)) {
-      return null;
-    }
-    return ratio.length - 1;
-  }
 }
