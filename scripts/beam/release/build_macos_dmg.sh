@@ -14,6 +14,8 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 REL="${CFB_RELEASE_DIR:-$HOME/Desktop/Beam/cfb-release}"
 VERSION="${1:-1.0.0}"; BUILD="${2:-1}"
 FLUTTER="${FLUTTER:-$HOME/development/flutter-3.47.2/bin/flutter}"
+# Campfire's configure step calls `dart` and `flutter` by name.
+export PATH="$(dirname "$FLUTTER"):$PATH"
 log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
 
 head=$(git -C "$REPO" rev-parse HEAD)
