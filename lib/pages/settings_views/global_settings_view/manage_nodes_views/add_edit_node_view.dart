@@ -29,6 +29,7 @@ import '../../../../utilities/enums/sync_type_enum.dart';
 import '../../../../utilities/flutter_secure_storage_interface.dart';
 import '../../../../utilities/logger.dart';
 import '../../../../utilities/node_uri_util.dart';
+import '../../../../utilities/test_beam_node_connection.dart';
 import '../../../../utilities/test_node_connection.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../utilities/tor_plain_net_option_enum.dart';
@@ -82,6 +83,44 @@ class _AddEditNodeViewState extends ConsumerState<AddEditNodeView> {
 
   late bool saveEnabled;
   late bool testConnectionEnabled;
+
+  /// BEAM: a connection test is running (it can take up to 10 s, 30 s over
+  /// Tor), so the button says so instead of looking idle.
+  bool _testingBeamNode = false;
+
+  /// BEAM nodes are host:port. The test reports what it found in words
+  /// ("isn't a BEAM node", "no BEAM node answered") instead of a bare
+  /// "unreachable".
+  Future<void> _testBeamNode() async {
+    final data = ref.read(nodeFormDataProvider);
+    final host = (data.host ?? '').trim();
+    final port = data.port;
+    setState(() => _testingBeamNode = true);
+    BeamNodeTestResult result;
+    try {
+      result =
+          BeamNodeAddress.hostProblem(host) != null ||
+              !BeamNodeAddress.isValidPort(port)
+          ? BeamNodeTestResult.invalidAddress
+          : await ref.read(testBeamNodeConnectionProvider)(
+              host: host,
+              port: port!,
+            );
+    } catch (_) {
+      result = BeamNodeTestResult.unreachable;
+    }
+    if (!mounted) return;
+    setState(() => _testingBeamNode = false);
+    unawaited(
+      showFloatingFlushBar(
+        type: result == BeamNodeTestResult.beamNode
+            ? FlushBarType.success
+            : FlushBarType.warning,
+        message: beamNodeTestMessage(result, '$host:$port'),
+        context: context,
+      ),
+    );
+  }
 
   void _onTestSuccess(NodeFormData data) {
     if (coin is Epiccash) {
@@ -226,6 +265,9 @@ class _AddEditNodeViewState extends ConsumerState<AddEditNodeView> {
 
     // strip unused path
     String address = formData.host!;
+    if (coin is Beam) {
+      address = address.trim();
+    }
     if (coin is CryptonoteCurrency) {
       if (address.startsWith("http")) {
         final uri = Uri.parse(address);
@@ -681,11 +723,17 @@ class _AddEditNodeViewState extends ConsumerState<AddEditNodeView> {
               children: [
                 Expanded(
                   child: SecondaryButton(
-                    label: "Test connection",
-                    enabled: testConnectionEnabled,
+                    label: _testingBeamNode
+                        ? "Testing…"
+                        : "Test connection",
+                    enabled: testConnectionEnabled && !_testingBeamNode,
                     buttonHeight: isDesktop ? ButtonHeight.l : null,
-                    onPressed: testConnectionEnabled
+                    onPressed: testConnectionEnabled && !_testingBeamNode
                         ? () async {
+                            if (coin is Beam) {
+                              await _testBeamNode();
+                              return;
+                            }
                             final testPassed =
                                 await ref.read(testNodeConnectionProvider)(
                                   context: context,
@@ -810,6 +858,10 @@ class _NodeFormState extends ConsumerState<NodeForm> {
 
   late final bool enableAuthFields;
 
+  /// BEAM: the host text before the last change, to tell a paste from
+  /// typing.
+  String _beamHostBefore = "";
+
   void Function(bool canSave, bool canTestConnection)? onChanged;
 
   bool _checkShouldEnableAuthFields(CryptoCurrency coin) {
@@ -829,6 +881,10 @@ class _NodeFormState extends ConsumerState<NodeForm> {
   }
 
   bool get canTestConnection {
+    if (widget.coin is Beam) {
+      return BeamNodeAddress.hostProblem(_hostController.text) == null &&
+          isValidNodePort(port);
+    }
     return _hostController.text.isNotEmpty && isValidNodePort(port);
   }
 
@@ -895,6 +951,7 @@ class _NodeFormState extends ConsumerState<NodeForm> {
 
       _nameController.text = node.name;
       _hostController.text = node.host;
+      _beamHostBefore = node.host;
       _portController.text = node.port.toString();
       _usernameController.text = node.loginName ?? "";
       _apiSecretController.text = node.nodeApiSecret ?? "";
@@ -929,6 +986,11 @@ class _NodeFormState extends ConsumerState<NodeForm> {
       netOption = TorPlainNetworkOption.both;
       // default to port 3413
       // _portController.text = "3413";
+      if (widget.coin is Beam) {
+        // BEAM nodes listen on 8100; one less field to fill in.
+        _portController.text = "8100";
+        WidgetsBinding.instance.addPostFrameCallback((_) => _updateState());
+      }
     }
 
     super.initState();
@@ -1017,7 +1079,11 @@ class _NodeFormState extends ConsumerState<NodeForm> {
             style: STextStyles.field(context),
             decoration:
                 standardInputDecoration(
-                  (widget.coin is! CryptonoteCurrency) ? "IP address" : "Url",
+                  widget.coin is Beam
+                      ? "Node address"
+                      : (widget.coin is! CryptonoteCurrency)
+                      ? "IP address"
+                      : "Url",
                   _hostFocusNode,
                   context,
                 ).copyWith(
@@ -1042,6 +1108,23 @@ class _NodeFormState extends ConsumerState<NodeForm> {
                       : null,
                 ),
             onChanged: (newValue) {
+              if (widget.coin is Beam) {
+                // host:port, not a URL: "eu-nodes.mainnet.beam.mw:8100"
+                // pasted in one go fills both fields. Only on a paste, so
+                // typing a port after a colon never jumps fields mid-number.
+                final pasted = newValue.length - _beamHostBefore.length > 1;
+                if (pasted) {
+                  final parts = BeamNodeAddress.split(newValue);
+                  if (parts.port != null) {
+                    _portController.text = parts.port.toString();
+                  }
+                  _hostController.text = parts.host;
+                }
+                _beamHostBefore = _hostController.text;
+                _updateState();
+                setState(() {});
+                return;
+              }
               // parse port hack
               try {
                 final uri = Uri.parse(newValue);
@@ -1109,6 +1192,20 @@ class _NodeFormState extends ConsumerState<NodeForm> {
             },
           ),
         ),
+        if (widget.coin is Beam &&
+            _hostController.text.isNotEmpty &&
+            BeamNodeAddress.hostProblem(_hostController.text) != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                BeamNodeAddress.hostProblem(_hostController.text)!,
+                key: const Key("addCustomNodeBeamHostProblem"),
+                style: STextStyles.errorSmall(context),
+              ),
+            ),
+          ),
         const SizedBox(height: 8),
         ClipRRect(
           borderRadius: BorderRadius.circular(
@@ -1295,7 +1392,7 @@ class _NodeFormState extends ConsumerState<NodeForm> {
             ),
           ),
         if (widget.coin is Mimblewimblecoin) const SizedBox(height: 8),
-        if (widget.coin is! CryptonoteCurrency)
+        if (widget.coin is! CryptonoteCurrency && widget.coin is! Beam)
           Row(
             children: [
               GestureDetector(
@@ -1399,11 +1496,13 @@ class _NodeFormState extends ConsumerState<NodeForm> {
           ),
         if (widget.coin is! CryptonoteCurrency &&
             widget.coin is! Epiccash &&
-            widget.coin is! Mimblewimblecoin)
+            widget.coin is! Mimblewimblecoin &&
+            widget.coin is! Beam)
           const SizedBox(height: 8),
         if (widget.coin is! CryptonoteCurrency &&
             widget.coin is! Epiccash &&
-            widget.coin is! Mimblewimblecoin)
+            widget.coin is! Mimblewimblecoin &&
+            widget.coin is! Beam)
           Row(
             children: [
               GestureDetector(
@@ -1471,8 +1570,22 @@ class _NodeFormState extends ConsumerState<NodeForm> {
               ),
             ],
           ),
-        if (widget.coin is! Ethereum) const SizedBox(height: 16),
-        if (widget.coin is! Ethereum)
+        if (widget.coin is Beam)
+          Padding(
+            padding: const EdgeInsets.only(top: 12, left: 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                "If this node stops answering, Campfire uses BEAM's public "
+                "nodes until it is back.",
+                key: const Key("addCustomNodeBeamFallbackNote"),
+                style: STextStyles.itemSubtitle12(context),
+              ),
+            ),
+          ),
+        if (widget.coin is! Ethereum && widget.coin is! Beam)
+          const SizedBox(height: 16),
+        if (widget.coin is! Ethereum && widget.coin is! Beam)
           Row(
             children: [
               RadioTextButton(
@@ -1489,8 +1602,9 @@ class _NodeFormState extends ConsumerState<NodeForm> {
               ),
             ],
           ),
-        if (widget.coin is! Ethereum) const SizedBox(height: 8),
-        if (widget.coin is! Ethereum)
+        if (widget.coin is! Ethereum && widget.coin is! Beam)
+          const SizedBox(height: 8),
+        if (widget.coin is! Ethereum && widget.coin is! Beam)
           Row(
             children: [
               RadioTextButton(
@@ -1507,8 +1621,9 @@ class _NodeFormState extends ConsumerState<NodeForm> {
               ),
             ],
           ),
-        if (widget.coin is! Ethereum) const SizedBox(height: 8),
-        if (widget.coin is! Ethereum)
+        if (widget.coin is! Ethereum && widget.coin is! Beam)
+          const SizedBox(height: 8),
+        if (widget.coin is! Ethereum && widget.coin is! Beam)
           Row(
             children: [
               RadioTextButton(

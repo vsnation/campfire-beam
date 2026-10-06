@@ -33,6 +33,7 @@ import '../../../../utilities/assets.dart';
 import '../../../../utilities/constants.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../utilities/util.dart';
+import '../../../../wallets/crypto_currency/coins/beam.dart';
 import '../../../../wallets/crypto_currency/coins/epiccash.dart';
 import '../../../../wallets/crypto_currency/coins/litecoin.dart';
 import '../../../../wallets/crypto_currency/coins/mimblewimblecoin.dart';
@@ -41,6 +42,7 @@ import '../../../../wallets/crypto_currency/coins/salvium.dart';
 import '../../../../wallets/crypto_currency/coins/wownero.dart';
 import '../../../../wallets/crypto_currency/intermediate/cryptonote_currency.dart';
 import '../../../../wallets/isar/providers/wallet_info_provider.dart';
+import '../../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../../../wallets/wallet/impl/epiccash_wallet.dart';
 import '../../../../wallets/wallet/impl/mimblewimblecoin_wallet.dart';
 import '../../../../wallets/wallet/intermediate/cryptonote_wallet.dart';
@@ -58,6 +60,7 @@ import '../../../../widgets/rounded_container.dart';
 import '../../../../widgets/rounded_white_container.dart';
 import '../../../../widgets/stack_dialog.dart';
 import '../../../../widgets/tor_subscription.dart';
+import '../../../beam/node/beam_node_sync_panel.dart';
 import '../../global_settings_view/manage_nodes_views/add_edit_node_view.dart';
 import '../../global_settings_view/tor_settings/tor_settings_view.dart';
 import '../../sub_widgets/nodes_list.dart';
@@ -155,7 +158,9 @@ class _WalletNetworkSettingsViewState
             Navigator.of(context, rootNavigator: isDesktop).pop();
 
             final String message;
-            if (wallet is CryptonoteWallet || wallet is EpiccashWallet) {
+            if (wallet is CryptonoteWallet ||
+                wallet is EpiccashWallet ||
+                wallet is BeamWallet) {
               message = "Rescan started";
             } else {
               message = "Rescan completed";
@@ -501,6 +506,12 @@ class _WalletNetworkSettingsViewState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // BEAM: the honest node and sync panel (public node now, the
+          // private node soon) replaces the generic status and height below
+          // (left unindented to keep upstream merges small).
+          if (coin is Beam)
+            BeamWalletNodeSyncPanel(walletId: widget.walletId),
+          if (coin is! Beam) ...[
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -801,6 +812,7 @@ class _WalletNetworkSettingsViewState
               ],
             ),
           ),
+          ],
           if (AppConfig.hasFeature(AppFeature.tor))
             SizedBox(height: isDesktop ? 32 : 20),
           if (AppConfig.hasFeature(AppFeature.tor))

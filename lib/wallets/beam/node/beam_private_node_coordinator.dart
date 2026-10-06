@@ -16,12 +16,20 @@ import '../host/beam_host_exception.dart';
 import '../host/process_host.dart';
 import '../rpc/beam_transport.dart';
 import '../sync/beam_sync_state.dart' show beamMainnetHf6Height;
+import 'beam_node_disk.dart';
 import 'beam_node_process.dart';
 import 'beam_node_progress.dart';
 
 /// Reads the wallet password from Campfire's secure storage when needed, so
 /// the coordinator never keeps it in a field.
 typedef BeamPasswordProvider = Future<String> Function();
+
+/// Reads the owner key the wallet stored while it was closed anyway
+/// (project rules R11), or null when there is none.
+typedef BeamOwnerKeyProvider = Future<String?> Function();
+
+/// Completes once no send, swap, claim or dApp approval is open.
+typedef BeamIdleWaiter = Future<void> Function();
 
 /// Makes a fresh, unstarted private node. [BeamNodeProcess] is single-use,
 /// so every (re)start asks for a new one.
@@ -159,6 +167,16 @@ enum BeamPrivateNodeIssue {
 
   /// `own_node` was true and then stayed false.
   ownNodeLost,
+
+  /// Not started: the disk has too little free space for the node
+  /// ([BeamPrivateNodeStatus.disk] has the numbers).
+  notEnoughDisk,
+
+  /// Stopped while running because free space ran low.
+  diskFull,
+
+  /// The user stopped the node from the node panel.
+  stoppedByUser,
 }
 
 /// One snapshot of the coordinator, for the node panel and the receive
@@ -173,10 +191,24 @@ class BeamPrivateNodeStatus {
     this.onPrivateNode = false,
     this.privateReceiveAvailable = false,
     this.lastPause,
+    this.disk,
+    this.waitingForWallet = false,
+    this.finishingPercent,
   });
 
   final BeamPrivateNodePhase phase;
+
+  /// While catching up: the node's last setup step ("Raising Fossil", 5–10
+  /// minutes after fast sync), 0-100. Null otherwise.
+  final int? finishingPercent;
   final BeamPrivateNodeIssue? issue;
+
+  /// The last disk measurement for the node, when one was made.
+  final BeamNodeDiskCheck? disk;
+
+  /// A node switch is due but waits for a payment, swap, claim or approval
+  /// that is still open.
+  final bool waitingForWallet;
 
   /// Node download progress, 0-100, while downloading.
   final int? percent;
@@ -213,7 +245,10 @@ class BeamPrivateNodeStatus {
       other.networkHeight == networkHeight &&
       other.onPrivateNode == onPrivateNode &&
       other.privateReceiveAvailable == privateReceiveAvailable &&
-      other.lastPause == lastPause;
+      other.lastPause == lastPause &&
+      other.disk == disk &&
+      other.waitingForWallet == waitingForWallet &&
+      other.finishingPercent == finishingPercent;
 
   @override
   int get hashCode => Object.hash(
@@ -225,6 +260,9 @@ class BeamPrivateNodeStatus {
     onPrivateNode,
     privateReceiveAvailable,
     lastPause,
+    disk,
+    waitingForWallet,
+    finishingPercent,
   );
 
   @override
@@ -232,18 +270,25 @@ class BeamPrivateNodeStatus {
       'BeamPrivateNodeStatus(${phase.name}'
       '${issue == null ? '' : ', ${issue!.name}'}'
       '${percent == null ? '' : ', $percent%'}'
+      '${finishingPercent == null ? '' : ', finishing $finishingPercent%'}'
       '${nodeHeight == null ? '' : ', node $nodeHeight'}'
       '${networkHeight == null ? '' : ', network $networkHeight'}'
       '${onPrivateNode ? ', on private node' : ''}'
-      '${privateReceiveAvailable ? ', private receive' : ''})';
+      '${privateReceiveAvailable ? ', private receive' : ''}'
+      '${waitingForWallet ? ', waiting for the wallet' : ''}'
+      '${disk == null ? '' : ', $disk'})';
 }
 
 /// Public node now, private node soon (ARCHITECTURE.md §4).
 ///
 /// 1. The wallet is already open on a public node ([session]).
-/// 2. [start] pauses it briefly — close, `export_owner_key`, reopen on the
-///    same public node — and starts a private `beam-node` with the key. The
-///    key lives in a local variable until the node has read its config.
+/// 2. [start] checks there is room on disk for the node (it refuses below
+///    [diskPolicy], never filling the disk), takes the owner key the wallet
+///    stored at create/restore ([storedOwnerKey], no pause at all, R11) — or,
+///    for a wallet without one, pauses it briefly (close, `export_owner_key`,
+///    reopen on the same public node) — and starts a private `beam-node`
+///    with the key. The key lives in a local variable until the node has
+///    read its config.
 /// 3. The wallet moves to the node only when the node logged
 ///    `Tx replication is ON` after its last fast-sync line **and** its
 ///    newest `My Tip:` is within [readyWithinBlocks] of a fresh explorer
@@ -258,9 +303,17 @@ class BeamPrivateNodeStatus {
 /// A node that does not take the owner key is stopped; the coordinator
 /// never runs a keyless node.
 ///
+/// No switch interrupts a money flow: with [whenIdle], every step that
+/// replaces the wallet's session (the key pause, the handover, the move
+/// back to a public node) first waits until no send, swap, claim or dApp
+/// approval is open, and says so in [BeamPrivateNodeStatus.waitingForWallet].
+///
 /// The wallet layer must follow [sessions]: every pause and switch replaces
 /// the session (and its transport). `null` means the wallet is closed right
 /// now.
+///
+/// While it lives, a coordinator can be found by its wallet directory
+/// ([forWalletDir]), so the node panel can drive it.
 class BeamPrivateNodeCoordinator {
   BeamPrivateNodeCoordinator({
     required this.host,
@@ -272,6 +325,12 @@ class BeamPrivateNodeCoordinator {
     BeamPrivateNodeSetting? setting,
     List<BeamNodeEndpoint> publicNodes = kBeamPublicWalletNodes,
     BeamHostLog? log,
+    this._storedOwnerKey,
+    this._whenIdle,
+    bool Function()? requestBodies,
+    this._diskProbe,
+    this.diskPolicy = const BeamNodeDiskPolicy(),
+    this.diskCheckInterval = const Duration(seconds: 30),
     this.readyWithinBlocks = 5,
     this.failoverBehindBlocks = 10,
     this.ownNodeTimeout = const Duration(seconds: 90),
@@ -284,12 +343,42 @@ class BeamPrivateNodeCoordinator {
        _publicNodes = List.unmodifiable(publicNodes),
        assert(publicNodes.isNotEmpty, 'at least one public node'),
        _lastPublic = session.node.isOwned ? publicNodes.first : session.node,
-       _requestBodies = session is ProcessSession && session.requestBodies,
+       // Without a provider, keep what the first session was opened with
+       // (only a raw ProcessSession can tell).
+       _requestBodies =
+           requestBodies ??
+           _constantly(session is ProcessSession && session.requestBodies),
        _log = log ?? _noLog,
-       _now = now ?? DateTime.now;
+       _now = now ?? DateTime.now {
+    _running[walletDir] = this;
+    _notifyRegistry();
+  }
+
+  static final Map<String, BeamPrivateNodeCoordinator> _running = {};
+  static final StreamController<void> _registryChanges =
+      StreamController<void>.broadcast();
+
+  /// The live coordinator of the wallet in [walletDir], if any.
+  static BeamPrivateNodeCoordinator? forWalletDir(String walletDir) =>
+      _running[walletDir];
+
+  /// Fires whenever a coordinator starts or is disposed. Broadcast.
+  static Stream<void> get registryChanges => _registryChanges.stream;
+
+  static void _notifyRegistry() {
+    if (!_registryChanges.isClosed) _registryChanges.add(null);
+  }
+
+  static bool Function() _constantly(bool value) => () => value;
 
   final BeamHost host;
   final String walletDir;
+
+  /// Room the node needs on disk.
+  final BeamNodeDiskPolicy diskPolicy;
+
+  /// How often a running node's disk is measured again.
+  final Duration diskCheckInterval;
 
   /// "Use a private node". Defaults to on for desktop, off elsewhere.
   final BeamPrivateNodeSetting setting;
@@ -317,13 +406,21 @@ class BeamPrivateNodeCoordinator {
   final BeamNetworkTipSource _explorer;
   final BeamPrivateNodeFactory _nodeFactory;
   final List<BeamNodeEndpoint> _publicNodes;
-  final bool _requestBodies;
+  final BeamOwnerKeyProvider? _storedOwnerKey;
+  final BeamIdleWaiter? _whenIdle;
+  final bool Function() _requestBodies;
+  final BeamNodeDiskProbe? _diskProbe;
   final BeamHostLog _log;
   final DateTime Function() _now;
 
   BeamSession? _session;
   BeamNodeEndpoint _lastPublic;
   BeamPrivateNode? _node;
+  BeamNodeDiskProbe? _nodeDiskProbe;
+  DateTime? _lastDiskCheck;
+
+  /// The user's choice from the node panel, for this run ([setEnabled]).
+  bool? _enabledOverride;
   DateTime? _nodeStartedAt;
   StreamSubscription<BeamNodeProgress>? _nodeSub;
   StreamSubscription<BeamEvent>? _ownNodeSub;
@@ -407,18 +504,77 @@ class BeamPrivateNodeCoordinator {
     _set(_Phase.off);
   });
 
+  /// The node panel's "Use my own private node" switch. The choice wins over
+  /// [setting] for as long as this coordinator lives (the panel stores it
+  /// for the next run), then it is applied like [applySetting].
+  Future<void> setEnabled(bool enabled) {
+    _enabledOverride = enabled;
+    return applySetting();
+  }
+
+  /// Stops the node and starts it again (the wallet goes to a public node
+  /// first if it was on the private one). The node keeps its database, so
+  /// it only catches up the blocks since it stopped.
+  Future<void> restart() => _serial(() async {
+    if (_disposed) return;
+    if (!await _settingOn()) {
+      _set(_Phase.off);
+      return;
+    }
+    if (!await _leavePrivateNode()) return;
+    await _stopNode();
+    if (_session == null && !await _reopenPublic()) {
+      _set(_Phase.walletClosed);
+      return;
+    }
+    await _bringUp();
+  });
+
+  /// Stops the node for now; the wallet moves to a public node first. It
+  /// starts again with [retry] (the panel's "Start private node") or the
+  /// next time the wallet opens.
+  Future<void> stop() => _serial(() async {
+    if (_disposed) return;
+    if (!await _leavePrivateNode()) return;
+    await _stopNode();
+    _set(_Phase.stopped, issue: BeamPrivateNodeIssue.stoppedByUser);
+  });
+
+  /// Moves the wallet off the private node, if it is on it. False when no
+  /// node at all would take the wallet (the status says so).
+  Future<bool> _leavePrivateNode() async {
+    _ownNodeGrace?.cancel();
+    _ownNodeGrace = null;
+    await _ownNodeSub?.cancel();
+    _ownNodeSub = null;
+    if (!_onPrivate) return true;
+    _set(_status.phase, privateReceive: false);
+    if (await _moveToPublic()) return true;
+    await _stopNode();
+    _set(_Phase.walletClosed);
+    return false;
+  }
+
   /// Stops the node and all timers. The session stays open and belongs to
   /// the caller; if the wallet is on the private node it loses its node.
   Future<void> dispose() async {
     if (_disposed) return;
     _disposed = true;
+    if (identical(_running[walletDir], this)) {
+      _running.remove(walletDir);
+      _notifyRegistry();
+    }
     _timer?.cancel();
     _ownNodeGrace?.cancel();
     await _ownNodeSub?.cancel();
     // An operation in flight (e.g. waiting for own_node) sees _disposed at
     // its next step; do not hold app shutdown for it.
     await _queue.timeout(const Duration(seconds: 5), onTimeout: () {});
-    await _stopNode();
+    // The node gets its full grace (kBeamNodeStopGrace) to stop, but
+    // closing the wallet does not wait for all of it: a node busy with its
+    // setup step finishes stopping in the background (and is SIGKILLed only
+    // after the grace).
+    await _stopNode().timeout(const Duration(seconds: 5), onTimeout: () {});
     await _statusController.close();
     await _sessionController.close();
   }
@@ -428,43 +584,71 @@ class BeamPrivateNodeCoordinator {
 
   Future<void> _bringUp() async {
     _set(_Phase.preparing, issue: null);
+    // Not started yet, so nothing to clean up if this goes no further.
+    final node = _nodeFactory();
+
+    // 1. Room on disk, before anything else happens.
+    _nodeDiskProbe =
+        _diskProbe ??
+        (node is BeamNodeProcess ? BeamNodeDisk.probe(node.nodeDir) : null);
+    final disk = await _measureDisk();
+    _lastDiskCheck = _now();
+    if (disk != null && !disk.allowsStart) {
+      final free = formatBeamDiskSize(disk.space.freeBytes);
+      final needed = formatBeamDiskSize(disk.neededFreeBytes);
+      _log('Not starting the private node: $free free, $needed needed');
+      _set(
+        _Phase.failed,
+        issue: BeamPrivateNodeIssue.notEnoughDisk,
+        disk: disk,
+      );
+      return;
+    }
+    if (disk != null) _set(_Phase.preparing, disk: disk);
     final password = await _password();
 
-    // 1. Pause the wallet for as short as possible to read the owner key.
-    final pause = Stopwatch()..start();
-    final current = _session;
-    _replaceSession(null);
-    await _closeQuietly(current);
-    String? ownerKey;
-    Object? exportError;
-    try {
-      ownerKey = await host.exportOwnerKey(
-        walletDir: walletDir,
-        password: password,
+    // 2. The owner key. Stored at create/restore: no pause at all. Otherwise
+    // the wallet pauses for as short as possible to read it.
+    var ownerKey = await _readStoredOwnerKey();
+    if (ownerKey != null) {
+      _lastPause = Duration.zero;
+      _log('Owner key read from secure storage; the wallet was not paused');
+    } else {
+      await _waitUntilIdle();
+      if (_disposed) return;
+      final pause = Stopwatch()..start();
+      final current = _session;
+      _replaceSession(null);
+      await _closeQuietly(current);
+      Object? exportError;
+      try {
+        ownerKey = await host.exportOwnerKey(
+          walletDir: walletDir,
+          password: password,
+        );
+      } catch (e) {
+        exportError = e;
+      }
+      final reopened = await _reopenPublic(password: password);
+      pause.stop();
+      _lastPause = pause.elapsed;
+      _log(
+        'Wallet paused ${pause.elapsedMilliseconds} ms to read the owner '
+        'key${reopened ? '' : ' and could not be reopened'}',
       );
-    } catch (e) {
-      exportError = e;
-    }
-    final reopened = await _reopenPublic(password: password);
-    pause.stop();
-    _lastPause = pause.elapsed;
-    _log(
-      'Wallet paused ${pause.elapsedMilliseconds} ms to read the owner '
-      'key${reopened ? '' : ' and could not be reopened'}',
-    );
-    if (!reopened) {
-      _set(_Phase.walletClosed);
-      return;
-    }
-    if (ownerKey == null || ownerKey.isEmpty) {
-      _log('Owner key export failed: ${_describe(exportError)}');
-      _set(_Phase.failed, issue: BeamPrivateNodeIssue.keyExportFailed);
-      return;
+      if (!reopened) {
+        _set(_Phase.walletClosed);
+        return;
+      }
+      if (ownerKey == null || ownerKey.isEmpty) {
+        _log('Owner key export failed: ${_describe(exportError)}');
+        _set(_Phase.failed, issue: BeamPrivateNodeIssue.keyExportFailed);
+        return;
+      }
     }
 
-    // 2. Start the node. The key is in this frame only; once start()
+    // 3. Start the node. The key is in this frame only; once start()
     // returns the node has read it and its file is gone.
-    final node = _nodeFactory();
     try {
       await node.start(ownerKey: ownerKey, password: password);
     } on BeamNodeException catch (e) {
@@ -506,6 +690,81 @@ class BeamPrivateNodeCoordinator {
     _timer = Timer.periodic(checkInterval, (_) => _scheduleCheck());
     _set(_phaseFromNode(node.progress), issue: null);
     _scheduleCheck();
+  }
+
+  /// The stored owner key, or null (no provider, none stored, or it could
+  /// not be read — then the paused export takes over).
+  Future<String?> _readStoredOwnerKey() async {
+    final provider = _storedOwnerKey;
+    if (provider == null) return null;
+    try {
+      final key = await provider();
+      return key == null || key.isEmpty ? null : key;
+    } catch (e) {
+      _log('Stored owner key could not be read: ${_describe(e)}');
+      return null;
+    }
+  }
+
+  /// The node's disk judged against [diskPolicy], or null when it cannot be
+  /// measured (then nothing is refused on its account).
+  Future<BeamNodeDiskCheck?> _measureDisk() async {
+    final probe = _nodeDiskProbe;
+    if (probe == null) return null;
+    try {
+      final space = await probe();
+      return space == null ? null : diskPolicy.check(space);
+    } catch (e) {
+      _log('Could not measure free disk space: ${_describe(e)}');
+      return null;
+    }
+  }
+
+  /// While the node runs: stops it before the disk fills up. True when it
+  /// was stopped.
+  Future<bool> _stopIfDiskFull() async {
+    final last = _lastDiskCheck;
+    final now = _now();
+    if (last != null && now.difference(last) < diskCheckInterval) return false;
+    _lastDiskCheck = now;
+    final disk = await _measureDisk();
+    if (disk == null || _disposed || _node == null) return false;
+    if (!diskPolicy.mustStop(disk.space)) {
+      _set(_status.phase, disk: disk);
+      return false;
+    }
+    _log(
+      'Only ${formatBeamDiskSize(disk.space.freeBytes)} free; stopping the '
+      'private node before the disk fills up',
+    );
+    await _failover(
+      _Phase.failed,
+      BeamPrivateNodeIssue.diskFull,
+      stopNode: true,
+      disk: disk,
+    );
+    return true;
+  }
+
+  /// Waits until no money flow is open ([whenIdle]). Returns true when it
+  /// actually had to wait; the status says so meanwhile.
+  Future<bool> _waitUntilIdle() async {
+    final waiter = _whenIdle;
+    if (waiter == null) return false;
+    var idle = false;
+    final done = Future<void>.sync(waiter)
+        .catchError((Object e) {
+          _log('Waiting for the wallet failed: ${_describe(e)}');
+        })
+        .whenComplete(() => idle = true);
+    // A waiter that is idle already completes in a microtask, before this.
+    await Future<void>.delayed(Duration.zero);
+    if (idle) return false;
+    _log('A payment is open; the node switch waits until it is finished');
+    _set(_status.phase, waiting: true);
+    await done;
+    _set(_status.phase, waiting: false);
+    return true;
   }
 
   static BeamPrivateNodeIssue _issueFor(BeamNodeError kind) => switch (kind) {
@@ -573,6 +832,7 @@ class BeamPrivateNodeCoordinator {
     if (_disposed || node == null) return;
     final p = node.progress;
     if (p.isEnded) return _onNodeEnded(p);
+    if (await _stopIfDiskFull()) return;
     switch (_status.phase) {
       case _Phase.active:
         return _checkActive(p);
@@ -702,6 +962,15 @@ class BeamPrivateNodeCoordinator {
     final current = _session;
     if (node == null || port == null || current == null) return;
     _set(_Phase.switching, issue: null, network: network);
+    // Never under an open send, swap, claim or approval (R11). After a wait
+    // the node and the network have moved on, so decide again.
+    if (await _waitUntilIdle()) {
+      if (_disposed || !identical(_node, node)) return;
+      final p = node.progress;
+      if (p.isEnded) return _onNodeEnded(p);
+      return _checkReady(p);
+    }
+    if (_disposed || !identical(_session, current)) return;
     _log(
       'Private node at $tip, network at $network: moving the wallet to '
       '127.0.0.1:$port',
@@ -842,6 +1111,7 @@ class BeamPrivateNodeCoordinator {
     int? network,
     bool stopNode = false,
     bool nodeAlreadyStopped = false,
+    BeamNodeDiskCheck? disk,
   }) async {
     _ownNodeGrace?.cancel();
     _ownNodeGrace = null;
@@ -852,16 +1122,17 @@ class BeamPrivateNodeCoordinator {
     if (stopNode && !nodeAlreadyStopped) await _stopNode();
     if (_onPrivate || _session == null) {
       if (!await _moveToPublic()) {
-        _set(_Phase.walletClosed, issue: issue);
+        _set(_Phase.walletClosed, issue: issue, disk: disk);
         return;
       }
     }
-    _set(phase, issue: issue, network: network);
+    _set(phase, issue: issue, network: network, disk: disk);
   }
 
   /// Points the wallet at a public node: the one it last used, then the
-  /// list in order.
+  /// list in order. Waits for an open money flow first ([whenIdle]).
   Future<bool> _moveToPublic() async {
+    if (_session != null) await _waitUntilIdle();
     final current = _session;
     if (current == null) return _reopenPublic();
     final pause = Stopwatch()..start();
@@ -898,7 +1169,7 @@ class BeamPrivateNodeCoordinator {
           walletDir: walletDir,
           password: pass,
           node: node,
-          requestBodies: _requestBodies,
+          requestBodies: _requestBodies(),
         );
         _lastPublic = node;
         _replaceSession(s);
@@ -941,6 +1212,8 @@ class BeamPrivateNodeCoordinator {
   }
 
   Future<bool> _settingOn() async {
+    final chosen = _enabledOverride;
+    if (chosen != null) return chosen;
     try {
       return await setting.read();
     } catch (e) {
@@ -960,14 +1233,24 @@ class BeamPrivateNodeCoordinator {
     Object? issue = _keep,
     int? network,
     bool? privateReceive,
+    BeamNodeDiskCheck? disk,
+    bool? waiting,
   }) {
     final p = _node?.progress;
     final next = BeamPrivateNodeStatus(
+      disk: disk ?? _status.disk,
+      // "Waiting for the wallet" holds while the phase does, unless said.
+      waitingForWallet:
+          waiting ?? (phase == _status.phase && _status.waitingForWallet),
       phase: phase,
       issue: identical(issue, _keep)
           ? _status.issue
           : issue as BeamPrivateNodeIssue?,
       percent: phase == _Phase.downloading ? p?.percent : null,
+      finishingPercent:
+          phase == _Phase.catchingUp || phase == _Phase.downloading
+          ? p?.finishingPercent
+          : null,
       nodeHeight: p?.bestHeight ?? _status.nodeHeight,
       networkHeight: network ?? _status.networkHeight,
       onPrivateNode: _onPrivate,

@@ -21,6 +21,7 @@ import 'package:path/path.dart' as p;
 import 'package:stackwallet/wallets/beam/explorer/beam_explorer_client.dart';
 import 'package:stackwallet/wallets/beam/host/beam_host.dart';
 import 'package:stackwallet/wallets/beam/host/beam_host_exception.dart';
+import 'package:stackwallet/wallets/beam/node/beam_node_disk.dart';
 import 'package:stackwallet/wallets/beam/node/beam_node_process.dart';
 import 'package:stackwallet/wallets/beam/node/beam_node_progress.dart';
 import 'package:stackwallet/wallets/beam/node/beam_private_node_coordinator.dart';
@@ -86,6 +87,7 @@ class FakeHost implements BeamHost {
   Object? exportError;
   OwnNodeBehaviour ownNode = OwnNodeBehaviour.confirms;
   String? passwordSeen;
+  final requestBodiesSeen = <bool>[];
 
   FakeSession? get openSession {
     for (final s in sessions) {
@@ -109,6 +111,7 @@ class FakeHost implements BeamHost {
       );
     }
     passwordSeen = password;
+    requestBodiesSeen.add(requestBodies);
     calls.add('open $node${node.isOwned ? ' (owned)' : ''}');
     await Future<void>.delayed(const Duration(milliseconds: 5));
     if (failing.contains(node)) {
@@ -293,6 +296,11 @@ class Harness {
     Duration stallAfter = const Duration(minutes: 15),
     Duration ownNodeTimeout = const Duration(milliseconds: 300),
     BeamPrivateNodeFactory? nodeFactory,
+    BeamOwnerKeyProvider? storedOwnerKey,
+    BeamIdleWaiter? whenIdle,
+    bool Function()? requestBodies,
+    BeamNodeDiskProbe? diskProbe,
+    Duration diskCheckInterval = const Duration(minutes: 1),
   }) {
     initial = FakeSession(host, _eu, FakeTransport());
     host.sessions.add(initial);
@@ -314,6 +322,11 @@ class Harness {
       ownNodeTimeout: ownNodeTimeout,
       checkInterval: const Duration(milliseconds: 40),
       stallAfter: stallAfter,
+      storedOwnerKey: storedOwnerKey,
+      whenIdle: whenIdle,
+      requestBodies: requestBodies,
+      diskProbe: diskProbe,
+      diskCheckInterval: diskCheckInterval,
     );
     coordinator.statuses.listen(statuses.add);
     coordinator.sessions.listen(sessionEvents.add);
@@ -428,7 +441,8 @@ void main() {
       expect(h.status.phase, Phase.failed);
       expect(h.status.issue, BeamPrivateNodeIssue.keyExportFailed);
       expect(h.coordinator.session!.node, _eu);
-      expect(h.nodes, isEmpty);
+      // A node object may exist (made before the disk check); none started.
+      expect(h.nodes.where((n) => n.keyReceived != null), isEmpty);
       expect(
         BeamPrivateNodeMessages.actionFor(h.status),
         BeamPrivateNodeAction.retry,
@@ -457,7 +471,11 @@ void main() {
       await h.coordinator.start();
       expect(h.status.phase, Phase.walletClosed);
       expect(h.coordinator.session, isNull);
-      expect(h.nodes, isEmpty, reason: 'no node without a wallet');
+      expect(
+        h.nodes.where((n) => n.keyReceived != null),
+        isEmpty,
+        reason: 'no node started without a wallet',
+      );
       expect(_title(h.status), "Couldn't reopen your wallet");
       h.host.failing.clear();
       await h.coordinator.retry();
@@ -942,6 +960,10 @@ void main() {
       ]);
       BeamNodeProcess? real;
       final h = Harness(
+        // Room on disk regardless of this machine; the real probe has its
+        // own test (beam_private_node_seamless_test.dart).
+        diskProbe: () async =>
+            const BeamNodeDiskSpace(freeBytes: 50 * kBeamGiB, nodeBytes: 0),
         nodeFactory: () => real = BeamNodeProcess(
           rootDir: p.join(fx.tmp.path, 'beam'),
           binaries: fx.binaries,

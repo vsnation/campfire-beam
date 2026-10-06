@@ -22,6 +22,7 @@ import '../wallets/wallet/impl/solana_wallet.dart';
 import '../wl_gen/interfaces/lib_xelis_interface.dart';
 import 'connection_check/electrum_connection_check.dart';
 import 'logger.dart';
+import 'test_beam_node_connection.dart';
 import 'test_epic_box_connection.dart';
 import 'test_eth_node_connection.dart';
 import 'test_monero_node_connection.dart';
@@ -123,7 +124,12 @@ Future<bool> testNodeConnection({
 }) async {
   final formData = nodeFormData;
 
-  if (read(prefsChangeNotifierProvider).useTor) {
+  // BEAM node traffic does not go through Campfire's Tor routing (the coin's
+  // torSupport is false), so a BEAM node's Tor/clearnet flags say nothing
+  // about whether it works; its test below honours the Tor setting itself.
+  if (cryptoCurrency is Beam) {
+    // Skip the Tor/clearnet consistency check.
+  } else if (read(prefsChangeNotifierProvider).useTor) {
     if (formData.netOption! == TorPlainNetworkOption.clear) {
       Logging.instance.w(
         "This node is configured for non-TOR only but TOR is enabled",
@@ -320,6 +326,22 @@ Future<bool> testNodeConnection({
 
         return health;
       } catch (_) {
+        testPassed = false;
+      }
+      break;
+
+    case Beam():
+      // Not a URL: host and port, then the start of BEAM's node handshake
+      // (research/01 step 19). Through Tor when Tor is on.
+      try {
+        final result = await read(testBeamNodeConnectionProvider)(
+          host: formData.host!.trim(),
+          port: formData.port!,
+        );
+        testPassed = result == BeamNodeTestResult.beamNode;
+        if (testPassed) onSuccess?.call(formData);
+      } catch (e, s) {
+        Logging.instance.w("$e\n$s", error: e, stackTrace: s);
         testPassed = false;
       }
       break;

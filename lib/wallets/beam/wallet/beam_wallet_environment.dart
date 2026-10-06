@@ -21,6 +21,7 @@ import '../host/beam_host.dart';
 import '../host/process_host.dart';
 import '../node/beam_node_process.dart';
 import '../node/beam_private_node_coordinator.dart';
+import '../node/beam_private_node_preference.dart';
 import '../sync/beam_sync_state.dart';
 
 /// Makes a fresh private node for a coordinator (single use).
@@ -77,7 +78,9 @@ class BeamWalletEnvironment {
           : BeamBinaries.locate(beamRoot: root),
       log: _defaultLog,
     ),
-    privateNodeSetting: BeamFixedPrivateNodeSetting.platformDefault(),
+    // The user's choice from the node panel, kept across launches
+    // (on by default on desktop, off on phones).
+    privateNodeSetting: BeamPrivateNodePreference.app(),
   );
 
   static BeamWalletEnvironment? _instance;

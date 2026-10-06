@@ -17,6 +17,7 @@ library;
 
 import '../sync/beam_sync_messages.dart';
 import '../sync/beam_sync_state.dart' show beamMainnetHf6Height;
+import 'beam_node_disk.dart';
 import 'beam_private_node_coordinator.dart';
 
 /// What the user can press, per status.
@@ -31,6 +32,9 @@ enum BeamPrivateNodeAction {
 
   /// Turn the setting on and call [BeamPrivateNodeCoordinator.applySetting].
   turnOn,
+
+  /// Start a node the user stopped ([BeamPrivateNodeCoordinator.retry]).
+  start,
 }
 
 abstract final class BeamPrivateNodeMessages {
@@ -46,6 +50,9 @@ abstract final class BeamPrivateNodeMessages {
       switch (s.phase) {
         BeamPrivateNodePhase.off => BeamPrivateNodeAction.turnOn,
         BeamPrivateNodePhase.cannotVerify => BeamPrivateNodeAction.checkAgain,
+        BeamPrivateNodePhase.stopped
+            when s.issue == BeamPrivateNodeIssue.stoppedByUser =>
+          BeamPrivateNodeAction.start,
         BeamPrivateNodePhase.failed ||
         BeamPrivateNodePhase.stopped ||
         BeamPrivateNodePhase.ownNodeUnconfirmed ||
@@ -62,9 +69,26 @@ abstract final class BeamPrivateNodeMessages {
     BeamPrivateNodeAction.retry => 'Try again',
     BeamPrivateNodeAction.checkAgain => 'Check again',
     BeamPrivateNodeAction.turnOn => 'Turn on private node',
+    BeamPrivateNodeAction.start => 'Start private node',
   };
 
   static BeamSyncMessage describe(BeamPrivateNodeStatus s) {
+    final m = _describe(s);
+    if (!s.waitingForWallet ||
+        s.phase == BeamPrivateNodePhase.switching) {
+      return m;
+    }
+    return BeamSyncMessage(
+      title: m.title,
+      detail: '${m.detail == null ? '' : '${m.detail} '}$_waitsForPayment',
+      actionLabel: m.actionLabel,
+    );
+  }
+
+  static const _waitsForPayment =
+      'The switch waits until your payment is finished.';
+
+  static BeamSyncMessage _describe(BeamPrivateNodeStatus s) {
     final label = actionLabel(actionFor(s));
     switch (s.phase) {
       case BeamPrivateNodePhase.off:
@@ -80,9 +104,14 @@ abstract final class BeamPrivateNodeMessages {
       case BeamPrivateNodePhase.preparing:
         return const BeamSyncMessage(
           title: 'Setting up your private node',
-          detail:
-              'The wallet pauses for a few seconds while it hands your node '
-              'the key it needs to spot your payments.',
+          detail: 'Your wallet keeps working while it starts.',
+        );
+      case BeamPrivateNodePhase.downloading when s.finishingPercent != null:
+        return BeamSyncMessage(
+          title:
+              '$_publicNow — your private node is finishing setup '
+              '(${s.finishingPercent}%)',
+          detail: 'This last step takes 5–10 minutes. $_autoSwitch',
         );
       case BeamPrivateNodePhase.downloading:
         final pct = s.percent;
@@ -93,6 +122,15 @@ abstract final class BeamPrivateNodeMessages {
           detail: _autoSwitch,
         );
       case BeamPrivateNodePhase.catchingUp:
+        final finishing = s.finishingPercent;
+        if (finishing != null) {
+          return BeamSyncMessage(
+            title:
+                '$_publicNow — your private node is finishing setup '
+                '($finishing%)',
+            detail: 'This last step takes 5–10 minutes. $_autoSwitch',
+          );
+        }
         return BeamSyncMessage(
           title: '$_publicNow — your private node is catching up',
           detail: '${_behind(s)}$_autoSwitch',
@@ -128,10 +166,17 @@ abstract final class BeamPrivateNodeMessages {
           actionLabel: label,
         );
       case BeamPrivateNodePhase.switching:
-        return const BeamSyncMessage(
-          title: 'Switching to your private node',
-          detail: 'This takes a few seconds.',
-        );
+        return s.waitingForWallet
+            ? const BeamSyncMessage(
+                title: 'Your private node is ready',
+                detail:
+                    'The wallet switches over as soon as your payment is '
+                    'finished.',
+              )
+            : const BeamSyncMessage(
+                title: 'Switching to your private node',
+                detail: 'This takes a few seconds.',
+              );
       case BeamPrivateNodePhase.active:
         return s.privateReceiveAvailable
             ? const BeamSyncMessage(
@@ -154,12 +199,25 @@ abstract final class BeamPrivateNodeMessages {
           actionLabel: label,
         );
       case BeamPrivateNodePhase.failed:
+        if (s.issue == BeamPrivateNodeIssue.notEnoughDisk ||
+            s.issue == BeamPrivateNodeIssue.diskFull) {
+          return _disk(s, label);
+        }
         return BeamSyncMessage(
           title: _failedTitle(s.issue),
           detail: _failedDetail(s.issue),
           actionLabel: label,
         );
       case BeamPrivateNodePhase.stopped:
+        if (s.issue == BeamPrivateNodeIssue.stoppedByUser) {
+          return BeamSyncMessage(
+            title: 'Your private node is stopped',
+            detail:
+                'The wallet uses a public node. Your private node starts '
+                'again when you press start or reopen the wallet.',
+            actionLabel: label,
+          );
+        }
         return BeamSyncMessage(
           title: 'Your private node stopped — back on a public node',
           detail: 'Your wallet keeps working. $_private',
@@ -182,6 +240,54 @@ abstract final class BeamPrivateNodeMessages {
         );
     }
   }
+
+  /// Not enough room: say how much is needed, how much there is, and that
+  /// the wallet keeps working. Never asks the user to guess a number.
+  static BeamSyncMessage _disk(BeamPrivateNodeStatus s, String? label) {
+    final d = s.disk;
+    if (s.issue == BeamPrivateNodeIssue.diskFull) {
+      final free = d == null
+          ? ''
+          : ' Only ${formatBeamDiskSize(d.space.freeBytes)} is free.';
+      return BeamSyncMessage(
+        title: 'Your private node stopped: this computer is almost out of '
+            'space',
+        detail:
+            'It was stopped before the disk filled up.$free Free up some '
+            'space, then try again. Back on a public node — your wallet '
+            'keeps working.',
+        actionLabel: label,
+      );
+    }
+    if (d == null) {
+      const policy = BeamNodeDiskPolicy();
+      return BeamSyncMessage(
+        title: _setupTitle(policy.setupPeakBytes, policy.nodeBytes),
+        detail:
+            'Free up some space, then try again. Your wallet keeps working '
+            'on a public node.',
+        actionLabel: label,
+      );
+    }
+    final title = d.freshNode
+        ? _setupTitle(d.setupPeakBytes, d.nodeBytes)
+        : "There isn't enough free space for your private node";
+    return BeamSyncMessage(
+      title: title,
+      detail:
+          'This computer has ${formatBeamDiskSize(d.space.freeBytes)} free, '
+          'and Campfire leaves ${formatBeamDiskSize(d.reserveBytes)} for '
+          'your other apps. Free up ${formatBeamDiskSize(d.shortfallBytes)}, '
+          'then try again. Your wallet keeps working on a public node.',
+      actionLabel: label,
+    );
+  }
+
+  /// "Your private node needs about 12 GB free while it sets up (it
+  /// shrinks to about 8 GB)".
+  static String _setupTitle(int peak, int settled) =>
+      'Your private node needs about ${formatBeamDiskSize(peak)} free while '
+      'it sets up (it shrinks to about ${formatBeamDiskSize(settled)})';
 
   static String _failedTitle(BeamPrivateNodeIssue? issue) => switch (issue) {
     BeamPrivateNodeIssue.keyRejected =>

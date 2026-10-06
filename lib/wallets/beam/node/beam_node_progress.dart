@@ -24,6 +24,11 @@
 ///   (`node.cpp:89`)
 /// * `Owned accounts :`, then one tab-indented endpoint per owner key
 ///   (`node.cpp:1443`)
+/// * `Raising Fossil...` (and the other `LongAction` steps: `Raising TxoLo`,
+///   `Raising TxoHi`, `Rebuilding …`, `Rescanning …`), then every 10 s
+///   `\tN%...` (`processor.cpp:2068`, `block_crypt.cpp:3784`). Measured
+///   2026-10-06: after fast sync, `Raising Fossil` runs 5–10 minutes and the
+///   node folder peaks at ≥ 11.42 GB before it shrinks to ~7.55 GB
 /// * `key import failed`, after which the node exits with code 0
 ///   (`cli.cpp:265`)
 ///
@@ -98,9 +103,14 @@ class BeamNodeProgress {
     this.error,
     this.errorDetail,
     this.exitCode,
+    this.finishingPercent,
   });
 
   final BeamNodePhase phase;
+
+  /// While the node runs one of its long maintenance steps after fast sync
+  /// ("Raising Fossil" and friends): how far it is, 0-100. Null otherwise.
+  final int? finishingPercent;
 
   /// `Updating node: p%`. Work units relative to the first value the node
   /// saw, not heights; good enough for "downloading (43%)".
@@ -160,6 +170,8 @@ class BeamNodeProgress {
     BeamNodeError? error,
     String? errorDetail,
     int? exitCode,
+    int? finishingPercent,
+    bool clearFinishing = false,
   }) => BeamNodeProgress(
     phase: phase ?? this.phase,
     percent: percent ?? this.percent,
@@ -173,6 +185,9 @@ class BeamNodeProgress {
     error: error ?? this.error,
     errorDetail: errorDetail ?? this.errorDetail,
     exitCode: exitCode ?? this.exitCode,
+    finishingPercent: clearFinishing
+        ? null
+        : finishingPercent ?? this.finishingPercent,
   );
 
   @override
@@ -189,7 +204,8 @@ class BeamNodeProgress {
       other.ownerAccounts == ownerAccounts &&
       other.error == error &&
       other.errorDetail == errorDetail &&
-      other.exitCode == exitCode;
+      other.exitCode == exitCode &&
+      other.finishingPercent == finishingPercent;
 
   @override
   int get hashCode => Object.hash(
@@ -205,6 +221,7 @@ class BeamNodeProgress {
     error,
     errorDetail,
     exitCode,
+    finishingPercent,
   );
 
   @override
@@ -213,6 +230,7 @@ class BeamNodeProgress {
       '${percent == null ? '' : ', $percent%'}'
       '${myTipHeight == null ? '' : ', tip $myTipHeight'}'
       '${fastSyncTarget == null ? '' : ', fast-sync to $fastSyncTarget'}'
+      '${finishingPercent == null ? '' : ', finishing $finishingPercent%'}'
       ', peers $peersSeen'
       '${ownerAccounts == null ? '' : ', owners $ownerAccounts'}'
       '${error == null ? '' : ', error ${error!.name}'}'
@@ -230,6 +248,14 @@ final RegExp _fastSyncMode = RegExp(
 );
 final RegExp _updating = RegExp(r'^Updating node: (\d+)% \((\d+)/(\d+)\)');
 final RegExp _peerTip = RegExp(r'^Peer (\S+) Tip: \d+-');
+
+/// A long maintenance step starting (`LongAction::Reset` logs its name).
+final RegExp _longStep = RegExp(
+  r'^(Raising (Fossil|TxoLo|TxoHi)|Rebuilding .+|Rescanning .+)\.\.\.$',
+);
+
+/// Its progress, every 10 s: `\tN%...` after the time prefix.
+final RegExp _longStepPercent = RegExp(r'^(\d{1,3})%\.\.\.$');
 
 /// Turns console lines into [BeamNodeProgress] snapshots. Stateful; one
 /// instance per node launch. Pure otherwise: no I/O, no clock unless given.
@@ -257,6 +283,9 @@ class BeamNodeLogParser {
   /// `Tx replication is ON` was logged, counted or not. BEAM never logs it
   /// twice in one process.
   bool _replicationLogged = false;
+
+  /// Inside a long maintenance step ([BeamNodeProgress.finishingPercent]).
+  bool _inLongStep = false;
 
   BeamNodeProgress get progress => _progress;
 
@@ -314,6 +343,31 @@ class BeamNodeLogParser {
     final m = _prefix.firstMatch(raw);
     final level = m?.group(1);
     final msg = m == null ? raw.trim() : raw.substring(m.end).trim();
+
+    if (_longStep.hasMatch(msg)) {
+      _inLongStep = true;
+      _progress = _progress.copyWith(finishingPercent: 0);
+      return;
+    }
+    final stepPct = _longStepPercent.firstMatch(msg);
+    if (stepPct != null) {
+      if (_inLongStep) {
+        _progress = _progress.copyWith(
+          finishingPercent: _int(stepPct.group(1))!.clamp(0, 100),
+        );
+      }
+      return;
+    }
+    // Any progress line of the node's normal work ends the step (it runs
+    // on the node's only thread, so nothing else is logged meanwhile).
+    if (_inLongStep &&
+        (msg.startsWith('My Tip: ') ||
+            msg.startsWith('Updating node: ') ||
+            msg.startsWith('Fast-sync ') ||
+            msg == 'Tx replication is ON')) {
+      _inLongStep = false;
+      _progress = _progress.copyWith(clearFinishing: true);
+    }
 
     if (msg.startsWith('My Tip: ')) {
       final h = _int(_myTip.firstMatch(msg)?.group(1));

@@ -137,33 +137,31 @@ class BeamGateLease {
   }
 }
 
-/// The [BeamHost] a `BeamPrivateNodeCoordinator` gets from the wallet.
+/// The [BeamHost] the wallet opens through, and the one its
+/// `BeamPrivateNodeCoordinator` gets.
 ///
-/// * [exportOwnerKey] answers from Campfire's secure storage when the key was
-///   captured at create/restore (R11), so the node never needs the wallet
-///   closed to read it. Only a wallet without a stored key falls through to
-///   the real export, and the key it returns is stored for next time.
-/// * Every session it hands out is a [BeamGatedSession]: switching or
-///   closing it waits until the wallet is not busy.
-/// * [openWallet] uses [requestBodies] from the wallet (a restored wallet
-///   keeps scanning on a public fallback), whatever the caller passed.
-/// * After [close], nothing new is opened: a session that finishes opening
+/// The coordinator itself takes the stored owner key (no pause), waits for
+/// the gate before every switch it makes, and is told whether to request
+/// block bodies (B-NODE-2b), so this host only has to:
+///
+/// * store the key a real [exportOwnerKey] returns, so a wallet that had no
+///   stored key pauses for it at most once;
+/// * hand out [BeamGatedSession]s, so the wallet's own node changes (a dead
+///   public node, a node picked in settings) also wait until the wallet is
+///   not busy;
+/// * after [close], open nothing new: a session that finishes opening
 ///   afterwards is closed at once, so a coordinator still running after the
 ///   wallet closed cannot leave a wallet-api behind.
 class BeamCoordinatorHost implements BeamHost {
   BeamCoordinatorHost({
     required this.inner,
     required this.gate,
-    required this._cachedOwnerKey,
     required this._storeOwnerKey,
-    required this._requestBodies,
   });
 
   final BeamHost inner;
   final BeamNodeSwitchGate gate;
-  final Future<String?> Function() _cachedOwnerKey;
   final Future<void> Function(String key) _storeOwnerKey;
-  final bool Function() _requestBodies;
   bool _closed = false;
 
   /// How many times the real `export_owner_key` ran through this host.
@@ -197,7 +195,7 @@ class BeamCoordinatorHost implements BeamHost {
       walletDir: walletDir,
       password: password,
       node: node,
-      requestBodies: _requestBodies(),
+      requestBodies: requestBodies,
     );
     if (_closed) {
       await session.close();
@@ -211,8 +209,6 @@ class BeamCoordinatorHost implements BeamHost {
     required String walletDir,
     required String password,
   }) async {
-    final cached = await _cachedOwnerKey();
-    if (cached != null && cached.isNotEmpty) return cached;
     realExports++;
     final key = await inner.exportOwnerKey(
       walletDir: walletDir,

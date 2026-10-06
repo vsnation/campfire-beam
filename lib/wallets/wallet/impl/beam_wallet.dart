@@ -343,9 +343,7 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
       final coordHost = BeamCoordinatorHost(
         inner: host,
         gate: _gate,
-        cachedOwnerKey: _secrets.readOwnerKey,
         storeOwnerKey: _secrets.writeOwnerKey,
-        requestBodies: () => isScanningForCoins,
       );
       _coordHost = coordHost;
       _startSyncMonitor();
@@ -901,6 +899,11 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
       setting: environment.privateNodeSetting,
       publicNodes: _publicCandidates(),
       log: environment.log,
+      // R11: the key stored at create/restore (no pause), no switch under
+      // an open money flow, and body requests while a restore still scans.
+      storedOwnerKey: _secrets.readOwnerKey,
+      whenIdle: () => _gate.whenIdle(),
+      requestBodies: () => isScanningForCoins,
     );
     _coordinator = coordinator;
     _coordinatorSessionSub = coordinator.sessions.listen(

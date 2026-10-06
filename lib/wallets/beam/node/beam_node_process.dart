@@ -30,6 +30,12 @@ const List<String> kBeamMainnetNodePeers = [
   'us-nodes.mainnet.beam.mw:8100',
 ];
 
+/// How long beam-node gets to stop after SIGTERM before SIGKILL. Measured
+/// 2026-10-06: during its post-fast-sync "Raising Fossil" step the node
+/// ignored SIGTERM for more than 10 s, and a kill there risks its database.
+/// (wallet-api keeps its own shorter grace.)
+const Duration kBeamNodeStopGrace = Duration(seconds: 45);
+
 /// A node failure with a typed reason. [message] never holds a secret.
 class BeamNodeException implements Exception {
   const BeamNodeException(this.kind, this.message);
@@ -91,7 +97,7 @@ class BeamNodeProcess implements BeamPrivateNode {
     BeamHostLog? log,
     this.configReadTimeout = const Duration(seconds: 30),
     this.startupWindow = const Duration(seconds: 30),
-    this.stopGrace = const Duration(seconds: 10),
+    this.stopGrace = kBeamNodeStopGrace,
     this.maxLogBytes = 8 * 1024 * 1024,
     DateTime Function()? now,
   }) : rootDir = p.normalize(p.absolute(rootDir)),
@@ -111,7 +117,7 @@ class BeamNodeProcess implements BeamPrivateNode {
   /// account listing (or an error) before returning.
   final Duration startupWindow;
 
-  /// Time between SIGTERM and SIGKILL.
+  /// Time between SIGTERM and SIGKILL ([kBeamNodeStopGrace]).
   final Duration stopGrace;
 
   /// The redacted console log rolls over to a new file past this size.
@@ -720,7 +726,9 @@ class _NodeLock {
 
   static Future<void> _terminate(int target) async {
     Process.killPid(target, ProcessSignal.sigterm);
-    for (var i = 0; i < 50; i++) {
+    // The same grace as a normal stop (kBeamNodeStopGrace), in 200 ms steps.
+    final steps = kBeamNodeStopGrace.inMilliseconds ~/ 200;
+    for (var i = 0; i < steps; i++) {
       if (!await _isOurNode(target)) return;
       await Future<void>.delayed(const Duration(milliseconds: 200));
     }
