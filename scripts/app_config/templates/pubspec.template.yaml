@@ -90,10 +90,14 @@ dependencies:
 # %%END_ENABLE_MWEBD%%
 
 # %%ENABLE_BEAM%%
-## No pub dependency yet. On desktop the BEAM core runs as child processes
-## (wallet-api, beam-wallet, beam-node); their pinned binaries are bundled as
-## assets (see the second BEAM block, in flutter: assets:). The phase 2 FFI
-## plugin (flutter_libbeam) goes here.
+## On desktop the BEAM core runs as child processes (wallet-api, beam-wallet,
+## beam-node); their pinned binaries are bundled as assets (see the second
+## BEAM block, in flutter: assets:). The phase 2 FFI plugin (flutter_libbeam)
+## goes here.
+## dApp host (lib/wallets/beam/dapps/host): the Flutter team's webview,
+## Android, iOS and macOS only. It has no Linux or Windows implementation, so
+## those builds show "dApps open on macOS, Android and iOS" instead.
+#  webview_flutter: ^4.14.1
 # %%END_ENABLE_BEAM%%
 
   monero_rpc: ^2.0.0
@@ -450,6 +454,10 @@ flutter:
 ## Icons of the verified assets (lib/wallets/beam/assets/beam_asset_catalog).
 ## Bundled, never fetched: an icon URL would tell its server who holds what.
 #    - assets/beam/icons/
+## The Beam girl (Campfire for BEAM's character, in place of Firo's Sparky):
+## static WebP stickers and animated .tgs (gzipped Lottie).
+#    - assets/beam/stickers/static/
+#    - assets/beam/stickers/animated/
 ## Pinned BEAM core binaries for desktop, staged per build platform by
 ## scripts/beam/core/stage_binaries.sh (empty folders elsewhere). A directory
 ## entry does not include its subdirectories, so each is listed.
