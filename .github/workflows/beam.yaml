@@ -1,0 +1,89 @@
+name: BEAM
+
+# Campfire-for-BEAM checks. Runs the BEAM suites under the BEAM Campfire config
+# (the configuration this fork ships), plus repository guards. Upstream's
+# test.yaml keeps testing the all-coins Stack Wallet config.
+on:
+  push:
+    branches: [beam]
+  pull_request:
+    branches: [beam]
+
+permissions:
+  contents: read
+
+jobs:
+  guards:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # The repo is public: a wallet password, seed, bot token or the
+      # developer's home path must never land in it. The exact-match denylist
+      # lives outside the repo on the developer's machine; CI runs the
+      # pattern rules over every tracked file.
+      - name: Secret patterns
+        run: bash scripts/beam/secret_scan.sh --all
+
+      # Every commit is authored by the project identity, with no AI
+      # attribution (project rules R1).
+      - name: Commit identity
+        run: |
+          base=$(git merge-base origin/staging HEAD 2>/dev/null || git rev-list --max-parents=0 HEAD | tail -1)
+          bad=$(git log --format='%an <%ae>' "$base"..HEAD \
+            | grep -v '^vsnation <vsnation@users.noreply.github.com>$' || true)
+          if [ -n "$bad" ]; then echo "Foreign authors:"; echo "$bad" | sort -u; exit 1; fi
+          if git log --format='%B' "$base"..HEAD | grep -qi 'co-authored-by'; then
+            echo "Co-authored-by trailer found"; exit 1
+          fi
+
+      # The app may only run HF6-capable cores (block 3928666).
+      - name: Pinned cores are HF6 releases
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          m = json.load(open('scripts/beam/core/manifest.json'))
+          bad = [(p, b, v['version']) for p, bins in m.items()
+                 for b, v in bins.items() if v.get('version') != '7.5.14493']
+          if bad:
+              sys.exit(f'non-HF6 pins: {bad}')
+          print('all pins are 7.5.14493')
+          PY
+
+  test:
+    runs-on: ubuntu-24.04
+    needs: guards
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.2
+          channel: stable
+          cache: true
+
+      - name: Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libsecret-1-dev libjsoncpp-dev
+
+      # -a campfire is the BEAM build (BEAM + TOR flags, data dir
+      # campfirebeam); -d uses the pinned native prebuilts; -s the system
+      # secure-storage libraries; -i skips platform native deps.
+      - name: Configure Campfire for BEAM
+        run: |
+          cd scripts
+          echo "yes" | ./build_app.sh -v 0.0.1 -b 1 -p linux -a campfire -d -s -i
+
+      - name: Create test stubs
+        run: bash prebuild.sh
+        working-directory: scripts
+
+      - name: Analyze BEAM code
+        run: flutter analyze lib/wallets/beam test/beam
+
+      - name: BEAM tests
+        run: flutter test test/beam --reporter expanded

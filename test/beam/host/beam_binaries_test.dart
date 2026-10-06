@@ -7,6 +7,7 @@
  *
  */
 
+import 'dart:convert';
 import 'dart:ffi' show Abi;
 import 'dart:io';
 
@@ -79,6 +80,32 @@ void main() {
       for (final m in kBeamDevBinaryManifest.values) {
         for (final hash in m.values) {
           expect(release, isNot(contains(hash)));
+        }
+      }
+    });
+
+    test('the app pins exactly what scripts/beam/core built', () {
+      // manifest.json is written by the binary build; the Dart manifest is
+      // what the app trusts. They must never drift apart.
+      final built =
+          jsonDecode(
+                File('scripts/beam/core/manifest.json').readAsStringSync(),
+              )
+              as Map<String, dynamic>;
+      for (final platform in kBeamBinaryManifest.keys) {
+        final pins = kBeamBinaryManifest[platform]!;
+        final fromBuild = (built[platform] as Map).cast<String, dynamic>();
+        for (final binary in pins.keys) {
+          expect(
+            pins[binary],
+            (fromBuild[binary] as Map)['sha256'],
+            reason: '$platform/$binary',
+          );
+          expect(
+            (fromBuild[binary] as Map)['version'],
+            '7.5.14493',
+            reason: 'HF6-capable release ($platform/$binary)',
+          );
         }
       }
     });
