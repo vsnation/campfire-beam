@@ -8,6 +8,7 @@ import 'package:stackwallet/services/node_service.dart';
 import 'package:stackwallet/utilities/flutter_secure_storage_interface.dart';
 import 'package:stackwallet/wallets/crypto_currency/crypto_currency.dart';
 
+import '../app_config_test_utils.dart';
 import '../hive/hive_ce_test_utils.dart';
 
 void main() {
@@ -19,6 +20,19 @@ void main() {
   final expectedDefaultNodeCount =
       expectedPrimaryDefaults.length +
       (AppConfig.coins.any((e) => e.identifier == 'firo') ? 4 : 0);
+
+  // The "Defaults populated" cases were written for Stack Wallet's coins
+  // (Bitcoin, Monero). Use those when the build ships them, otherwise a coin it
+  // does ship, so a single-coin build tests the same behaviour on its own coin.
+  // Not Firo: updateDefaults() gives it no default primary node.
+  CryptoCurrency configuredNodeCoin(CryptoCurrency preferred) =>
+      configuredCoinOr(preferred, where: (coin) => coin.identifier != 'firo');
+  final btcOrConfigured = configuredNodeCoin(
+    Bitcoin(CryptoCurrencyNetwork.main),
+  );
+  final xmrOrConfigured = configuredNodeCoin(
+    Monero(CryptoCurrencyNetwork.main),
+  );
 
   setUp(() async {
     await setUpHiveCeTest();
@@ -150,7 +164,9 @@ void main() {
       id: "pnodeID2",
       useSSL: true,
       enabled: true,
-      coinName: "monero",
+      // "delete a node" deletes this one: NodeService.delete looks its coin up
+      // in AppConfig, so it has to be a coin the build ships.
+      coinName: xmrOrConfigured.identifier,
       isFailover: true,
       isDown: false,
       torEnabled: true,
@@ -181,25 +197,18 @@ void main() {
     test("setPrimaryNodeFor and getPrimaryNodeFor", () async {
       final fakeStore = FakeSecureStorage();
       final service = NodeService(secureStorageInterface: fakeStore);
+      final coin = btcOrConfigured;
       expect(
-        service
-            .getPrimaryNodeFor(currency: Bitcoin(CryptoCurrencyNetwork.main))
-            ?.toString(),
-        Bitcoin(
-          CryptoCurrencyNetwork.main,
-        ).defaultNode(isPrimary: true).toString(),
+        service.getPrimaryNodeFor(currency: coin)?.toString(),
+        coin.defaultNode(isPrimary: true).toString(),
       );
       await service.setPrimaryNodeFor(
-        coin: Bitcoin(CryptoCurrencyNetwork.main),
-        node: Bitcoin(CryptoCurrencyNetwork.main).defaultNode(isPrimary: true),
+        coin: coin,
+        node: coin.defaultNode(isPrimary: true),
       );
       expect(
-        service
-            .getPrimaryNodeFor(currency: Bitcoin(CryptoCurrencyNetwork.main))
-            .toString(),
-        Bitcoin(
-          CryptoCurrencyNetwork.main,
-        ).defaultNode(isPrimary: true).toString(),
+        service.getPrimaryNodeFor(currency: coin).toString(),
+        coin.defaultNode(isPrimary: true).toString(),
       );
       expect(fakeStore.interactions, 0);
     });
@@ -207,14 +216,13 @@ void main() {
     test("get primary nodes", () async {
       final fakeStore = FakeSecureStorage();
       final service = NodeService(secureStorageInterface: fakeStore);
-      await service.setPrimaryNodeFor(
-        coin: Bitcoin(CryptoCurrencyNetwork.main),
-        node: Bitcoin(CryptoCurrencyNetwork.main).defaultNode(isPrimary: true),
-      );
-      await service.setPrimaryNodeFor(
-        coin: Monero(CryptoCurrencyNetwork.main),
-        node: Monero(CryptoCurrencyNetwork.main).defaultNode(isPrimary: true),
-      );
+      // One coin when the build ships neither Bitcoin nor Monero.
+      for (final coin in {btcOrConfigured, xmrOrConfigured}) {
+        await service.setPrimaryNodeFor(
+          coin: coin,
+          node: coin.defaultNode(isPrimary: true),
+        );
+      }
       final primaryNodes = service.primaryNodes;
       final expectedPrimaryNodes = [...expectedPrimaryDefaults]
         ..sort((a, b) => a.id.compareTo(b.id));

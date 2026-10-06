@@ -38,6 +38,14 @@ const fakeNode = r'''#!/bin/sh
 # beam-node stand-in
 here=$(cd "$(dirname "$0")" && pwd)
 mode=$(cat "$here/mode" 2>/dev/null)
+# Record the pid before anything else in this mode: the test gives the node
+# one second to read its config, and under full-suite load the steps below
+# could outlast it, leaving pids.log empty.
+if [ "$mode" = noconfig ]; then
+  case " $* " in *" --config_file="*)
+    echo "$$" >> "$here/pids.log"; sleep 30; exit 0 ;;
+  esac
+fi
 cfg=""; port=""
 for a in "$@"; do
   case "$a" in
@@ -52,7 +60,6 @@ if [ -z "$cfg" ]; then echo "Port must be specified"; exit 0; fi
 printf '%s\n' "$*" >> "$here/argv.log"
 pwd >> "$here/cwd.log"
 echo "$$" >> "$here/pids.log"
-if [ "$mode" = noconfig ]; then sleep 30; exit 0; fi
 content=$(cat "$cfg")
 echo "Reading config from $cfg"
 i=0

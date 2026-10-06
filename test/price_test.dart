@@ -3,12 +3,15 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
 import 'package:mockito/mockito.dart';
+import 'package:stackwallet/app_config.dart';
 import 'package:stackwallet/db/hive/db.dart';
 import 'package:stackwallet/networking/http.dart';
 import 'package:stackwallet/services/price.dart';
+import 'package:stackwallet/wallets/crypto_currency/crypto_currency.dart';
 
 import 'hive/hive_ce_test_utils.dart';
 import 'price_test.mocks.dart';
@@ -26,62 +29,42 @@ void main() {
     );
   });
 
-  void expectFetchedPriceSnapshot(String prices) {
+  // What the mocked CoinGecko response below prices, by the app coin each
+  // row belongs to (PriceAPI maps BitcoinFrost to CoinGecko's "bitcoin" too).
+  // The response covers coins from several builds, so whichever coins this
+  // build ships, at least one of them gets a real price.
+  final fetchedPrices = <Type, ({Decimal value, double change24h})>{
+    Beam: (value: Decimal.parse("0.00000123"), change24h: 2.5),
+    Bitcoin: (value: Decimal.one, change24h: 0.0),
+    BitcoinFrost: (value: Decimal.one, change24h: 0.0),
+    Dogecoin: (value: Decimal.parse("0.00000315"), change24h: -2.68533),
+    Epiccash: (value: Decimal.parse("0.00002803"), change24h: 7.27524),
+    Firo: (value: Decimal.parse("0.0001096"), change24h: -0.89304),
+    Monero: (value: Decimal.parse("0.00717236"), change24h: -0.77656),
+    Xelis: (value: Decimal.parse("0.00001234"), change24h: 5.67),
+  };
+
+  // Every main-net coin the build ships is in the result: with the price from
+  // the response when it has one, otherwise cached as 0.
+  void expectFetchedPrices(
+    Map<CryptoCurrency, ({Decimal value, double change24h})> prices,
+  ) {
+    final coins = AppConfig.coins
+        .where((coin) => coin.network == CryptoCurrencyNetwork.main)
+        .toList();
     expect(
-      prices,
-      contains("Instance of 'Bitcoin': (change24h: 0.0, value: 1)"),
+      coins.where((coin) => fetchedPrices.containsKey(coin.runtimeType)),
+      isNotEmpty,
+      reason: "the mocked response must price a coin this build ships",
     );
-    expect(
-      prices,
-      contains("Instance of 'BitcoinFrost': (change24h: 0.0, value: 1)"),
-    );
-    expect(
-      prices,
-      contains(
-        "Instance of 'Monero': (change24h: -0.77656, value: 0.00717236)",
-      ),
-    );
-    expect(
-      prices,
-      contains(
-        "Instance of 'Dogecoin': (change24h: -2.68533, value: 0.00000315)",
-      ),
-    );
-    expect(
-      prices,
-      contains(
-        "Instance of 'Epiccash': (change24h: 7.27524, value: 0.00002803)",
-      ),
-    );
-    expect(
-      prices,
-      contains("Instance of 'Firo': (change24h: -0.89304, value: 0.0001096)"),
-    );
-    expect(
-      prices,
-      contains("Instance of 'Xelis': (change24h: 5.67, value: 0.00001234)"),
-    );
-    expect(
-      prices,
-      contains("Instance of 'Cardano': (change24h: 0.0, value: 0)"),
-    );
-    expect(
-      prices,
-      contains("Instance of 'Fact0rn': (change24h: 0.0, value: 0)"),
-    );
-    expect(
-      prices,
-      contains("Instance of 'Peercoin': (change24h: 0.0, value: 0)"),
-    );
-    expect(
-      prices,
-      contains("Instance of 'Salvium': (change24h: 0.0, value: 0)"),
-    );
-    expect(
-      prices,
-      contains("Instance of 'Solana': (change24h: 0.0, value: 0)"),
-    );
-    expect(prices, isNot('{}'));
+    for (final coin in coins) {
+      expect(
+        prices[coin],
+        fetchedPrices[coin.runtimeType] ??
+            (value: Decimal.zero, change24h: 0.0),
+        reason: coin.prettyName,
+      );
+    }
   }
 
   void expectEmptyPriceSnapshot(String prices) {
@@ -159,7 +142,9 @@ void main() {
           '":null,"last_updated":"2022-08-22T16:38:32.826Z"},{"id":"xelis","sy'
           'mbol":"xel","name":"Xelis","image":"https://assets.coingecko.com/co'
           'ins/images/37615/large/green_background_black_logo.png","current_pr'
-          'ice":0.00001234,"price_change_percentage_24h":5.67}]',
+          'ice":0.00001234,"price_change_percentage_24h":5.67},{"id":"beam","s'
+          'ymbol":"beam","name":"Beam","current_price":0.00000123,"price_chang'
+          'e_percentage_24h":2.5}]',
         ),
         200,
       ),
@@ -170,7 +155,7 @@ void main() {
 
     final price = await priceAPI.getPricesAnd24hChange(baseCurrency: "btc");
 
-    expectFetchedPriceSnapshot(price.toString());
+    expectFetchedPrices(price);
     verify(
       client.get(
         proxyInfo: null,
@@ -253,7 +238,9 @@ void main() {
           '.177Z","roi":null,"last_updated":"2022-08-22T16:38:32.826Z"},{"id":'
           '"xelis","symbol":"xel","name":"Xelis","image":"https://assets.coing'
           'ecko.com/coins/images/37615/large/green_background_black_logo.png",'
-          '"current_price":0.00001234,"price_change_percentage_24h":5.67}]',
+          '"current_price":0.00001234,"price_change_percentage_24h":5.67},{"i'
+          'd":"beam","symbol":"beam","name":"Beam","current_price":0.00000123,'
+          '"price_change_percentage_24h":2.5}]',
         ),
         200,
       ),
@@ -270,7 +257,7 @@ void main() {
       baseCurrency: "btc",
     );
 
-    expectFetchedPriceSnapshot(cachedPrice.toString());
+    expectFetchedPrices(cachedPrice);
 
     // verify only called once during filling of cache
     verify(

@@ -1,17 +1,26 @@
 import 'dart:typed_data';
 
-import 'package:flutter_libsparkmobile/flutter_libsparkmobile.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/wallets/crypto_currency/crypto_currency.dart';
 import 'package:stackwallet/wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
 import 'package:stackwallet/wl_gen/interfaces/lib_spark_interface.dart';
 
+import '../app_config_test_utils.dart';
+
+// No direct import of flutter_libsparkmobile: the package only exists in builds
+// configured with the FIRO flag, and importing it would stop this file from
+// loading anywhere else. The library is reached through the app's own
+// generated `libSpark` interface instead, and the cases that need it are
+// skipped when the flag is off. The script, fee and version-number cases are
+// plain Dart and run in every configuration.
 void main() {
   test('Spark Name validation rejects underscores before construction', () {
-    final pattern = RegExp(kNameRegexString);
+    // libSpark.nameRegexString is flutter_libsparkmobile's kNameRegexString,
+    // and is what the app validates names with.
+    final pattern = RegExp(libSpark.nameRegexString);
     expect(pattern.hasMatch('NAME-FOR.TESTING'), isTrue);
     expect(pattern.hasMatch('NAME_FOR_TESTING'), isFalse);
-  });
+  }, skip: skipUnlessFiro);
 
   test('Spark Name fee output includes the name and address tag', () {
     final baseScript = Uint8List(25);
@@ -55,7 +64,7 @@ void main() {
       expect(version, LibSparkSpendVersion.chaumV1);
       expect(version.allowsMultipleInputs, isFalse);
       expect(version.transactionVersion, 3 | (9 << 16));
-    });
+    }, skip: skipUnlessFiro);
 
     test('mainnet uses V2 at activation and later', () {
       for (final nextBlockHeight in [1371000, 1371001]) {
@@ -68,7 +77,7 @@ void main() {
         expect(version.allowsMultipleInputs, isTrue);
         expect(version.transactionVersion, 3 | (11 << 16));
       }
-    });
+    }, skip: skipUnlessFiro);
 
     test('non-mainnet networks remain on V1', () {
       for (final network in CryptoCurrencyNetwork.values.where(
