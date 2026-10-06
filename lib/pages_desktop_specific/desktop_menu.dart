@@ -20,6 +20,8 @@ import '../providers/providers.dart';
 import '../themes/stack_colors.dart';
 import '../utilities/assets.dart';
 import '../utilities/text_styles.dart';
+import '../widgets/beam/sidebar/beam_sidebar.dart';
+import '../widgets/beam/sidebar/beam_sidebar_menu.dart';
 import '../widgets/desktop/desktop_tor_status_button.dart';
 import '../widgets/desktop/living_stack_icon.dart';
 import 'desktop_menu_item.dart';
@@ -35,6 +37,15 @@ enum DesktopMenuItemId {
   settings,
   support,
   about,
+
+  // Campfire for BEAM (lib/widgets/beam/sidebar): the BEAM features' pages.
+  // After the upstream ids, so their indexes do not move.
+  beamSwap,
+  beamAssets,
+  beamNames,
+  beamDapps,
+  beamAirdrops,
+  beamTokens,
 }
 
 class DesktopMenu extends ConsumerStatefulWidget {
@@ -116,6 +127,17 @@ class _DesktopMenuState extends ConsumerState<DesktopMenu> {
 
   @override
   Widget build(BuildContext context) {
+    // Campfire for BEAM: every BEAM feature has its item in this menu.
+    if (BeamSidebar.enabled) {
+      return BeamSidebarMenu(
+        width: _width,
+        expanded: !_isMinimized,
+        duration: duration,
+        onToggleMinimize: toggleMinimize,
+        onSelected: updateSelectedMenuItem,
+      );
+    }
+
     final prefs = ref.watch(prefsChangeNotifierProvider);
 
     final showExchange = prefs.enableExchange;

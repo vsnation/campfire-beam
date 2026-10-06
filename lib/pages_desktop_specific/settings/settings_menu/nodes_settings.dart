@@ -25,6 +25,8 @@ import '../../../utilities/constants.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../utilities/util.dart';
 import '../../../wallets/crypto_currency/crypto_currency.dart';
+import '../../../widgets/beam/sidebar/beam_sidebar.dart';
+import '../../../widgets/beam/sidebar/beam_sidebar_node_chip.dart';
 import '../../../widgets/icon_widgets/x_icon.dart';
 import '../../../widgets/rounded_white_container.dart';
 import '../../../widgets/stack_text_field.dart';
@@ -130,6 +132,12 @@ class _NodesSettings extends ConsumerState<NodesSettings> {
                         "Nodes",
                         style: STextStyles.desktopTextSmall(context),
                       ),
+                      // Campfire for BEAM: which node the wallet uses and
+                      // the private node live in BEAM's Node & sync panel.
+                      if (BeamSidebar.enabled) ...[
+                        const SizedBox(height: 16),
+                        const BeamNodeSyncSettingsButton(),
+                      ],
                       const SizedBox(height: 16),
                       Text(
                         "Select a coin to see nodes",

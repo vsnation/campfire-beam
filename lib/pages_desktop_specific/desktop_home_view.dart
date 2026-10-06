@@ -27,7 +27,9 @@ import '../utilities/enums/backup_frequency_type.dart';
 import '../utilities/idle_monitor.dart';
 import '../utilities/prefs.dart';
 import '../widgets/background.dart';
+import '../widgets/beam/sidebar/beam_sidebar.dart';
 import 'address_book_view/desktop_address_book.dart';
+import 'beam/sidebar/beam_sidebar_section.dart';
 import 'desktop_buy/desktop_buy_view.dart';
 import 'desktop_exchange/desktop_exchange_view.dart';
 import 'desktop_menu.dart';
@@ -67,8 +69,10 @@ class _DesktopHomeViewState extends ConsumerState<DesktopHomeView> {
   }
 
   late AutoLockInfo _autoLockInfo;
+  // Kept for dispose(), where `ref` may no longer be read.
+  late final Prefs _prefs = ref.read(prefsChangeNotifierProvider);
   void _prefsTimeoutListener() {
-    final prefs = ref.read(prefsChangeNotifierProvider);
+    final prefs = _prefs;
     if (mounted && prefs.autoLockInfo != _autoLockInfo) {
       _autoLockInfo = prefs.autoLockInfo;
       if (_autoLockInfo.enabled) {
@@ -102,7 +106,7 @@ class _DesktopHomeViewState extends ConsumerState<DesktopHomeView> {
     );
     _idleMonitor?.attach();
 
-    ref.read(prefsChangeNotifierProvider).addListener(_prefsTimeoutListener);
+    _prefs.addListener(_prefsTimeoutListener);
 
     // WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
     //   showOneTimeTorHasBeenAddedDialogIfRequired(context);
@@ -113,7 +117,7 @@ class _DesktopHomeViewState extends ConsumerState<DesktopHomeView> {
 
   @override
   dispose() {
-    ref.read(prefsChangeNotifierProvider).removeListener(_prefsTimeoutListener);
+    _prefs.removeListener(_prefsTimeoutListener);
     _idleMonitor?.detach();
     super.dispose();
   }
@@ -164,35 +168,87 @@ class _DesktopHomeViewState extends ConsumerState<DesktopHomeView> {
       onGenerateRoute: RouteGenerator.generateRoute,
       initialRoute: DesktopAboutView.routeName,
     ),
+    // Campfire for BEAM: the BEAM features of the side menu.
+    for (final d in BeamSidebarDestination.values)
+      d.menuId: BeamSidebarSection(key: ValueKey(d), destination: d),
   };
 
+  /// What leaving the open wallet for the wallet list does (upstream's
+  /// "logging out of active wallet", shared with the BEAM branch below).
+  void _leaveWallet() {
+    if (ref.read(currentWalletIdProvider.state).state != null) {
+      final wallet = ref
+          .read(pWallets)
+          .getWallet(ref.read(currentWalletIdProvider)!);
+
+      if (wallet.shouldAutoSync) {
+        wallet.shouldAutoSync = false;
+      }
+      ref.read(transactionFilterProvider.state).state = null;
+      if (ref.read(prefsChangeNotifierProvider).isAutoBackupEnabled &&
+          ref.read(prefsChangeNotifierProvider).backupFrequencyType ==
+              BackupFrequencyType.afterClosingAWallet) {
+        ref.read(autoSWBServiceProvider).doBackup();
+      }
+
+      // ref.read(managerProvider.notifier).isActiveWallet = false;
+      // TODO: call exit here?
+      // wallet.exit(); ??
+    }
+  }
+
+  // Campfire for BEAM: finds the page navigator of the item shown.
+  final GlobalKey _contentKey = GlobalKey();
+
+  /// Campfire for BEAM: [id] opens on its first page, whether it is chosen
+  /// from another item or clicked again (a desktop side menu's usual way).
+  /// My Campfire goes back to the wallet list, leaving an open wallet as
+  /// clicking it again always did; the item already shown goes back to its
+  /// own first page; any other item is built afresh, so it starts there.
+  void _showFirstPageOf(DesktopMenuItemId id) {
+    if (id == DesktopMenuItemId.myStack) {
+      final nav = myStackViewNavKey.currentState as NavigatorState?;
+      if (nav != null && nav.canPop()) {
+        nav.popUntil(ModalRoute.withName(MyStackView.routeName));
+        _leaveWallet();
+        ref.read(currentWalletIdProvider.state).state = null;
+      }
+      return;
+    }
+    if (id != ref.read(currentDesktopMenuItemProvider.state).state) return;
+    NavigatorState? nav;
+    void visit(Element e) {
+      if (nav != null) return;
+      if (e is StatefulElement && e.state is NavigatorState) {
+        nav = e.state as NavigatorState;
+        return;
+      }
+      e.visitChildElements(visit);
+    }
+
+    _contentKey.currentContext?.visitChildElements(visit);
+    final page = nav;
+    if (page == null) return;
+    // Campfire's own items start at a named route ("/desktopSupport"), and
+    // Navigator puts the route "/" under it: their first page is the named
+    // one, not the first route.
+    final first = page.widget.initialRoute;
+    page.popUntil(
+      (r) => r.isFirst || (first != null && r.settings.name == first),
+    );
+  }
+
   void onMenuSelectionWillChange(DesktopMenuItemId newKey) {
-    // handle logging out of active wallet
-    if (ref.read(prevDesktopMenuItemProvider.state).state ==
+    if (BeamSidebar.enabled) {
+      _showFirstPageOf(newKey);
+    } else if (ref.read(prevDesktopMenuItemProvider.state).state ==
             DesktopMenuItemId.myStack &&
         ref.read(prevDesktopMenuItemProvider.state).state == newKey) {
+      // handle logging out of active wallet
       Navigator.of(
         myStackViewNavKey.currentContext!,
       ).popUntil(ModalRoute.withName(MyStackView.routeName));
-      if (ref.read(currentWalletIdProvider.state).state != null) {
-        final wallet = ref
-            .read(pWallets)
-            .getWallet(ref.read(currentWalletIdProvider)!);
-
-        if (wallet.shouldAutoSync) {
-          wallet.shouldAutoSync = false;
-        }
-        ref.read(transactionFilterProvider.state).state = null;
-        if (ref.read(prefsChangeNotifierProvider).isAutoBackupEnabled &&
-            ref.read(prefsChangeNotifierProvider).backupFrequencyType ==
-                BackupFrequencyType.afterClosingAWallet) {
-          ref.read(autoSWBServiceProvider).doBackup();
-        }
-
-        // ref.read(managerProvider.notifier).isActiveWallet = false;
-        // TODO: call exit here?
-        // wallet.exit(); ??
-      }
+      _leaveWallet();
     }
     ref.read(prevDesktopMenuItemProvider.state).state = newKey;
 
@@ -257,9 +313,18 @@ class _DesktopHomeViewState extends ConsumerState<DesktopHomeView> {
                     : 0,
                 children: [
                   myStackViewNav,
-                  contentViews[ref
-                      .watch(currentDesktopMenuItemProvider.state)
-                      .state]!,
+                  if (BeamSidebar.enabled)
+                    KeyedSubtree(
+                      key: _contentKey,
+                      child:
+                          contentViews[ref
+                              .watch(currentDesktopMenuItemProvider.state)
+                              .state]!,
+                    )
+                  else
+                    contentViews[ref
+                        .watch(currentDesktopMenuItemProvider.state)
+                        .state]!,
                 ],
               ),
             ),

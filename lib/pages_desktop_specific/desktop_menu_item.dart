@@ -248,6 +248,8 @@ class DesktopMenuItem<T> extends ConsumerStatefulWidget {
     this.labelLength = 125,
     this.controller,
     required this.isExpandedInitially,
+    this.dense = false,
+    this.tooltip,
   });
 
   final Widget icon;
@@ -258,6 +260,13 @@ class DesktopMenuItem<T> extends ConsumerStatefulWidget {
   final double labelLength;
   final DMIController? controller;
   final bool isExpandedInitially;
+
+  /// Campfire for BEAM: a 42 px row instead of 52, the same on every
+  /// platform, so the BEAM build's longer menu fits a 1280 × 800 window.
+  final bool dense;
+
+  /// Shown on hover while the menu shows icons only.
+  final String? tooltip;
 
   @override
   ConsumerState<DesktopMenuItem<T>> createState() => _DesktopMenuItemState<T>();
@@ -322,19 +331,29 @@ class _DesktopMenuItemState<T> extends ConsumerState<DesktopMenuItem<T>>
   Widget build(BuildContext context) {
     final group = ref.watch(currentDesktopMenuItemProvider.state).state;
 
-    return TextButton(
-      style: value == group
-          ? Theme.of(context)
-                .extension<StackColors>()!
-                .getDesktopMenuButtonStyleSelected(context)
-          : Theme.of(
-              context,
-            ).extension<StackColors>()!.getDesktopMenuButtonStyle(context),
+    var style = value == group
+        ? Theme.of(
+            context,
+          ).extension<StackColors>()!.getDesktopMenuButtonStyleSelected(context)
+        : Theme.of(
+            context,
+          ).extension<StackColors>()!.getDesktopMenuButtonStyle(context);
+    if (widget.dense) {
+      style = style?.copyWith(
+        padding: WidgetStateProperty.all(EdgeInsets.zero),
+        minimumSize: WidgetStateProperty.all(const Size(40, 42)),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.standard,
+      );
+    }
+
+    final button = TextButton(
+      style: style,
       onPressed: () {
         onChanged(value);
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: EdgeInsets.symmetric(vertical: widget.dense ? 10 : 16),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -365,6 +384,19 @@ class _DesktopMenuItemState<T> extends ConsumerState<DesktopMenuItem<T>>
             ),
           ],
         ),
+      ),
+    );
+
+    final tooltip = widget.tooltip;
+    if (tooltip == null) return button;
+    // Always in the tree (only its visibility changes), so minimizing the
+    // menu never rebuilds the item from scratch.
+    return TooltipVisibility(
+      visible: _iconOnly,
+      child: Tooltip(
+        message: tooltip,
+        waitDuration: const Duration(milliseconds: 400),
+        child: button,
       ),
     );
   }
