@@ -1,0 +1,8 @@
+{
+ "id": 1,
+ "jsonrpc": "2.0",
+ "result": {
+  "output": "{\"error\": \"Voucher not found\"}",
+  "txid": "00000000000000000000000000000000"
+ }
+}

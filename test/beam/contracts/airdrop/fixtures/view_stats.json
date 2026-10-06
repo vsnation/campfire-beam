@@ -1,0 +1,8 @@
+{
+ "id": 1,
+ "jsonrpc": "2.0",
+ "result": {
+  "output": "{\"stats\": {\"total_batches\": 13,\"total_vouchers\": 69,\"total_redeemed\": 23,\"total_value_locked\": 1246000000,\"available_vouchers\": 46,\"total_fees_collected\": 537520000,\"total_fees_withdrawn\": 0,\"fees_available\": 537520000}}",
+  "txid": "00000000000000000000000000000000"
+ }
+}

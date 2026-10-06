@@ -1,0 +1,8 @@
+{
+ "id": 1,
+ "jsonrpc": "2.0",
+ "result": {
+  "output": "{\"res\": {\"mintedLo\": 0,\"mintedHi\": 0,\"limitLo\": 100000000000000,\"limitHi\": 0,\"owner_pk\": \"7d74c6cfeb10f56b7e80520943d53e02d1afcb0c2cc5a6e376be28afbfab27c901\",\"metadata\": \"STD:SCH_VER=1;N=CTO;UN=CTO;SN=CTO;NTHUN=groth;NTH_RATIO=100000000;OPT_SHORT_DESC=CTO\"}}",
+  "txid": "00000000000000000000000000000000"
+ }
+}

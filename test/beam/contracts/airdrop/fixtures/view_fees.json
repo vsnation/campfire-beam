@@ -1,0 +1,8 @@
+{
+ "id": 1,
+ "jsonrpc": "2.0",
+ "result": {
+  "output": "{\"fees\": [{\"asset_id\": 0,\"accumulated\": 34000000,\"withdrawn\": 0,\"available\": 34000000},{\"asset_id\": 174,\"accumulated\": 503520000,\"withdrawn\": 0,\"available\": 503520000}]}",
+  "txid": "00000000000000000000000000000000"
+ }
+}
