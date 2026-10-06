@@ -1,0 +1,565 @@
+/*
+ * This file is part of Campfire for BEAM, a fork of Stack Wallet.
+ *
+ * Copyright (c) 2026 vsnation
+ * All Rights Reserved.
+ * The code is distributed under GPLv3 license, see LICENSE file for details.
+ *
+ */
+
+// The asset screens (Campfire's token list, token page and token send for
+// BEAM Confidential Assets) over a real BeamWallet whose core is a
+// FakeTransport answering from the sanitized fixtures plus two made-up
+// assets: an unverified "Pepe Coin" and a copycat "FOMO". Prices and LP
+// tokens come from the recorded mainnet DEX pools.
+//
+// Goldens (phone 375×667 at 2×, desktop 1280×800):
+//   flutter test --update-goldens test/beam/assets_ui
+// The phone goldens use the asset screens' phone layout; Campfire's shared
+// buttons inside follow the real platform (a dart:io check), so on a
+// desktop test host they keep their desktop size.
+
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:isar_community/isar.dart';
+import 'package:stackwallet/models/isar/models/beam/beam_asset_contract.dart';
+import 'package:stackwallet/models/isar/models/blockchain_data/address.dart';
+import 'package:stackwallet/pages/token_view/beam_asset_confirm_view.dart';
+import 'package:stackwallet/pages/token_view/beam_asset_receive_view.dart';
+import 'package:stackwallet/pages/token_view/beam_asset_send_view.dart';
+import 'package:stackwallet/pages/token_view/beam_asset_view.dart';
+import 'package:stackwallet/pages/token_view/beam_assets_view.dart';
+import 'package:stackwallet/pages/token_view/my_tokens_view.dart';
+import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/beam_desktop_asset_view.dart';
+import 'package:stackwallet/services/wallets.dart';
+import 'package:stackwallet/utilities/amount/amount.dart';
+import 'package:stackwallet/wallets/beam/assets/beam_asset_holdings.dart';
+import 'package:stackwallet/wallets/beam/assets/beam_asset_registry.dart';
+import 'package:stackwallet/wallets/beam/assets/beam_asset_text.dart';
+import 'package:stackwallet/wallets/beam/assets/beam_hidden_assets.dart';
+import 'package:stackwallet/wallets/beam/wallet/beam_balance_mapper.dart';
+import 'package:stackwallet/wallets/models/tx_data.dart';
+import 'package:stackwallet/wallets/wallet/impl/beam_wallet.dart';
+import 'package:stackwallet/wallets/wallet/impl/sub_wallets/beam_asset_wallet.dart';
+import 'package:stackwallet/wallets/wallet/supporting/beam_wallet_info_extension.dart';
+
+import '../asset_wallet/asset_test_support.dart';
+import 'assets_ui_harness.dart';
+
+TxData _pay(String address, BigInt amount) => TxData(
+  recipients: [
+    TxRecipient(
+      address: address,
+      amount: Amount(rawValue: amount, fractionDigits: 8),
+      isChange: false,
+      addressType: AddressType.mimbleWimble,
+    ),
+  ],
+);
+
+Future<void> _golden(String name) =>
+    expectLater(find.byKey(goldenKey), matchesGoldenFile('goldens/$name.png'));
+
+void main() {
+  late Directory tmp;
+  late Isar isar;
+  late AssetHarness h;
+  late BeamWallet wallet;
+  late Map<int, BeamAssetContract> contracts;
+  late BeamAssetMarket market;
+  late TxData fomoTx;
+  late TxData copycatTx;
+
+  BeamAssetWallet assetWallet(int id) =>
+      BeamAssetWallet.load(parent: wallet, asset: contracts[id]!);
+
+  setUpAll(() async {
+    tmp = await tempRoot('beam_assets_ui_test_');
+    installCampfireTheme(Directory('${tmp.path}/themes'));
+    isar = await openAssetTestDb(Directory('${tmp.path}/isar'));
+    h = AssetHarness((await Directory('${tmp.path}/root').create()).path);
+    wallet = await h.openWallet(name: 'Campfire BEAM');
+    market = BeamAssetMarket(recordedPools());
+    contracts = await BeamAssetRegistry.sync(
+      isar: isar,
+      heldIds: wallet.info.beamAssetTotals.keys,
+      api: wallet.coreApi,
+      pools: market.pools,
+    );
+    final payee = vectorAddress('regular');
+    final fomo = assetWallet(174);
+    fomoTx = await fomo.prepareSend(txData: _pay(payee, g(12.5)));
+    await fomo.exit();
+    final copycat = assetWallet(fakeFomoId);
+    copycatTx = await copycat.prepareSend(txData: _pay(payee, g(250)));
+    await copycat.exit();
+    // Everything below renders from Campfire's cache, as at unlock.
+    await wallet.exit();
+    Wallets.sharedInstance.addWallet(wallet);
+  });
+
+  tearDownAll(() async {
+    await isar.close(deleteFromDisk: true);
+    await tmp.delete(recursive: true);
+  });
+
+  group('asset list', () {
+    testWidgets('phone: verified, unverified, copycat, pool shares and '
+        'unpriced assets, with the estimated total', (tester) async {
+      await pumpAssets(
+        tester,
+        MyTokensView(walletId: wallet.walletId),
+        wallet: wallet,
+        desktop: false,
+        market: market,
+      );
+      expect(find.text('My assets'), findsOneWidget);
+      expect(find.byType(BeamAssetsView), findsOneWidget);
+      // Rounded in the list; every digit on the asset page.
+      expect(find.text('568.1297 FOMO'), findsOneWidget);
+      expect(
+        find.textContaining('2 assets have no price and are not counted'),
+        findsOneWidget,
+      );
+      final holdings = BeamAssetHoldings.build(
+        totals: wallet.info.beamAssetTotals,
+        contracts: contracts,
+        hidden: const {},
+        market: market,
+      );
+      final total = BeamAssetHoldings.portfolio(holdings, marketKnown: true);
+      expect(
+        find.text(
+          BeamAssetText.beamEstimate(total.valueGroth, locale: 'en_US'),
+        ),
+        findsOneWidget,
+      );
+      await _golden('assets_list_phone');
+
+      // Further down: pool shares, then what has no price.
+      final list = find.byType(Scrollable).last;
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('beamAssetRow_175')),
+        200,
+        scrollable: list,
+      );
+      expect(find.text('BEAM / FOMO'), findsOneWidget);
+      expect(find.text('Pool share #175'), findsOneWidget);
+      expect(find.text('0.46659234 LP'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('beamAssetRow_$fakeFomoId')),
+        200,
+        scrollable: list,
+      );
+      await tester.pumpAndSettle();
+      // The copycat is flagged in its own row; unpriced assets say so.
+      expect(
+        find.byKey(const Key('beamAssetWarning_$fakeFomoId')),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('Not the verified FOMO (#174)'),
+        findsOneWidget,
+      );
+      expect(find.text('PEPE · Unverified #$pepeId'), findsOneWidget);
+      expect(find.text(BeamAssetText.noPrice), findsNWidgets(2));
+      await _golden('assets_list_end_phone');
+    });
+
+    testWidgets('desktop: the same list embedded in the wallet page', (
+      tester,
+    ) async {
+      await pumpAssets(
+        tester,
+        desktopFrame(MyTokensView(walletId: wallet.walletId)),
+        wallet: wallet,
+        desktop: true,
+        market: market,
+      );
+      expect(find.byKey(const Key('beamAssetsManageButton')), findsOneWidget);
+      await _golden('assets_list_desktop');
+    });
+
+    testWidgets('prices not loaded yet: no fake zeros, the total says why', (
+      tester,
+    ) async {
+      await pumpAssets(
+        tester,
+        MyTokensView(walletId: wallet.walletId),
+        wallet: wallet,
+        desktop: false,
+      );
+      expect(
+        find.text('Prices load once the wallet is connected.'),
+        findsOneWidget,
+      );
+      expect(find.text(BeamAssetText.noPrice), findsNothing);
+      expect(find.textContaining('0 BEAM'), findsNothing);
+    });
+
+    testWidgets('hidden assets: out of the list and the total, one tap to '
+        'see them again; hiding persists', (tester) async {
+      await tester.runAsync(() async {
+        for (final id in [pepeId, fakeFomoId]) {
+          await BeamHiddenAssets.setHidden(
+            info: wallet.info,
+            isar: isar,
+            assetId: id,
+            hidden: true,
+          );
+        }
+      });
+      addTearDown(() async {
+        await tester.runAsync(() async {
+          for (final id in [pepeId, fakeFomoId]) {
+            await BeamHiddenAssets.setHidden(
+              info: wallet.info,
+              isar: isar,
+              assetId: id,
+              hidden: false,
+            );
+          }
+        });
+      });
+      await pumpAssets(
+        tester,
+        MyTokensView(walletId: wallet.walletId),
+        wallet: wallet,
+        desktop: false,
+        market: market,
+      );
+      expect(find.byKey(const Key('beamAssetRow_$pepeId')), findsNothing);
+      expect(find.byKey(const Key('beamAssetRow_$fakeFomoId')), findsNothing);
+      expect(find.textContaining('no price'), findsNothing);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('beamAssetsShowHidden')),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      expect(
+        find.text('Show 2 hidden assets', findRichText: true),
+        findsOneWidget,
+      );
+      await _golden('assets_hidden_phone');
+
+      await tester.tap(find.byKey(const Key('beamAssetsShowHidden')));
+      await tester.pumpAndSettle();
+      expect(find.text('Show or hide assets'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('beamAssetRow_$fakeFomoId')),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await _golden('assets_manage_phone');
+
+      // In this mode a tap shows the asset again (written to the wallet).
+      Opacity pepeOpacity() => tester.widget<Opacity>(
+        find
+            .ancestor(
+              of: find.byKey(const Key('beamAssetRow_$pepeId')),
+              matching: find.byType(Opacity),
+            )
+            .first,
+      );
+      expect(pepeOpacity().opacity, 0.5);
+      await tester.tap(find.byKey(const Key('beamAssetRow_$pepeId')));
+      // The write and the wallet-info watcher run on real I/O.
+      for (var i = 0; i < 80 && pepeOpacity().opacity != 1; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 25)),
+        );
+        await tester.pump();
+      }
+      for (var i = 0; i < 4; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 25)),
+        );
+        await tester.pump();
+      }
+      expect(BeamHiddenAssets.read(wallet.info), {fakeFomoId});
+      expect(pepeOpacity().opacity, 1);
+    });
+
+    testWidgets('no assets: what to do, with one tap to the address', (
+      tester,
+    ) async {
+      await pumpAssets(
+        tester,
+        MyTokensView(walletId: wallet.walletId),
+        wallet: wallet,
+        desktop: false,
+        market: market,
+        totals: {0: wallet.info.beamAssetTotals[0]!},
+      );
+      expect(find.text('No assets yet'), findsOneWidget);
+      expect(find.byKey(const Key('beamAssetsReceive')), findsOneWidget);
+      expect(find.byKey(const Key('beamAssetsManageButton')), findsNothing);
+      await _golden('assets_empty_phone');
+    });
+  });
+
+  group('asset page', () {
+    testWidgets('phone: FOMO balance, value, history, Receive / Send', (
+      tester,
+    ) async {
+      final fomo = assetWallet(174);
+      await pumpAssets(
+        tester,
+        BeamAssetView(walletId: wallet.walletId),
+        wallet: wallet,
+        desktop: false,
+        market: market,
+        assetWallet: fomo,
+      );
+      final balance = Amount(
+        rawValue: fixtureAvailable()[174]!,
+        fractionDigits: 8,
+      );
+      expect(
+        find.text(
+          BeamAssetText.amount(balance, contracts[174]!, locale: 'en_US'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          BeamAssetText.beamEstimate(
+            market.pricer.valueInGroth(174, balance.raw)!,
+            locale: 'en_US',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Send'), findsOneWidget);
+      expect(find.text('Receive'), findsOneWidget);
+      expect(find.byKey(const Key('beamAssetNoTransactions')), findsNothing);
+      await _golden('asset_page_fomo_phone');
+    });
+
+    testWidgets('phone: a copycat says so under its balance; no price', (
+      tester,
+    ) async {
+      await pumpAssets(
+        tester,
+        BeamAssetView(walletId: wallet.walletId),
+        wallet: wallet,
+        desktop: false,
+        market: market,
+        assetWallet: assetWallet(fakeFomoId),
+      );
+      expect(
+        find.textContaining('Not the verified FOMO (#174)'),
+        findsOneWidget,
+      );
+      expect(find.text('FOMO #$fakeFomoId'), findsOneWidget);
+      expect(find.text(BeamAssetText.noPrice), findsOneWidget);
+      expect(find.byKey(const Key('beamAssetNoTransactions')), findsOneWidget);
+      await _golden('asset_page_copycat_phone');
+    });
+
+    testWidgets('phone: a pool share names its pool', (tester) async {
+      await pumpAssets(
+        tester,
+        BeamAssetView(walletId: wallet.walletId),
+        wallet: wallet,
+        desktop: false,
+        market: market,
+        assetWallet: assetWallet(175),
+      );
+      expect(
+        find.text('Your share of the BEAM / FOMO pool (1% fee)'),
+        findsOneWidget,
+      );
+      await _golden('asset_page_lp_phone');
+    });
+
+    testWidgets('desktop: summary, Send / Receive tabs, history', (
+      tester,
+    ) async {
+      await pumpAssets(
+        tester,
+        BeamDesktopAssetView(walletId: wallet.walletId),
+        wallet: wallet,
+        desktop: true,
+        market: market,
+        assetWallet: assetWallet(174),
+      );
+      expect(find.byKey(const Key('beamAssetSendReview')), findsOneWidget);
+      await _golden('asset_page_fomo_desktop');
+    });
+
+    testWidgets('receive: the BEAM address, its QR and a copy button', (
+      tester,
+    ) async {
+      await pumpAssets(
+        tester,
+        BeamAssetReceiveView(walletId: wallet.walletId, asset: contracts[174]),
+        wallet: wallet,
+        desktop: false,
+      );
+      expect(find.text(testOwnAddress), findsOneWidget);
+      expect(find.text(BeamAssetText.receiveLine('FOMO')), findsOneWidget);
+      await _golden('asset_receive_phone');
+    });
+  });
+
+  group('send', () {
+    testWidgets('phone form: the BEAM fee is stated before anything is '
+        'typed; too much is caught on the spot', (tester) async {
+      await pumpAssets(
+        tester,
+        BeamAssetSendView(walletId: wallet.walletId),
+        wallet: wallet,
+        desktop: false,
+        market: market,
+        assetWallet: assetWallet(174),
+      );
+      expect(
+        find.text('Network fee: 0.001 BEAM, paid in BEAM'),
+        findsOneWidget,
+      );
+      await tester.enterText(
+        find.byKey(const Key('beamAssetSendAddress')),
+        vectorAddress('regular'),
+      );
+      await tester.enterText(
+        find.byKey(const Key('beamAssetSendAmount')),
+        '12.5',
+      );
+      await tester.pumpAndSettle();
+      await _golden('asset_send_phone');
+
+      await tester.enterText(
+        find.byKey(const Key('beamAssetSendAmount')),
+        '9999999',
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('More than you have'), findsOneWidget);
+    });
+
+    testWidgets('phone form: no BEAM for the fee says how much to add and '
+        'offers to receive BEAM', (tester) async {
+      final totals = Map.of(wallet.info.beamAssetTotals);
+      totals[0] = BeamCachedAssetTotals(
+        assetId: 0,
+        available: BigInt.zero,
+        receiving: BigInt.zero,
+        sending: BigInt.zero,
+        maturing: BigInt.zero,
+        change: BigInt.zero,
+      );
+      await pumpAssets(
+        tester,
+        BeamAssetSendView(walletId: wallet.walletId),
+        wallet: wallet,
+        desktop: false,
+        market: market,
+        assetWallet: assetWallet(174),
+        totals: totals,
+      );
+      expect(find.byKey(const Key('beamAssetSendNoBeam')), findsOneWidget);
+      expect(
+        find.textContaining('Add at least 0.001 BEAM first.'),
+        findsOneWidget,
+      );
+      expect(find.text('Receive BEAM', findRichText: true), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('beamAssetSendReview')),
+        200,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await _golden('asset_send_no_beam_phone');
+    });
+
+    testWidgets('phone confirm: asset, amount, BEAM fee, destination, how '
+        'it arrives; nothing moves without the PIN', (tester) async {
+      var asked = 0;
+      await pumpAssets(
+        tester,
+        BeamAssetConfirmView(
+          walletId: wallet.walletId,
+          assetWallet: assetWallet(174),
+          txData: fomoTx,
+          authorize: (_) async {
+            asked++;
+            return false;
+          },
+        ),
+        wallet: wallet,
+        desktop: false,
+      );
+      expect(find.text('12.5 FOMO'), findsOneWidget);
+      expect(find.text('FOMO · verified'), findsOneWidget);
+      expect(find.text(vectorAddress('regular')), findsOneWidget);
+      expect(find.text('0.001 BEAM, paid in BEAM'), findsOneWidget);
+      expect(find.text('Send 12.5 FOMO'), findsOneWidget);
+      await _golden('asset_confirm_phone');
+
+      await tester.tap(find.byKey(const Key('beamAssetConfirmSend')));
+      await tester.pumpAndSettle();
+      expect(asked, 1);
+      expect(h.core.sent, isEmpty);
+    });
+
+    testWidgets('phone confirm of a copycat repeats the warning', (
+      tester,
+    ) async {
+      await pumpAssets(
+        tester,
+        BeamAssetConfirmView(
+          walletId: wallet.walletId,
+          assetWallet: assetWallet(fakeFomoId),
+          txData: copycatTx,
+          authorize: (_) async => false,
+        ),
+        wallet: wallet,
+        desktop: false,
+      );
+      expect(find.text('FOMO #$fakeFomoId · unverified'), findsOneWidget);
+      expect(
+        find.textContaining('Not the verified FOMO (#174)'),
+        findsOneWidget,
+      );
+      await _golden('asset_confirm_copycat_phone');
+    });
+
+    testWidgets('desktop confirm; a failed send says what happened', (
+      tester,
+    ) async {
+      await pumpAssets(
+        tester,
+        Builder(
+          builder: (context) => Material(
+            child: Center(
+              child: SizedBox(
+                width: 580,
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: BeamAssetConfirmView(
+                    walletId: wallet.walletId,
+                    assetWallet: assetWallet(174),
+                    txData: fomoTx,
+                    authorize: (_) async => true,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        wallet: wallet,
+        desktop: true,
+      );
+      await _golden('asset_confirm_desktop');
+
+      // Authorised, but the wallet is closed: nothing is sent and the
+      // dialog says why, without blaming the user.
+      await tester.tap(find.byKey(const Key('beamAssetConfirmSend')));
+      await tester.pumpAndSettle();
+      expect(find.text('Payment not sent'), findsOneWidget);
+      expect(find.textContaining('still connecting'), findsOneWidget);
+      expect(h.core.sent, isEmpty);
+    });
+  });
+}

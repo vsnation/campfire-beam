@@ -19,6 +19,7 @@ import '../../utilities/assets.dart';
 import '../../utilities/constants.dart';
 import '../../utilities/text_styles.dart';
 import '../../utilities/util.dart';
+import '../../wallets/crypto_currency/coins/beam.dart';
 import '../../wallets/crypto_currency/coins/solana.dart';
 import '../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../widgets/background.dart';
@@ -28,6 +29,7 @@ import '../../widgets/icon_widgets/x_icon.dart';
 import '../../widgets/stack_text_field.dart';
 import '../../widgets/textfield_icon_button.dart';
 import '../add_wallet_views/add_token_view/edit_wallet_tokens_view.dart';
+import 'beam_assets_view.dart';
 import 'sub_widgets/my_tokens_list.dart';
 import 'sub_widgets/sol_tokens_list.dart';
 
@@ -65,6 +67,12 @@ class _MyTokensViewState extends ConsumerState<MyTokensView> {
   @override
   Widget build(BuildContext context) {
     debugPrint("BUILD: $runtimeType");
+
+    // BEAM: every Confidential Asset the wallet holds is listed on its own
+    // (no "add token" step), with hide/show and DEX values.
+    if (ref.watch(pWalletCoin(widget.walletId)) is Beam) {
+      return BeamAssetsView(walletId: widget.walletId);
+    }
 
     return ConditionalParent(
       condition: !isDesktop,

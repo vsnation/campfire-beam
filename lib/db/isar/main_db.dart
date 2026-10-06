@@ -14,6 +14,7 @@ import 'package:isar_community/isar.dart';
 import 'package:tuple/tuple.dart';
 
 import '../../exceptions/main_db/main_db_exception.dart';
+import '../../models/isar/models/beam/beam_asset_contract.dart';
 import '../../models/isar/models/block_explorer.dart';
 import '../../models/isar/models/blockchain_data/v2/transaction_v2.dart';
 import '../../models/isar/models/contact_entry.dart';
@@ -72,6 +73,7 @@ class MainDB {
         TokenWalletInfoSchema,
         FrostWalletInfoSchema,
         WalletSolanaTokenInfoSchema,
+        BeamAssetContractSchema,
       ],
       directory: (await StackFileSystem.applicationIsarDirectory()).path,
       // inspector: kDebugMode,
