@@ -1,3 +1,59 @@
+# Campfire for BEAM
+
+Campfire for BEAM is [Campfire](https://github.com/firoorg/campfire) (a white-label build of
+[Stack Wallet](https://github.com/cypherstack/stack_wallet)) converted from Firo to
+[BEAM Privacy](https://beam.mw): Campfire's design, philosophy and security, with everything BEAM's
+wallets can do. It runs BEAM's own HF6-capable core (`wallet-api` 7.5.14493) as a local child process
+bound to 127.0.0.1, so keys never leave the device.
+
+**Status: beta, under active development. Not released yet — do not use it with funds you cannot lose.**
+
+## What works today
+
+- Create and restore BEAM wallets (12-word phrase, checksum-checked), Campfire's password, backups and themes.
+- Opens instantly from cache; sync status is honest (never "synced" when behind or on a dead fork).
+- Send to an address or a **BEAM name** (BANS); receive with regular, offline, max-privacy and public addresses.
+- Transaction history in plain language, cancel, payment proofs.
+- **Confidential Assets** as token wallets, with copycat detection and the BEAM desktop wallet's asset icons.
+- **DEX**: swap, pools, add/withdraw liquidity, create a pool — every confirmation shows what the signed
+  transaction actually does.
+- **BEAM names**: register, renew, transfer, sell, buy; money sent to your names is shown on the home screen
+  with one-tap Claim.
+- **dApps**: store, browser and one approval sheet for every request.
+- **Airdrop vouchers**, **token minter** and **burn**.
+- **Private node** (desktop): the wallet starts on a public node at once, syncs your own node in the background
+  and switches to it seamlessly.
+
+Proven live on BEAM mainnet with small amounts: send/receive, DEX swap, airdrop create and claim.
+
+## Roadmap
+
+**Release 1 — macOS (DMG), Android (APK), Linux**
+- [x] BEAM wallet core, honest sync, private node with seamless handover
+- [x] Send/receive (all address types), BEAM names, assets, DEX, dApps, airdrops, minter, history
+- [ ] Security hardening from the internal review (dApp approvals, asset look-alikes, price sanity)
+- [ ] Every feature one or two taps from the wallet (menus)
+- [ ] Dashboard: every valuable asset with its fiat value and one-tap send, cached prices
+- [ ] Android build (BEAM core packaged for arm64), macOS DMG
+- [ ] Public beta
+
+**Release 2**
+- [ ] Ethereum: ETH and ERC-20 tokens, with **WBEAM** as a default token
+- [ ] BEAM ↔ Ethereum bridge (deposit addresses)
+- [ ] iOS
+- [ ] Games (Fuddle, MemeClash) and atomic swaps
+
+## Building
+
+```bash
+cd scripts && ./build_app.sh -a campfire -p <linux|macos|android> -v <version> -b <build>
+```
+
+Flutter 3.47.2. The BEAM core binaries are pinned by SHA-256 and built from tag `beam-7.5.14493`
+(`scripts/beam/core/`).
+
+---
+
 [![codecov](https://codecov.io/gh/cypherstack/stack_wallet/branch/main/graph/badge.svg?token=PM1N56UTEW)](https://codecov.io/gh/cypherstack/stack_wallet)
 
 # Stack Wallet
