@@ -57,6 +57,8 @@ import 'pages/address_book_views/subviews/address_book_filter_view.dart';
 import 'pages/address_book_views/subviews/contact_details_view.dart';
 import 'pages/address_book_views/subviews/edit_contact_address_view.dart';
 import 'pages/address_book_views/subviews/edit_contact_name_emoji_view.dart';
+import 'pages/beam/dapps/dapp_browser_view.dart';
+import 'pages/beam/dapps/dapp_store_view.dart';
 import 'pages/buy_view/buy_in_wallet_view.dart';
 import 'pages/buy_view/buy_quote_preview.dart';
 import 'pages/buy_view/buy_view.dart';
@@ -264,9 +266,12 @@ import 'services/shopinbit/src/models/car_research.dart';
 import 'services/shopinbit/src/models/payment.dart';
 import 'utilities/amount/amount.dart';
 import 'utilities/enums/add_wallet_type_enum.dart';
+import 'wallets/beam/dapps/dapp_installer.dart';
+import 'wallets/beam/dapps/host/dapp_host.dart';
 import 'wallets/crypto_currency/crypto_currency.dart';
 import 'wallets/crypto_currency/intermediate/frost_currency.dart';
 import 'wallets/models/tx_data.dart';
+import 'wallets/wallet/impl/beam_wallet.dart';
 import 'wallets/wallet/impl/firo_wallet.dart';
 import 'wallets/wallet/wallet.dart';
 import 'wallets/wallet/wallet_mixin_interfaces/extended_keys_interface.dart';
@@ -2960,6 +2965,35 @@ class RouteGenerator {
             shouldUseMaterialRoute: useMaterialPageRoute,
             builder: (_) =>
                 SparkViewKeyView(walletId: args.$1, sparkViewKeyHex: args.$2),
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case DappStoreView.routeName:
+        if (args is DappHost) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) => DappStoreView(host: args),
+            settings: RouteSettings(name: settings.name),
+          );
+        } else if (args is BeamWallet) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) => DappStoreView(host: DappHost.of(args)),
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case DappBrowserView.routeName:
+        if (args is ({DappHost host, DappInstallation installation})) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) => DappBrowserView(
+              host: args.host,
+              installation: args.installation,
+            ),
             settings: RouteSettings(name: settings.name),
           );
         }

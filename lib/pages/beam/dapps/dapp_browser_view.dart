@@ -1,0 +1,597 @@
+/*
+ * This file is part of Campfire for BEAM, a fork of Stack Wallet.
+ *
+ * Copyright (c) 2026 vsnation
+ * All Rights Reserved.
+ * The code is distributed under GPLv3 license, see LICENSE file for details.
+ *
+ */
+
+// Spec (USER_PSYCHOLOGY §6):
+// 1. Job: use one dApp. Anything that would move money comes back to
+//    Campfire's approval sheet first.
+// 2. Primary CTA: the dApp's own page; Campfire adds one only when the dApp
+//    asks for approval ("Review" on the banner, then the sheet's outcome
+//    button).
+// 3. Taps from app open: wallet → dApps → Open = 3.
+//
+// Exit-intent (§1.7) — what would make an impatient person close the app:
+// * A wallet popup out of nowhere: a request that arrives while the user
+//   is not touching the page shows a banner, not the sheet.
+// * A blank page while it loads: "Opening <dApp>…" with progress.
+// * A platform without the dApp window: says so, and offers the way back.
+// * A link that silently leaves the wallet: links to other sites ask first,
+//   then open in the system browser.
+
+import 'dart:async';
+
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../../notifications/show_flush_bar.dart';
+import '../../../themes/stack_colors.dart';
+import '../../../utilities/assets.dart';
+import '../../../utilities/prefs.dart';
+import '../../../utilities/text_styles.dart';
+import '../../../utilities/util.dart';
+import '../../../wallets/beam/dapps/dapp_installer.dart';
+import '../../../wallets/beam/dapps/dapp_session.dart';
+import '../../../wallets/beam/dapps/host/dapp_approval_model.dart';
+import '../../../wallets/beam/dapps/host/dapp_host.dart';
+import '../../../wallets/beam/dapps/host/dapp_host_session.dart';
+import '../../../widgets/background.dart';
+import '../../../widgets/beam/dapps/dapp_approval_sheet.dart';
+import '../../../widgets/beam/dapps/dapp_webview.dart';
+import '../../../widgets/conditional_parent.dart';
+import '../../../widgets/custom_buttons/app_bar_icon_button.dart';
+import '../../../widgets/desktop/desktop_app_bar.dart';
+import '../../../widgets/desktop/desktop_dialog.dart';
+import '../../../widgets/desktop/desktop_scaffold.dart';
+import '../../../widgets/desktop/primary_button.dart';
+import '../../../widgets/desktop/secondary_button.dart';
+import '../../../widgets/rounded_container.dart';
+import '../../../widgets/rounded_white_container.dart';
+import '../../../widgets/stack_dialog.dart';
+
+class DappBrowserView extends ConsumerStatefulWidget {
+  const DappBrowserView({
+    super.key,
+    required this.host,
+    required this.installation,
+    this.desktop,
+    this.webviewAvailable,
+    this.authenticate,
+  });
+
+  static const String routeName = "/beamDappBrowser";
+
+  /// A request that arrives this long after the user last touched the page
+  /// is announced with a banner instead of opening the sheet by itself.
+  static const gestureWindow = Duration(seconds: 10);
+
+  final DappHost host;
+  final DappInstallation installation;
+
+  /// Overrides `Util.isDesktop` (tests).
+  final bool? desktop;
+
+  /// Overrides the platform check for the dApp window (tests).
+  final bool? webviewAvailable;
+
+  /// Overrides Campfire's PIN / password check (tests).
+  final DappApprovalAuthenticator? authenticate;
+
+  @override
+  ConsumerState<DappBrowserView> createState() => _DappBrowserViewState();
+}
+
+class _PendingBanner {
+  _PendingBanner(this.model);
+
+  final DappApprovalModel model;
+  final answer = Completer<bool>();
+}
+
+class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
+  DappHostSession? _session;
+  DappWebviewGlue? _glue;
+  bool _loading = true;
+  String? _failure;
+  DateTime? _lastTouch;
+  _PendingBanner? _banner;
+  bool _disposed = false;
+
+  bool get _desktop => widget.desktop ?? Util.isDesktop;
+  bool get _available => widget.webviewAvailable ?? dappWebviewAvailable();
+  String get _name => widget.installation.manifest.name;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_available) {
+      widget.host.presenter.attach(_showApproval);
+      unawaited(_start());
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    widget.host.presenter.detach(_showApproval);
+    final banner = _banner;
+    if (banner != null && !banner.answer.isCompleted) {
+      banner.answer.complete(false);
+    }
+    // Pending approvals of this dApp answer -32021.
+    unawaited(_session?.close());
+    super.dispose();
+  }
+
+  bool get _torOn {
+    try {
+      return Prefs.instance.useTor;
+    } catch (_) {
+      return true; // unknown: keep the dApp's traffic to itself
+    }
+  }
+
+  Future<void> _start() async {
+    setState(() {
+      _loading = true;
+      _failure = null;
+    });
+    try {
+      final installer = await widget.host.installer();
+      final session = await DappHostSession.start(
+        installation: widget.installation,
+        installer: installer,
+        wallet: widget.host.wallet,
+        consent: widget.host.consent,
+        allowRemoteOrigins: !_torOn,
+        onActivity: _onActivity,
+      );
+      if (_disposed) {
+        await session.close();
+        return;
+      }
+      _session = session;
+      if (!mounted) return;
+      final glue = await DappWebviewGlue.create(
+        session: session,
+        background: Theme.of(context).extension<StackColors>()!.background,
+        onExternalLink: (uri) => unawaited(_offerExternal(uri)),
+        onLoaded: () {
+          if (mounted) setState(() => _loading = false);
+        },
+        onLoadFailed: (_) {
+          if (mounted) {
+            setState(() {
+              _loading = false;
+              _failure = "$_name didn't load.";
+            });
+          }
+        },
+      );
+      if (mounted) setState(() => _glue = glue);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _failure = "Campfire couldn't start $_name.";
+        });
+      }
+    }
+  }
+
+  Future<void> _restart() async {
+    final old = _session;
+    _session = null;
+    setState(() => _glue = null);
+    await old?.close();
+    if (mounted) await _start();
+  }
+
+  void _onActivity(DappActivity activity) {
+    if (!mounted) return;
+    final what = switch (activity.kind) {
+      DappActivityKind.signedMessage =>
+        "signed a message with a key from this wallet",
+      DappActivityKind.sentMessage => "sent a message from this wallet",
+    };
+    unawaited(
+      showFloatingFlushBar(
+        type: FlushBarType.info,
+        message: "${activity.dapp.name} $what",
+        context: context,
+      ),
+    );
+  }
+
+  /// The presenter's UI: banner first unless the user just touched the
+  /// page, then the sheet.
+  Future<bool> _showApproval(DappApprovalModel model) async {
+    if (!mounted || model.request.isCancelled) return false;
+    final touched = _lastTouch;
+    final recent =
+        touched != null &&
+        DateTime.now().difference(touched) < DappBrowserView.gestureWindow;
+    if (!recent) {
+      final banner = _PendingBanner(model);
+      setState(() => _banner = banner);
+      unawaited(
+        model.request.cancelled.then((_) {
+          if (!banner.answer.isCompleted) banner.answer.complete(false);
+        }),
+      );
+      final review = await banner.answer.future;
+      if (mounted && identical(_banner, banner)) {
+        setState(() => _banner = null);
+      }
+      if (!review || !mounted || model.request.isCancelled) return false;
+    }
+    final ok = await showDappApprovalSheet(
+      context,
+      model,
+      pending: widget.host.consent.pending,
+      authenticate: widget.authenticate,
+      desktop: _desktop,
+    );
+    if (ok && mounted) {
+      unawaited(
+        showFloatingFlushBar(
+          type: FlushBarType.success,
+          message: "Approved. Campfire is sending it to the network.",
+          context: context,
+        ),
+      );
+    }
+    return ok;
+  }
+
+  Future<void> _offerExternal(Uri uri) async {
+    if (!mounted) return;
+    final ok = await _confirm(
+      title: "Open this link in your browser?",
+      message:
+          "$_name wants to open ${uri.host}. It opens in your browser, "
+          "outside Campfire.\n\n$uri",
+      confirm: "Open in browser",
+    );
+    if (ok != true) return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) {
+        unawaited(
+          showFloatingFlushBar(
+            type: FlushBarType.warning,
+            message: "Campfire couldn't open your browser.",
+            context: context,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<bool?> _confirm({
+    required String title,
+    required String message,
+    required String confirm,
+  }) {
+    if (_desktop) {
+      return showDialog<bool>(
+        context: context,
+        builder: (context) => DesktopDialog(
+          maxWidth: 520,
+          maxHeight: double.infinity,
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: STextStyles.desktopH3(context)),
+                const SizedBox(height: 16),
+                SelectableText(
+                  message,
+                  style: STextStyles.desktopTextSmall(context),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SecondaryButton(
+                        label: "Cancel",
+                        buttonHeight: ButtonHeight.l,
+                        onPressed: () => Navigator.of(context).pop(false),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: PrimaryButton(
+                        label: confirm,
+                        buttonHeight: ButtonHeight.l,
+                        onPressed: () => Navigator.of(context).pop(true),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    final colors = Theme.of(context).extension<StackColors>()!;
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => StackDialog(
+        title: title,
+        message: message,
+        leftButton: TextButton(
+          style: colors.getSecondaryEnabledButtonStyle(context),
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(
+            "Cancel",
+            style: STextStyles.button(context)
+                .copyWith(color: colors.accentColorDark),
+          ),
+        ),
+        rightButton: TextButton(
+          style: colors.getPrimaryEnabledButtonStyle(context),
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(confirm, style: STextStyles.button(context)),
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------- build
+
+  @override
+  Widget build(BuildContext context) {
+    final desktop = _desktop;
+    final colors = Theme.of(context).extension<StackColors>()!;
+    return ConditionalParent(
+      condition: desktop,
+      builder: (child) => DesktopScaffold(
+        appBar: DesktopAppBar(
+          isCompactHeight: true,
+          useSpacers: false,
+          background: colors.popupBG,
+          leading: Expanded(
+            child: Row(
+              children: [
+                const SizedBox(width: 32),
+                AppBarIconButton(
+                  size: 32,
+                  color: colors.textFieldDefaultBG,
+                  shadows: const [],
+                  icon: SvgPicture.asset(
+                    Assets.svg.arrowLeft,
+                    width: 18,
+                    height: 18,
+                    colorFilter: ColorFilter.mode(
+                      colors.topNavIconPrimary,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  onPressed: Navigator.of(context).pop,
+                ),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    _name,
+                    style: STextStyles.desktopH3(context),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const Spacer(),
+              ],
+            ),
+          ),
+        ),
+        body: child,
+      ),
+      child: ConditionalParent(
+        condition: !desktop,
+        builder: (child) => Background(
+          child: Scaffold(
+            backgroundColor: colors.background,
+            appBar: AppBar(
+              automaticallyImplyLeading: false,
+              leading: AppBarBackButton(
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              title: Text(
+                _name,
+                style: STextStyles.navBarTitle(context),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            body: SafeArea(child: child),
+          ),
+        ),
+        child: _body(context, desktop),
+      ),
+    );
+  }
+
+  Widget _body(BuildContext context, bool desktop) {
+    final colors = Theme.of(context).extension<StackColors>()!;
+    if (!_available) {
+      return _Unavailable(name: _name, desktop: desktop);
+    }
+    final failure = _failure;
+    if (failure != null) {
+      return Padding(
+        padding: EdgeInsets.all(desktop ? 24 : 16),
+        child: _Message(
+          title: failure,
+          body:
+              "Nothing was sent and nothing was changed. Try again; if it "
+              "keeps happening, remove $_name and install it again.",
+          action: PrimaryButton(
+            label: "Try again",
+            buttonHeight: desktop ? ButtonHeight.l : null,
+            height: desktop ? null : 46,
+            onPressed: () => unawaited(_restart()),
+          ),
+        ),
+      );
+    }
+    final glue = _glue;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_banner != null) _ApprovalBanner(banner: _banner!),
+        if (_loading)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Column(
+              children: [
+                const LinearProgressIndicator(),
+                const SizedBox(height: 8),
+                Text(
+                  "Opening $_name…",
+                  style: STextStyles.smallMed12(context)
+                      .copyWith(color: colors.textDark3),
+                ),
+              ],
+            ),
+          ),
+        Expanded(
+          child: glue == null
+              ? const SizedBox.shrink()
+              : Listener(
+                  behavior: HitTestBehavior.translucent,
+                  onPointerDown: (_) => _lastTouch = DateTime.now(),
+                  onPointerSignal: (event) {
+                    if (event is PointerScrollEvent) {
+                      _lastTouch = DateTime.now();
+                    }
+                  },
+                  child: glue.widget(),
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ApprovalBanner extends StatelessWidget {
+  const _ApprovalBanner({required this.banner});
+
+  final _PendingBanner banner;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<StackColors>()!;
+    final desktop = Util.isDesktop;
+    void answer(bool v) {
+      if (!banner.answer.isCompleted) banner.answer.complete(v);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      child: RoundedContainer(
+        color: colors.popupBG,
+        borderColor: colors.textFieldDefaultBG,
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                "${banner.model.dappName} asks for your approval",
+                style: STextStyles.w600_14(context)
+                    .copyWith(color: colors.textDark),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SecondaryButton(
+              key: const Key("dappBannerReject"),
+              label: "Reject",
+              width: 80,
+              buttonHeight: desktop ? ButtonHeight.s : ButtonHeight.l,
+              onPressed: () => answer(false),
+            ),
+            const SizedBox(width: 8),
+            PrimaryButton(
+              key: const Key("dappBannerReview"),
+              label: "Review",
+              width: 84,
+              buttonHeight: desktop ? ButtonHeight.s : ButtonHeight.l,
+              onPressed: () => answer(true),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Unavailable extends StatelessWidget {
+  const _Unavailable({required this.name, required this.desktop});
+
+  final String name;
+  final bool desktop;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Padding(
+          padding: EdgeInsets.all(desktop ? 24 : 16),
+          child: _Message(
+            title: "$name can't open on this computer yet",
+            body:
+                "$dappWindowPlatformsSentence On Linux and Windows the dApp "
+                "window isn't available yet. $name stays installed for when "
+                "it is, and your funds are not affected.",
+            action: PrimaryButton(
+              key: const Key("dappUnavailableBack"),
+              label: "Back to dApps",
+              buttonHeight: desktop ? ButtonHeight.l : null,
+              height: desktop ? null : 46,
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Message extends StatelessWidget {
+  const _Message({required this.title, required this.body, this.action});
+
+  final String title;
+  final String body;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<StackColors>()!;
+    return RoundedWhiteContainer(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            title,
+            style: STextStyles.pageTitleH2(context)
+                .copyWith(color: colors.textDark),
+          ),
+          const SizedBox(height: 8),
+          Text(body, style: STextStyles.smallMed14(context)),
+          if (action != null) ...[const SizedBox(height: 20), action!],
+        ],
+      ),
+    );
+  }
+}
