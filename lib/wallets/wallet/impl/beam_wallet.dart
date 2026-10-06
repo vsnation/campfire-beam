@@ -1206,6 +1206,7 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
         );
       }
       BeamSendRules.checkAddressType(validation.type);
+      final mode = BeamSendMode.forType(validation.type);
 
       final status = await api.walletStatus();
       _lastStatus = status;
@@ -1217,7 +1218,7 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
       } catch (_) {
         fee = kBeamDefaultFee;
       }
-      if (fee < kBeamDefaultFee) fee = kBeamDefaultFee;
+      if (fee < mode.minimumFee) fee = mode.minimumFee;
       final send = BeamSendRules.checkAmount(
         amount: recipient.amount.raw,
         fee: fee,
@@ -1265,7 +1266,16 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
         );
       }
       _checkBeamOnly(txData);
-      BeamSendRules.checkAddress(recipient.address);
+      final mode = BeamSendMode.forType(
+        BeamSendRules.checkAddress(recipient.address),
+      );
+      if (fee.raw < mode.minimumFee) {
+        throw const BeamWalletException(
+          BeamWalletProblem.other,
+          'The fee changed for this kind of address. Go back and review '
+          'the payment again.',
+        );
+      }
       final api = _requireApi();
       BeamSendRules.checkSynced(_assessment);
 
@@ -1278,6 +1288,7 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
           value: recipient.amount.raw,
           fee: fee.raw,
           assetId: 0,
+          offline: mode.offlineFlag ? true : null,
           // Only an explicitly shared note goes to the other wallet;
           // Campfire's own notes stay local.
           comment: note == null || note.isEmpty ? null : note,

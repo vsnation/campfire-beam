@@ -22,16 +22,87 @@ final BigInt kBeamDefaultFee = BigInt.from(100000);
 /// The send checks that need no core: address shape and type, amount, fee
 /// against the available balance, sync state. Every failure is a
 /// [BeamWalletException] whose message a user can act on.
+/// How a payment to one BEAM address type goes out
+/// (`v6_api_parse.cpp:542-614`, research/02 §1.4.2).
+class BeamSendMode {
+  const BeamSendMode._(
+    this.type, {
+    required this.minimumFee,
+    required this.offlineFlag,
+    required this.receiverMustBeOnline,
+    required this.explanation,
+  });
+
+  static final BigInt _regularFee = BigInt.from(100000);
+
+  /// 100,000 + 1,000,000 per shielded output (`getBeamFeeParam`).
+  static final BigInt _pushFee = BigInt.from(1100000);
+
+  factory BeamSendMode.forType(BeamAddressType type) => switch (type) {
+    BeamAddressType.regular || BeamAddressType.regularNew => BeamSendMode._(
+      type,
+      minimumFee: _regularFee,
+      offlineFlag: false,
+      receiverMustBeOnline: true,
+      explanation:
+          "The receiver's wallet has to come online to accept it; until "
+          'then it shows as waiting.',
+    ),
+    // An offline address would otherwise be paid as a regular online
+    // payment to its SBBS part; `offline: true` makes it the non-interactive
+    // payment the receiver asked for by sharing an offline address.
+    BeamAddressType.offline => BeamSendMode._(
+      type,
+      minimumFee: _pushFee,
+      offlineFlag: true,
+      receiverMustBeOnline: false,
+      explanation:
+          'Arrives even while the receiver\'s wallet is closed. Costs a '
+          'higher network fee (0.011 BEAM).',
+    ),
+    BeamAddressType.maxPrivacy => BeamSendMode._(
+      type,
+      minimumFee: _pushFee,
+      offlineFlag: false,
+      receiverMustBeOnline: false,
+      explanation:
+          'Hidden among many other payments; the receiver can spend it '
+          'after a while. Costs a higher network fee (0.011 BEAM).',
+    ),
+    BeamAddressType.publicOffline => BeamSendMode._(
+      type,
+      minimumFee: _pushFee,
+      offlineFlag: false,
+      receiverMustBeOnline: false,
+      explanation:
+          'A reusable donation address: arrives while the receiver is '
+          'offline. Costs a higher network fee (0.011 BEAM).',
+    ),
+    BeamAddressType.unknown => throw ArgumentError.value(type, 'type'),
+  };
+
+  final BeamAddressType type;
+
+  /// The core refuses anything lower ("The minimum fee is N GROTH").
+  final BigInt minimumFee;
+
+  /// Pass `"offline": true` to `tx_send`.
+  final bool offlineFlag;
+
+  /// Both wallets must be online within ~12 h (regular SBBS payments).
+  final bool receiverMustBeOnline;
+
+  /// One plain sentence for the confirm screen.
+  final String explanation;
+}
+
 abstract final class BeamSendRules {
   static const _notAddress =
       "That isn't a BEAM address. Copy it again from the person you're "
       'paying.';
 
-  /// Returns the address type, or throws when it cannot be sent to (yet).
-  ///
-  /// Regular SBBS addresses (`regular` hex, `regular_new` base58) are
-  /// accepted. Offline, max-privacy and public offline addresses need the
-  /// shielded pool (task B-ADDR-1) and are refused with a clear message.
+  /// Returns the address type, or throws when it is not a BEAM address.
+  /// Every BEAM address type can be paid; [BeamSendMode] says how.
   static BeamAddressType checkAddress(String address) {
     final trimmed = address.trim();
     if (trimmed.isEmpty) {
@@ -45,26 +116,13 @@ abstract final class BeamSendRules {
     return type;
   }
 
-  /// Throws unless [type] (as the core classified the address) can be paid
-  /// now.
+  /// Throws unless [type] (as the core classified the address) can be paid.
   static void checkAddressType(BeamAddressType type) {
-    switch (type) {
-      case BeamAddressType.regular:
-      case BeamAddressType.regularNew:
-        return;
-      case BeamAddressType.offline:
-      case BeamAddressType.maxPrivacy:
-      case BeamAddressType.publicOffline:
-        throw BeamWalletException(
-          BeamWalletProblem.unsupportedAddressType,
-          'This is a ${_typeName(type)} address. Campfire can only pay '
-          'regular BEAM addresses for now. Ask for a regular address.',
-        );
-      case BeamAddressType.unknown:
-        throw const BeamWalletException(
-          BeamWalletProblem.invalidAddress,
-          _notAddress,
-        );
+    if (type == BeamAddressType.unknown) {
+      throw const BeamWalletException(
+        BeamWalletProblem.invalidAddress,
+        _notAddress,
+      );
     }
   }
 
@@ -124,11 +182,4 @@ abstract final class BeamSendRules {
     if (frac.isEmpty) frac = '0';
     return '${negative ? '-' : ''}$whole.$frac BEAM';
   }
-
-  static String _typeName(BeamAddressType t) => switch (t) {
-    BeamAddressType.offline => 'offline',
-    BeamAddressType.maxPrivacy => 'max-privacy',
-    BeamAddressType.publicOffline => 'public offline',
-    _ => t.wireName,
-  };
 }

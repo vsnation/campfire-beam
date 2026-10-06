@@ -370,20 +370,30 @@ void main() {
       );
     });
 
-    test('offline and max-privacy are refused with a way forward', () {
+    test('every BEAM address type can be paid, each in its own way', () {
       expect(
-        () => BeamSendRules.checkAddress(vector('offline')),
-        throwsA(
-          problem(
-            BeamWalletProblem.unsupportedAddressType,
-            'Ask for a regular address',
-          ),
-        ),
+        BeamSendRules.checkAddress(vector('offline')),
+        BeamAddressType.offline,
       );
-      expect(
-        () => BeamSendRules.checkAddress(vector('max_privacy')),
-        throwsA(problem(BeamWalletProblem.unsupportedAddressType, 'max-pri')),
-      );
+      final regular = BeamSendMode.forType(BeamAddressType.regular);
+      expect(regular.minimumFee, BigInt.from(100000));
+      expect(regular.offlineFlag, isFalse);
+      expect(regular.receiverMustBeOnline, isTrue);
+
+      final offline = BeamSendMode.forType(BeamAddressType.offline);
+      expect(offline.minimumFee, BigInt.from(1100000));
+      expect(offline.offlineFlag, isTrue);
+      expect(offline.receiverMustBeOnline, isFalse);
+
+      for (final t in [
+        BeamAddressType.maxPrivacy,
+        BeamAddressType.publicOffline,
+      ]) {
+        final mode = BeamSendMode.forType(t);
+        expect(mode.minimumFee, BigInt.from(1100000), reason: t.name);
+        expect(mode.offlineFlag, isFalse, reason: t.name);
+        expect(mode.explanation, contains('0.011 BEAM'), reason: t.name);
+      }
     });
 
     test('not an address: empty, garbage, other coins', () {

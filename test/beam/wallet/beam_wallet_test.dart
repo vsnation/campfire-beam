@@ -587,13 +587,21 @@ void main() {
       expect(core.sent.single['comment'], 'hi');
     });
 
-    test('errors are plain: offline address, too much, not synced, not '
+    test('an offline address is paid without the receiver online, at the '
+        'push fee', () async {
+      final w = await ready();
+      final prepared = await w.prepareSend(
+        txData: tx(_vector('offline'), 0.001),
+      );
+      expect(prepared.fee!.raw, BigInt.from(1100000));
+      await w.confirmSend(txData: prepared);
+      expect(core.sent.single['offline'], isTrue);
+      expect(core.sent.single['fee'], 1100000);
+    });
+
+    test('errors are plain: not an address, too much, not synced, not '
         'open', () async {
       final w = await ready();
-      await expectLater(
-        w.prepareSend(txData: tx(_vector('offline'), 0.001)),
-        problem(BeamWalletProblem.unsupportedAddressType),
-      );
       await expectLater(
         w.prepareSend(txData: tx('not an address', 0.001)),
         problem(BeamWalletProblem.invalidAddress),
