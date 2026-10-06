@@ -35,7 +35,6 @@ import 'package:stackwallet/wallets/beam/contracts/dex/dex_constants.dart';
 import 'package:stackwallet/wallets/beam/models/beam_wallet_status.dart';
 import 'package:stackwallet/wallets/beam/rpc/fake_transport.dart';
 import 'package:stackwallet/wallets/beam/sync/beam_sync_state.dart';
-import 'package:stackwallet/widgets/beam/dex/dex_asset_icon.dart';
 import 'package:stackwallet/widgets/beam/dex/dex_deps.dart';
 
 const dexFixtureDir = 'test/beam/contracts/dex/fixtures';
@@ -234,21 +233,6 @@ StackTheme _theme() {
 
 final StackTheme campfireLight = _theme();
 
-/// The theme's own BEAM icon, extracted to a temp file the way the app
-/// unpacks themes at first start.
-final String beamIconPath = () {
-  final zip = File('asset_sources/default_themes/campfire/light.zip')
-      .readAsBytesSync();
-  final svg = ZipDecoder()
-      .decodeBytes(zip)
-      .files
-      .singleWhere((f) => f.name == 'assets/svg/coin_icons/small/Beam.svg');
-  final dir = Directory.systemTemp.createTempSync('cfb-dexui-');
-  final file = File('${dir.path}/Beam.svg')
-    ..writeAsBytesSync(svg.content as List<int>);
-  return file.path;
-}();
-
 OutlineInputBorder _border(Color c) => OutlineInputBorder(
   borderSide: BorderSide(width: 1, color: c),
   borderRadius: BorderRadius.circular(Constants.size.circularBorderRadius),
@@ -365,7 +349,6 @@ Future<void> pumpDex(
         themeProvider.overrideWithProvider(
           StateProvider<StackTheme>((ref) => campfireLight),
         ),
-        pBeamDexBeamIconPath.overrideWithValue(beamIconPath),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

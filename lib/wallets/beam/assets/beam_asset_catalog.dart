@@ -64,6 +64,36 @@ class BeamAssetDisplay {
 
 abstract final class BeamAssetCatalog {
   static const _icons = 'assets/beam/icons';
+  static const _generic = '$_icons/generic';
+
+  /// The BEAM desktop wallet's generic asset icons (`assets/beam/icons/generic`,
+  /// Apache-2.0, see the NOTICE there), used the way it uses them
+  /// (`AssetsManager::getIcon`): an asset with no icon of its own gets
+  /// `asset-<id % 20>`, so one asset always looks the same, in this wallet
+  /// and in the desktop one. The choice depends only on the asset id, never
+  /// on anything the asset's creator wrote, so it cannot be used to copy a
+  /// verified asset's look.
+  static const genericIconCount = 20;
+
+  static String genericIcon(int assetId) =>
+      '$_generic/asset-${assetId % genericIconCount}.svg';
+
+  /// For an asset id the network does not know.
+  static const missingIcon = '$_generic/asset-err.svg';
+
+  /// The desktop wallet's accent colours, in the same order as its icons.
+  static const _genericColors = [
+    0xFF72FDFF, 0xFF2ACF1D, 0xFFFFBB54, 0xFFD885FF, 0xFF008EFF, //
+    0xFFFF746B, 0xFF91E300, 0xFFFFE75A, 0xFF9643FF, 0xFF395BFF, //
+    0xFFFF3B3B, 0xFF73FF7C, 0xFFFFA86C, 0xFFFF3ABE, 0xFF00AEE1, //
+    0xFFFF5200, 0xFF6464FF, 0xFFFF7A21, 0xFF63AFFF, 0xFFC81F68, //
+  ];
+
+  /// ARGB accent of [genericIcon]. The desktop wallet would take an
+  /// unverified asset's `OPT_COLOR` instead; we don't, because its creator
+  /// chooses it and could choose a verified asset's colour.
+  static int genericColor(int assetId) =>
+      _genericColors[assetId % _genericColors.length];
 
   /// Assets LightWallet showed as known, with names checked against their
   /// on-chain metadata (explorer `/assets`, 2026-10-06). CHAD and GIGA each
@@ -75,6 +105,7 @@ abstract final class BeamAssetCatalog {
       name: 'BEAM',
       symbol: 'BEAM',
       color: 0xFF25C2A0,
+      icon: '$_icons/beam.svg',
     ),
     4: BeamKnownAsset(
       id: 4,
@@ -159,7 +190,9 @@ abstract final class BeamAssetCatalog {
 
   /// How to show [assetId]. Unverified assets take their name and ticker
   /// from on-chain [metadata], cleaned of anything that is not printable,
-  /// cut to a sane length, and never get an icon or colour of their own.
+  /// cut to a sane length, and never get an icon or colour of their own:
+  /// they get the desktop wallet's [genericIcon] for their id. Verified
+  /// assets without a bundled icon get one too.
   static BeamAssetDisplay display(int assetId, BeamAssetMetadata? metadata) {
     final known = verified[assetId];
     if (known != null) {
@@ -168,7 +201,7 @@ abstract final class BeamAssetCatalog {
         name: known.name,
         symbol: known.symbol,
         verified: true,
-        icon: known.icon,
+        icon: known.icon ?? genericIcon(assetId),
         color: known.color,
       );
     }
@@ -182,6 +215,8 @@ abstract final class BeamAssetCatalog {
       name: name ?? 'Asset #$assetId',
       symbol: symbol ?? '#$assetId',
       verified: false,
+      icon: genericIcon(assetId),
+      color: genericColor(assetId),
       impersonates: _copied(name, symbol),
     );
   }
@@ -206,9 +241,7 @@ abstract final class BeamAssetCatalog {
   /// null when nothing usable is left. On-chain names are attacker text.
   static String? _clean(String? raw, int max) {
     if (raw == null) return null;
-    final kept = raw
-        .replaceAll(_invisible, '')
-        .trim();
+    final kept = raw.replaceAll(_invisible, '').trim();
     if (kept.isEmpty) return null;
     return kept.length > max ? '${kept.substring(0, max - 1)}…' : kept;
   }

@@ -454,6 +454,8 @@ flutter:
 ## Icons of the verified assets (lib/wallets/beam/assets/beam_asset_catalog).
 ## Bundled, never fetched: an icon URL would tell its server who holds what.
 #    - assets/beam/icons/
+## The BEAM desktop wallet's generic asset icons (Apache-2.0, NOTICE.txt there).
+#    - assets/beam/icons/generic/
 ## The Beam girl (Campfire for BEAM's character, in place of Firo's Sparky):
 ## static WebP stickers and animated .tgs (gzipped Lottie).
 #    - assets/beam/stickers/static/

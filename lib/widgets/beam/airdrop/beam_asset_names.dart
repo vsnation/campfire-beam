@@ -15,6 +15,7 @@ import '../../../wallets/beam/api/beam_api.dart';
 import '../../../wallets/beam/assets/beam_asset_catalog.dart';
 import '../../../wallets/beam/models/beam_asset_info.dart';
 import '../../rounded_white_container.dart';
+import '../assets/beam_asset_logo.dart';
 import 'beam_layout.dart';
 import 'beam_units.dart';
 
@@ -76,7 +77,7 @@ class BeamAssetNames extends ChangeNotifier {
   }
 }
 
-/// The asset's bundled icon, or its initials on its colour.
+/// The asset's icon: [BeamAssetLogo], the same on every BEAM screen.
 class BeamAssetAvatar extends StatelessWidget {
   const BeamAssetAvatar({super.key, required this.display, this.size = 32});
 
@@ -84,43 +85,7 @@ class BeamAssetAvatar extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<StackColors>()!;
-    final fallback = Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Color(display.color ?? colors.textSubtitle4.toARGB32()),
-      ),
-      child: Text(
-        _initials(display.symbol),
-        style: STextStyles.label(context).copyWith(
-          color: Colors.white,
-          fontWeight: FontWeight.w700,
-          fontSize: size * 0.34,
-        ),
-      ),
-    );
-    final icon = display.icon;
-    if (icon == null || icon.endsWith('.svg')) return fallback;
-    return ClipOval(
-      child: Image.asset(
-        icon,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => fallback,
-      ),
-    );
-  }
-
-  static String _initials(String symbol) {
-    final s = symbol.replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
-    if (s.isEmpty) return '?';
-    return s.length <= 2 ? s.toUpperCase() : s.substring(0, 2).toUpperCase();
-  }
+  Widget build(BuildContext context) => BeamAssetLogo(display, size: size);
 }
 
 /// Avatar, name and ticker, with the warnings an unverified asset needs.

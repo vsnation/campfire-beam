@@ -1,0 +1,10 @@
+# Generic asset icons
+
+`asset-0.svg` … `asset-19.svg` and `asset-err.svg` are copied unchanged from the BEAM desktop
+wallet, [BeamMW/beam-ui](https://github.com/BeamMW/beam-ui) (`ui/view/assets/`, commit
+`1cc4d1a`), licensed under the Apache License 2.0
+(<https://www.apache.org/licenses/LICENSE-2.0>), which is compatible with this project's GPLv3.
+
+They are used the way the desktop wallet uses them (`ui/model/assets_manager.cpp`,
+`AssetsManager::getIcon`): an asset without an icon of its own gets `asset-<id % 20>.svg`, so the
+same asset always looks the same, and an asset that does not exist gets `asset-err.svg`.
