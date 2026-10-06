@@ -64,6 +64,7 @@ import '../../../../wallets/wallet/wallet_mixin_interfaces/coin_control_interfac
 import '../../../../wallets/wallet/wallet_mixin_interfaces/mweb_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/paynym_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
+import '../../../../widgets/beam/send/beam_send_screen.dart';
 import '../../../../widgets/custom_buttons/blue_text_button.dart';
 import '../../../../widgets/desktop/desktop_dialog.dart';
 import '../../../../widgets/desktop/desktop_dialog_close_button.dart';
@@ -1348,6 +1349,15 @@ class _DesktopSendState extends ConsumerState<DesktopSend> {
   @override
   Widget build(BuildContext context) {
     debugPrint("BUILD: $runtimeType");
+    // BEAM: one recipient field for an address or a BANS name, assets, and
+    // name payments (contract calls), on Campfire's own widgets.
+    if (coin is Beam) {
+      return BeamSendScreen(
+        walletId: walletId,
+        autoFillData: widget.autoFillData,
+        clipboard: clipboard,
+      );
+    }
     final String locale = ref.watch(
       localeServiceChangeNotifierProvider.select((value) => value.locale),
     );

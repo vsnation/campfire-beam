@@ -37,9 +37,12 @@ import '../../utilities/constants.dart';
 import '../../utilities/logger.dart';
 import '../../utilities/text_styles.dart';
 import '../../utilities/util.dart';
+import '../../wallets/beam/contracts/bans/bans_exceptions.dart';
 import '../../wallets/crypto_currency/coins/epiccash.dart';
 import '../../wallets/crypto_currency/coins/ethereum.dart';
 import '../../wallets/crypto_currency/coins/mimblewimblecoin.dart';
+import '../../wallets/crypto_currency/crypto_currency.dart'
+    show CryptoCurrency;
 import '../../wallets/crypto_currency/intermediate/nano_currency.dart';
 import '../../wallets/isar/providers/eth/current_token_wallet_provider.dart';
 import '../../wallets/isar/providers/solana/current_sol_token_wallet_provider.dart';
@@ -52,6 +55,10 @@ import '../../wallets/wallet/impl/solana_wallet.dart';
 import '../../wallets/wallet/wallet_mixin_interfaces/ordinals_interface.dart';
 import '../../wallets/wallet/wallet_mixin_interfaces/paynym_interface.dart';
 import '../../widgets/background.dart';
+import '../../widgets/beam/send/beam_confirm_content.dart';
+import '../../widgets/beam/send/beam_send_result.dart';
+import '../../widgets/beam/send/beam_send_review.dart';
+import '../../widgets/beam/send/beam_send_widgets.dart';
 import '../../widgets/conditional_parent.dart';
 import '../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../widgets/desktop/desktop_dialog.dart';
@@ -82,6 +89,7 @@ class ConfirmTransactionView extends ConsumerStatefulWidget {
     this.isPaynymNotificationTransaction = false,
     this.isTokenTx = false,
     this.onSuccessInsteadOfRouteOnSuccess,
+    this.beamReview,
   });
 
   static const String routeName = "/confirmTransactionView";
@@ -95,6 +103,11 @@ class ConfirmTransactionView extends ConsumerStatefulWidget {
   final bool isTokenTx;
   final VoidCallback? onSuccessInsteadOfRouteOnSuccess;
   final VoidCallback onSuccess;
+
+  /// A BEAM payment (to an address or to a name), prepared by the BEAM send
+  /// screen. When set, this view shows the BEAM confirmation and sends
+  /// through it, behind the same PIN / password gate.
+  final BeamSendReview? beamReview;
 
   @override
   ConsumerState<ConfirmTransactionView> createState() =>
@@ -580,6 +593,167 @@ class _ConfirmTransactionViewState
     }
   }
 
+  /// Campfire's gate before any send: the desktop password dialog, or the
+  /// PIN / biometrics lock screen on a phone. [send] runs only when it was
+  /// passed.
+  Future<void> _authorizeThenSend(
+    BuildContext context, {
+    required CryptoCurrency coin,
+    required String? tokenTicker,
+    required bool desktop,
+    required Future<void> Function(BuildContext context) send,
+  }) async {
+    if (desktop) {
+      final unlocked = await showDialog<bool?>(
+        context: context,
+        builder: (context) => DesktopDialog(
+          maxWidth: 580,
+          maxHeight: double.infinity,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [DesktopDialogCloseButton()],
+              ),
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: 32,
+                  right: 32,
+                  bottom: 32,
+                ),
+                child: DesktopAuthSend(coin: coin, tokenTicker: tokenTicker),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (context.mounted && unlocked is bool) {
+        if (unlocked) {
+          unawaited(send(context));
+        } else {
+          unawaited(
+            showFloatingFlushBar(
+              type: FlushBarType.warning,
+              message: "Invalid passphrase",
+              context: context,
+            ),
+          );
+        }
+      }
+    } else {
+      final unlocked = await Navigator.push<bool>(
+        context,
+        RouteGenerator.getRoute<bool>(
+          shouldUseMaterialRoute: RouteGenerator.useMaterialPageRoute,
+          builder: (_) => const LockscreenView(
+            showBackButton: true,
+            popOnSuccess: true,
+            routeOnSuccessArguments: true,
+            routeOnSuccess: "",
+            biometricsCancelButtonString: "CANCEL",
+            biometricsLocalizedReason: "Authenticate to send transaction",
+            biometricsAuthenticationTitle: "Confirm Transaction",
+          ),
+          settings: const RouteSettings(name: "/confirmsendlockscreen"),
+        ),
+      );
+
+      if (context.mounted) {
+        if (unlocked == true) {
+          unawaited(send(context));
+        } else {
+          unawaited(
+            showFloatingFlushBar(
+              type: FlushBarType.warning,
+              message: Util.isDesktop ? "Invalid passphrase" : "Invalid PIN",
+              context: context,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  /// Sends a BEAM payment after the gate: Campfire's sending dialog, then
+  /// the sent sheet (transaction id, "View in history") or why it was not
+  /// sent. A name whose owner changed sends nothing and goes back to the
+  /// form, where the name is looked up again.
+  Future<void> _attemptBeamSend(
+    BuildContext context,
+    BeamSendReview review,
+    bool desktop,
+  ) async {
+    final progress = ProgressAndSuccessController();
+    var sendingOpen = true;
+    void closeSending() {
+      if (!context.mounted || !sendingOpen) return;
+      final navigator = Navigator.of(context, rootNavigator: true);
+      if (navigator.canPop()) navigator.pop();
+      sendingOpen = false;
+    }
+
+    unawaited(
+      showDialog<dynamic>(
+        context: context,
+        useRootNavigator: true,
+        useSafeArea: false,
+        barrierDismissible: false,
+        builder: (_) =>
+            SendingTransactionDialog(coin: review.coin, controller: progress),
+      ).whenComplete(() => sendingOpen = false),
+    );
+
+    final String txId;
+    try {
+      final results = await Future.wait<Object?>([
+        review.send(),
+        Future<void>.delayed(const Duration(milliseconds: 2500)),
+      ]);
+      txId = results.first! as String;
+    } catch (e, s) {
+      Logging.instance.e("BEAM send failed", error: e, stackTrace: s);
+      closeSending();
+      if (!context.mounted) return;
+      final unknown = BeamSendReview.isOutcomeUnknown(e);
+      await showBeamSendFailure(
+        context,
+        error: e,
+        outcomeUnknown: unknown,
+        desktop: desktop,
+      );
+      if (!context.mounted) return;
+      if (unknown) {
+        // It may have gone out: never offer to send it again from here.
+        _leaveAfterSend(context);
+      } else if (e is BansOwnerChanged) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+
+    progress.triggerSuccess?.call();
+    await Future<void>.delayed(const Duration(seconds: 2));
+    closeSending();
+    widget.onSuccess.call();
+    if (!context.mounted) return;
+    await showBeamSendSuccess(
+      context,
+      review: review,
+      txId: txId,
+      desktop: desktop,
+    );
+    if (context.mounted) _leaveAfterSend(context);
+  }
+
+  void _leaveAfterSend(BuildContext context) {
+    if (widget.onSuccessInsteadOfRouteOnSuccess == null) {
+      Navigator.of(context).popUntil(ModalRoute.withName(routeOnSuccessName));
+    } else {
+      widget.onSuccessInsteadOfRouteOnSuccess!.call();
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -597,11 +771,13 @@ class _ConfirmTransactionViewState
     onChainNoteController = TextEditingController();
     onChainNoteController.text = widget.txData.noteOnChain ?? "";
 
-    _checkForOrdinalSpend(true);
+    // A BEAM payment spends no ordinals (and is not a pWallets UTXO spend).
+    if (widget.beamReview == null) _checkForOrdinalSpend(true);
   }
 
   @override
   void dispose() {
+    widget.beamReview?.dispose();
     noteController.dispose();
     onChainNoteController.dispose();
 
@@ -612,6 +788,22 @@ class _ConfirmTransactionViewState
 
   @override
   Widget build(BuildContext context) {
+    final beam = widget.beamReview;
+    if (beam != null) {
+      final desktop = BeamSendLayout.isDesktop(context);
+      return BeamConfirmContent(
+        review: beam,
+        desktop: desktop,
+        onSend: () => _authorizeThenSend(
+          context,
+          coin: beam.coin,
+          tokenTicker: beam.asset.assetId == 0 ? null : beam.asset.symbol,
+          desktop: desktop,
+          send: (context) => _attemptBeamSend(context, beam, desktop),
+        ),
+      );
+    }
+
     final coin = ref.watch(pWalletCoin(walletId));
 
     final String unit;
@@ -1531,87 +1723,13 @@ class _ConfirmTransactionViewState
               child: PrimaryButton(
                 label: "Send",
                 buttonHeight: isDesktop ? ButtonHeight.l : null,
-                onPressed: () async {
-                  if (isDesktop) {
-                    final unlocked = await showDialog<bool?>(
-                      context: context,
-                      builder: (context) => DesktopDialog(
-                        maxWidth: 580,
-                        maxHeight: double.infinity,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [DesktopDialogCloseButton()],
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.only(
-                                left: 32,
-                                right: 32,
-                                bottom: 32,
-                              ),
-                              child: DesktopAuthSend(
-                                coin: coin,
-                                tokenTicker: widget.isTokenTx ? unit : null,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                    if (context.mounted && unlocked is bool) {
-                      if (unlocked) {
-                        unawaited(_attemptSend(context));
-                      } else {
-                        unawaited(
-                          showFloatingFlushBar(
-                            type: FlushBarType.warning,
-                            message: "Invalid passphrase",
-                            context: context,
-                          ),
-                        );
-                      }
-                    }
-                  } else {
-                    final unlocked = await Navigator.push<bool>(
-                      context,
-                      RouteGenerator.getRoute<bool>(
-                        shouldUseMaterialRoute:
-                            RouteGenerator.useMaterialPageRoute,
-                        builder: (_) => const LockscreenView(
-                          showBackButton: true,
-                          popOnSuccess: true,
-                          routeOnSuccessArguments: true,
-                          routeOnSuccess: "",
-                          biometricsCancelButtonString: "CANCEL",
-                          biometricsLocalizedReason:
-                              "Authenticate to send transaction",
-                          biometricsAuthenticationTitle: "Confirm Transaction",
-                        ),
-                        settings: const RouteSettings(
-                          name: "/confirmsendlockscreen",
-                        ),
-                      ),
-                    );
-
-                    if (context.mounted) {
-                      if (unlocked == true) {
-                        unawaited(_attemptSend(context));
-                      } else {
-                        unawaited(
-                          showFloatingFlushBar(
-                            type: FlushBarType.warning,
-                            message: Util.isDesktop
-                                ? "Invalid passphrase"
-                                : "Invalid PIN",
-                            context: context,
-                          ),
-                        );
-                      }
-                    }
-                  }
-                },
+                onPressed: () => _authorizeThenSend(
+                  context,
+                  coin: coin,
+                  tokenTicker: widget.isTokenTx ? unit : null,
+                  desktop: isDesktop,
+                  send: _attemptSend,
+                ),
               ),
             ),
             if (isDesktop) const SizedBox(height: 32),

@@ -65,6 +65,7 @@ import '../../wallets/wallet/wallet_mixin_interfaces/mweb_interface.dart';
 import '../../wallets/wallet/wallet_mixin_interfaces/paynym_interface.dart';
 import '../../wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
 import '../../widgets/animated_text.dart';
+import '../../widgets/beam/send/beam_send_screen.dart';
 import '../../widgets/background.dart';
 import '../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../widgets/custom_buttons/blue_text_button.dart';
@@ -1413,6 +1414,15 @@ class _SendViewState extends ConsumerState<SendView> {
   @override
   Widget build(BuildContext context) {
     debugPrint("BUILD: $runtimeType");
+    // BEAM: one recipient field for an address or a BANS name, assets, and
+    // name payments (contract calls), on Campfire's own widgets.
+    if (coin is Beam) {
+      return BeamSendScreen(
+        walletId: walletId,
+        autoFillData: widget.autoFillData,
+        clipboard: clipboard,
+      );
+    }
     final isCustomFee = ref.watch(feeRateTypeMobileStateProvider).isCustom;
     final String locale = ref.watch(
       localeServiceChangeNotifierProvider.select((value) => value.locale),
