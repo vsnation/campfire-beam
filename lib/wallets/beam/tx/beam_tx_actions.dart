@@ -18,8 +18,7 @@ abstract final class BeamTxActions {
   /// in progress. The core can still refuse once the kernel is being
   /// registered; the UI then says so instead of showing an error code.
   static bool canCancel(BeamTransaction tx) =>
-      tx.status == BeamTxStatus.pending ||
-      tx.status == BeamTxStatus.inProgress;
+      tx.status == BeamTxStatus.pending || tx.status == BeamTxStatus.inProgress;
 
   /// `TxDescription::canDelete` (`common.cpp:952`): only finished ones.
   /// Deleting removes the wallet's record only; nothing changes on chain.
@@ -40,8 +39,7 @@ abstract final class BeamTxActions {
   static String statusLine(BeamTransaction tx) {
     final incoming = tx.income ?? false;
     return switch (tx.status) {
-      BeamTxStatus.pending ||
-      BeamTxStatus.inProgress when _interactive(tx) =>
+      BeamTxStatus.pending || BeamTxStatus.inProgress when _interactive(tx) =>
         incoming
             ? 'Waiting for the sender to finish'
             : 'Waiting for the receiver\'s wallet to come online',
@@ -50,7 +48,7 @@ abstract final class BeamTxActions {
       BeamTxStatus.confirming => 'Waiting for confirmation',
       BeamTxStatus.completed => incoming ? 'Received' : 'Sent',
       BeamTxStatus.canceled => 'Cancelled',
-      BeamTxStatus.failed => _failure(tx.failureReason),
+      BeamTxStatus.failed => _failure(tx),
       BeamTxStatus.unknown => 'Unknown status',
     };
   }
@@ -61,20 +59,77 @@ abstract final class BeamTxActions {
           tx.addressType == BeamAddressType.regular ||
           tx.addressType == BeamAddressType.regularNew);
 
-  static String _failure(String? reason) {
-    final r = (reason ?? '').trim();
+  /// What a failed transaction's status line says when the core's message
+  /// is not one [failureSentence] knows. The core's own words stay behind
+  /// "Copy technical details"; they are not written for people.
+  static const notCompleted = 'Not completed. Nothing was sent.';
+
+  static String _failure(BeamTransaction tx) {
+    final r = (tx.failureReason ?? '').trim();
     if (r.isEmpty) return 'Failed';
-    final lower = r.toLowerCase();
-    if (lower.contains('expired')) {
-      return 'Expired: the other wallet did not respond in time. '
-          'Nothing was sent.';
+    return failureSentence(r, interactive: _interactive(tx)) ?? notCompleted;
+  }
+
+  /// Plain words for a failure message the core really sends
+  /// (`BEAM_TX_FAILURE_REASON_MAP`, wallet/core/common.h, tag
+  /// beam-7.5.14493), or null when [reason] is empty or not one of them.
+  /// A failed BEAM transaction never reached a block, so every sentence
+  /// says that nothing was sent. [interactive] is a regular payment, where
+  /// a timeout means the other wallet never answered.
+  static String? failureSentence(String? reason, {required bool interactive}) {
+    final r = (reason ?? '').trim().toLowerCase();
+    if (r.isEmpty) return null;
+    const nothing = 'Nothing was sent.';
+    // Order matters: "Address is expired" must not read as a timeout.
+    if (r.contains('address is expired')) {
+      return 'Not sent: the receiving address has expired. $nothing '
+          'Ask for a new address.';
     }
-    if (lower.contains('inputs missing') || lower.contains('spent')) {
-      return 'Failed: the coins were already spent elsewhere. '
-          'Nothing was sent.';
+    if (r.contains('timed out') || r.contains('expired')) {
+      return interactive
+          ? 'Expired: the other wallet did not respond in time. $nothing'
+          : 'Expired: it was not added to a block in time. $nothing';
     }
-    if (lower.contains('cancel')) return 'Cancelled by the other side';
-    return 'Failed: $r';
+    if (r.contains('inputs missing') || r.contains('spent')) {
+      return 'Failed: the coins were already spent elsewhere. $nothing';
+    }
+    if (r.contains('failed to register')) {
+      return 'Not accepted by the network. $nothing';
+    }
+    if (r.contains('not enough inputs')) {
+      return 'Not sent: not enough coins were free to pay it. $nothing';
+    }
+    if (r.contains('fee is too small')) {
+      return 'Not sent: the network fee was too low. $nothing';
+    }
+    if (r.contains('fee is too large') || r.contains('fee is too big')) {
+      return 'Not sent: the fee would have been too large. $nothing';
+    }
+    if (r.contains('not signed by the receiver')) {
+      return 'Not sent: the receiver did not sign the payment. $nothing';
+    }
+    if (r.contains('transaction parameters')) {
+      return 'The other wallet could not be reached. $nothing';
+    }
+    if (r.contains('no voucher') || r.contains('cannot get vouchers')) {
+      return "Not sent: the receiver's offline address has no one-time "
+          'keys left. Ask them to open their wallet or send a new '
+          'address. $nothing';
+    }
+    if (r.contains('disabled in the receiver wallet')) {
+      return "Not sent: the receiver's wallet does not accept tokens. "
+          '$nothing';
+    }
+    if (r.contains('aborted by the user')) return 'Cancelled';
+    if (r.contains('cancel')) return 'Cancelled by the other side. $nothing';
+    if (r.contains('send wallet logs') ||
+        r.contains('not valid') ||
+        r.contains('kernel') ||
+        r.contains('key keeper') ||
+        r.contains('invalid state')) {
+      return 'The wallet could not complete it. $nothing';
+    }
+    return null;
   }
 }
 
@@ -99,7 +154,7 @@ class BeamProofVerdict {
       true,
       'Valid: ${describeAmount(info.amount, info.assetId)} was paid from '
       '${_short(info.sender)} to ${_short(info.receiver)} '
-      '(kernel ${_short(info.kernel)}).',
+      '(transaction ID ${_short(info.kernel)}).',
     );
   }
 

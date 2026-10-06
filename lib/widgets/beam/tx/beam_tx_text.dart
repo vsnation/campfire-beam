@@ -101,15 +101,11 @@ abstract final class BeamTxText {
     // "Sent" fits a payment, not a swap or a claim.
     if (v.isContract && v.isCompleted) return 'Completed';
     final line = BeamTxActions.statusLine(v.toCore());
-    if (v.isFailed &&
-        (line == 'Failed' ||
-            (line.startsWith('Failed: ') && !line.contains('Nothing')))) {
-      return kNotCompleted;
-    }
+    if (v.isFailed && line == 'Failed') return kNotCompleted;
     return line;
   }
 
-  static const kNotCompleted = 'Not completed. Nothing was sent.';
+  static const kNotCompleted = BeamTxActions.notCompleted;
   static const _nothing = 'Nothing was sent.';
 
   /// The status line under a list entry, which already has a title: no
@@ -129,47 +125,10 @@ abstract final class BeamTxText {
 
   /// Plain words for the core's failure message, or null when the core's
   /// text is one [BeamTxActions] already explains (or nothing known).
-  static String? failure(BeamTxView v) {
-    final r = (v.failureReason ?? '').toLowerCase();
-    if (r.isEmpty) return null;
-    const nothing = 'Nothing was sent.';
-    // Order matters: "Address is expired" must not read as a timeout.
-    if (r.contains('address is expired')) {
-      return 'Not sent: the receiving address has expired. $nothing '
-          'Ask for a new address.';
-    }
-    if (r.contains('timed out')) {
-      return _interactive(v)
-          ? 'Expired: the other wallet did not respond in time. $nothing'
-          : 'Expired: it was not added to a block in time. $nothing';
-    }
-    if (r.contains('failed to register')) {
-      return 'Not accepted by the network. $nothing';
-    }
-    if (r.contains('not enough inputs')) {
-      return 'Not sent: not enough coins were free to pay it. $nothing';
-    }
-    if (r.contains('fee is too small')) {
-      return 'Not sent: the network fee was too low. $nothing';
-    }
-    if (r.contains('not signed by the receiver')) {
-      return 'Not sent: the receiver did not sign the payment. $nothing';
-    }
-    if (r.contains('transaction parameters')) {
-      return 'The other wallet could not be reached. $nothing';
-    }
-    if (r.contains('disabled in the receiver wallet')) {
-      return "Not sent: the receiver's wallet does not accept tokens. "
-          '$nothing';
-    }
-    if (r.contains('aborted by the user')) return 'Cancelled';
-    if (r.contains('send wallet logs') ||
-        r.contains('not valid') ||
-        r.contains('kernel')) {
-      return 'The wallet could not complete it. $nothing';
-    }
-    return null;
-  }
+  static String? failure(BeamTxView v) => BeamTxActions.failureSentence(
+    v.failureReason,
+    interactive: _interactive(v),
+  );
 
   /// The core's own text, kept for support. Shown only behind "Copy".
   static String? technical(BeamTxView v) => v.failureReason;
@@ -274,10 +233,9 @@ abstract final class BeamTxText {
       "This text is not a payment proof. Ask the sender to send the whole "
       'proof again.';
 
-  /// [BeamProofVerdict]'s sentence names the kernel; on screen that id is
+  /// [BeamProofVerdict]'s sentence, as shown. It already calls the kernel
   /// the "transaction ID" (the word "kernel" stays behind the info button).
-  static String plainVerdict(String sentence) =>
-      sentence.replaceFirst('(kernel ', '(transaction ID ');
+  static String plainVerdict(String sentence) => sentence;
 
   static const explorerInfo =
       'BEAM calls this the kernel ID. Block explorers look a transaction up '

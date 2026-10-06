@@ -74,18 +74,14 @@ void main() {
     expect(BeamTxActions.canExportProof(_tx(BeamTxStatus.inProgress)), isFalse);
   });
 
-  test('a stuck regular payment explains that both wallets must be online',
-      () {
+  test('a stuck regular payment explains that both wallets must be online', () {
     expect(
       BeamTxActions.statusLine(_tx(BeamTxStatus.inProgress)),
       contains('come online'),
     );
     expect(
       BeamTxActions.statusLine(
-        _tx(
-          BeamTxStatus.inProgress,
-          addressType: BeamAddressType.maxPrivacy,
-        ),
+        _tx(BeamTxStatus.inProgress, addressType: BeamAddressType.maxPrivacy),
       ),
       'In progress',
     );
@@ -139,5 +135,66 @@ void main() {
     );
     expect(bad.valid, isFalse);
     expect(bad.sentence, contains('not valid'));
+  });
+
+  group('failure messages the core really sends', () {
+    // BEAM_TX_FAILURE_REASON_MAP, wallet/core/common.h, beam-7.5.14493.
+    const users = {
+      'Transaction timed out': 'Expired: the other wallet',
+      'Address is expired': 'receiving address has expired',
+      'Failed to register transaction with the blockchain, see node logs '
+              'for details':
+          'Not accepted by the network',
+      'Not enough inputs to process the transaction': 'not enough coins',
+      'Fee is too small': 'network fee was too low',
+      'Fee is too large': 'too large',
+      'Cannot extract shielded coin, fee is too big.': 'too large',
+      'Payment not signed by the receiver, please send wallet logs to Beam '
+              'support':
+          'did not sign',
+      'Failed to send Transaction parameters': 'could not be reached',
+      'Failed to get transaction parameters': 'could not be reached',
+      'No voucher, no address to receive it': 'one-time keys',
+      'The sender cannot get vouchers for offline transaction': 'one-time keys',
+      'Asset transactions are disabled in the receiver wallet':
+          'does not accept tokens',
+      'Transaction cancelled': 'Cancelled by the other side',
+      'Aborted by the user': 'Cancelled',
+      'Transaction is not valid, please send wallet logs to Beam support':
+          'could not complete it',
+      'Invalid kernel proof provided': 'could not complete it',
+      'Key keeper malfunctioned': 'could not complete it',
+      'Transaction has invalid state': 'could not complete it',
+    };
+
+    test('each one reads as plain words and says nothing was sent', () {
+      users.forEach((core, expected) {
+        final s = BeamTxActions.failureSentence(core, interactive: true);
+        expect(s, contains(expected), reason: core);
+        if (expected != 'Cancelled') {
+          expect(s, contains('Nothing was sent.'), reason: core);
+        }
+      });
+    });
+
+    test('a timeout on a non-interactive payment blames no wallet', () {
+      expect(
+        BeamTxActions.failureSentence(
+          'Transaction timed out',
+          interactive: false,
+        ),
+        startsWith('Expired: it was not added to a block'),
+      );
+    });
+
+    test('an unknown message never shows the core text as status', () {
+      final line = BeamTxActions.statusLine(
+        _tx(
+          BeamTxStatus.failed,
+          failure: 'Side chain bridge has network error',
+        ),
+      );
+      expect(line, BeamTxActions.notCompleted);
+    });
   });
 }
