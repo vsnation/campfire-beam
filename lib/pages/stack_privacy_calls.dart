@@ -382,6 +382,11 @@ class _PrivacyToggleState extends ConsumerState<PrivacyToggle> {
                               File(
                                 easyFile,
                               ),
+                              // Same box as the SVG branch: a raster
+                              // persona otherwise grows to its natural
+                              // size and pushes Continue off screen.
+                              width: 140,
+                              height: 140,
                             )
                           : SvgPicture.file(
                               File(
@@ -491,6 +496,11 @@ class _PrivacyToggleState extends ConsumerState<PrivacyToggle> {
                               File(
                                 incognitoFile,
                               ),
+                              // Same box as the SVG branch: a raster
+                              // persona otherwise grows to its natural
+                              // size and pushes Continue off screen.
+                              width: 140,
+                              height: 140,
                             )
                           : SvgPicture.file(
                               File(
