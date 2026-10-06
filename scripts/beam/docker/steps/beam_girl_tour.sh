@@ -11,5 +11,5 @@ click 640 364; typetext "$PW"
 click 640 450; typetext "$PW"
 click 640 552 8                                # Next (password key derivation takes a moment)
 shot linux_03_my_campfire_empty.png            # empty wallets: the Beam girl "Welcome"
-click 752 685 3                                # Add Wallet
+click 752 614 3                                # Add Wallet (button sits under the Welcome sticker)
 shot linux_04_add_beam_wallet.png              # Add Beam wallet: girl holding the BEAM logo
