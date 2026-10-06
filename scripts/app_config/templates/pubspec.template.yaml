@@ -447,6 +447,9 @@ flutter:
 ## BEAM app shaders (amm, bans, airdrop, minter, blackhole). Each is pinned
 ## by SHA-256 and checked before first use (contracts/common/pinned_shader).
 #    - assets/beam/shaders/
+## Icons of the verified assets (lib/wallets/beam/assets/beam_asset_catalog).
+## Bundled, never fetched: an icon URL would tell its server who holds what.
+#    - assets/beam/icons/
 ## Pinned BEAM core binaries for desktop, staged per build platform by
 ## scripts/beam/core/stage_binaries.sh (empty folders elsewhere). A directory
 ## entry does not include its subdirectories, so each is listed.
