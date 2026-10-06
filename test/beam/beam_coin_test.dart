@@ -312,10 +312,25 @@ void main() {
         expect(path, isA<String>(), reason: kind);
         final file = archive.findFile('assets/$path');
         expect(file, isNotNull, reason: 'assets/$path');
-        final svg = utf8.decode(file!.content);
+        final content = file!.content as List<int>;
+        if ((path as String).endsWith('.png')) {
+          // The Beam girl images are PNGs (scripts/beam/theme).
+          expect(content.take(8), [
+            137,
+            80,
+            78,
+            71,
+            13,
+            10,
+            26,
+            10,
+          ], reason: path);
+          continue;
+        }
         // flutter_svg must be able to compile it.
-        final bytes = await SvgStringLoader(svg).loadBytes(null);
-        expect(bytes.lengthInBytes, greaterThan(0), reason: path as String);
+        final bytes = await SvgStringLoader(utf8.decode(content))
+            .loadBytes(null);
+        expect(bytes.lengthInBytes, greaterThan(0), reason: path);
       }
     });
   });
