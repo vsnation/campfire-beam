@@ -28,6 +28,9 @@ log "building $(git -C "$REL" log -1 --format='%h %s')"
 cd "$REL"
 scripts/beam/core/stage_binaries.sh macos
 (cd scripts && echo yes | ./build_app.sh -v "$VERSION" -b "$BUILD" -p macos -a campfire -d) > /dev/null
+# lib/external_api_keys.dart is git-ignored; prebuild writes it with empty
+# keys (exchange features are off in this build), as CI does.
+(cd scripts && ./prebuild.sh) > /dev/null
 "$FLUTTER" build macos --release
 
 APP="$(ls -d build/macos/Build/Products/Release/*.app | head -1)"
