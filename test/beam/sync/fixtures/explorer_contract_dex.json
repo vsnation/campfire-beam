@@ -1,0 +1,620 @@
+{
+ "Calls history": {
+  "more": {
+   "hMax": 4067909
+  },
+  "type": "table",
+  "value": [
+   [
+    {
+     "type": "th",
+     "value": "Height"
+    },
+    {
+     "type": "th",
+     "value": "Cid"
+    },
+    {
+     "type": "th",
+     "value": "Kind"
+    },
+    {
+     "type": "th",
+     "value": "Method"
+    },
+    {
+     "type": "th",
+     "value": "Arguments"
+    },
+    {
+     "type": "th",
+     "value": "Funds"
+    },
+    {
+     "type": "th",
+     "value": "Keys"
+    }
+   ],
+   {
+    "type": "group",
+    "value": [
+     [
+      4067912,
+      "",
+      "",
+      "Trade",
+      {
+       "Buy": {
+        "type": "aid",
+        "value": 47
+       },
+       "Sell": {
+        "type": "aid",
+        "value": 0
+       },
+       "Volatility": "High"
+      },
+      {
+       "type": "table",
+       "value": [
+        [
+         {
+          "type": "aid",
+          "value": 0
+         },
+         {
+          "type": "amount",
+          "value": "+7876534611"
+         }
+        ],
+        [
+         {
+          "type": "aid",
+          "value": 47
+         },
+         {
+          "type": "amount",
+          "value": "-77978275"
+         }
+        ]
+       ]
+      },
+      "",
+      ""
+     ],
+     [
+      "",
+      {
+       "type": "cid",
+       "value": "0066b12078623df132b691001b25d7eb94b207b42c018020c9e58152e21ecd25"
+      },
+      "DaoVault v0",
+      "Deposit",
+      "",
+      {
+       "type": "table",
+       "value": [
+        [
+         {
+          "type": "aid",
+          "value": 0
+         },
+         {
+          "type": "amount",
+          "value": "+23465346"
+         }
+        ]
+       ]
+      },
+      "",
+      ""
+     ]
+    ]
+   },
+   {
+    "type": "group",
+    "value": [
+     [
+      4067912,
+      "",
+      "",
+      "Trade",
+      {
+       "Buy": {
+        "type": "aid",
+        "value": 38
+       },
+       "Sell": {
+        "type": "aid",
+        "value": 0
+       },
+       "Volatility": "High"
+      },
+      {
+       "type": "table",
+       "value": [
+        [
+         {
+          "type": "aid",
+          "value": 0
+         },
+         {
+          "type": "amount",
+          "value": "+198397465148"
+         }
+        ],
+        [
+         {
+          "type": "aid",
+          "value": 38
+         },
+         {
+          "type": "amount",
+          "value": "-20791"
+         }
+        ]
+       ]
+      },
+      "",
+      ""
+     ],
+     [
+      "",
+      {
+       "type": "cid",
+       "value": "0066b12078623df132b691001b25d7eb94b207b42c018020c9e58152e21ecd25"
+      },
+      "DaoVault v0",
+      "Deposit",
+      "",
+      {
+       "type": "table",
+       "value": [
+        [
+         {
+          "type": "aid",
+          "value": 0
+         },
+         {
+          "type": "amount",
+          "value": "+591055010"
+         }
+        ]
+       ]
+      },
+      "",
+      ""
+     ]
+    ]
+   },
+   {
+    "type": "group",
+    "value": [
+     [
+      4067912,
+      "",
+      "",
+      "Trade",
+      {
+       "Buy": {
+        "type": "aid",
+        "value": 37
+       },
+       "Sell": {
+        "type": "aid",
+        "value": 0
+       },
+       "Volatility": "High"
+      },
+      {
+       "type": "table",
+       "value": [
+        [
+         {
+          "type": "aid",
+          "value": 0
+         },
+         {
+          "type": "amount",
+          "value": "+997123147560"
+         }
+        ],
+        [
+         {
+          "type": "aid",
+          "value": 37
+         },
+         {
+          "type": "amount",
+          "value": "-9821538897"
+         }
+        ]
+       ]
+      },
+      "",
+      ""
+     ],
+     [
+      "",
+      {
+       "type": "cid",
+       "value": "0066b12078623df132b691001b25d7eb94b207b42c018020c9e58152e21ecd25"
+      },
+      "DaoVault v0",
+      "Deposit",
+      "",
+      {
+       "type": "table",
+       "value": [
+        [
+         {
+          "type": "aid",
+          "value": 0
+         },
+         {
+          "type": "amount",
+          "value": "+2970575415"
+         }
+        ]
+       ]
+      },
+      "",
+      ""
+     ]
+    ]
+   }
+  ]
+ },
+ "Locked Funds": {
+  "type": "table",
+  "value": [
+   [
+    {
+     "type": "th",
+     "value": "Asset ID"
+    },
+    {
+     "type": "th",
+     "value": "Amount"
+    }
+   ],
+   [
+    {
+     "type": "aid",
+     "value": 0
+    },
+    {
+     "type": "amount",
+     "value": 210345454525519
+    }
+   ],
+   [
+    {
+     "type": "aid",
+     "value": 2
+    },
+    {
+     "type": "amount",
+     "value": 27450267209
+    }
+   ],
+   [
+    {
+     "type": "aid",
+     "value": 3
+    },
+    {
+     "type": "amount",
+     "value": 21120137325353
+    }
+   ]
+  ]
+ },
+ "Owned assets": {
+  "type": "table",
+  "value": [
+   [
+    {
+     "type": "th",
+     "value": "Asset ID"
+    },
+    {
+     "type": "th",
+     "value": "Metadata"
+    },
+    {
+     "type": "th",
+     "value": "Emission"
+    }
+   ],
+   [
+    {
+     "type": "aid",
+     "value": 50
+    },
+    "STD:SCH_VER=1;N=Amm Liquidity Token 0-7-2;SN=AmmL;UN=AMML;NTHUN=GROTH",
+    {
+     "type": "amount",
+     "value": 112285027471680
+    }
+   ],
+   [
+    {
+     "type": "aid",
+     "value": 52
+    },
+    "STD:SCH_VER=1;N=Amm Liquidity Token 0-9-0;SN=AmmL;UN=AMML;NTHUN=GROTH",
+    {
+     "type": "amount",
+     "value": 253759209522800
+    }
+   ]
+  ]
+ },
+ "State": {
+  "Pools": {
+   "type": "table",
+   "value": [
+    [
+     {
+      "type": "th",
+      "value": "Aid1"
+     },
+     {
+      "type": "th",
+      "value": "Aid2"
+     },
+     {
+      "type": "th",
+      "value": "Volatility"
+     },
+     {
+      "type": "th",
+      "value": "LP-Token"
+     },
+     {
+      "type": "th",
+      "value": "Amount1"
+     },
+     {
+      "type": "th",
+      "value": "Amount2"
+     },
+     {
+      "type": "th",
+      "value": "Amount-LP-Token"
+     },
+     {
+      "type": "th",
+      "value": "Rate 1:2"
+     },
+     {
+      "type": "th",
+      "value": "Rate 2:1"
+     },
+     {
+      "type": "th",
+      "value": "LP:1"
+     },
+     {
+      "type": "th",
+      "value": "LP:2"
+     }
+    ],
+    [
+     {
+      "type": "aid",
+      "value": 0
+     },
+     {
+      "type": "aid",
+      "value": 1
+     },
+     "High",
+     {
+      "type": "aid",
+      "value": 72
+     },
+     {
+      "type": "amount",
+      "value": 0
+     },
+     {
+      "type": "amount",
+      "value": 0
+     },
+     {
+      "type": "amount",
+      "value": 0
+     },
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     {
+      "type": "aid",
+      "value": 0
+     },
+     {
+      "type": "aid",
+      "value": 2
+     },
+     "Low",
+     {
+      "type": "aid",
+      "value": 133
+     },
+     {
+      "type": "amount",
+      "value": 0
+     },
+     {
+      "type": "amount",
+      "value": 0
+     },
+     {
+      "type": "amount",
+      "value": 0
+     },
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     {
+      "type": "aid",
+      "value": 0
+     },
+     {
+      "type": "aid",
+      "value": 2
+     },
+     "High",
+     {
+      "type": "aid",
+      "value": 55
+     },
+     {
+      "type": "amount",
+      "value": 2512939712
+     },
+     {
+      "type": "amount",
+      "value": 27446273172
+     },
+     {
+      "type": "amount",
+      "value": 8040484862
+     },
+     "10.921978",
+     "9.1558504 E-2",
+     "0.31253584",
+     "3.4135097"
+    ],
+    [
+     {
+      "type": "aid",
+      "value": 0
+     },
+     {
+      "type": "aid",
+      "value": 4
+     },
+     "Low",
+     {
+      "type": "aid",
+      "value": 54
+     },
+     {
+      "type": "amount",
+      "value": 27325792373
+     },
+     {
+      "type": "amount",
+      "value": 2915145221
+     },
+     {
+      "type": "amount",
+      "value": 7034686764
+     },
+     "0.10668109",
+     "9.3737328",
+     "3.8844363",
+     "0.41439588"
+    ],
+    [
+     {
+      "type": "aid",
+      "value": 0
+     },
+     {
+      "type": "aid",
+      "value": 174
+     },
+     "High",
+     {
+      "type": "aid",
+      "value": 175
+     },
+     {
+      "type": "amount",
+      "value": 637304113367
+     },
+     {
+      "type": "amount",
+      "value": 5173233681014
+     },
+     {
+      "type": "amount",
+      "value": 2125257813880
+     },
+     "8.1173706",
+     "0.1231926",
+     "0.29987144",
+     "2.4341676"
+    ]
+   ]
+  },
+  "Settings": {
+   "Dao-Vault": {
+    "type": "cid",
+    "value": "0066b12078623df132b691001b25d7eb94b207b42c018020c9e58152e21ecd25"
+   }
+  },
+  "Upgradable3": {
+   "Settings": {
+    "Admins": {
+     "type": "table",
+     "value": [
+      [
+       {
+        "type": "th",
+        "value": "Index"
+       },
+       {
+        "type": "th",
+        "value": "Key"
+       }
+      ],
+      [
+       0,
+       {
+        "type": "blob",
+        "value": "a097b9abe4d6280001b0cf209c9f13e9e0d1e34e8d3f1b1a6a275e3f95365da101"
+       }
+      ]
+     ]
+    },
+    "Delay": 10000,
+    "Min approvers": 1
+   }
+  }
+ },
+ "Version History": {
+  "type": "table",
+  "value": [
+   [
+    {
+     "type": "th",
+     "value": "Height"
+    },
+    {
+     "type": "th",
+     "value": "Version"
+    }
+   ],
+   [
+    {
+     "type": "height",
+     "value": 2270704
+    },
+    "DEX v0"
+   ]
+  ]
+ },
+ "h": 4067912,
+ "kind": "DEX v0"
+}

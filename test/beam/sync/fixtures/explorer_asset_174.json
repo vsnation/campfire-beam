@@ -1,0 +1,112 @@
+{
+ "Asset distribution": {
+  "type": "table",
+  "value": [
+   [
+    {
+     "type": "th",
+     "value": "Cid"
+    },
+    {
+     "type": "th",
+     "value": "Kind"
+    },
+    {
+     "type": "th",
+     "value": "Locked Value"
+    }
+   ],
+   [
+    {
+     "type": "cid",
+     "value": "e08640cf30fdcc8caeddad36d2c44cf1004678043d893c0c87b8a2c35ed74171"
+    },
+    {
+     "type": "blob",
+     "value": "1b6e1cb3c18ed4f4266e78fa259c100f3bc21c1c175f4fbf6d60fef19b008b86"
+    },
+    {
+     "type": "amount",
+     "value": 3
+    }
+   ],
+   [
+    {
+     "type": "cid",
+     "value": "97edf7ec72b4223daa8d9a7c1f7235c9667896e7f1f9e04aaab5aa198c247478"
+    },
+    {
+     "type": "blob",
+     "value": "201bc6620253e3e420ad57b9b039db93cd54b3682c904a7dd35515d2e9bae102"
+    },
+    {
+     "type": "amount",
+     "value": 404341
+    }
+   ]
+  ]
+ },
+ "Asset history": {
+  "type": "table",
+  "value": [
+   [
+    {
+     "type": "th",
+     "value": "Height"
+    },
+    {
+     "type": "th",
+     "value": "Event"
+    },
+    {
+     "type": "th",
+     "value": "Amount"
+    },
+    {
+     "type": "th",
+     "value": "Total Amount"
+    },
+    {
+     "type": "th",
+     "value": "Extra"
+    }
+   ],
+   [
+    3314324,
+    "Mint",
+    {
+     "type": "amount",
+     "value": "+400000000000000"
+    },
+    {
+     "type": "amount",
+     "value": 400000000000000
+    },
+    ""
+   ],
+   [
+    3314319,
+    "Create",
+    "",
+    "",
+    {
+     "deposit": {
+      "type": "amount",
+      "value": 1000000000
+     },
+     "metadata": {
+      "hash": {
+       "type": "blob",
+       "value": "52e8f372cc20f54e44ec2aa2d68be510690b450f4e79a667b4e8db2848c90679"
+      },
+      "text": "STD:SCH_VER=1;N=FOMO;UN=FOMO;SN=FOMO;NTHUN=fomo;NTH_RATIO=100000000;OPT_SHORT_DESC=;OPT_LONG_DESC=;OPT_SITE_URL=https://burnfomo.theoldcastle.xyz/;OPT_PDF_URL=https://burnfomo.theoldcastle.xyz/;OPT_FAVICON_URL=https://73ecj7qctz4nrza4bbbqmgriv4gh5uwwf65izu7wjdvrmozhbvbq.arweave.net/_sgk_gKeeNjkHAhDBhoorwx-0tYvuozT9kjrFjsnDUM;OPT_LOGO_URL=https://73ecj7qctz4nrza4bbbqmgriv4gh5uwwf65izu7wjdvrmozhbvbq.arweave.net/_sgk_gKeeNjkHAhDBhoorwx-0tYvuozT9kjrFjsnDUM;OPT_COLOR=#FFD700;"
+     },
+     "owner": {
+      "type": "cid",
+      "value": "295fe749dc12c55213d1bd16ced174dc8780c020f59cb17749e900bb0c15d868"
+     }
+    }
+   ]
+  ]
+ }
+}
