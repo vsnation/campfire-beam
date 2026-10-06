@@ -43,12 +43,19 @@ if [[ ! -f "${DEPS_PREFIX}/openssl/lib/libcrypto.a" ]]; then
     tar xzf "${DL_DIR}/${OPENSSL_TARBALL}" -C "${WORK}/openssl" --strip-components=1
     (
         cd "${WORK}/openssl"
+        # OpenSSL embeds OPENSSLDIR, MODULESDIR and ENGINESDIR (derived from
+        # --prefix) as strings, which would carry this machine's home path and
+        # account name. Configure with a neutral prefix and stage the install
+        # into DEPS_PREFIX instead.
         ./Configure darwin64-arm64-cc no-shared no-tests no-docs "$MINFLAG" \
-            --prefix="${DEPS_PREFIX}/openssl" --libdir=lib > configure.log 2>&1
+            --prefix=/opt/campfire-beam/openssl --openssldir=/opt/campfire-beam/openssl \
+            --libdir=lib > configure.log 2>&1
         make -j"$JOBS" > build.log 2>&1 || { tail -50 build.log; exit 1; }
-        make install_sw > install.log 2>&1
+        make install_sw DESTDIR="${WORK}/openssl-stage" > install.log 2>&1
+        rm -rf "${DEPS_PREFIX}/openssl" && mkdir -p "${DEPS_PREFIX}"
+        mv "${WORK}/openssl-stage/opt/campfire-beam/openssl" "${DEPS_PREFIX}/openssl"
     )
-    rm -rf "${WORK}/openssl"
+    rm -rf "${WORK}/openssl" "${WORK}/openssl-stage"
 fi
 "${DEPS_PREFIX}/openssl/bin/openssl" version
 
@@ -63,7 +70,8 @@ if [[ ! -f "${DEPS_PREFIX}/boost/lib/libboost_log.a" ]]; then
         ./bootstrap.sh --with-toolset=clang --without-icu --with-libraries="$libs" > bootstrap.log 2>&1
         ./b2 -j"$JOBS" -d0 toolset=clang link=static runtime-link=shared threading=multi variant=release \
             architecture=arm address-model=64 \
-            cxxflags="$MINFLAG" cflags="$MINFLAG" linkflags="$MINFLAG" \
+            cxxflags="$MINFLAG -ffile-prefix-map=${WORK}/boost=/boost" \
+            cflags="$MINFLAG -ffile-prefix-map=${WORK}/boost=/boost" linkflags="$MINFLAG" \
             --disable-icu boost.locale.icu=off \
             --prefix="${DEPS_PREFIX}/boost" install
     )
@@ -86,6 +94,12 @@ cmake_args=(
     -DBEAM_TESTS_ENABLED=OFF
     -DBEAM_HW_WALLET=OFF
     -DBRANCH_NAME="$BRANCH_LABEL"
+    # No build-machine paths in the binaries (they contain the account name):
+    # sources, deps and the build dir are recorded under neutral prefixes, and
+    # the logger is told the matching source root (patch 0005).
+    "-DCMAKE_C_FLAGS=-ffile-prefix-map=${BEAM_SRC}=/beam -ffile-prefix-map=${DEPS_PREFIX}=/deps -ffile-prefix-map=${BUILD_DIR}=/build"
+    "-DCMAKE_CXX_FLAGS=-ffile-prefix-map=${BEAM_SRC}=/beam -ffile-prefix-map=${DEPS_PREFIX}=/deps -ffile-prefix-map=${BUILD_DIR}=/build"
+    -DBEAM_RECORDED_SOURCE_DIR=/beam
     -DBOOST_ROOT="${DEPS_PREFIX}/boost"
     -DBoost_NO_SYSTEM_PATHS=ON
     -DOPENSSL_ROOT_DIR="${DEPS_PREFIX}/openssl"

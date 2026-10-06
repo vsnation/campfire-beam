@@ -41,38 +41,84 @@ enum BeamBinary {
 /// Locates the BEAM binaries and proves each one is the pinned build.
 ///
 /// [prepare] (or [verify]) hashes the file before every launch, so a binary
-/// replaced on disk after the app started is still refused.
+/// replaced on disk after the app started is still refused. Launchers call
+/// [verifyUnchanged] once more immediately before spawning, so the window
+/// between the hash and the exec holds no other work.
 class BeamBinaries {
   BeamBinaries({
     required String binDir,
     this._manifest = kBeamBinaryManifest,
     this._devManifest = kBeamDevBinaryManifest,
     bool? allowDevBuilds,
+    this.requirePrivateDir = false,
     String? platform,
   }) : binDir = p.normalize(p.absolute(binDir)),
        platform = platform ?? currentPlatform(),
        allowDevBuilds =
-           allowDevBuilds ??
-           (Platform.environment[binDirEnv]?.isNotEmpty ?? false);
+           allowDevBuilds ?? (devBinDir(Platform.environment) != null);
 
-  /// Binaries from [binDirEnv] if it is set (development and tests),
-  /// otherwise from `<beamRoot>/bin`.
+  /// Binaries from [binDirEnv] if this build honours it (see
+  /// [devOverridesAllowed]), otherwise the app's own `<beamRoot>/bin`, which
+  /// must stay private (0700).
+  ///
+  /// [overridesAllowed] replaces [devOverridesAllowed], for tests.
   factory BeamBinaries.locate({
     required String beamRoot,
     Map<String, String>? environment,
+    bool? overridesAllowed,
   }) {
-    final override = (environment ?? Platform.environment)[binDirEnv];
-    return BeamBinaries(
-      binDir: override != null && override.isNotEmpty
-          ? override
-          : p.join(beamRoot, 'bin'),
+    final override = devBinDir(
+      environment ?? Platform.environment,
+      overridesAllowed: overridesAllowed,
     );
+    return override != null
+        ? BeamBinaries(binDir: override, allowDevBuilds: true)
+        : BeamBinaries(
+            binDir: p.join(beamRoot, 'bin'),
+            allowDevBuilds: false,
+            requirePrivateDir: true,
+          );
   }
 
   /// Environment variable that points at a directory of binaries.
   static const String binDirEnv = 'BEAM_BIN_DIR';
 
+  /// Compile-time flag (`--dart-define=BEAM_DEV_BINARIES=true`) that lets a
+  /// release build honour [binDirEnv], for testing a release build against
+  /// development binaries. Shipped builds never set it.
+  static const String devBinariesDefine = 'BEAM_DEV_BINARIES';
+
+  /// Whether this build may honour [binDirEnv] and the development pins
+  /// ([kBeamDevBinaryManifest]): in debug and profile builds and under
+  /// `flutter test`, never in a release build unless it was compiled with
+  /// [devBinariesDefine]. `dart.vm.product` is what Flutter's `kReleaseMode`
+  /// reads; it is used directly so this file stays free of Flutter.
+  ///
+  /// A release build therefore runs only the pinned release binaries from
+  /// `<beamRoot>/bin`, whatever its environment says: `launchctl setenv`, a
+  /// `.desktop` file or a shell profile could otherwise point an installed
+  /// app at other binaries and at the development pins, which bind 0.0.0.0.
+  static const bool devOverridesAllowed =
+      !bool.fromEnvironment('dart.vm.product') ||
+      bool.fromEnvironment(devBinariesDefine);
+
+  /// The [binDirEnv] directory this build honours in [environment], or null.
+  /// [overridesAllowed] replaces [devOverridesAllowed], for tests.
+  static String? devBinDir(
+    Map<String, String> environment, {
+    bool? overridesAllowed,
+  }) {
+    if (!(overridesAllowed ?? devOverridesAllowed)) return null;
+    final dir = environment[binDirEnv];
+    return dir == null || dir.isEmpty ? null : dir;
+  }
+
   final String binDir;
+
+  /// Whether [binDir] must be a private (0700) directory, as the app's own
+  /// `<beamRoot>/bin` is. A binary in a folder other users can write to
+  /// could be swapped between its hash and its launch.
+  final bool requirePrivateDir;
 
   /// `<os>-<arch>` key into the manifest, e.g. `macos-arm64`.
   final String platform;
@@ -81,8 +127,9 @@ class BeamBinaries {
   final Map<String, Map<String, String>> _devManifest;
 
   /// Whether the development pins ([kBeamDevBinaryManifest]) are accepted.
-  /// Defaults to true only when `BEAM_BIN_DIR` is set, which an installed
-  /// app never does: it runs the Campfire builds and nothing else.
+  /// Defaults to true only when this build honours a set `BEAM_BIN_DIR`
+  /// ([devBinDir]); a release build never does, so it runs the Campfire
+  /// builds and nothing else.
   final bool allowDevBuilds;
 
   /// SHA-256 of each binary as of its last successful [verify].
@@ -104,6 +151,8 @@ class BeamBinaries {
     Abi.linuxX64 => 'linux-x86_64',
     Abi.windowsArm64 => 'windows-arm64',
     Abi.windowsX64 => 'windows-x86_64',
+    Abi.androidArm64 => 'android-arm64',
+    Abi.androidX64 => 'android-x86_64',
     _ => 'unsupported-$abi',
   };
 
@@ -141,6 +190,58 @@ class BeamBinaries {
     }
 
     final path = pathOf(binary);
+    await _checkPlacement(binary, path);
+
+    final actual = await sha256OfFile(path);
+    final isRelease = actual == expected;
+    if (!isRelease && actual != devExpected) {
+      _verified.remove(binary);
+      _campfire.remove(binary);
+      throw BeamHostException(
+        BeamHostError.binaryUntrusted,
+        '${binary.id} SHA-256 does not match the pinned value '
+        '(got ${actual.substring(0, 16)}…)',
+      );
+    }
+    _verified[binary] = actual;
+    _campfire[binary] = isRelease;
+    return path;
+  }
+
+  /// Hashes [binary] again and requires exactly the SHA-256 that passed the
+  /// last [verify] (and, through [prepare], the consensus probe). Returns
+  /// its path.
+  ///
+  /// Launchers call it as the last step before `Process.start` on the same
+  /// path, so nothing but the hash itself sits between the check and the
+  /// exec. Throws
+  /// [BeamHostError.binaryUntrusted] if [binary] was never verified or has
+  /// changed on disk since.
+  Future<String> verifyUnchanged(BeamBinary binary) async {
+    final expected = _verified[binary];
+    if (expected == null) {
+      throw BeamHostException(
+        BeamHostError.binaryUntrusted,
+        '${binary.id} was not verified before its launch',
+      );
+    }
+    final path = pathOf(binary);
+    await _checkPlacement(binary, path);
+    final actual = await sha256OfFile(path);
+    if (actual != expected) {
+      _verified.remove(binary);
+      _campfire.remove(binary);
+      throw BeamHostException(
+        BeamHostError.binaryUntrusted,
+        '${binary.id} changed on disk after it was verified',
+      );
+    }
+    return path;
+  }
+
+  /// [binary] is a regular, owner-executable file no other user can write,
+  /// in a folder no other user can write to when [requirePrivateDir].
+  Future<void> _checkPlacement(BeamBinary binary, String path) async {
     final stat = await FileStat.stat(path);
     if (stat.type == FileSystemEntityType.notFound) {
       throw BeamHostException(
@@ -169,22 +270,8 @@ class BeamBinaries {
           '${binary.id} is not executable',
         );
       }
+      if (requirePrivateDir) await verifyPrivateDir(binDir);
     }
-
-    final actual = await sha256OfFile(path);
-    final isRelease = actual == expected;
-    if (!isRelease && actual != devExpected) {
-      _verified.remove(binary);
-      _campfire.remove(binary);
-      throw BeamHostException(
-        BeamHostError.binaryUntrusted,
-        '${binary.id} SHA-256 does not match the pinned value '
-        '(got ${actual.substring(0, 16)}…)',
-      );
-    }
-    _verified[binary] = actual;
-    _campfire[binary] = isRelease;
-    return path;
   }
 
   /// [verify], then (once per pinned hash and process) runs the binary in a
@@ -201,7 +288,12 @@ class BeamBinaries {
     final hash = _verified[binary]!;
     if (_consensusChecked.contains(hash)) return path;
 
-    final output = await _probe(binary, path, scratchParent);
+    final output = await _probe(
+      binary,
+      path,
+      scratchParent,
+      beforeSpawn: () => verifyUnchanged(binary),
+    );
     if (!rulesIncludeHf6(output)) {
       throw BeamHostException(
         BeamHostError.consensusMismatch,
@@ -230,8 +322,9 @@ class BeamBinaries {
   static Future<String> _probe(
     BeamBinary binary,
     String exe,
-    String scratchParent,
-  ) async {
+    String scratchParent, {
+    required Future<void> Function() beforeSpawn,
+  }) async {
     final scratch = await SecretFile.createDir(scratchParent);
     try {
       final args = switch (binary) {
@@ -252,6 +345,7 @@ class BeamBinaries {
         ],
       };
       final Process process;
+      await beforeSpawn();
       try {
         process = await Process.start(
           exe,

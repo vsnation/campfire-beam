@@ -21,11 +21,11 @@
 const Map<String, Map<String, String>> kBeamBinaryManifest = {
   'macos-arm64': {
     'beam-wallet':
-        'a09875941fb7e9934b6961593765e0bb9111529aba883c1594b52635f945d145',
+        '6319a8f862de232e24395680a0b0d0948a627f915e5b9abb510c067537b53bfb',
     'wallet-api':
-        'bef68d6284535b81ec4741cf2e4ca0cb84a2158da53083d867a451a7eb60133d',
+        '9d121e64066ec01e0626f2132f50da33bccf02adc9362c1c343af64db6c146f4',
     'beam-node':
-        '1d1ad1a28499467fa356b32fa5d7b0d2a9c07d917821dffe2ed9cad1569b1ac8',
+        '8fb4dd9ac7c7bc95d7f0bf2ab067fe6f646b53b38cab96b22e3433b65de7ad6b',
   },
   'linux-arm64': {
     'beam-wallet':
@@ -42,6 +42,16 @@ const Map<String, Map<String, String>> kBeamBinaryManifest = {
         'f8f41c5e137d07b4f21d45c412b54e6806f77209d90f81dbfd542a24aef3540c',
     'beam-node':
         'd20218c9f3805ec9fa3c9c5a492d3501f1a19850f8fa54b5553d0be95984832d',
+  },
+  // Android: wallet-api only (phones never run the private node), packaged
+  // as jniLibs/<abi>/libbeam_wallet_api.so and run from nativeLibraryDir.
+  'android-arm64': {
+    'wallet-api':
+        'c1da9ae7f18a7dbbe7fbf99d6c9dafc2ff6f0bb293e0344c8fb076eeb9251f3d',
+  },
+  'android-x86_64': {
+    'wallet-api':
+        '22d02e68c74fec724caf2c1c8445342d6006077c139a345aca68862df28c178d',
   },
 };
 

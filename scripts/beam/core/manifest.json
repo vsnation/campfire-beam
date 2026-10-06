@@ -1,18 +1,18 @@
 {
   "macos-arm64": {
     "wallet-api": {
-      "sha256": "bef68d6284535b81ec4741cf2e4ca0cb84a2158da53083d867a451a7eb60133d",
-      "size": 13265712,
+      "sha256": "9d121e64066ec01e0626f2132f50da33bccf02adc9362c1c343af64db6c146f4",
+      "size": 13154544,
       "version": "7.5.14493"
     },
     "beam-node": {
-      "sha256": "1d1ad1a28499467fa356b32fa5d7b0d2a9c07d917821dffe2ed9cad1569b1ac8",
-      "size": 13246928,
+      "sha256": "8fb4dd9ac7c7bc95d7f0bf2ab067fe6f646b53b38cab96b22e3433b65de7ad6b",
+      "size": 13135616,
       "version": "7.5.14493"
     },
     "beam-wallet": {
-      "sha256": "a09875941fb7e9934b6961593765e0bb9111529aba883c1594b52635f945d145",
-      "size": 13395536,
+      "sha256": "6319a8f862de232e24395680a0b0d0948a627f915e5b9abb510c067537b53bfb",
+      "size": 13283680,
       "version": "7.5.14493"
     }
   },
@@ -47,6 +47,20 @@
     "beam-wallet": {
       "sha256": "8d388c96728caf931a5d76baa126da42961728d2398136b64851b33175bb3615",
       "size": 19538880,
+      "version": "7.5.14493"
+    }
+  },
+  "android-arm64": {
+    "wallet-api": {
+      "sha256": "c1da9ae7f18a7dbbe7fbf99d6c9dafc2ff6f0bb293e0344c8fb076eeb9251f3d",
+      "size": 11087192,
+      "version": "7.5.14493"
+    }
+  },
+  "android-x86_64": {
+    "wallet-api": {
+      "sha256": "22d02e68c74fec724caf2c1c8445342d6006077c139a345aca68862df28c178d",
+      "size": 11627816,
       "version": "7.5.14493"
     }
   }

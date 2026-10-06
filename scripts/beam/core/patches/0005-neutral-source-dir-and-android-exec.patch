@@ -1,0 +1,48 @@
+Campfire for BEAM: let the build record source paths under a neutral prefix (all
+platforms), and build the wallet-api executable on Android.
+
+1. Stock BEAM forces BEAM_WALLET_CLIENT_LIBRARY on Android, which drops every
+   executable target (wallet-api included) and builds only the JNI library.
+   Campfire runs wallet-api as a child process on Android too (packaged as
+   jniLibs/<abi>/libbeam_wallet_api.so), so -DBEAM_ANDROID_EXECUTABLES=ON keeps the
+   executable targets. Atomic swap, asset swap and laser stay forced off, exactly as
+   stock Android.
+
+2. utility/logger.cpp strips strlen(PROJECT_SOURCE_DIR)+1 bytes from every __FILE__.
+   The Android build passes -ffile-prefix-map=<source dir>=/beam so the build
+   machine's home directory (which contains the account name) is not embedded in the
+   binary; PROJECT_SOURCE_DIR must then be "/beam" as well, or the logger would step
+   past the end of the shorter __FILE__ strings. -DBEAM_RECORDED_SOURCE_DIR sets it.
+
+Both default to stock behaviour when the options are not given (the Linux build
+needs neither). Part of the core series 0001-0005 for tag beam-7.5.14493, patch -p1.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -357,7 +357,12 @@
+     CreateBoostComponentTargets("${BEAM_BOOST_COMPONENTS}" "$ENV{BOOST_ROOT_IOS}" "lib/libboost_" ".a")
+ elseif(ANDROID)
+     message("ANDROID_ABI: ${ANDROID_ABI}")
+-    set(BEAM_WALLET_CLIENT_LIBRARY TRUE)
++    # Campfire: with BEAM_ANDROID_EXECUTABLES the Android build also defines the
++    # executable targets (wallet-api), which the app runs as a child process. Stock
++    # Android builds only the JNI client library. Swaps stay off, as below.
++    if(NOT BEAM_ANDROID_EXECUTABLES)
++        set(BEAM_WALLET_CLIENT_LIBRARY TRUE)
++    endif()
+     set(BEAM_TESTS_ENABLED FALSE)
+     set(BEAM_ATOMIC_SWAP_SUPPORT OFF)
+     set(BEAM_ASSET_SWAP_SUPPORT OFF)
+@@ -395,7 +400,11 @@
+ #Boost end
+ 
+ include_directories(${PROJECT_SOURCE_DIR})
+-add_definitions(-DPROJECT_SOURCE_DIR=\"${PROJECT_SOURCE_DIR}\")
++# Campfire: the logger strips this prefix from __FILE__ (utility/logger.cpp), so when
++# the build maps source paths with -ffile-prefix-map (keeping the build machine's home
++# directory out of the binary) it must name the mapped prefix. Default: unchanged.
++set(BEAM_RECORDED_SOURCE_DIR "${PROJECT_SOURCE_DIR}" CACHE STRING "Source directory as recorded in __FILE__")
++add_definitions(-DPROJECT_SOURCE_DIR=\"${BEAM_RECORDED_SOURCE_DIR}\")
+ 
+ include_directories(${PROJECT_SOURCE_DIR}/3rdparty)
+ 
