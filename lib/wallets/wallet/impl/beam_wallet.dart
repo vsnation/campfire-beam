@@ -640,23 +640,29 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     final api = _api;
     if (api == null) return;
     try {
-      if (status) {
-        final s = await api.walletStatus();
-        _lastStatus = s;
-        _tracker?.onStatus(s);
-        await _storeStatus(s);
-      }
+      // Reading the balance always re-reads the history, and the history
+      // is stored first: the balance must never show money the history
+      // does not explain yet (a payment counted as arrived while its row
+      // still says "Receiving"). The core can send ev_utxos_changed before
+      // the ev_txs_changed of the same payment, and tx_list is a local call.
+      final readTxs = transactions || status;
+      final s = status ? await api.walletStatus() : null;
       if (addresses) {
         await _storeAddresses(await api.addrList(own: true));
       }
-      if (transactions) {
+      if (readTxs) {
         if (_ownAddresses.isEmpty) {
           await _storeAddresses(await api.addrList(own: true));
         }
         await _storeTransactions(await api.txList());
       }
+      if (s != null) {
+        _lastStatus = s;
+        _tracker?.onStatus(s);
+        await _storeStatus(s);
+      }
       // Live = balance and history from the core are in Campfire's cache.
-      if (status && transactions && !_live.isCompleted) {
+      if (s != null && !_live.isCompleted) {
         _timings?.liveData = _timings?.since(DateTime.now());
         _live.complete();
       }
