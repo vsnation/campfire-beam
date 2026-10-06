@@ -1,0 +1,12 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "asset_change": 649934004,
+    "asset_change_str": "649934004",
+    "change": 649934004,
+    "change_str": "649934004",
+    "explicit_fee": 100000,
+    "explicit_fee_str": "100000"
+  }
+}

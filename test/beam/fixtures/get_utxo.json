@@ -1,0 +1,226 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "amount": 3009531,
+      "asset_id": 7,
+      "createTxId": "14a46c074f9128b4534d55723a74752c",
+      "id": "f8d91e85c69781eb5efacbd90f88c6fe31059763b45ba06afc30d348",
+      "maturity": 3312607,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 11918935,
+      "asset_id": 7,
+      "createTxId": "c70690820524124cf2dbf536a1ad3146",
+      "id": "eb59de967e88f2b6155bcda1919522be99ccb7b1d3141be980772448",
+      "maturity": 3312688,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 1153153,
+      "asset_id": 50,
+      "createTxId": "dde707894ee4dc74e91d6f1ea3b9ae96",
+      "id": "04df33f524b0ead2778dfec52add10d7998d562642421b4268c226b1",
+      "maturity": 3312694,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "chng"
+    },
+    {
+      "amount": 539498,
+      "asset_id": 7,
+      "createTxId": "6b4b2e60996e3ba9d5ec242401784c59",
+      "id": "25029ab282b3a8997c560d30726f8389e56b09458695eef1657b3efe",
+      "maturity": 3312694,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "chng"
+    },
+    {
+      "amount": 23329615,
+      "asset_id": 175,
+      "createTxId": "5f3e092ca4895ff1b4feef8561f46edb",
+      "id": "3183fc9f8f9b41dca1ae74cc42af65e123ab0d420e7b8462e0e06a38",
+      "maturity": 3312830,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 23329618,
+      "asset_id": 175,
+      "createTxId": "e1d8b1580f1c5c2c48138331e2ef242e",
+      "id": "8082916e80586ce3c19639fc67ad76c168ab5ca08b2a1b039ee623d3",
+      "maturity": 3313081,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 256999,
+      "asset_id": 7,
+      "createTxId": "10f959bb987371167b0a4f9c47b96484",
+      "id": "a2bd8fd0a0c62d80d9ea29c1500bd757e944c5fb6db148db96d3588b",
+      "maturity": 3313314,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "chng"
+    },
+    {
+      "amount": 1728629,
+      "asset_id": 6,
+      "createTxId": "d685fa1b6f1d31958e09d9e563e470fb",
+      "id": "bf68821e33dbe09134417a46408386f83f62d6ae6e44c7e49e418ada",
+      "maturity": 3338484,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 1728628,
+      "asset_id": 6,
+      "createTxId": "d685fa1b6f1d31958e09d9e563e470fb",
+      "id": "28a63173f10af1a7c384bed68938087c3d987d43cea2f107b89c1c81",
+      "maturity": 3338484,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 1728628,
+      "asset_id": 6,
+      "createTxId": "d685fa1b6f1d31958e09d9e563e470fb",
+      "id": "d86f255d17b50244ad72498fbc9a53d262fbc80df6486079ac6c4f39",
+      "maturity": 3338484,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 1728628,
+      "asset_id": 6,
+      "createTxId": "d685fa1b6f1d31958e09d9e563e470fb",
+      "id": "4340b9d70a093b7ae86a2145543d5dc3848a240e566d8d07422e2487",
+      "maturity": 3338484,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 24010957,
+      "asset_id": 174,
+      "createTxId": "967b2db5bf30614f3d8e6ba17030bc5d",
+      "id": "dc88ca14ad51df11b799554f169a3f8dbe21a02e298f0d03190a24a0",
+      "maturity": 3338906,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 24010957,
+      "asset_id": 174,
+      "createTxId": "967b2db5bf30614f3d8e6ba17030bc5d",
+      "id": "0335775ab4518fc28534f5ddae1352cee1771b72b8b87d4178ddd22e",
+      "maturity": 3338906,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 24010957,
+      "asset_id": 174,
+      "createTxId": "967b2db5bf30614f3d8e6ba17030bc5d",
+      "id": "5ad7bed47253736c51079e3617d85854c24d19d016f5948139bd9ae5",
+      "maturity": 3338906,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 24010957,
+      "asset_id": 174,
+      "createTxId": "967b2db5bf30614f3d8e6ba17030bc5d",
+      "id": "d331856bdc5c5604d953a837531bb6b9b1a3582c0213bc85562d2421",
+      "maturity": 3338906,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 24010957,
+      "asset_id": 174,
+      "createTxId": "967b2db5bf30614f3d8e6ba17030bc5d",
+      "id": "82362c1a3f4c609352f4c6b17c02c7a75dcffcb1dad87eb37ff139a1",
+      "maturity": 3338906,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 24010957,
+      "asset_id": 174,
+      "createTxId": "967b2db5bf30614f3d8e6ba17030bc5d",
+      "id": "6b4d0aefc37cb7f573ee5ed2c9a649ebd8c1375723fc40b7c2f27e9f",
+      "maturity": 3338906,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 24010957,
+      "asset_id": 174,
+      "createTxId": "967b2db5bf30614f3d8e6ba17030bc5d",
+      "id": "f907907132b139a71fe2487aca160a937b6e3b527d99dc418df7b241",
+      "maturity": 3338906,
+      "spentTxId": "",
+      "status": 1,
+      "status_string": "available",
+      "type": "norm"
+    },
+    {
+      "amount": 24010959,
+      "asset_id": 174,
+      "createTxId": "967b2db5bf30614f3d8e6ba17030bc5d",
+      "id": "0cbf69f8565aa5d02c0b743b9bd09b39c972277f6b38f3474f9e3e2f",
+      "maturity": 3338906,
+      "spentTxId": "",
+      "status": 6,
+      "status_string": "spent",
+      "type": "norm"
+    },
+    {
+      "amount": 24010957,
+      "asset_id": 174,
+      "createTxId": "967b2db5bf30614f3d8e6ba17030bc5d",
+      "id": "5aa0010527f6c6e4f0b3b3189fa61ca4776d05d64184d3031a130918",
+      "maturity": 3338906,
+      "spentTxId": "",
+      "status": 6,
+      "status_string": "spent",
+      "type": "norm"
+    }
+  ]
+}

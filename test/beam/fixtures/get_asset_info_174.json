@@ -1,0 +1,34 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "asset_id": 174,
+    "emission": 279373161880514,
+    "emission_str": "279373161880514",
+    "isOwned": 0,
+    "lockHeight": 2923534,
+    "metadata": "STD:SCH_VER=1;N=FOMO;UN=FOMO;SN=FOMO;NTHUN=fomo;NTH_RATIO=100000000;OPT_SHORT_DESC=;OPT_LONG_DESC=;OPT_SITE_URL=https://burnfomo.theoldcastle.xyz/;OPT_PDF_URL=https://burnfomo.theoldcastle.xyz/;OPT_FAVICON_URL=https://73ecj7qctz4nrza4bbbqmgriv4gh5uwwf65izu7wjdvrmozhbvbq.arweave.net/_sgk_gKeeNjkHAhDBhoorwx-0tYvuozT9kjrFjsnDUM;OPT_LOGO_URL=https://73ecj7qctz4nrza4bbbqmgriv4gh5uwwf65izu7wjdvrmozhbvbq.arweave.net/_sgk_gKeeNjkHAhDBhoorwx-0tYvuozT9kjrFjsnDUM;OPT_COLOR=#FFD700;",
+    "metadata_kv": true,
+    "metadata_pairs": {
+      "N": "FOMO",
+      "NTHUN": "fomo",
+      "NTH_RATIO": "100000000",
+      "OPT_COLOR": "#FFD700",
+      "OPT_FAVICON_URL": "https://73ecj7qctz4nrza4bbbqmgriv4gh5uwwf65izu7wjdvrmozhbvbq.arweave.net/_sgk_gKeeNjkHAhDBhoorwx-0tYvuozT9kjrFjsnDUM",
+      "OPT_LOGO_URL": "https://73ecj7qctz4nrza4bbbqmgriv4gh5uwwf65izu7wjdvrmozhbvbq.arweave.net/_sgk_gKeeNjkHAhDBhoorwx-0tYvuozT9kjrFjsnDUM",
+      "OPT_LONG_DESC": "",
+      "OPT_PDF_URL": "https://burnfomo.theoldcastle.xyz/",
+      "OPT_SHORT_DESC": "",
+      "OPT_SITE_URL": "https://burnfomo.theoldcastle.xyz/",
+      "SCH_VER": "1",
+      "SN": "FOMO",
+      "UN": "FOMO"
+    },
+    "metadata_std": true,
+    "metadata_std_min": true,
+    "metadata_v50": true,
+    "metadata_v60": true,
+    "ownerId": "6753e37728f74aaa6dc4baf8d71c86d51337dc5d81f50c13007c28e07412edf4",
+    "refreshHeight": 3677099
+  }
+}

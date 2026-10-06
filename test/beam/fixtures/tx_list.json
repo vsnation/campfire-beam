@@ -1,0 +1,595 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": [
+    {
+      "asset_id": 0,
+      "comment": "",
+      "create_time": 1722559576,
+      "failure_reason": "Failed to register transaction with the blockchain, see node logs for details",
+      "fee": 100000,
+      "income": false,
+      "receiver": "b47f90b0956985933c9e49e12babae2a6a50ffbe4e20b3c03224e828df191275d4",
+      "receiver_identity": "AyqBqu41UYtiktRijWGZ9VbcJJNLiMvtRbtSUV6hm9ry",
+      "sender": "74f62a7e239c23027206bf972ba9e6abc0c66cbcd3336e721d84f901d3bf08396b",
+      "sender_identity": "FFJ6stCA7yAxozAgmUQE6YyTBanNfTvDif2pZaTujQWb",
+      "status": 4,
+      "status_string": "failed",
+      "txId": "89865c3f6b3d1ba0b5196dce0638ea14",
+      "tx_type": 0,
+      "tx_type_string": "simple",
+      "value": 69843
+    },
+    {
+      "asset_id": 0,
+      "comment": "",
+      "create_time": 1722558769,
+      "failure_reason": "Failed to register transaction with the blockchain, see node logs for details",
+      "fee": 100000,
+      "income": false,
+      "receiver": "89135121bf235600ee79e6335f4dea1089d2af94217bd08c7dcd4d7fa41a0896bf9",
+      "receiver_identity": "sPG8waVcbkaCrCbXm55bMzKxaG6DVjZTswBBpW9yNkme",
+      "sender": "64d052d6c568247aef14c971c12c03d18a632a3e3efdfc22c6e4456aa258fc18902",
+      "sender_identity": "H6UN6RaabjGvLbpBJWZCgBGca68tL5fryZLuaa2gKi5s",
+      "status": 4,
+      "status_string": "failed",
+      "txId": "decb9c9e9adb316139d1b78b12fc8b97",
+      "tx_type": 0,
+      "tx_type_string": "simple",
+      "value": 69843
+    },
+    {
+      "asset_id": 0,
+      "comment": "",
+      "confirmations": 307850,
+      "create_time": 1722558627,
+      "fee": 100000,
+      "height": 3369249,
+      "income": false,
+      "kernel": "95dd27be38b22b5a224ebd6d9c6a40315b9a9f561b287c03a80335dc14bbf2ea",
+      "receiver": "d0e951256ac64db0ac2ffa76fa5b6ec10367e041ee004fb190417d458d88c322ef",
+      "receiver_identity": "x7KfuQ7UVC8UrfREH5wx4runCAdqftxfBmoBKDJVhBMk",
+      "sender": "d9b912d90a07e0e9f62023674bee81831ce87b13415d6001e87aba757b4263af518",
+      "sender_identity": "E8EoWqgQ3eHGTNDtU7KYNdf5F9PtNVuUEWeq1WSwsqk5",
+      "status": 3,
+      "status_string": "sent",
+      "txId": "c23fc01d158ef164004439bd0040e265",
+      "tx_type": 0,
+      "tx_type_string": "simple",
+      "value": 69843
+    },
+    {
+      "asset_id": 0,
+      "comment": "",
+      "create_time": 1722558539,
+      "failure_reason": "Failed to register transaction with the blockchain, see node logs for details",
+      "fee": 100000,
+      "income": false,
+      "receiver": "9d32a48020e4790c236e481f259d0a89fd9ed0be385d01eeb2ce94a92bbba75573b",
+      "receiver_identity": "dGqrDpwSPv9ZR9cPQJ4X2WEZAmtohVduufFPuJcy8t6A",
+      "sender": "f4b4620a352e203f82252ef439b8875c27996d68588ac230cf73634c3acd3f9623",
+      "sender_identity": "ijsuriTvX24W1c7NXiYtxfUViHKYi5iTXHvphvMtfwdS",
+      "status": 4,
+      "status_string": "failed",
+      "txId": "c0a25b35572b94c3dc9493ca21b8a1e0",
+      "tx_type": 0,
+      "tx_type_string": "simple",
+      "value": 69843
+    },
+    {
+      "asset_id": 0,
+      "comment": "",
+      "confirmations": 307851,
+      "create_time": 1722558539,
+      "fee": 100000,
+      "height": 3369248,
+      "income": false,
+      "kernel": "ed161739de0ecde85be07a02b25d021d18fd93b4005f9b7f8d8916ac8ac9ead1",
+      "receiver": "9d32a48020e4790c236e481f259d0a89fd9ed0be385d01eeb2ce94a92bbba75573b",
+      "receiver_identity": "dGqrDpwSPv9ZR9cPQJ4X2WEZAmtohVduufFPuJcy8t6A",
+      "sender": "20a5e3ca0d176768cb3eac517e18bc2bf48c07e28d2f10163761778c602f8b7428c",
+      "sender_identity": "PwNJtjzitgRkMsPyaW7CaMjVL3hjDyq95zMCB69G8wxV",
+      "status": 3,
+      "status_string": "sent",
+      "txId": "d5dcea6cb7e2d2fb2771f74b67bf17e5",
+      "tx_type": 0,
+      "tx_type_string": "simple",
+      "value": 69843
+    },
+    {
+      "comment": "Sample note 7",
+      "confirmations": 322566,
+      "create_time": 1721672252,
+      "fee": 13248300,
+      "fee_only": true,
+      "height": 3354533,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "6b0e3e80ba13ad58bad56429eb85ea92856d69e7a22a9da178bf87cce6ced9ad"
+        }
+      ],
+      "kernel": "41ff01ae320bb5550a67a700a840e531244022523d57c704f194edab00ed62ac",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "4a281e8b5ced102141e90a5568e0e197",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 8",
+      "confirmations": 322567,
+      "create_time": 1721672091,
+      "fee": 13028300,
+      "fee_only": true,
+      "height": 3354532,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "6b0e3e80ba13ad58bad56429eb85ea92856d69e7a22a9da178bf87cce6ced9ad"
+        }
+      ],
+      "kernel": "5adff1d7c98cd866d060818d749f46dea5ba86dc40146309225aae399420275e",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "80582c58bbf0745e702b0e95cb418bea",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 9",
+      "confirmations": 322571,
+      "create_time": 1721672064,
+      "fee": 12808300,
+      "fee_only": true,
+      "height": 3354528,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "6b0e3e80ba13ad58bad56429eb85ea92856d69e7a22a9da178bf87cce6ced9ad"
+        }
+      ],
+      "kernel": "ddb99735912e1142be7caec02048aea0e4c8917fc88b4d2c79531dc236e86db7",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "c2cd5ae6e3cbf5b94548ab13fec7188b",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 10",
+      "confirmations": 322572,
+      "create_time": 1721671936,
+      "fee": 20100000,
+      "fee_only": true,
+      "height": 3354527,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "b89dc4cf408a428b3db9c295f33439b2830befac5ee8ad85515b514a3ddcc28c"
+        }
+      ],
+      "kernel": "3646e0b11d808be307f4e123e438708faa6c3fc7a416d9ec47d6993643f9cd7a",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "c7247e07bb0b2aac0d5462c28352deff",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 11",
+      "confirmations": 322657,
+      "create_time": 1721668022,
+      "fee": 13248300,
+      "fee_only": true,
+      "height": 3354442,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "5eeb6cc47eaee448b66a0bbb7b5c8b141db0b7e1ce9c910acbda5d4943e4bc05"
+        }
+      ],
+      "kernel": "48a9c93a21a55bc8cc9e358d5652337466f534b48db6ee3dcfaf885f2350fce4",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "750f0612d706d14d0d9e6e94eaf8206f",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 12",
+      "confirmations": 322658,
+      "create_time": 1721667791,
+      "fee": 13028300,
+      "fee_only": true,
+      "height": 3354441,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "5eeb6cc47eaee448b66a0bbb7b5c8b141db0b7e1ce9c910acbda5d4943e4bc05"
+        }
+      ],
+      "kernel": "1fd71c225cab037f6b021728e9f4f2db42b6a418ec391291a1ca5bf1f0260bfb",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "4c41783fe3d4d0d212d9c0ade6e2c7d6",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 13",
+      "confirmations": 322663,
+      "create_time": 1721667520,
+      "fee": 12808300,
+      "fee_only": true,
+      "height": 3354436,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "5eeb6cc47eaee448b66a0bbb7b5c8b141db0b7e1ce9c910acbda5d4943e4bc05"
+        }
+      ],
+      "kernel": "e5f2b8ba164bd2ef78050ba8ef4a6ac050ba4647fc6e8def1bc892a78bd27ebe",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "aa181ae897493309899b21e5bd9466ec",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 14",
+      "confirmations": 322774,
+      "create_time": 1721661375,
+      "fee": 20100000,
+      "fee_only": true,
+      "height": 3354325,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "b89dc4cf408a428b3db9c295f33439b2830befac5ee8ad85515b514a3ddcc28c"
+        }
+      ],
+      "kernel": "c9ad65b25d41329f2a7dbaef500bd08e1c483782aedd98c63531abdb1b07a168",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "89d8e278d9f48ffb9d4c66c7fac20980",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 15",
+      "create_time": 1721657105,
+      "failure_reason": "Failed to register transaction with the blockchain, see node logs for details",
+      "fee": 20100000,
+      "fee_only": true,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "b89dc4cf408a428b3db9c295f33439b2830befac5ee8ad85515b514a3ddcc28c"
+        }
+      ],
+      "receiver": "",
+      "sender": "",
+      "status": 4,
+      "status_string": "failed",
+      "txId": "89f8517b96e9b670f4da11806a317392",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 16",
+      "confirmations": 322842,
+      "create_time": 1721656904,
+      "fee": 1511850,
+      "fee_only": true,
+      "height": 3354257,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "5eeb6cc47eaee448b66a0bbb7b5c8b141db0b7e1ce9c910acbda5d4943e4bc05"
+        }
+      ],
+      "kernel": "5125c7a13fe1ce0094fa04db591b0356a168a9adbdd0d6342dc5e6e64406d11c",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "c3662a246696e44ccf9b6ddf8067e362",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 17",
+      "confirmations": 322843,
+      "create_time": 1721656576,
+      "fee": 20100000,
+      "fee_only": true,
+      "height": 3354256,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "b89dc4cf408a428b3db9c295f33439b2830befac5ee8ad85515b514a3ddcc28c"
+        }
+      ],
+      "kernel": "eb7cbe73a256080acaf29d34440383bea3b8ef5e7e429340d72e1403aaf915ce",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "96cffbc81f42461171cdeb62d0d6d5a0",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 18",
+      "confirmations": 322843,
+      "create_time": 1721656482,
+      "fee": 3194300,
+      "fee_only": true,
+      "height": 3354256,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "5eeb6cc47eaee448b66a0bbb7b5c8b141db0b7e1ce9c910acbda5d4943e4bc05"
+        }
+      ],
+      "kernel": "dda72ebf161e3f52f1932e7da3b226cc6e34a905792dedb4c48e0cdeea5fd5f3",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "9f74fbcfadfbadce91b708d0cd46e245",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 19",
+      "confirmations": 322848,
+      "create_time": 1721656415,
+      "fee": 3194300,
+      "fee_only": true,
+      "height": 3354251,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "5eeb6cc47eaee448b66a0bbb7b5c8b141db0b7e1ce9c910acbda5d4943e4bc05"
+        }
+      ],
+      "kernel": "f2fc8f5bf28b9a0a8d19c9d8a339389cbe921c80d544100af4becd9b3abd7eca",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "35c747b24bf37011ddc882874d7916d1",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 20",
+      "confirmations": 322849,
+      "create_time": 1721656373,
+      "fee": 3194300,
+      "fee_only": true,
+      "height": 3354250,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "5eeb6cc47eaee448b66a0bbb7b5c8b141db0b7e1ce9c910acbda5d4943e4bc05"
+        }
+      ],
+      "kernel": "d984513cd714be900b709b04bcd384bc60a48db43e37721bcef1b458a752ee77",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "eac3fe2647e8a2b72d64c9987d08521b",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 21",
+      "confirmations": 322851,
+      "create_time": 1721656180,
+      "fee": 20100000,
+      "fee_only": true,
+      "height": 3354248,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [],
+          "contract_id": "b89dc4cf408a428b3db9c295f33439b2830befac5ee8ad85515b514a3ddcc28c"
+        }
+      ],
+      "kernel": "17456da200663d871fdc5fcf47237cc6eb6c05dcfeaf802ea1a9080270786eeb",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "1d8845f7a745ffadd8f7746d21c0b86a",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 22",
+      "create_time": 1721593232,
+      "failure_reason": "Failed to register transaction with the blockchain, see node logs for details",
+      "fee": 12100000,
+      "fee_only": false,
+      "income": true,
+      "invoke_data": [
+        {
+          "amounts": [
+            {
+              "amount": -69843290,
+              "asset_id": 0
+            }
+          ],
+          "contract_id": "877cc70301f8007bd3b01697b06b3166df470856af98e4186234e444f34b6c8a"
+        }
+      ],
+      "receiver": "",
+      "sender": "",
+      "status": 4,
+      "status_string": "failed",
+      "txId": "c029db3e2582c1837bc685b7c82e32f0",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 23",
+      "confirmations": 323919,
+      "create_time": 1721590955,
+      "fee": 4238000,
+      "fee_only": false,
+      "height": 3353180,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [
+            {
+              "amount": 6984329,
+              "asset_id": 0
+            },
+            {
+              "amount": -486410722456,
+              "asset_id": 187
+            }
+          ],
+          "contract_id": "877cc70301f8007bd3b01697b06b3166df470856af98e4186234e444f34b6c8a"
+        }
+      ],
+      "kernel": "16c483d371636b4d925ada35eb3e17d79f0bda4576bee2660dab53715fd43047",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "e3f2a5f1cfa76395ee87c5c0acbe5b1a",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 24",
+      "confirmations": 323925,
+      "create_time": 1721590641,
+      "fee": 4238000,
+      "fee_only": false,
+      "height": 3353174,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [
+            {
+              "amount": 69843290,
+              "asset_id": 0
+            },
+            {
+              "amount": -5406324317793,
+              "asset_id": 186
+            }
+          ],
+          "contract_id": "877cc70301f8007bd3b01697b06b3166df470856af98e4186234e444f34b6c8a"
+        }
+      ],
+      "kernel": "a2e1a66aba85ce0bb7802374bde7daa70d4130793744f4b6299f25425a1b8b85",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "5b5f356881e52a505f020fd3412ced2c",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 25",
+      "confirmations": 323963,
+      "create_time": 1721588788,
+      "fee": 4238000,
+      "fee_only": false,
+      "height": 3353136,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [
+            {
+              "amount": 69843290,
+              "asset_id": 0
+            },
+            {
+              "amount": -5345202488348,
+              "asset_id": 187
+            }
+          ],
+          "contract_id": "877cc70301f8007bd3b01697b06b3166df470856af98e4186234e444f34b6c8a"
+        }
+      ],
+      "kernel": "f7f10fa8a6409e14a5d6840588a58577852a3d11d49dabd41d6990207c1d2f66",
+      "receiver": "",
+      "sender": "",
+      "status": 3,
+      "status_string": "completed",
+      "txId": "3b0dffad37dfa5cdcf4347d6c41f5ffc",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    },
+    {
+      "comment": "Sample note 26",
+      "create_time": 1721586431,
+      "failure_reason": "Failed to register transaction with the blockchain, see node logs for details",
+      "fee": 4238000,
+      "fee_only": false,
+      "income": false,
+      "invoke_data": [
+        {
+          "amounts": [
+            {
+              "amount": 34921645,
+              "asset_id": 0
+            },
+            {
+              "amount": -3134086319563,
+              "asset_id": 187
+            }
+          ],
+          "contract_id": "877cc70301f8007bd3b01697b06b3166df470856af98e4186234e444f34b6c8a"
+        }
+      ],
+      "receiver": "",
+      "sender": "",
+      "status": 4,
+      "status_string": "failed",
+      "txId": "98356147235be9834d80f48fcf0be3ff",
+      "tx_type": 12,
+      "tx_type_string": "contract"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "result": {
+    "api_version": "7.4",
+    "api_version_major": 7,
+    "api_version_minor": 4,
+    "beam_branch_name": "HEAD",
+    "beam_commit_hash": "a707a4a89ac444eab27336dcf95b85bbe415eecd",
+    "beam_network_name": "mainnet",
+    "beam_version": "7.5.1",
+    "beam_version_major": 7,
+    "beam_version_minor": 5,
+    "beam_version_rev": 1
+  }
+}
