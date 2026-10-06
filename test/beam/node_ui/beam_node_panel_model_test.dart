@@ -163,6 +163,29 @@ void main() {
     );
   });
 
+  // Seen in the DMG test: "Needs about 12 GB … · 5.3 GB free" read as a
+  // neutral fact, while the node could never set up in that space.
+  test('too little space for a new node is a warning with the gap, said '
+      'before the node tries', () {
+    final short = BeamNodePanelModel.describe(snap(diskCheck: disk(5.3)));
+    expect(short.diskShort, isTrue);
+    expect(
+      short.diskLine,
+      'Not enough space. Free about 8.7 GB more to use your private node '
+      '(5.3 GB free now). Your wallet keeps working on a public node '
+      'meanwhile.',
+    );
+    final roomy = BeamNodePanelModel.describe(snap(diskCheck: disk(37)));
+    expect(roomy.diskShort, isFalse);
+    expect(
+      BeamNodePanelModel.describe(
+        snap(diskCheck: disk(5.3, nodeGiB: 7.6)),
+      ).diskShort,
+      isFalse,
+      reason: 'a node that already set up only grows slowly',
+    );
+  });
+
   test('the sync card says which node, and offers "Use a public node" only '
       'when the private node is the one not answering', () {
     final onPrivate = BeamNodePanelModel.describe(

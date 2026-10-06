@@ -8,7 +8,6 @@
  *
  */
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -36,7 +35,6 @@ import '../../../../widgets/desktop/secondary_button.dart';
 import '../../../../widgets/rounded_container.dart';
 import '../../../../widgets/rounded_white_container.dart';
 import '../../../../widgets/stack_dialog.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class BackupRestoreSettings extends ConsumerStatefulWidget {
   const BackupRestoreSettings({super.key});
@@ -395,36 +393,13 @@ class _BackupRestoreSettings extends ConsumerState<BackupRestoreSettings> {
                                           ),
                                           TextSpan(
                                             text:
-                                                "\n\nAuto backup is a custom ${AppConfig.appName} feature that offers a convenient backup of your data."
+                                                "\n\nAuto backup is a custom ${AppConfig.appName} feature that offers a convenient backup of your data. "
                                                 "To ensure maximum security, we recommend using a unique password that you haven't used anywhere "
                                                 "else on the internet before. Your password is not stored.",
                                             style: STextStyles
                                                 .desktopTextExtraExtraSmall(
                                               context,
                                             ),
-                                          ),
-                                          TextSpan(
-                                            text:
-                                                "\n\nFor more information, please see our website ",
-                                            style: STextStyles
-                                                .desktopTextExtraExtraSmall(
-                                              context,
-                                            ),
-                                          ),
-                                          TextSpan(
-                                            text: "stackwallet.com",
-                                            style: STextStyles.richLink(context)
-                                                .copyWith(fontSize: 14),
-                                            recognizer: TapGestureRecognizer()
-                                              ..onTap = () {
-                                                launchUrl(
-                                                  Uri.parse(
-                                                    "https://stackwallet.com/",
-                                                  ),
-                                                  mode: LaunchMode
-                                                      .externalApplication,
-                                                );
-                                              },
                                           ),
                                         ],
                                       ),

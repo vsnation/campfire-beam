@@ -543,6 +543,18 @@ BeamSyncAssessment assessBeamSync({
 
   final height = wallet.currentHeight;
   final ts = wallet.currentStateTimestamp;
+  if ((height <= 0 || ts == null) && wallet.nodeConnected == true) {
+    // Connected but no chain state of its own yet: a new or restored wallet
+    // reading the chain from the start. With block bodies on (a restore
+    // scan over a public node) that takes hours, so "connecting, a few
+    // seconds" would be false for all of it.
+    return BeamSyncCatchingUp(
+      node: kind,
+      explorerCheck: _checkWithoutWallet(explorer, explorerFresh),
+      blockInterval: rules.blockInterval,
+      networkHeight: networkHeight,
+    );
+  }
   if (height <= 0 || ts == null) {
     return BeamSyncConnecting(
       node: kind,

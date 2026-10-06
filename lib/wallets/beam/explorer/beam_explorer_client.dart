@@ -161,9 +161,12 @@ class BeamExplorerClient implements BeamNetworkTipSource {
 
   /// Public explorer nodes, primary first (LightWallet
   /// `config/nodes.json` `mainnet.explorerNodes`).
+  ///
+  /// `explorer-api.beamprivacy.com` was dropped in October 2026: it fails
+  /// the TLS handshake (unrecognized name), so every status check paid for
+  /// a dead hop before reaching BeamSmart.
   static const defaultNodes = <String>[
     'https://explorer.0xmx.net/api',
-    'https://explorer-api.beamprivacy.com',
     'https://BeamSmart.net:8000',
   ];
 

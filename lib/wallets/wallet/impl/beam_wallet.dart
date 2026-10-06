@@ -49,6 +49,7 @@ import '../../beam/sync/beam_sync_state.dart';
 import '../../beam/wallet/beam_balance_mapper.dart';
 import '../../beam/wallet/beam_node_switch_gate.dart';
 import '../../beam/wallet/beam_open_timings.dart';
+import '../../beam/wallet/beam_payment_notice.dart';
 import '../../beam/wallet/beam_secret_store.dart';
 import '../../beam/wallet/beam_send_rules.dart';
 import '../../beam/wallet/beam_shutdown.dart';
@@ -657,7 +658,9 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
         if (_ownAddresses.isEmpty) {
           await _storeAddresses(await api.addrList(own: true));
         }
-        await _storeTransactions(await api.txList());
+        final txs = await api.txList();
+        await _storeTransactions(txs);
+        _announceIncoming(txs);
       }
       if (s != null) {
         _lastStatus = s;
@@ -735,6 +738,45 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
       await info.updateReceivingAddress(
         newAddress: current.value,
         isar: mainDB.isar,
+      );
+    }
+  }
+
+  /// Completed incoming payments already looked at; null until the first
+  /// history read, which only records what is there.
+  Set<String>? _seenIncoming;
+
+  /// Announces each incoming payment that completes while the wallet is
+  /// open, once. The first read of a session and whatever a restore scan
+  /// finds are history, not news.
+  void _announceIncoming(List<BeamTransaction> txs) {
+    final completed = [
+      for (final t in txs)
+        if (t.income == true &&
+            !t.isContract &&
+            t.status == BeamTxStatus.completed &&
+            (t.value ?? BigInt.zero) > BigInt.zero)
+          t,
+    ];
+    final seen = _seenIncoming;
+    final scanning =
+        isScanningForCoins && (_tracker?.scanProgress?.fraction ?? 0) < 1;
+    if (seen == null || scanning) {
+      (_seenIncoming ??= <String>{}).addAll(completed.map((t) => t.txId));
+      return;
+    }
+    final announce = environment.onPaymentReceived;
+    for (final t in completed) {
+      if (!seen.add(t.txId) || announce == null) continue;
+      announce(
+        BeamPaymentReceived(
+          walletId: walletId,
+          walletName: info.name,
+          txId: t.txId,
+          value: t.value!,
+          assetId: t.assetId ?? 0,
+          at: DateTime.now(),
+        ),
       );
     }
   }
@@ -818,6 +860,11 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
         _timings?.canSend = _timings?.since(DateTime.now());
         _canSend.complete();
       }
+      _scheduleCoordinator(gen);
+    } else if (isScanningForCoins && a is BeamSyncCatchingUp) {
+      // A restore scan over a public node takes hours. The private node,
+      // which holds the owner key, finishes it sooner and ends it, so it
+      // starts alongside the scan instead of after it.
       _scheduleCoordinator(gen);
     }
     _watchPublicNode(a, gen);

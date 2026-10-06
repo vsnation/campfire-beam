@@ -98,7 +98,8 @@ class _NotificationsViewState extends ConsumerState<NotificationsView> {
                             child: FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                "Notifications will appear here",
+                                "Payments you receive while "
+                                "Campfire is open will appear here.",
                                 style: STextStyles.itemSubtitle(context),
                               ),
                             ),

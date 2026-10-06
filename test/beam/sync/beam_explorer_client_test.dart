@@ -75,6 +75,13 @@ void main() {
   }) => BeamExplorerClient(
     proxyInfo: proxyInfo ?? () => null,
     http: http,
+    // A fixed three-node list, so failover is exercised whatever the
+    // shipped defaults are.
+    nodes: const [
+      'https://explorer.0xmx.net/api',
+      'https://explorer-api.beamprivacy.com',
+      'https://BeamSmart.net:8000',
+    ],
     statusTimeout: statusTimeout,
     now: () => now,
   );
@@ -82,6 +89,13 @@ void main() {
   setUp(() {
     now = DateTime.utc(2026, 10, 6, 7, 39, 38);
     http = _FakeHttp((_) async => _ok(_statusJson, date: now));
+  });
+
+  test('the shipped list leaves out the explorer that fails TLS', () {
+    expect(BeamExplorerClient.defaultNodes, [
+      'https://explorer.0xmx.net/api',
+      'https://BeamSmart.net:8000',
+    ]);
   });
 
   group('status()', () {

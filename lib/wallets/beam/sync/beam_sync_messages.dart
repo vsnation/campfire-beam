@@ -97,6 +97,10 @@ abstract final class BeamSyncMessages {
   };
 
   static String _catchingUpDetail(BeamSyncCatchingUp a) {
+    if (a.walletHeight == null && a.blocksBehind == null) {
+      return 'Reading the BEAM network from the start, which takes a while '
+          'the first time. $_sendingPaused';
+    }
     final parts = <String>[];
     final behind = a.blocksBehind;
     if (behind != null && behind > 0) {

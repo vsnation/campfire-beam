@@ -8,11 +8,9 @@
  *
  */
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../app_config.dart';
 import '../../../../providers/global/auto_swb_service_provider.dart';
@@ -307,21 +305,10 @@ class _AutoBackupViewState extends ConsumerState<AutoBackupView> {
                       textAlign: TextAlign.left,
                       text: TextSpan(
                         style: STextStyles.label(context),
-                        children: [
-                          const TextSpan(
-                            text:
-                                "Auto Backup is a custom ${AppConfig.appName} feature that offers a convenient backup of your data.\n\nTo ensure maximum security, we recommend using a unique password that you haven't used anywhere else on the internet before. Your password is not stored.\n\nFor more information, please see our website ",
-                          ),
+                        children: const [
                           TextSpan(
-                            text: "stackwallet.com.",
-                            style: STextStyles.richLink(context),
-                            recognizer: TapGestureRecognizer()
-                              ..onTap = () {
-                                launchUrl(
-                                  Uri.parse("https://stackwallet.com"),
-                                  mode: LaunchMode.externalApplication,
-                                );
-                              },
+                            text:
+                                "Auto Backup is a custom ${AppConfig.appName} feature that offers a convenient backup of your data.\n\nTo ensure maximum security, we recommend using a unique password that you haven't used anywhere else on the internet before. Your password is not stored.",
                           ),
                         ],
                       ),

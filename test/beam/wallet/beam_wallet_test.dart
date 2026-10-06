@@ -36,6 +36,7 @@ import 'package:stackwallet/wallets/beam/rpc/beam_transport.dart';
 import 'package:stackwallet/wallets/beam/sync/beam_sync_state.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_node_switch_gate.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_secret_store.dart';
+import 'package:stackwallet/wallets/beam/wallet/beam_payment_notice.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_environment.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_errors.dart';
 import 'package:stackwallet/wallets/crypto_currency/crypto_currency.dart';
@@ -193,6 +194,8 @@ void main() {
   late List<String> envLog;
   final created = <BeamWallet>[];
 
+  final received = <BeamPaymentReceived>[];
+
   void installEnv({
     BeamPrivateNodeBuilder? node,
     bool privateNode = false,
@@ -208,6 +211,7 @@ void main() {
       statusPollInterval: const Duration(hours: 1),
       eventDebounce: const Duration(milliseconds: 20),
       privateNodeStartDelay: Duration.zero,
+      onPaymentReceived: received.add,
       log: envLog.add,
     );
   }
@@ -221,6 +225,7 @@ void main() {
     explorer = FakeExplorer(_height);
     secure = FakeSecureStorage();
     envLog = [];
+    received.clear();
     installEnv();
   });
 
@@ -431,6 +436,92 @@ void main() {
         host.lastTransport!.lastParams('create_address')['expiration'],
         'never',
       );
+    });
+
+    test('a payment that arrives while the wallet is open is announced '
+        'once, when it completes; earlier and outgoing ones never', () async {
+      final w = await newWallet();
+      await w.open();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+      // The completed payment already there at open is history.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(received, isEmpty);
+
+      Future<void> emitTxs(List<Map<String, Object?>> txs) async {
+        core.txs = txs;
+        host.lastTransport!.emit('ev_txs_changed', {'change': 0});
+        await waitFor(
+          () =>
+              isar.transactionV2s
+                  .where()
+                  .walletIdEqualTo(w.walletId)
+                  .countSync() ==
+              txs.length,
+          what: '${txs.length} txs in Isar',
+        );
+      }
+
+      final before = core.txs;
+      final arriving = txJson(
+        txId: '02' * 16,
+        status: 1,
+        income: true,
+        value: 50000000,
+        receiver: _myAddr,
+      );
+      final sent = txJson(
+        txId: '03' * 16,
+        status: 3,
+        income: false,
+        value: 1000000,
+        receiver: '44' * 33,
+      );
+      await emitTxs([...before, arriving, sent]);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(received, isEmpty, reason: 'still arriving; outgoing');
+
+      final done = {...arriving, 'status': 3};
+      await emitTxs([...before, done, sent]);
+      await waitFor(() => received.isNotEmpty, what: 'announced');
+      host.lastTransport!.emit('ev_txs_changed', {'change': 0});
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(received, hasLength(1));
+      final p = received.single;
+      expect(p.txId, '02' * 16);
+      expect(p.value, _g(0.5));
+      expect(p.assetId, 0);
+      expect(p.walletName, w.info.name);
+      expect(p.title, 'Received 0.5 BEAM');
+    });
+
+    test('coins a restore scan finds are not announced', () async {
+      final w = await newWallet(init: false);
+      await w.init(isRestore: true);
+      await w.recover(isRescan: false);
+      await w.open();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+      core.txs = [
+        ...core.txs,
+        txJson(
+          txId: '05' * 16,
+          status: 3,
+          income: true,
+          value: 7000000,
+          receiver: _myAddr,
+        ),
+      ];
+      host.lastTransport!.emit('ev_txs_changed', {'change': 0});
+      await waitFor(
+        () =>
+            isar.transactionV2s
+                .where()
+                .walletIdEqualTo(w.walletId)
+                .countSync() ==
+            2,
+        what: 'found coin stored',
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(received, isEmpty);
     });
 
     test('events drive refreshes: a new transaction shows up without '
@@ -706,6 +797,36 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(freed, isTrue);
       expect(gate.hold('after').isActive, isFalse);
+    });
+
+    // Seen in the DMG test: a restore scan over a public node was 7% after
+    // 8 minutes (about 4.5 hours in all), and the private node, which would
+    // finish it in about 1.5 hours, waited for the scan to end.
+    test('a restored wallet still reading the chain starts its private node '
+        'without waiting to be able to send', () async {
+      final nodes = <_Node>[];
+      installEnv(
+        node: (_, _) {
+          final n = _Node();
+          nodes.add(n);
+          return n;
+        },
+        privateNode: true,
+      );
+      core.status = statusJson(height: 0);
+      final w = await newWallet(init: false);
+      await w.init(isRestore: true);
+      await w.recover(isRescan: false);
+      expect(w.isScanningForCoins, isTrue);
+      await w.open();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+
+      await waitFor(
+        () => w.syncAssessment is BeamSyncCatchingUp,
+        what: 'catching up, not "connecting"',
+      );
+      expect(w.canSpend, isFalse);
+      await waitFor(() => nodes.isNotEmpty, what: 'node created');
     });
 
     test('the coordinator gets the stored owner key, never pauses to '

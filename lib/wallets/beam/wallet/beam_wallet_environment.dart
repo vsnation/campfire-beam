@@ -23,6 +23,7 @@ import '../node/beam_node_process.dart';
 import '../node/beam_private_node_coordinator.dart';
 import '../node/beam_private_node_preference.dart';
 import '../sync/beam_sync_state.dart';
+import 'beam_payment_notice.dart';
 
 /// Makes a fresh private node for a coordinator (single use).
 typedef BeamPrivateNodeBuilder = BeamPrivateNode Function(
@@ -48,6 +49,7 @@ class BeamWalletEnvironment {
     this.statusPollInterval = const Duration(seconds: 60),
     this.eventDebounce = const Duration(milliseconds: 250),
     this.privateNodeStartDelay = const Duration(seconds: 20),
+    this.onPaymentReceived,
     void Function(String message)? log,
   }) : privateNodeSetting =
            privateNodeSetting ?? const BeamFixedPrivateNodeSetting(false),
@@ -81,6 +83,7 @@ class BeamWalletEnvironment {
     // The user's choice from the node panel, kept across launches
     // (on by default on desktop, off on phones).
     privateNodeSetting: BeamPrivateNodePreference.app(),
+    onPaymentReceived: announceBeamPayment,
   );
 
   static BeamWalletEnvironment? _instance;
@@ -116,6 +119,11 @@ class BeamWalletEnvironment {
   /// How long after the first honest "synced" the private node may start,
   /// so its brief start-up pause stays out of the first seconds of use.
   final Duration privateNodeStartDelay;
+
+  /// Called once for each incoming payment that completes while its wallet
+  /// is open; never for what a restore scan finds. The app posts it to
+  /// Campfire's notifications.
+  final void Function(BeamPaymentReceived payment)? onPaymentReceived;
 
   /// Operational log; never given a secret.
   final void Function(String message) log;

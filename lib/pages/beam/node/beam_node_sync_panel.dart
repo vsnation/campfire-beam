@@ -443,7 +443,11 @@ class _PrivateNodeCard extends StatelessWidget {
               Text(
                 'Disk space: ${view.diskLine!}',
                 key: const Key('beamPrivateNodeDisk'),
-                style: _strongBodyStyle(context),
+                style: view.diskShort
+                    ? _strongBodyStyle(context).copyWith(
+                        color: beamNodeToneColor(context, BeamNodeTone.problem),
+                      )
+                    : _strongBodyStyle(context),
               ),
             ],
             if (primary != null) ...[

@@ -172,6 +172,7 @@ class BeamNodePanelView {
     this.progress,
     required this.privateTone,
     this.diskLine,
+    this.diskShort = false,
     this.primaryAction,
     this.secondaryActions = const [],
     this.moment,
@@ -209,6 +210,9 @@ class BeamNodePanelView {
 
   /// "Needs about 8 GB · 37 GB free".
   final String? diskLine;
+
+  /// [diskLine] says the private node cannot set up in the space there is.
+  final bool diskShort;
 
   /// The panel's one primary button, when something needs doing.
   final BeamNodePanelAction? primaryAction;
@@ -270,6 +274,11 @@ abstract final class BeamNodePanelModel {
     final problem = s.coreProblem;
 
     final private = _private(s);
+    final showDisk =
+        s.privateNodeSupported &&
+        s.privateNodeEnabled &&
+        s.privateNode?.issue != BeamPrivateNodeIssue.notEnoughDisk &&
+        s.privateNode?.issue != BeamPrivateNodeIssue.diskFull;
     return BeamNodePanelView(
       nodeTitle: s.node == null
           ? (problem == null ? 'Connecting…' : 'Not connected')
@@ -294,13 +303,8 @@ abstract final class BeamNodePanelModel {
       progress: private.progress,
       privateTone: private.tone,
       // A disk refusal already says the numbers in its message.
-      diskLine:
-          s.privateNodeSupported &&
-              s.privateNodeEnabled &&
-              s.privateNode?.issue != BeamPrivateNodeIssue.notEnoughDisk &&
-              s.privateNode?.issue != BeamPrivateNodeIssue.diskFull
-          ? _diskLine(s)
-          : null,
+      diskLine: showDisk ? _diskLine(s) : null,
+      diskShort: showDisk && _diskShortfall(s) > 0,
       primaryAction: private.primary,
       secondaryActions: private.secondary,
       moment: private.moment,
@@ -326,11 +330,26 @@ abstract final class BeamNodePanelModel {
     return at;
   }
 
+  /// Bytes still to free before a new private node can set up; 0 when it
+  /// fits or nothing is known yet.
+  static int _diskShortfall(BeamNodePanelSnapshot s) {
+    final d = s.disk ?? s.privateNode?.disk;
+    return d == null || !d.freshNode ? 0 : d.shortfallBytes;
+  }
+
   static String? _diskLine(BeamNodePanelSnapshot s) {
     final d = s.disk ?? s.privateNode?.disk;
     if (d == null) {
       const policy = BeamNodeDiskPolicy();
       return _setupNeeds(policy.setupPeakBytes, policy.nodeBytes);
+    }
+    final short = _diskShortfall(s);
+    if (short > 0) {
+      // Said before the node tries, not after it fails.
+      return 'Not enough space. Free about ${formatBeamDiskSize(short)} more '
+          'to use your private node '
+          '(${formatBeamDiskSize(d.space.freeBytes)} free now). Your wallet '
+          'keeps working on a public node meanwhile.';
     }
     final free = '${formatBeamDiskSize(d.space.freeBytes)} free';
     final used = formatBeamDiskSize(d.space.nodeBytes);

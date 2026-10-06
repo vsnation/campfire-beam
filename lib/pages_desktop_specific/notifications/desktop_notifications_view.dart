@@ -72,7 +72,8 @@ class _DesktopNotificationsViewState
                   child: RoundedWhiteContainer(
                     child: Center(
                       child: Text(
-                        "Notifications will appear here",
+                        "Payments you receive while Campfire is open will "
+                        "appear here.",
                         style: STextStyles.desktopTextExtraExtraSmall(context),
                       ),
                     ),

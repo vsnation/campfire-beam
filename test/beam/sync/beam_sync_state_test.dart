@@ -123,10 +123,29 @@ final _cases = <_Case>[
     },
   ),
   _Case(
-    'height 0 (core has no chain state) -> connecting',
-    wallet: _wallet(height: 0),
+    'height 0, node not reached yet -> connecting',
+    wallet: _wallet(height: 0, connected: null),
     explorer: _explorer(),
     expect: (a) => expect(a, isA<BeamSyncConnecting>()),
+  ),
+  // Seen in the DMG test: a restore scan over a public node keeps height 0
+  // for hours while connected. "Connecting, a few seconds" was false for
+  // all of it, and Connecting never reported the node as connected.
+  _Case(
+    'height 0 but connected (reading the chain from the start) -> catching up',
+    wallet: _wallet(height: 0),
+    explorer: _explorer(),
+    expect: (a) {
+      _isCatchingUp(a);
+      expect(a.walletHeight, isNull);
+      expect((a as BeamSyncCatchingUp).blocksBehind, isNull);
+      expect(a.networkHeight, _tip);
+      expect(
+        BeamSyncMessages.describe(a).detail,
+        'Reading the BEAM network from the start, which takes a while the '
+        "first time. Sending is paused until it's done.",
+      );
+    },
   ),
   _Case(
     'node disconnected, explorer up -> try another node',
