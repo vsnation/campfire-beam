@@ -1,0 +1,77 @@
+# syntax=docker/dockerfile:1.7
+#
+# Linux desktop dev image for Campfire-BEAM: build `flutter build linux` and
+# screenshot the running app under Xvfb.
+#
+# Platform: linux/amd64 (runs under Rosetta in colima on Apple Silicon).
+# Why not native arm64:
+#   * isar_community_flutter_libs 3.3.2 ships a prebuilt libisar.so for x86-64
+#     only; arm64 would need Rust + scripts/app_config/templates/isar_build.sh.
+#   * Upstream CI (Dockerfile at repo root, .github/workflows/build.yaml) builds
+#     and tests Linux on x86_64 only, so amd64 reproduces what upstream ships.
+#   * Flutter publishes no linux-arm64 SDK archive; amd64 avoids that divergence.
+# Cost: compile steps run translated by Rosetta (slower than native, see
+# the project notes for measured timings).
+#
+# Flutter version: 3.47.2, NOT 3.38.5. The pubspec template requires
+# `flutter: ^3.47.2` / Dart >=3.13.0 (docs/building.md still says 3.38.5 and is
+# stale). This matches the pin in the repo-root Dockerfile.
+#
+# Build:  docker build --platform linux/amd64 -t campfire-beam/linux-dev:3.47.2 \
+#           -f scripts/beam/docker/Dockerfile.linux-dev scripts/beam/docker
+FROM ubuntu:24.04
+
+ARG FLUTTER_VERSION=3.47.2
+ARG FLUTTER_COMMIT=d3b14c876900e553bc736ca19295fc09e3853e8e
+ARG DEV_UID=1000
+ARG DEV_GID=1000
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=Etc/UTC \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Build deps: the "Linux desktop specific dependencies" from docs/building.md,
+# trimmed to what the Campfire config (TOR + FIRO) needs when secure-storage
+# deps come from the system (-s / USE_SYSTEM_SECURE_STORAGE_DEPS=1), the same
+# choice upstream CI makes. libopencv-dev is required by the camera_linux plugin
+# (QR scanning) at CMake configure time. Plus the headless-display/screenshot tools,
+# and xdg-user-dirs: path_provider_linux resolves getApplicationDocumentsDirectory()
+# by running `xdg-user-dir DOCUMENTS`; without it Campfire dies in main() with
+# MissingPlatformDirectoryException and the window stays black.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl file git unzip xz-utils zip rsync sudo python3 \
+      build-essential cmake ninja-build pkg-config clang libclang-dev lld llvm \
+      libgtk-3-dev liblzma-dev libglib2.0-dev libgirepository1.0-dev \
+      libsecret-1-dev libjsoncpp-dev libssl-dev zlib1g-dev \
+      libopencv-dev \
+      xvfb xauth x11-utils xdotool imagemagick \
+      libgl1 libegl1 libgles2 libgl1-mesa-dri mesa-utils \
+      dbus dbus-x11 gnome-keyring libsecret-tools xdg-user-dirs \
+      fonts-dejavu-core \
+ && rm -rf /var/lib/apt/lists/*
+
+# Non-root user. Ubuntu 24.04 ships user "ubuntu" at 1000; replace it.
+RUN (userdel -r ubuntu 2>/dev/null || true) \
+ && groupadd -g "${DEV_GID}" dev \
+ && useradd -m -u "${DEV_UID}" -g "${DEV_GID}" -s /bin/bash dev \
+ && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev \
+ && mkdir -p /opt/flutter /work /home/dev/.pub-cache /out \
+ && chown -R dev:dev /opt/flutter /work /home/dev/.pub-cache /out
+
+USER dev
+ENV FLUTTER_HOME=/opt/flutter \
+    PUB_CACHE=/home/dev/.pub-cache \
+    PATH=/opt/flutter/bin:/opt/flutter/bin/cache/dart-sdk/bin:/home/dev/.pub-cache/bin:$PATH
+
+RUN git clone --depth 1 --branch "${FLUTTER_VERSION}" https://github.com/flutter/flutter.git "$FLUTTER_HOME" \
+ && test "$(git -C "$FLUTTER_HOME" rev-parse HEAD)" = "${FLUTTER_COMMIT}" \
+ && git config --global --add safe.directory '*' \
+ && flutter config --no-analytics --no-cli-animations \
+ && dart --disable-analytics \
+ && flutter precache --linux --no-android --no-ios --no-web \
+ && flutter --version
+
+WORKDIR /work
