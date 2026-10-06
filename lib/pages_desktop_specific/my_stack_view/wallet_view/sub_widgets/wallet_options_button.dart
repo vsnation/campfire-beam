@@ -31,11 +31,13 @@ import '../../../../utilities/util.dart';
 import '../../../../wallets/crypto_currency/intermediate/frost_currency.dart';
 import '../../../../wallets/crypto_currency/intermediate/nano_currency.dart';
 import '../../../../wallets/isar/providers/wallet_info_provider.dart';
+import '../../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../../../wallets/wallet/impl/epiccash_wallet.dart';
 import '../../../../wallets/wallet/intermediate/cryptonote_wallet.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/extended_keys_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/view_only_option_interface.dart';
+import '../../../../widgets/beam/wiring/beam_features.dart';
 import '../../../addresses/desktop_wallet_addresses_view.dart';
 import '../../../password/request_desktop_auth_dialog.dart';
 import '../../../settings/settings_menu/epicbox_settings/desktop_manage_epicbox_dialog.dart';
@@ -140,6 +142,11 @@ class WalletOptionsButton extends ConsumerWidget {
         if (context.mounted && func != null) {
           switch (func) {
             case _WalletOptions.addressList:
+              // BEAM: its own list (address types, expiry, labels).
+              if (ref.read(pWallets).getWallet(walletId) is BeamWallet) {
+                unawaited(showBeamAddressListDialog(context, walletId));
+                break;
+              }
               unawaited(
                 Navigator.of(context).pushNamed(
                   DesktopWalletAddressesView.routeName,

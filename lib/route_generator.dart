@@ -57,8 +57,16 @@ import 'pages/address_book_views/subviews/address_book_filter_view.dart';
 import 'pages/address_book_views/subviews/contact_details_view.dart';
 import 'pages/address_book_views/subviews/edit_contact_address_view.dart';
 import 'pages/address_book_views/subviews/edit_contact_name_emoji_view.dart';
+import 'pages/beam/airdrop/beam_airdrop_batches_view.dart';
+import 'pages/beam/airdrop/beam_claim_voucher_view.dart';
+import 'pages/beam/airdrop/beam_create_airdrop_view.dart';
 import 'pages/beam/dapps/dapp_browser_view.dart';
 import 'pages/beam/dapps/dapp_store_view.dart';
+import 'pages/beam/dex/beam_dex_swap_view.dart';
+import 'pages/beam/minter/beam_burn_view.dart';
+import 'pages/beam/minter/beam_mint_token_view.dart';
+import 'pages/beam/minter/beam_my_tokens_view.dart';
+import 'pages/beam/names/beam_names_home_view.dart';
 import 'pages/buy_view/buy_in_wallet_view.dart';
 import 'pages/buy_view/buy_quote_preview.dart';
 import 'pages/buy_view/buy_view.dart';
@@ -275,6 +283,8 @@ import 'wallets/wallet/impl/beam_wallet.dart';
 import 'wallets/wallet/impl/firo_wallet.dart';
 import 'wallets/wallet/wallet.dart';
 import 'wallets/wallet/wallet_mixin_interfaces/extended_keys_interface.dart';
+import 'widgets/beam/wiring/beam_features.dart';
+import 'widgets/beam/wiring/beam_wallet_listenables.dart';
 import 'widgets/choose_coin_view.dart';
 import 'widgets/frost_scaffold.dart';
 
@@ -2994,6 +3004,134 @@ class RouteGenerator {
               host: args.host,
               installation: args.installation,
             ),
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      // == BEAM features (lib/widgets/beam/wiring) ============================
+
+      case BeamFeatureRoutes.dex:
+        if (args is BeamWallet) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) => BeamDexSwapView(
+              deps: BeamWalletWiring.of(args).dex,
+            ),
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case BeamNamesHomeView.routeName:
+        if (args is BeamWallet) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) => BeamNamesHomeView(
+              deps: BeamWalletWiring.of(args).names,
+            ),
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case BeamClaimVoucherView.routeName:
+        if (args is BeamWallet) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) {
+              final beam = BeamWalletWiring.of(args);
+              return BeamClaimVoucherView(
+                service: beam.airdrop,
+                sync: beam.sync,
+                assetNames: beam.assetNames,
+              );
+            },
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case BeamAirdropBatchesView.routeName:
+        if (args is BeamWallet) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) {
+              final beam = BeamWalletWiring.of(args);
+              return BeamAirdropBatchesView(
+                service: beam.airdrop,
+                sync: beam.sync,
+                assetNames: beam.assetNames,
+              );
+            },
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case BeamCreateAirdropView.routeName:
+        if (args is BeamWallet) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) {
+              final beam = BeamWalletWiring.of(args);
+              return BeamCreateAirdropView(
+                service: beam.airdrop,
+                sync: beam.sync,
+                assetNames: beam.assetNames,
+              );
+            },
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case BeamMintTokenView.routeName:
+        if (args is BeamWallet) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) {
+              final beam = BeamWalletWiring.of(args);
+              return BeamMintTokenView(
+                service: beam.minter,
+                sync: beam.sync,
+                assetNames: beam.assetNames,
+              );
+            },
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case BeamMyTokensView.routeName:
+        if (args is BeamWallet) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) {
+              final beam = BeamWalletWiring.of(args);
+              return BeamMyTokensView(
+                service: beam.minter,
+                sync: beam.sync,
+                assetNames: beam.assetNames,
+              );
+            },
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case BeamBurnView.routeName:
+        if (args is BeamWallet) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) {
+              final beam = BeamWalletWiring.of(args);
+              return BeamBurnView(
+                service: beam.burn,
+                sync: beam.sync,
+                assetNames: beam.assetNames,
+              );
+            },
             settings: RouteSettings(name: settings.name),
           );
         }

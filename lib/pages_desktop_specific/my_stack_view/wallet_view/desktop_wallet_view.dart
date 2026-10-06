@@ -343,7 +343,11 @@ class _DesktopWalletViewState extends ConsumerState<DesktopWalletView> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        wallet.cryptoCurrency.hasTokenSupport
+                        // BEAM: its Confidential Assets sit here; the
+                        // history is the "Transactions" tab beside Send.
+                        wallet is BeamWallet
+                            ? "Assets"
+                            : wallet.cryptoCurrency.hasTokenSupport
                             ? "Tokens"
                             : "Recent activity",
                         style: STextStyles.desktopTextExtraSmall(
@@ -355,6 +359,7 @@ class _DesktopWalletViewState extends ConsumerState<DesktopWalletView> {
                                   .textFieldActiveSearchIconLeft,
                         ),
                       ),
+                      if (wallet is! BeamWallet)
                       CustomTextButton(
                         text:
                             wallet.cryptoCurrency.hasTokenSupport
@@ -402,7 +407,8 @@ class _DesktopWalletViewState extends ConsumerState<DesktopWalletView> {
                   const SizedBox(width: 16),
                   Expanded(
                     child:
-                        wallet.cryptoCurrency.hasTokenSupport
+                        wallet is BeamWallet ||
+                                wallet.cryptoCurrency.hasTokenSupport
                             ? MyTokensView(walletId: widget.walletId)
                             : wallet.isarTransactionVersion == 2
                             ? TransactionsV2List(walletId: widget.walletId)

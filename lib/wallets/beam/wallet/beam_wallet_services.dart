@@ -43,19 +43,27 @@ import '../rpc/beam_transport.dart';
 ///   the private one. A service holding the old connection would fail after
 ///   every handover.
 class BeamWalletServices {
-  BeamWalletServices._(this.wallet, {this._voucherStore})
+  BeamWalletServices._(this.wallet)
     : transport = BeamWalletTransport(() => wallet.coreApi);
 
   static final Map<String, BeamWalletServices> _byWallet = {};
 
   /// The services of [wallet], created on first use.
+  ///
+  /// [voucherStore] is attached whenever it is given, not only on the call
+  /// that creates the services: the wallet home creates them first, without
+  /// a store, long before any airdrop screen opens (see
+  /// [attachVoucherStore]).
   static BeamWalletServices of(
     BeamWallet wallet, {
     VoucherCodeStore? voucherStore,
-  }) => _byWallet[wallet.walletId] ??= BeamWalletServices._(
-    wallet,
-    voucherStore: voucherStore,
-  );
+  }) {
+    final services = _byWallet[wallet.walletId] ??= BeamWalletServices._(
+      wallet,
+    );
+    if (voucherStore != null) services.attachVoucherStore(voucherStore);
+    return services;
+  }
 
   /// Drops [walletId]'s services, e.g. when the wallet is deleted.
   static Future<void> forget(String walletId) async {
@@ -64,7 +72,28 @@ class BeamWalletServices {
 
   final BeamWallet wallet;
   final BeamWalletTransport transport;
-  final VoucherCodeStore? _voucherStore;
+
+  VoucherCodeStore? _voucherStore;
+
+  /// Where [airdrop] keeps the codes of the batches this wallet creates;
+  /// null until the app has given its secure store.
+  VoucherCodeStore? get voucherStore => _voucherStore;
+
+  /// Gives the services the app's secure voucher store, whoever created
+  /// them first.
+  ///
+  /// * The first store wins. A wallet's codes live in one place, so a later
+  ///   (different) store never replaces it: that could hide saved codes, the
+  ///   only key to locked funds.
+  /// * An [airdrop] service built before any store was given (one that
+  ///   could only claim, never create) is replaced by one with the store. A
+  ///   screen still holding the old one can claim with it as before.
+  void attachVoucherStore(VoucherCodeStore store) {
+    if (_voucherStore != null) return;
+    _voucherStore = store;
+    final built = _airdrop;
+    if (built != null && built.store == null) _airdrop = null;
+  }
 
   late final BeamApi api = BeamApi(transport);
 
@@ -80,9 +109,11 @@ class BeamWalletServices {
 
   late final BansInboxMonitor bansInbox = BansInboxMonitor(bans.inbox);
 
-  /// Needs the app's secure voucher store; screens that create batches must
-  /// have passed one to [of] first.
-  late final BeamAirdropService airdrop = BeamAirdropService(
+  BeamAirdropService? _airdrop;
+
+  /// Creating batches needs the app's secure voucher store, given through
+  /// [of] or [attachVoucherStore] before this is read; claiming does not.
+  BeamAirdropService get airdrop => _airdrop ??= BeamAirdropService(
     api,
     airdropAppShader(_shaders),
     store: _voucherStore,

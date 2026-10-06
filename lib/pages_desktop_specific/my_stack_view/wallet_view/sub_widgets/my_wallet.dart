@@ -19,9 +19,11 @@ import '../../../../pages/wallet_view/transaction_views/tx_v2/transaction_v2_lis
 import '../../../../providers/global/wallets_provider.dart';
 import '../../../../utilities/clipboard_interface.dart';
 import '../../../../wallets/crypto_currency/crypto_currency.dart';
+import '../../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../../../wallets/wallet/impl/bitcoin_frost_wallet.dart';
 import '../../../../wallets/wallet/impl/solana_wallet.dart' show SolanaWallet;
 import '../../../../wallets/wallet/wallet_mixin_interfaces/view_only_option_interface.dart';
+import '../../../../widgets/beam/wiring/beam_desktop_wallet_tabs.dart';
 import '../../../../widgets/custom_tab_view.dart';
 import '../../../../widgets/desktop/secondary_button.dart';
 import '../../../../widgets/frost_scaffold.dart';
@@ -52,6 +54,7 @@ class _MyWalletState extends ConsumerState<MyWallet> {
   late final bool isMimblewimblecoin;
   late final bool isEpiccash;
   late final bool isViewOnly;
+  late final bool isBeam;
 
   @override
   void initState() {
@@ -62,12 +65,13 @@ class _MyWalletState extends ConsumerState<MyWallet> {
     isSolana = wallet is SolanaWallet;
     isMimblewimblecoin = coin is Mimblewimblecoin;
     isEpiccash = coin is Epiccash;
+    isBeam = wallet is BeamWallet;
 
     if (isMimblewimblecoin || isEpiccash) {
       titles.add("Finalize");
     }
 
-    if ((isEth || isSolana) && widget.contractAddress == null) {
+    if ((isEth || isSolana || isBeam) && widget.contractAddress == null) {
       titles.add("Transactions");
     }
 
@@ -78,6 +82,17 @@ class _MyWalletState extends ConsumerState<MyWallet> {
 
     super.initState();
   }
+
+  // BEAM: the Send tab is dimmed, with the reason, while the wallet may not
+  // send (the phone's Send button does the same).
+  Widget _tabs({required List<String> titles, required List<Widget> children}) =>
+      isBeam
+      ? BeamDesktopWalletTabs(
+          walletId: widget.walletId,
+          titles: titles,
+          children: children,
+        )
+      : CustomTabView(titles: titles, children: children);
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +119,7 @@ class _MyWalletState extends ConsumerState<MyWallet> {
       children: [
         RoundedWhiteContainer(
           padding: EdgeInsets.zero,
-          child: CustomTabView(
+          child: _tabs(
             titles: titles,
             children: [
               widget.contractAddress == null
@@ -195,7 +210,8 @@ class _MyWalletState extends ConsumerState<MyWallet> {
                   child: EpicFinalizeView(walletId: widget.walletId),
                 ),
 
-              if ((isEth || isSolana) && widget.contractAddress == null)
+              if ((isEth || isSolana || isBeam) &&
+                  widget.contractAddress == null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8.0),
                   child: ConstrainedBox(

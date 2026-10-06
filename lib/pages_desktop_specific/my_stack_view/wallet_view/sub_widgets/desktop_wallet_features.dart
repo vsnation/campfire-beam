@@ -41,6 +41,7 @@ import '../../../../utilities/logger.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../wallets/crypto_currency/coins/banano.dart';
 import '../../../../wallets/crypto_currency/coins/firo.dart';
+import '../../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../../../wallets/wallet/impl/bitcoin_wallet.dart';
 import '../../../../wallets/wallet/impl/firo_wallet.dart';
 import '../../../../wallets/wallet/impl/namecoin_wallet.dart';
@@ -58,6 +59,7 @@ import '../../../../wallets/wallet/wallet_mixin_interfaces/rbf_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/sign_verify_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/view_only_option_interface.dart';
+import '../../../../widgets/beam/wiring/beam_features.dart';
 import '../../../../widgets/custom_loading_overlay.dart';
 import '../../../../widgets/desktop/desktop_dialog.dart';
 import '../../../../widgets/desktop/desktop_dialog_close_button.dart';
@@ -95,6 +97,14 @@ enum WalletFeature {
   salviumStaking("Staking", "Staking"),
   sign("Sign/Verify", "Sign / Verify messages"),
   masternodes("Masternodes", "Manage masternodes"),
+
+  // BEAM (lib/widgets/beam/wiring/beam_features.dart)
+  beamSwap("Swap", "Swap one asset for another"),
+  beamNames("Names", "Your BEAM names, and getting one"),
+  beamDapps("dApps", "Apps that run on BEAM"),
+  beamAirdrops("Airdrops", "Claim a code, or give some away"),
+  beamTokens("Tokens", "Create your own token on BEAM"),
+  beamNode("Node & sync", "Which node you use, and how up to date"),
 
   // special cases
   clearSparkCache("", ""),
@@ -472,6 +482,9 @@ class _DesktopWalletFeaturesState extends ConsumerState<DesktopWalletFeatures> {
     final coin = wallet.info.coin;
     final isViewOnly = wallet is ViewOnlyOptionInterface && wallet.isViewOnly;
     final isSparkViewOnly = isViewOnly && wallet.viewOnlyType == .spark;
+
+    // BEAM: its own features only, none of the other coins'.
+    if (wallet is BeamWallet) return beamDesktopWalletFeatures(context, wallet);
 
     return [
       if (!isViewOnly &&
