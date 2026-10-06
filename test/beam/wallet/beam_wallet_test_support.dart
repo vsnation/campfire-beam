@@ -16,6 +16,7 @@ import 'dart:io';
 
 import 'package:isar_community/isar.dart';
 import 'package:path/path.dart' as p;
+import 'package:stackwallet/models/isar/models/beam/beam_asset_contract.dart';
 import 'package:stackwallet/db/isar/main_db.dart';
 import 'package:stackwallet/models/isar/models/block_explorer.dart';
 import 'package:stackwallet/models/isar/models/blockchain_data/v2/transaction_v2.dart';
@@ -62,6 +63,7 @@ Future<Isar> openTestMainDb(Directory dir) async {
       TokenWalletInfoSchema,
       FrostWalletInfoSchema,
       WalletSolanaTokenInfoSchema,
+      BeamAssetContractSchema,
     ],
     directory: dir.path,
     inspector: false,
