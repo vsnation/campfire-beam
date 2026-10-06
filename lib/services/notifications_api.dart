@@ -14,6 +14,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../app_config.dart';
 import '../models/notification_model.dart';
+import '../utilities/beam_app_identity.dart';
 import '../utilities/logger.dart';
 import '../utilities/prefs.dart';
 import 'notifications_service.dart';
@@ -56,6 +57,11 @@ abstract final class NotificationApi {
     );
     const macOS = DarwinInitializationSettings();
     final (windowsAppUserModelId, windowsGuid) = switch (AppConfig.appName) {
+      // Same name as Campfire, but not the same Windows notification identity.
+      "Campfire" when BeamAppIdentity.isActive => (
+        "vsnation.CampfireBEAM",
+        "1b91c91f-eaf9-48ea-9691-474b7e974060",
+      ),
       "Campfire" => (
         "CypherStack.Campfire",
         "fe1bb964-a80c-45cd-a5d6-c95b2d8b1142",

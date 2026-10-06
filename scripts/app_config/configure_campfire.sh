@@ -2,21 +2,21 @@
 
 set -x -e
 
-# Configure files for Duo.
-APP_BUILD_PLATFORM=$1
+# Configure files for Campfire with BEAM as its only coin.
 
+# The user sees Campfire: same name, logo and branding. The technical
+# identifiers below (app id on every platform, iOS included; basic name;
+# _appDataDirName) are new, so this build never opens, updates or shares data
+# with a real Campfire install on the same machine.
 export NEW_NAME="Campfire"
-if [[ "$APP_BUILD_PLATFORM" != "ios" ]]; then
-  export NEW_APP_ID="com.cypherstack.campfire"
-else
-  # for some reason this was different in the old campfire code for ios
-  export NEW_APP_ID="com.cypherstack.campfirefirowallet"
-fi
-export NEW_APP_ID_CAMEL="com.cypherstack.campfire"
-export NEW_APP_ID_SNAKE="com.cypherstack.campfire"
-export NEW_BASIC_NAME="campfire"
+export NEW_APP_ID="com.vsnation.campfirebeam"
+export NEW_APP_ID_CAMEL="com.vsnation.campfirebeam"
+export NEW_APP_ID_SNAKE="com.vsnation.campfirebeam"
+export NEW_BASIC_NAME="campfirebeam"
 
-NEW_PUBSPEC_NAME="paymint" # paymint used in original pubspec for some reason
+# stackwallet, not Campfire's paymint: the upstream tests import
+# package:stackwallet/... and lib/ only uses relative imports.
+NEW_PUBSPEC_NAME="stackwallet"
 PUBSPEC_FILE="${APP_PROJECT_ROOT_DIR}/pubspec.yaml"
 
 # String replacements.
@@ -32,13 +32,13 @@ fi
 dart "${APP_PROJECT_ROOT_DIR}/tool/process_pubspec_deps.dart" \
       "${PUBSPEC_FILE}" \
       TOR \
-      FIRO
+      BEAM
 
 dart "${APP_PROJECT_ROOT_DIR}/tool/gen_interfaces.dart" \
       "${APP_PROJECT_ROOT_DIR}/tool/wl_templates" \
       "${APP_PROJECT_ROOT_DIR}/lib/wl_gen/generated" \
       TOR \
-      FIRO
+      BEAM
 
 
 pushd "${APP_PROJECT_ROOT_DIR}"
@@ -57,15 +57,15 @@ const _separator = "";
 const _suffix = "";
 const _emptyWalletsMessage =
     "Join us around the Campfire and create a wallet!";
-const _appDataDirName = "campfire";
-const _shortDescriptionText = "Your privacy. Your wallet. Your Firo.";
+const _appDataDirName = "campfirebeam";
+const _shortDescriptionText = "Your privacy. Your wallet. Your BEAM.";
 const _commitHash = "$BUILT_COMMIT_HASH";
 
 const _mwebdExeHash = "";
 
+// No AppFeature.swap until an exchange partner is verified to list BEAM.
 const Set<AppFeature> _features = {
   AppFeature.tor,
-  AppFeature.swap
 };
 
 const ({String light, String dark})? _appIconAsset = (
@@ -74,22 +74,18 @@ const ({String light, String dark})? _appIconAsset = (
 );
 
 final List<CryptoCurrency> _supportedCoins = List.unmodifiable([
-  Firo(CryptoCurrencyNetwork.main),
-  Ethereum(CryptoCurrencyNetwork.main),
+  Beam(CryptoCurrencyNetwork.main),
 ]);
 
-final List<EthContract> _defaultEthTokens = [
-  DefaultTokens.rsFiro,
-  DefaultTokens.usdc,
-  DefaultTokens.usdt,
-];
+const List<EthContract> _defaultEthTokens = [];
 
+// Read by AppConfig.swapDefaults even while AppFeature.swap is off.
 final ({String from, String fromFuzzyNet, String to, String toFuzzyNet})
 _swapDefaults = (
   from: "BTC",
   fromFuzzyNet: "btc",
-  to: "FIRO",
-  toFuzzyNet: "firo",
+  to: "BEAM",
+  toFuzzyNet: "beam",
 );
 
 EOF

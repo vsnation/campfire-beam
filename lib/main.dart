@@ -286,7 +286,10 @@ void main(List<String> args) async {
     }
   }
   await StackFileSystem.initThemesDir();
-  await FiroCacheCoordinator.init();
+  if (AppConfig.coins.whereType<Firo>().isNotEmpty) {
+    // Spark caches (SQLite + one isolate per network) only serve Firo.
+    await FiroCacheCoordinator.init();
+  }
 
   // Desktop migrate handled elsewhere (currently desktop_login_view.dart)
   if (!Util.isDesktop) {

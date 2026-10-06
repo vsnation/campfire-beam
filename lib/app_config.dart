@@ -2,7 +2,8 @@
 import 'dart:io';
 
 import 'models/isar/models/ethereum/eth_contract.dart';
-import 'utilities/default_eth_tokens.dart';
+// ignore: unused_import
+import 'utilities/default_eth_tokens.dart'; // unused when no default tokens
 import 'wallets/crypto_currency/crypto_currency.dart';
 import 'wallets/crypto_currency/intermediate/frost_currency.dart';
 

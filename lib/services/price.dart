@@ -26,6 +26,7 @@ import 'tor_service.dart';
 class PriceAPI {
   // coingecko coin ids
   static const Map<Type, String> _coinToIdMap = {
+    Beam: "beam",
     Bitcoin: "bitcoin",
     BitcoinFrost: "bitcoin",
     Litecoin: "litecoin",

@@ -89,6 +89,13 @@ dependencies:
 #  flutter_mwebd: 0.0.1-pre.12
 # %%END_ENABLE_MWEBD%%
 
+# %%ENABLE_BEAM%%
+## No pub dependency yet. On desktop the BEAM core runs as child processes
+## (wallet-api, beam-wallet, beam-node); their pinned binaries are bundled as
+## assets (see the second BEAM block, in flutter: assets:). The phase 2 FFI
+## plugin (flutter_libbeam) goes here.
+# %%END_ENABLE_BEAM%%
+
   monero_rpc: ^2.0.0
 
   # cs_monero compat (unpublished)
@@ -435,6 +442,11 @@ flutter:
 # %%ENABLE_MWEBDEXE%%
 #    - assets/windows/mwebd.exe
 # %%END_ENABLE_MWEBDEXE%%
+
+# %%ENABLE_BEAM%%
+## Pinned BEAM core binaries for desktop, added by the binaries task:
+##    - assets/beam/
+# %%END_ENABLE_BEAM%%
 
 import_sorter:
   comments: false # Optional, defaults to true

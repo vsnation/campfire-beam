@@ -44,6 +44,7 @@ final List<CryptoCurrency> _supportedCoins = List.unmodifiable([
   Bitcoin(CryptoCurrencyNetwork.main),
   Monero(CryptoCurrencyNetwork.main),
   Banano(CryptoCurrencyNetwork.main),
+  Beam(CryptoCurrencyNetwork.main),
   Bitcoincash(CryptoCurrencyNetwork.main),
   BitcoinFrost(CryptoCurrencyNetwork.main),
   Cardano(CryptoCurrencyNetwork.main),

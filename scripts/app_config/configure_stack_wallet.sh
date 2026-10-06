@@ -31,7 +31,8 @@ dart "${APP_PROJECT_ROOT_DIR}/tool/process_pubspec_deps.dart" \
       EPIC \
       FIRO \
       XEL \
-      FROST
+      FROST \
+      BEAM
 
 dart "${APP_PROJECT_ROOT_DIR}/tool/gen_interfaces.dart" \
       "${APP_PROJECT_ROOT_DIR}/tool/wl_templates" \
@@ -45,7 +46,8 @@ dart "${APP_PROJECT_ROOT_DIR}/tool/gen_interfaces.dart" \
       EPIC \
       FIRO \
       XEL \
-      FROST
+      FROST \
+      BEAM
 
 
 MWEBD_EXE_SHA256=""
@@ -99,6 +101,7 @@ final List<CryptoCurrency> _supportedCoins = List.unmodifiable([
   Bitcoin(CryptoCurrencyNetwork.main),
   Monero(CryptoCurrencyNetwork.main),
   Banano(CryptoCurrencyNetwork.main),
+  Beam(CryptoCurrencyNetwork.main),
   Bitcoincash(CryptoCurrencyNetwork.main),
   BitcoinFrost(CryptoCurrencyNetwork.main),
   Cardano(CryptoCurrencyNetwork.main),

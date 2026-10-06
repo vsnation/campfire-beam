@@ -14,7 +14,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
-import '../../../../../app_config.dart';
+import '../../../../../utilities/beam_app_identity.dart';
 import '../../../../../utilities/fs.dart';
 
 class SWBFileSystem {
@@ -26,7 +26,7 @@ class SWBFileSystem {
     final _rootPath = await getApplicationDocumentsDirectory();
 
     late Directory sampleFolder;
-    const dirName = "${AppConfig.prefix}_backup";
+    final dirName = "${BeamAppIdentity.folderStem}_backup";
 
     if (Platform.isIOS) {
       sampleFolder = Directory(_rootPath.path);

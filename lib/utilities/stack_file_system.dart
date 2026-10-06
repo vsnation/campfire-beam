@@ -14,6 +14,7 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 import '../app_config.dart';
+import 'beam_app_identity.dart';
 import 'prefs.dart';
 import 'util.dart';
 
@@ -57,7 +58,9 @@ abstract class StackFileSystem {
       if (_overrideDesktopDirPath != null) {
         appDirectory = Directory(_overrideDesktopDirPath!);
       } else {
-        appDirectory = await getApplicationSupportDirectory();
+        appDirectory = BeamAppIdentity.isActive
+            ? BeamAppIdentity.windowsDataDirectory()
+            : await getApplicationSupportDirectory();
       }
     } else if (Platform.isMacOS) {
       if (_overrideDesktopDirPath != null) {
@@ -214,7 +217,7 @@ abstract class StackFileSystem {
     }
 
     final appDocsDir = await getApplicationDocumentsDirectory();
-    const logsDirName = "${AppConfig.prefix}_Logs";
+    final logsDirName = "${BeamAppIdentity.folderStem}_Logs";
     final Directory logsDir;
 
     if (Platform.isIOS) {
