@@ -14,6 +14,8 @@
 #   SETTLE_SECS   seconds the frame must stay unchanged before it counts as "drawn"
 #   TIMEOUT_SECS  give up waiting for a drawn frame after this long
 #   SKIP_BUILD=1  reuse the existing bundle; only launch and screenshot
+#   STEPS_FILE    optional repo-relative script of xdotool steps run after the
+#                 first screenshot (see section 5)
 set -euo pipefail
 
 BUILD_MODE="${BUILD_MODE:-debug}"
@@ -181,4 +183,30 @@ if [ "$SETTLED" != 1 ]; then
   echo "FAILED: no settled, non-blank frame (PNG kept for inspection). App log tail:"
   tail -30 "$L/linux_app_stdout.log"
   exit 1
+fi
+
+# --- 5. optional scripted steps (STEPS_FILE, a path inside the repo) ----------------
+# The file is sourced with these helpers; each `shot` waits for a settled frame
+# (at most STEP_TIMEOUT_SECS) and saves /out/<name>.
+#   click X Y [pause]   left click at screen coordinates, then pause (default 1 s)
+#   typetext "text"     type into the focused field
+#   key Return          press keys (xdotool key names)
+#   shot name.png       save the screen once it stops changing
+if [ -n "${STEPS_FILE:-}" ]; then
+  [ -f "/src/${STEPS_FILE}" ] || { echo "STEPS_FILE not found: ${STEPS_FILE}"; exit 1; }
+  click() { xdotool mousemove "$1" "$2" click 1; sleep "${3:-1}"; }
+  typetext() { xdotool type --delay 40 "$1"; sleep 0.5; }
+  key() { xdotool key "$@"; sleep 0.5; }
+  shot() {
+    local saved=$TIMEOUT_SECS
+    TIMEOUT_SECS="${STEP_TIMEOUT_SECS:-25}"
+    SETTLE_SECS_SAVED=$SETTLE_SECS; SETTLE_SECS="${STEP_SETTLE_SECS:-3}"
+    wait_settled
+    TIMEOUT_SECS=$saved; SETTLE_SECS=$SETTLE_SECS_SAVED
+    import -window root "/out/$1"
+    log "step shot /out/$1"
+  }
+  log "running steps from ${STEPS_FILE}"
+  # shellcheck disable=SC1090
+  source "/src/${STEPS_FILE}"
 fi

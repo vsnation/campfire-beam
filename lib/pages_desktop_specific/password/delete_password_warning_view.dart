@@ -22,6 +22,7 @@ import '../../pages/intro_view.dart';
 import '../../utilities/logger.dart';
 import '../../utilities/stack_file_system.dart';
 import '../../utilities/text_styles.dart';
+import '../../wallets/beam/wallet/beam_shutdown.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../widgets/desktop/desktop_app_bar.dart';
@@ -49,6 +50,10 @@ class _ForgotPasswordDesktopViewState
     final appRoot = await StackFileSystem.applicationRootDirectory();
 
     try {
+      // BEAM: stop wallet-api / beam-node, then remove <root>/beam (wallet
+      // files and the private node's owner-key-derived data).
+      await deleteBeamDataDirectory(appRoot);
+
       await DB.instance.hive.close();
       if (Platform.isWindows) {
         final xmrDir = Directory("${appRoot.path}/wallets");

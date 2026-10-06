@@ -27,6 +27,7 @@ import '../wallets/crypto_currency/intermediate/cryptonote_currency.dart';
 import '../wallets/crypto_currency/intermediate/frost_currency.dart';
 import '../wallets/isar/models/frost_wallet_info.dart';
 import '../wallets/isar/models/wallet_info.dart';
+import '../wallets/wallet/impl/beam_wallet.dart';
 import '../wallets/wallet/impl/bitcoin_frost_wallet.dart';
 import '../wallets/wallet/impl/epiccash_wallet.dart';
 import '../wallets/wallet/impl/mimblewimblecoin_wallet.dart';
@@ -160,6 +161,10 @@ class Wallets {
       Logging.instance.i(
         "Mimblewimblecoin wallet: $walletId deleted with result: $deleteResult",
       );
+    } else if (info.coin is Beam) {
+      // wallet.db, its password and owner key (exit() above closed it)
+      await deleteBeamWallet(walletId: walletId, secureStore: secureStorage);
+      Logging.instance.i("Beam wallet: $walletId deleted");
     }
 
     // delete wallet data in main db
@@ -694,6 +699,22 @@ class Wallets {
         walletId: walletId,
         secureStorage: nodeService.secureStorageInterface,
       );
+    }
+    if (info != null &&
+        AppConfig.getCryptoCurrencyFor(info.coinName) is Beam) {
+      // An unverified BEAM wallet already has a wallet.db and secrets.
+      try {
+        await deleteBeamWallet(
+          walletId: walletId,
+          secureStore: nodeService.secureStorageInterface,
+        );
+      } catch (e, s) {
+        Logging.instance.w(
+          "Beam unverified wallet cleanup failed",
+          error: e,
+          stackTrace: s,
+        );
+      }
     }
     await mainDB.isar.writeTxn(() async {
       if (isFrostWallet) {

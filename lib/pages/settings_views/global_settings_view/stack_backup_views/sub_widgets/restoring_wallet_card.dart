@@ -25,6 +25,7 @@ import '../../../../../utilities/enums/stack_restoring_status.dart';
 import '../../../../../utilities/logger.dart';
 import '../../../../../utilities/text_styles.dart';
 import '../../../../../utilities/util.dart';
+import '../../../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../../../../wallets/wallet/impl/epiccash_wallet.dart';
 import '../../../../../wallets/wallet/impl/mimblewimblecoin_wallet.dart';
 import '../../../../../wallets/wallet/impl/xelis_wallet.dart';
@@ -58,6 +59,11 @@ class _RestoringWalletCardState extends ConsumerState<RestoringWalletCard> {
           );
 
       switch (wallet) {
+        case BeamWallet():
+          // recover() builds wallet.db from the phrase
+          await wallet.init(isRestore: true);
+          break;
+
         case EpiccashWallet():
           await wallet.init(isRestore: true);
           break;

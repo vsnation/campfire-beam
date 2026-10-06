@@ -584,4 +584,14 @@ abstract class WalletInfoKeys {
       "solanaCustomTokenMintAddressesKey";
   static const String firoMasternodeCollateralDismissed =
       "firoMasternodeCollateralDismissedKey";
+
+  /// BEAM: JSON-encoded `ExtraBeamWalletInfo` (restore scan state). No
+  /// secrets; it is part of Stack backups like the rest of otherData.
+  static const String beamData = "beamDataKey";
+
+  /// BEAM: per-asset totals from `wallet_status`, keyed by asset id as a
+  /// string; amounts are decimal strings in the asset's smallest unit. Read
+  /// by the Confidential Assets task (B-ASSET-1). See
+  /// `lib/wallets/beam/wallet/beam_balance_mapper.dart`.
+  static const String beamAssetTotals = "beamAssetTotalsKey";
 }

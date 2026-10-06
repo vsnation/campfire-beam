@@ -201,7 +201,8 @@ class _NewWalletRecoveryPhraseWarningViewState
             // this may not be epiccash and sol specific?
             if (coin is Epiccash ||
                 coin is Mimblewimblecoin ||
-                coin is Solana) {
+                coin is Solana ||
+                coin is Beam) {
               mnemonicPassphrase = "";
             }
           }

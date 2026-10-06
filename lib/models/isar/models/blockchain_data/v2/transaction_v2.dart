@@ -266,6 +266,10 @@ class TransactionV2 {
       }
     }
 
+    if (isBeamTransaction) {
+      return _beamStatusLabel(prettyConfirms);
+    }
+
     if (isEpiccashTransaction) {
       if (slateId == null) {
         return "Restored Funds";
@@ -383,6 +387,60 @@ class TransactionV2 {
   String? get salviumTypeString =>
       _getFromOtherData(key: TxV2OdKeys.salviumTypeString) as String?;
 
+  @ignore
+  bool get isBeamTransaction =>
+      _getFromOtherData(key: TxV2OdKeys.isBeamTransaction) == true;
+
+  /// `BeamTxStatus.name`, for BEAM transactions only.
+  @ignore
+  String? get beamTxStatus =>
+      _getFromOtherData(key: TxV2OdKeys.beamTxStatus) as String?;
+
+  @ignore
+  String? get beamKernelId =>
+      _getFromOtherData(key: TxV2OdKeys.beamKernelId) as String?;
+
+  @ignore
+  int? get beamAssetId =>
+      _getFromOtherData(key: TxV2OdKeys.beamAssetId) as int?;
+
+  /// Mirrors the Epic labels: the core's own status, in plain words.
+  String _beamStatusLabel(String Function() prettyConfirms) {
+    final incoming = type == TransactionType.incoming;
+    final self = type == TransactionType.sentToSelf;
+    final verb = incoming
+        ? "Receiving"
+        : self
+        ? "Sending to self"
+        : "Sending";
+    switch (beamTxStatus) {
+      case "canceled":
+        return "Cancelled";
+      case "failed":
+        return "Failed";
+      case "completed":
+        return incoming
+            ? "Received"
+            : self
+            ? "Sent to self"
+            : "Sent";
+      case "pending":
+        return "$verb (pending)";
+      case "inProgress":
+        return incoming
+            ? "Receiving (waiting for sender)"
+            : self
+            ? "Sending to self (in progress)"
+            : "Sending (waiting for receiver)";
+      case "registering":
+        return "$verb (adding to a block)";
+      case "confirming":
+        return "$verb ${prettyConfirms()}";
+      default:
+        return "$verb (in progress)";
+    }
+  }
+
   @override
   String toString() {
     return 'TransactionV2(\n'
@@ -421,4 +479,33 @@ abstract final class TxV2OdKeys {
   static const salviumTypeInt = "salviumTypeInt";
   static const salviumTypeString = "salviumTypeString";
   static const memo = "onChainMemo";
+
+  // BEAM (lib/wallets/beam/wallet/beam_tx_mapper.dart)
+  static const isBeamTransaction = "isBeamTransaction";
+
+  /// `BeamTxStatus.name`: pending, inProgress, canceled, completed, failed,
+  /// registering, confirming, unknown.
+  static const beamTxStatus = "beamTxStatus";
+
+  /// `BeamTxType.name`: simple, pushTransaction, contract, ...
+  static const beamTxType = "beamTxType";
+
+  /// Confidential Asset id; 0 is BEAM.
+  static const beamAssetId = "beamAssetId";
+
+  /// Kernel id: what the BEAM explorer looks a transaction up by.
+  static const beamKernelId = "beamKernelId";
+
+  /// The core's comment for the tx (sent by or to the other wallet).
+  static const beamComment = "beamComment";
+  static const beamFailureReason = "beamFailureReason";
+
+  /// The fee as the core reported it, raw groth (decimal string), also for
+  /// incoming txs where this wallet did not pay it.
+  static const beamFee = "beamFee";
+  static const beamConfirmations = "beamConfirmations";
+
+  /// Contract ids of a contract (dApp) transaction.
+  static const beamContractIds = "beamContractIds";
+  static const beamAppName = "beamAppName";
 }

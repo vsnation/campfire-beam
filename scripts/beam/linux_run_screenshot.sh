@@ -7,6 +7,7 @@
 #   SKIP_BUILD=1 scripts/beam/linux_run_screenshot.sh    # relaunch + reshoot only
 #   OUT_DIR=docs/beam/screenshots/my_change SHOT_NAME=x.png scripts/beam/linux_run_screenshot.sh
 #   RESET=1 scripts/beam/linux_run_screenshot.sh         # wipe cached volumes first
+#   STEPS_FILE=scripts/beam/docker/steps/x.sh ...        # then click/type/shoot steps
 #
 # Needs: docker (colima on this Mac), nothing else on the host. The host tree is
 # mounted read-only and copied into a named volume, so building here never touches
@@ -49,6 +50,7 @@ docker run --rm --platform "$PLATFORM" \
   -e SETTLE_SECS="${SETTLE_SECS:-6}" \
   -e TIMEOUT_SECS="${TIMEOUT_SECS:-240}" \
   -e SKIP_BUILD="${SKIP_BUILD:-0}" \
+  -e STEPS_FILE="${STEPS_FILE:-}" \
   "$IMAGE" bash /src/scripts/beam/docker/linux_build_and_shoot.sh
 
 echo "== screenshot: $OUT_DIR/${SHOT_NAME:-linux_first_screen.png}"

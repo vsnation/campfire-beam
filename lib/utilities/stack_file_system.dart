@@ -186,6 +186,20 @@ abstract class StackFileSystem {
     return dir;
   }
 
+  /// Root of the BEAM core's files: `wallets/<walletId>/wallet.db`, the
+  /// wallet-api run directory, the private node's `node/` and, in app
+  /// bundles, `bin/` (layout owned by `ProcessHost`, which makes this
+  /// directory and every one below it private to the user, 0700, before it
+  /// writes anything).
+  static Future<Directory> applicationBeamDirectory() async {
+    final root = await applicationRootDirectory();
+    final dir = Directory(path.join(root.path, "beam"));
+    if (!dir.existsSync()) {
+      await dir.create();
+    }
+    return dir;
+  }
+
   static Future<Directory> applicationXelisTableDirectory() async {
     final xelis = await applicationXelisDirectory();
     final dir = Directory(path.join(xelis.path, "table"));

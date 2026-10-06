@@ -73,6 +73,7 @@ import 'utilities/logger.dart';
 import 'utilities/prefs.dart';
 import 'utilities/stack_file_system.dart';
 import 'utilities/util.dart';
+import 'wallets/beam/wallet/beam_shutdown.dart';
 import 'wallets/crypto_currency/crypto_currency.dart';
 import 'wallets/isar/providers/all_wallets_info_provider.dart';
 import 'wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
@@ -702,6 +703,10 @@ class _MaterialAppWithThemeState extends ConsumerState<MaterialAppWithTheme>
 
       // await ref.read(pMwebService).shutdown();
       // Something like the above would probably be prudent to make.
+
+      // BEAM: stop wallet-api / beam-node children first, or exit(0) would
+      // orphan them (bounded, never blocks quitting).
+      await shutdownBeamChildren();
       exit(0);
     }
     return AppExitResponse.exit;

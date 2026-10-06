@@ -43,6 +43,7 @@ import '../../../wallets/crypto_currency/crypto_currency.dart';
 import '../../../wallets/crypto_currency/coins/ethereum.dart';
 import '../../../wallets/crypto_currency/coins/solana.dart';
 import '../../../wallets/isar/models/wallet_info.dart';
+import '../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../../wallets/wallet/impl/epiccash_wallet.dart';
 import '../../../wallets/wallet/impl/mimblewimblecoin_wallet.dart';
 import '../../../wallets/wallet/impl/xelis_wallet.dart';
@@ -57,6 +58,7 @@ import '../../../widgets/desktop/desktop_scaffold.dart';
 import '../../../widgets/desktop/primary_button.dart';
 import '../../../widgets/icon_widgets/clipboard_icon.dart';
 import '../../../widgets/icon_widgets/qrcode_icon.dart';
+import '../../../widgets/stack_dialog.dart';
 import '../../../widgets/table_view/table_view.dart';
 import '../../../widgets/table_view/table_view_cell.dart';
 import '../../../widgets/table_view/table_view_row.dart';
@@ -344,6 +346,11 @@ class _RestoreWalletViewState extends ConsumerState<RestoreWalletView> {
 
           // TODO: extract interface with isRestore param
           switch (wallet) {
+            case BeamWallet():
+              // recover() below builds wallet.db from the phrase
+              await wallet.init(isRestore: true);
+              break;
+
             case EpiccashWallet():
               await wallet.init(isRestore: true);
               break;
@@ -430,6 +437,15 @@ class _RestoreWalletViewState extends ConsumerState<RestoreWalletView> {
                 useSafeArea: false,
                 barrierDismissible: true,
                 builder: (context) {
+                  if (wallet is BeamWallet) {
+                    // A restored BEAM wallet finds its coins by scanning;
+                    // until then it shows 0, which must not look like loss.
+                    return const StackOkDialog(
+                      title: "Wallet restored",
+                      message: kBeamRestoreScanningMessage,
+                      maxWidth: 520,
+                    );
+                  }
                   return const RestoreSucceededDialog();
                 },
               );

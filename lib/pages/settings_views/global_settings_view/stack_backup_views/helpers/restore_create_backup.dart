@@ -54,6 +54,7 @@ import '../../../../../wallets/crypto_currency/intermediate/frost_currency.dart'
 import '../../../../../wallets/isar/models/frost_wallet_info.dart';
 import '../../../../../wallets/isar/models/wallet_info.dart';
 import '../../../../../wallets/wallet/impl/bitcoin_frost_wallet.dart';
+import '../../../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../../../../wallets/wallet/impl/epiccash_wallet.dart';
 import '../../../../../wallets/wallet/impl/mimblewimblecoin_wallet.dart';
 import '../../../../../wallets/wallet/impl/xelis_wallet.dart';
@@ -479,6 +480,11 @@ abstract class SWB {
       );
 
       switch (wallet) {
+        case BeamWallet():
+          // recover() builds wallet.db from the phrase
+          await wallet.init(isRestore: true);
+          break;
+
         case EpiccashWallet():
           await wallet.init(isRestore: true);
           break;
