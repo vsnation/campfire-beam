@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app_config.dart';
 import '../../themes/stack_colors.dart';
+import '../../utilities/beam_app_identity.dart';
 import '../../utilities/text_styles.dart';
 import '../../widgets/app_icon.dart';
 import '../../widgets/custom_buttons/app_bar_icon_button.dart';
@@ -65,7 +66,7 @@ class _ForgotPasswordDesktopViewState
                   height: 42,
                 ),
                 Text(
-                  AppConfig.appName,
+                  BeamAppIdentity.displayName,
                   style: STextStyles.desktopH1(context),
                 ),
                 const SizedBox(

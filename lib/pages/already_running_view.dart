@@ -19,6 +19,7 @@ import '../app_config.dart';
 import '../themes/stack_colors.dart';
 import '../themes/theme_providers.dart';
 import '../themes/theme_service.dart';
+import '../utilities/beam_app_identity.dart';
 import '../utilities/stack_file_system.dart';
 import '../utilities/text_styles.dart';
 import '../utilities/util.dart';
@@ -57,7 +58,7 @@ class _AlreadyRunningAppState extends ConsumerState<AlreadyRunningApp> {
     final colorScheme = ref.watch(colorProvider.state).state;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: AppConfig.appName,
+      title: BeamAppIdentity.displayName,
       theme: ThemeData(
         extensions: [colorScheme],
         fontFamily: GoogleFonts.inter().fontFamily,
@@ -117,7 +118,7 @@ class AlreadyRunningView extends ConsumerWidget {
                       ),
                       const Spacer(flex: 1),
                       Text(
-                        AppConfig.appName,
+                        BeamAppIdentity.displayName,
                         textAlign: TextAlign.center,
                         style: STextStyles.pageTitleH1(context),
                       ),
@@ -157,7 +158,7 @@ class AlreadyRunningView extends ConsumerWidget {
                         ),
                         const Spacer(flex: 42),
                         Text(
-                          AppConfig.appName,
+                          BeamAppIdentity.displayName,
                           textAlign: TextAlign.center,
                           style: STextStyles.pageTitleH1(
                             context,

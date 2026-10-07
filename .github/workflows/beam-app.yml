@@ -1,6 +1,6 @@
 name: BEAM app
 
-# Builds Campfire for BEAM for Linux x86_64 and Windows x64 with the BEAM core
+# Builds BEAM Campfire for Linux x86_64 and Windows x64 with the BEAM core
 # from a "BEAM core" pre-release (beam-core.yml). Before packaging, each job runs
 # the app's own host (ProcessHost) against that core and BEAM mainnet with a
 # throwaway wallet. The core's SHA-256 must equal the pins in
@@ -12,11 +12,11 @@ on:
       version:
         description: 'App version (e.g. 1.0.0)'
         required: true
-        default: '1.0.0'
+        default: '1.0.1'
       build_number:
         description: 'Build number'
         required: true
-        default: '8'
+        default: '9'
       core_tag:
         description: 'Pre-release holding the BEAM core binaries'
         required: true
@@ -24,7 +24,7 @@ on:
       release_tag:
         description: 'App release to add the packages to (empty: artifacts only)'
         required: false
-        default: 'beam-v1.0.0'
+        default: 'beam-v1.0.1'
 
 permissions:
   contents: read
@@ -67,7 +67,7 @@ jobs:
           grep -E '[ *]linux-x86_64-' SHA256SUMS.txt | sha256sum -c -
           for b in wallet-api beam-node beam-wallet; do mv "linux-x86_64-$b" "$b"; chmod 0755 "$b"; done
 
-      - name: Configure Campfire for BEAM
+      - name: Configure BEAM Campfire
         run: |
           cd scripts
           echo "yes" | ./build_app.sh -v "${{ inputs.version }}" -b "${{ inputs.build_number }}" -p linux -a campfire -d -s
@@ -91,7 +91,7 @@ jobs:
 
       - name: Package
         run: |
-          name="Campfire-BEAM-${{ inputs.version }}-linux-x86_64"
+          name="BEAM-Campfire-${{ inputs.version }}-linux-x86_64"
           mkdir -p dist
           cp -r build/linux/x64/release/bundle "dist/$name"
           tar -czf "dist/$name.tar.gz" -C dist "$name"
@@ -129,7 +129,7 @@ jobs:
           grep -E '[ *]windows-x86_64-' SHA256SUMS.txt | sha256sum -c -
           for b in wallet-api beam-node beam-wallet; do mv "windows-x86_64-$b.exe" "$b.exe"; done
 
-      - name: Configure Campfire for BEAM
+      - name: Configure BEAM Campfire
         run: |
           cd scripts
           echo "yes" | ./build_app.sh -v "${{ inputs.version }}" -b "${{ inputs.build_number }}" -p windows -a campfire -d -s
@@ -183,7 +183,7 @@ jobs:
       - name: Package
         shell: pwsh
         run: |
-          $name = "Campfire-BEAM-${{ inputs.version }}-windows-x86_64"
+          $name = "BEAM-Campfire-${{ inputs.version }}-windows-x86_64"
           New-Item -ItemType Directory -Force dist | Out-Null
           Copy-Item -Recurse "build/windows/x64/runner/Release" "dist/$name"
           Compress-Archive -Path "dist/$name" -DestinationPath "dist/$name.zip"
@@ -214,11 +214,11 @@ jobs:
         run: |
           cd dist
           gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p SHA256SUMS.txt
-          for f in Campfire-BEAM-*; do
+          for f in BEAM-Campfire-*; do
             grep -v " $f\$" SHA256SUMS.txt > s.tmp || true
             sha256sum "$f" >> s.tmp
             mv s.tmp SHA256SUMS.txt
           done
           sort -k2 -o SHA256SUMS.txt SHA256SUMS.txt
           cat SHA256SUMS.txt
-          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber Campfire-BEAM-* SHA256SUMS.txt
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber BEAM-Campfire-* SHA256SUMS.txt

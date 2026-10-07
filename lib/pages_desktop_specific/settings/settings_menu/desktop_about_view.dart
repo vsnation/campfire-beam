@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app_config.dart';
 import '../../../themes/stack_colors.dart';
+import '../../../utilities/beam_app_identity.dart';
 import '../../../utilities/git_status.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../wallets/crypto_currency/crypto_currency.dart';
@@ -62,7 +63,7 @@ class DesktopAboutView extends ConsumerWidget {
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               Text(
-                                AppConfig.appName,
+                                BeamAppIdentity.displayName,
                                 style: STextStyles.desktopH3(context),
                                 textAlign: TextAlign.start,
                               ),

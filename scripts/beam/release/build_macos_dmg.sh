@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds Campfire for BEAM for macOS (Apple Silicon) from the COMMITTED tree and
+# Builds BEAM Campfire for macOS (Apple Silicon) from the COMMITTED tree and
 # packages a DMG.
 #
 #   scripts/beam/release/build_macos_dmg.sh [version] [build-number]
@@ -33,8 +33,9 @@ scripts/beam/core/stage_binaries.sh macos
 (cd scripts && ./prebuild.sh) > /dev/null
 "$FLUTTER" build macos --release
 
-APP="$(ls -d build/macos/Build/Products/Release/*.app | head -1)"
-[[ -d "$APP" ]] || { echo "no .app produced"; exit 1; }
+APP="build/macos/Build/Products/Release/BEAM Campfire.app"
+# Never "Campfire.app": dragged to /Applications it would replace Firo's Campfire.
+[[ -d "$APP" ]] || { echo "no BEAM Campfire.app produced:"; ls build/macos/Build/Products/Release/; exit 1; }
 log "re-signing $(basename "$APP") ad hoc, without the sandbox"
 codesign --force --deep --sign - \
   --entitlements scripts/beam/release/campfire_beam_unsandboxed.entitlements "$APP"
@@ -50,8 +51,8 @@ fi
 
 mkdir -p dist && rm -rf dist/stage && mkdir dist/stage
 cp -R "$APP" dist/stage/ && ln -s /Applications dist/stage/Applications
-DMG="dist/Campfire-BEAM-${VERSION}-${BUILD}-macos-arm64.dmg"
+DMG="dist/BEAM-Campfire-${VERSION}-${BUILD}-macos-arm64.dmg"
 rm -f "$DMG"
-hdiutil create -quiet -volname "Campfire" -srcfolder dist/stage -ov -format UDZO "$DMG"
+hdiutil create -quiet -volname "BEAM Campfire" -srcfolder dist/stage -ov -format UDZO "$DMG"
 rm -rf dist/stage
 log "DMG: $REL/$DMG ($(du -h "$DMG" | cut -f1)), sha256 $(shasum -a 256 "$DMG" | cut -d' ' -f1)"

@@ -66,6 +66,7 @@ import 'services/tor_service.dart';
 import 'services/trade_service.dart';
 import 'themes/theme_providers.dart';
 import 'themes/theme_service.dart';
+import 'utilities/beam_app_identity.dart';
 import 'utilities/constants.dart';
 import 'utilities/enums/backup_frequency_type.dart';
 import 'utilities/flutter_secure_storage_interface.dart';
@@ -114,7 +115,7 @@ void main(List<String> args) async {
   }
 
   if (Util.isDesktop && !Platform.isIOS) {
-    setWindowTitle(AppConfig.appName);
+    setWindowTitle(BeamAppIdentity.displayName);
     setWindowMinSize(const Size(1220, 100));
     setWindowMaxSize(Size.infinite);
 
@@ -206,7 +207,7 @@ void main(List<String> args) async {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    AppConfig.appName,
+                    BeamAppIdentity.displayName,
                     textAlign: TextAlign.center,
                     style: GoogleFonts.inter(
                       fontSize: 20,
@@ -799,7 +800,7 @@ class _MaterialAppWithThemeState extends ConsumerState<MaterialAppWithTheme>
     return MaterialApp(
       key: GlobalKey(),
       navigatorKey: ref.read(pNavKey),
-      title: AppConfig.appName,
+      title: BeamAppIdentity.displayName,
       onGenerateRoute: RouteGenerator.generateRoute,
       // Above the navigator, so no navigation can remove it: wrapping the
       // first route, it was disposed by the desktop login's

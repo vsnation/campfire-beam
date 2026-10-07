@@ -1,6 +1,6 @@
-# Campfire for BEAM
+# BEAM Campfire
 
-Campfire for BEAM is [Campfire](https://github.com/firoorg/campfire) (a white-label build of
+BEAM Campfire is [Campfire](https://github.com/firoorg/campfire) (a white-label build of
 [Stack Wallet](https://github.com/cypherstack/stack_wallet)) converted from Firo to
 [BEAM Privacy](https://beam.mw): Campfire's design, philosophy and security, with everything BEAM's
 wallets can do. It runs BEAM's own HF6-capable core (`wallet-api` 7.5.14493) as a local child process
@@ -9,7 +9,7 @@ bound to 127.0.0.1, so keys never leave the device.
 **Status: public beta.** Tested on BEAM mainnet with small amounts. Use it with funds you can afford to
 lose while it is in beta.
 
-![Campfire for BEAM on macOS: wallet home](docs/screenshots/desktop-wallet.png)
+![BEAM Campfire on macOS: wallet home](docs/screenshots/desktop-wallet.png)
 
 ## Download
 
@@ -19,10 +19,10 @@ is listed in `SHA256SUMS.txt`; check it before you install:
 
 ```bash
 shasum -a 256 -c SHA256SUMS.txt --ignore-missing      # macOS / Linux
-certutil -hashfile Campfire-BEAM-<version>-windows-x86_64.zip SHA256   # Windows
+certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
 ```
 
-- **macOS:** open the DMG and drag Campfire to Applications. The app is not notarized yet, so the
+- **macOS:** open the DMG and drag BEAM Campfire to Applications. The app is not notarized yet, so the
   first launch needs right-click → Open.
 - **Android:** open the APK and allow installing from this source. The signing certificate's SHA-256 is
   `A6:D8:81:7E:AB:D6:A5:19:F4:77:88:70:54:0A:0D:96:72:A1:BA:46:6B:44:7E:7E:06:C5:11:B0:AD:C0:E9:9F`.
@@ -30,7 +30,8 @@ certutil -hashfile Campfire-BEAM-<version>-windows-x86_64.zip SHA256   # Windows
   24.04, Fedora 39, Debian 13, Mint 22 or newer) and a GTK 3 desktop.
 - **Windows:** unzip and run `campfirebeam.exe`. It is not code-signed yet, so SmartScreen may ask:
   More info → Run anyway.
-- It installs beside the original Campfire (app id `com.vsnation.campfirebeam`) and never touches it.
+- It installs beside the original Campfire as its own app, "BEAM Campfire" (app id
+  `com.vsnation.campfirebeam`), and never touches Campfire or its data.
 
 ## Screenshots
 

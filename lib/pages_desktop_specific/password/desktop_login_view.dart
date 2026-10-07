@@ -22,6 +22,7 @@ import '../../providers/desktop/storage_crypto_handler_provider.dart';
 import '../../providers/global/secure_store_provider.dart';
 import '../../themes/stack_colors.dart';
 import '../../utilities/assets.dart';
+import '../../utilities/beam_app_identity.dart';
 import '../../utilities/constants.dart';
 import '../../utilities/flutter_secure_storage_interface.dart';
 import '../../utilities/logger.dart';
@@ -199,7 +200,7 @@ class _DesktopLoginViewState extends ConsumerState<DesktopLoginView> {
                   height: 42,
                 ),
                 Text(
-                  AppConfig.appName,
+                  BeamAppIdentity.displayName,
                   style: STextStyles.desktopH1(context),
                 ),
                 const SizedBox(

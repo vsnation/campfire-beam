@@ -20,6 +20,7 @@ import '../providers/desktop/current_desktop_menu_item.dart';
 import '../providers/providers.dart';
 import '../themes/stack_colors.dart';
 import '../utilities/assets.dart';
+import '../utilities/beam_app_identity.dart';
 import '../utilities/text_styles.dart';
 import '../widgets/beam/sidebar/beam_sidebar.dart';
 import '../widgets/beam/quit/beam_quit_guard.dart';
@@ -165,7 +166,7 @@ class _DesktopMenuState extends ConsumerState<DesktopMenu> {
               child: SizedBox(
                 height: 28,
                 child: Text(
-                  AppConfig.appName,
+                  BeamAppIdentity.displayName,
                   style: STextStyles.desktopH2(
                     context,
                   ).copyWith(fontSize: 18, height: 23.4 / 18),

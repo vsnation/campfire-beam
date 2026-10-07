@@ -4,11 +4,13 @@ set -x -e
 
 # Configure files for Campfire with BEAM as its only coin.
 
-# The user sees Campfire: same name, logo and branding. The technical
-# identifiers below (app id on every platform, iOS included; basic name;
-# _appDataDirName) are new, so this build never opens, updates or shares data
-# with a real Campfire install on the same machine.
-export NEW_NAME="Campfire"
+# Campfire's logo and branding, named "BEAM Campfire" (owner, 2026-10-07): a
+# second "Campfire.app" would replace Firo's Campfire in /Applications. The
+# technical identifiers below (app id on every platform, iOS included; basic
+# name; _appDataDirName) are new too, so this build never opens, updates or
+# shares data with a real Campfire install on the same machine. _prefix below
+# stays "Campfire": code branches on AppConfig.appName == "Campfire".
+export NEW_NAME="BEAM Campfire"
 export NEW_APP_ID="com.vsnation.campfirebeam"
 export NEW_APP_ID_CAMEL="com.vsnation.campfirebeam"
 export NEW_APP_ID_SNAKE="com.vsnation.campfirebeam"

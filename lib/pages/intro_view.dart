@@ -20,6 +20,7 @@ import '../app_config.dart';
 import '../pages_desktop_specific/password/create_password_view.dart';
 import '../themes/stack_colors.dart';
 import '../themes/theme_providers.dart';
+import '../utilities/beam_app_identity.dart';
 import '../utilities/prefs.dart';
 import '../utilities/text_styles.dart';
 import '../utilities/util.dart';
@@ -156,7 +157,7 @@ class AppNameText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      AppConfig.appName,
+      BeamAppIdentity.displayName,
       textAlign: TextAlign.center,
       style:
           !isDesktop
