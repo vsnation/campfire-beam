@@ -51,11 +51,21 @@ abstract final class NotificationApi {
     }
 
     const android = AndroidInitializationSettings('app_icon_alpha');
-    const iOS = DarwinInitializationSettings();
+    // Campfire for BEAM asks for permission the first time it has something
+    // to show (a payment arrived, see [_askPermissionOnce]), not at launch,
+    // before the user has done anything.
+    final darwin = BeamAppIdentity.isActive
+        ? const DarwinInitializationSettings(
+            requestAlertPermission: false,
+            requestBadgePermission: false,
+            requestSoundPermission: false,
+          )
+        : const DarwinInitializationSettings();
+    final iOS = darwin;
     const linux = LinuxInitializationSettings(
       defaultActionName: "temporary_stack_wallet",
     );
-    const macOS = DarwinInitializationSettings();
+    final macOS = darwin;
     final (windowsAppUserModelId, windowsGuid) = switch (AppConfig.appName) {
       // Same name as Campfire, but not the same Windows notification identity.
       "Campfire" when BeamAppIdentity.isActive => (
@@ -110,12 +120,44 @@ abstract final class NotificationApi {
   static late Prefs prefs;
   static late NotificationsService notificationsService;
 
+  static Future<void>? _asking;
+
+  /// Asks once per run, right before the first notification, in the BEAM
+  /// build (others asked at [init]). Never throws: a refusal just means no
+  /// banner; the notification still lands in Campfire's own list.
+  static Future<void> _askPermissionOnce() => _asking ??= () async {
+    try {
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+            MacOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >()
+          ?.requestPermissions(alert: true, badge: true, sound: true);
+      await _notifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.requestNotificationsPermission();
+    } catch (e, s) {
+      Logging.instance.w(
+        "Notification permission request failed",
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }();
+
   static Future<int> _showOsNotification({
     required String title,
     required String body,
     String? payload,
   }) async {
     await init();
+    if (BeamAppIdentity.isActive) await _askPermissionOnce();
     final id = await prefs.incrementCurrentNotificationIndex();
     await _notifications.show(
       id: id,
