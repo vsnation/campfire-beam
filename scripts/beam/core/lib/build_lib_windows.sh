@@ -56,9 +56,11 @@ cmake_args=(
     -DOPENSSL_ROOT_DIR="$(win "$DEPS/libs/openssl")"
 )
 # MSVC treats C4996 ("strncpy may be unsafe") as an error under BEAM's /WX;
-# the calls are bounded. Set through CL so no flag of BEAM's own is replaced
-# and the macOS/Android/Linux builds stay byte-identical.
-export CL="${CL:-} /D_CRT_SECURE_NO_WARNINGS"
+# the calls are bounded. Only that warning is turned off, through CL, so no
+# flag of BEAM's own is replaced (defining _CRT_SECURE_NO_WARNINGS clashes
+# with 3rdparty/uint256.cpp, which defines it itself) and the
+# macOS/Android/Linux builds stay byte-identical.
+export CL="${CL:-} /wd4996"
 log "configuring"
 cmake "${cmake_args[@]}" > "${LIB_LOGS}/configure-windows.log" 2>&1 \
     || { tail -80 "${LIB_LOGS}/configure-windows.log"; die "cmake configure failed"; }

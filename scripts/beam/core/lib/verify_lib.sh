@@ -61,7 +61,12 @@ for m in re.finditer(rb"[\x20-\x7e]{4,}", open(sys.argv[1], "rb").read()):
 common_strings() {
     local s; s="$(strings_of "$LIB")"
     if grep -qF "$HOME" <<< "$s"; then fail_ "no home directory embedded"; else pass_ "no home directory embedded"; fi
-    if grep -qi -- "$account" <<< "$s"; then fail_ "no account name embedded"; else pass_ "no account name embedded"; fi
+    # The maintainer's account name is personal; a CI runner's ("runner")
+    # is generic and occurs in ordinary strings. The home paths are checked
+    # either way.
+    if [[ -n "${GITHUB_ACTIONS:-}" ]]; then
+        pass_ "account name check skipped on CI (account '$account' is not personal)"
+    elif grep -qi -- "$account" <<< "$s"; then fail_ "no account name embedded"; else pass_ "no account name embedded"; fi
     if grep -qE '/Users/|/home/[a-z]' <<< "$s"; then fail_ "no /Users or /home paths embedded: $(grep -m3 -E '/Users/|/home/[a-z]' <<< "$s" | tr '\n' ' ')"; else pass_ "no /Users or /home paths embedded"; fi
     local needle
     for needle in "beam-7.5.14493-campfire" "7.5.14493" "privileged_shader_sha256" \
