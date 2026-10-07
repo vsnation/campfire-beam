@@ -1,0 +1,42 @@
+Campfire wasm patch 0103: connect only to the configured node.
+
+NodeNetwork::tryToConnect added BEAM's built-in peers (default_peers.cpp:
+eu-nodes / us-nodes.mainnet.beam.mw:8100) to the user's node on every connect
+and reconnect, and fell back to peers advertised by nodes when the configured
+name did not resolve. In the browser that dialled servers the user never chose
+(wss://...:8100, measured: 18 attempts in 80 s), each of which would learn the
+user's IP address. With a node configured, it is now the only node; the
+defaults and the advertised fallbacks are used only when no node is given.
+Applied to the wasm tree only (the desktop/Android cores are unchanged).
+
+--- a/wallet/core/node_network.cpp
++++ b/wallet/core/node_network.cpp
+@@ -44,8 +44,15 @@
+         }
+ 
+         m_timer->start(RECONNECTION_TIMEOUT, false, [this]() {
+-            auto nodeAddresses = getDefaultPeers();
+-            nodeAddresses.push_back(m_nodeAddress);
++            // Campfire: a configured node is the only node. Adding BEAM's
++            // built-in peers (default_peers.cpp) made the browser dial
++            // eu-nodes/us-nodes:8100 on every (re)connect, handing the user's IP
++            // address to servers they never chose. Defaults only without a node.
++            std::vector<std::string> nodeAddresses;
++            if (m_nodeAddress.empty())
++                nodeAddresses = getDefaultPeers();
++            else
++                nodeAddresses.push_back(m_nodeAddress);
+             for (const auto& addr : nodeAddresses)
+             {
+                 io::Address nodeAddr;
+@@ -67,7 +74,9 @@
+             }
+ 
+             BEAM_LOG_WARNING() << "User-specified nodes cannot be resolved.";
+-            if (!m_fallbackAddresses.empty())
++            // Campfire: the fallback list holds peers that nodes advertised;
++            // with a configured node, keep retrying that node instead.
++            if (!m_fallbackAddresses.empty() && m_nodeAddress.empty())
+             {
+                 BEAM_LOG_WARNING() << "Attempting to connect to fallback nodes";
+                 // try to solve DNS problem with known ip addresses

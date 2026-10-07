@@ -1,0 +1,22 @@
+Campfire wasm patch 0104: ev_connection_changed in the wasm wallet API.
+
+WasmWalletClient::ExecuteAPIRequest created the wallet API without the node
+network, so V61Api::fillConnectionState had a null _network and
+ev_connection_changed could not be reported (it throws). Pass the client's
+NodeNetwork as wallet-api does; the call runs on the wallet thread after the
+client has created it.
+
+--- a/wasmclient/wasmclient.cpp
++++ b/wasmclient/wasmclient.cpp
+@@ -510,6 +510,11 @@
+                 ApiInitData initData;
+                 initData.walletDB = m_Client->GetWalletDB();
+                 initData.wallet = m_Client->getWallet();
++                // Campfire: without the node network the API cannot report
++                // ev_connection_changed (V61Api::fillConnectionState throws on a
++                // null _network). wallet-api passes it; this runs on the wallet
++                // thread, after the client created its NodeNetwork.
++                initData.nodeNetwork = m_Client->getNodeNetwork();
+                 m_WalletApi = IWalletApi::CreateInstance(ApiVerCurrent, *this, initData);
+             }
+ 

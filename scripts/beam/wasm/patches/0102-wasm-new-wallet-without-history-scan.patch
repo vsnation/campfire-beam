@@ -1,0 +1,66 @@
+Campfire wasm patch 0102: let the app start a NEW wallet without scanning history.
+
+WasmWalletClient::StartWallet always called enableBodyRequests(true), so every
+wallet on a public node downloaded and scanned every block body since genesis
+(about 4.07 M blocks, measured ~1,050 blocks/s in Chrome: over an hour) unless
+BEAM's 330 MB recovery snapshot was imported first. A freshly generated seed
+has nothing to find in the past, and regular (SBBS) payments confirm their own
+outputs through UTXO proofs, so the desktop wallet-api runs such wallets with
+body requests off (--request_bodies defaults to false).
+
+Adds setBodyRequests(bool) (JS: client.setBodyRequests(false) before
+startWallet()). The default stays true, so restore and existing callers behave
+exactly as upstream. What a wallet without scanning cannot see: payments to
+offline / max-privacy / public addresses (create_address refuses those types
+with "Wallet must be connected to own node or mobile node protocol should be
+turned on"), and coins received or spent by another copy of the same seed.
+Importing the recovery snapshot later (with body requests on) brings all of
+that back.
+
+--- a/wasmclient/wasmclient.cpp
++++ b/wasmclient/wasmclient.cpp
+@@ -482,6 +482,19 @@
+         m_ApproveContractInfoHandler = std::make_unique<val>(std::move(handler));
+     }
+ 
++    // Campfire: block-body scanning ("mobile node") is what lets a wallet on a
++    // public node find coins it did not negotiate itself: a restored seed's
++    // history, offline / max-privacy receipts, coins moved by another copy of
++    // the seed. A freshly generated seed has no history, and regular (SBBS)
++    // payments are confirmed through their own UTXO proofs, so for a new
++    // wallet the app can switch scanning off (as wallet-api does by default)
++    // instead of reading every block since genesis. Call before startWallet().
++    void SetBodyRequests(bool enable)
++    {
++        AssertMainThread();
++        m_BodyRequests = enable;
++    }
++
+     void ExecuteAPIRequest(const std::string& request)
+     {
+         AssertMainThread();
+@@ -554,7 +567,7 @@
+             {
+                 m_Client->getAsync()->importRecovery(std::move(m_CurrentRecoveryFile)); // m_CurrentRecoveryFile should be cleared 
+             }
+-            m_Client->getAsync()->enableBodyRequests(true);
++            m_Client->getAsync()->enableBodyRequests(m_BodyRequests); // Campfire: was always true
+             m_Client->start({}, true, additionalTxCreators);
+         }
+         catch (const std::exception& ex)
+@@ -1025,6 +1038,7 @@
+     WalletClient2::Ptr m_Client;
+     IWalletApi::Ptr m_WalletApi;
+     bool m_Headless = false;
++    bool m_BodyRequests = true; // Campfire: upstream behaviour unless the app opts out
+     std::string m_CurrentRecoveryFile;
+ };
+ 
+@@ -1055,6 +1069,7 @@
+         .function("setSyncHandler", &WasmWalletClient::SetSyncHandler)
+         .function("setApproveSendHandler", &WasmWalletClient::SetApproveSendHandler)
+         .function("setApproveContractInfoHandler", &WasmWalletClient::SetApproveContractInfoHandler)
++        .function("setBodyRequests", &WasmWalletClient::SetBodyRequests)
+         .function("createAppAPI", &WasmWalletClient::CreateAppAPI)
+         .function("createAppAPI", &WasmWalletClient::CreateAppAPI2)
+         .function("createAppAPI", &WasmWalletClient::CreateAppAPI3)

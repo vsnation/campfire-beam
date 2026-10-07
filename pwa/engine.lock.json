@@ -1,0 +1,17 @@
+{
+  "comment": "BEAM's WebAssembly wallet client (BeamMW/beam wasmclient/), built by scripts/beam/wasm/build_wasm.sh from tag beam-7.5.14493 (HF6) with the core patches and the wasm patches listed here. tools/stage_engine.mjs copies these into vendor/engine/ only if every hash matches. The binaries are not committed.",
+  "beam_tag": "beam-7.5.14493",
+  "build_script": "scripts/beam/wasm/build_wasm.sh",
+  "rules_signature_contains": "3928666-96df3f33ee02ad9e",
+  "files": {
+    "wasm-client.js": "5df3555e963f63ed907ae4dde3a6515a4e034b8176e3dbd7b8f31407a751b147",
+    "wasm-client.wasm": "93e24dfb718883d5e5c06ff229ca84f9a5083b45d446a96616e380578c3fb176",
+    "wasm-client.worker.js": "eff6668e83689221c3515bd0b29bf9db9a1c8067a73213be4abe142f396a4e0e"
+  },
+  "patches": [
+    "scripts/beam/wasm/patches/0101-wasm-no-password-in-log.patch",
+    "scripts/beam/wasm/patches/0102-wasm-new-wallet-without-history-scan.patch",
+    "scripts/beam/wasm/patches/0103-wasm-configured-node-only.patch",
+    "scripts/beam/wasm/patches/0104-wasm-connection-events.patch"
+  ]
+}
