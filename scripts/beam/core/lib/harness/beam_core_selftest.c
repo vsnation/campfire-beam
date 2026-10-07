@@ -1077,6 +1077,30 @@ int main(int argc, char** argv)
             inst_args(&X, pass, directNode, NULL, busyPort2, NULL);
             inst_start(&X);
             CHECK(X.handle == BEAM_WALLET_API_START_NO_LISTEN, "start on a port in use -> %lld (NO_LISTEN)", (long long)X.handle);
+            {
+                // The tracked start names the instance even when it fails, so the
+                // caller can wait for it to let go of wallet.db.
+                int64_t tracked = 0;
+                inst_args(&X, pass, directNode, NULL, busyPort2, NULL);
+                int64_t trc = beam_wallet_api_start_tracked(X.argc, X.argv, &tracked);
+                unlink(X.cfg);
+                unlink(X.acl);
+                CHECK(trc == BEAM_WALLET_API_START_NO_LISTEN && tracked > 0,
+                      "start_tracked on a port in use -> %lld, instance %lld", (long long)trc, (long long)tracked);
+                int tes = 0, tst = BEAM_WALLET_API_INSTANCE_UNKNOWN;
+                for (int i = 0; i < 300; i++)
+                {
+                    tst = beam_wallet_api_instance_state(tracked, &tes);
+                    if (tst == BEAM_WALLET_API_INSTANCE_STOPPED || tst == BEAM_WALLET_API_INSTANCE_FAILED)
+                        break;
+                    usleep(100 * 1000);
+                }
+                CHECK(tst == BEAM_WALLET_API_INSTANCE_STOPPED || tst == BEAM_WALLET_API_INSTANCE_FAILED,
+                      "that instance ends (state %d)", tst);
+                int64_t none = -7;
+                CHECK(beam_wallet_api_start_tracked(0, NULL, &none) == BEAM_WALLET_API_START_FAILED && none == 0,
+                      "start_tracked with no arguments -> START_FAILED, instance 0");
+            }
             close(busy2);
             inst_args(&X, "definitely-not-the-password", directNode, NULL, 0, NULL);
             inst_start(&X);

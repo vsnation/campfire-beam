@@ -136,6 +136,14 @@ BEAM_CORE_API int beam_wallet_api_is_running(void);
 // UI thread. argv is copied. Secrets do not belong on it (--config_file, as now).
 BEAM_CORE_API int64_t beam_wallet_api_start(int argc, char** argv);
 
+// beam_wallet_api_start(), and *instance (if instance is not NULL) receives the
+// instance's handle whenever an instance was created, 0 otherwise: also when the
+// result is negative. An instance that did not reach its server (TIMEOUT,
+// NO_LISTEN) may not have ended yet and may still hold wallet.db open; follow it
+// with beam_wallet_api_instance_state() until it has ended before anything opens
+// that wallet again.
+BEAM_CORE_API int64_t beam_wallet_api_start_tracked(int argc, char** argv, int64_t* instance);
+
 // Asks the instance to stop and returns at once. Its state goes STOPPING, then
 // STOPPED once wallet.db is closed. Safe from any thread; repeated calls and
 // unknown or ended handles are no-ops.

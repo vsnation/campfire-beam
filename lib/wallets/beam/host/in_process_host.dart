@@ -114,7 +114,7 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
   /// library is loaded. Null on iOS and before the first operation.
   BeamCoreIntegrated? get integratedCore {
     final lib = _library;
-    return lib is FfiBeamCoreLibrary ? lib.integrated : null;
+    return lib is BeamCoreIntegratedSource ? lib.integrated : null;
   }
 
   /// How long wallet-api may take to listen and answer `get_version`.
@@ -147,6 +147,11 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
 
   /// Wallet directories with an operation or a session in progress (R8).
   static final Set<String> _busy = {};
+
+  /// Wallet directories still claimed by a wallet-api instance whose start
+  /// failed but which has not ended yet (a timed-out one may hold wallet.db
+  /// open). They stay in [_busy] until it ends.
+  static final Set<String> _lingering = {};
 
   /// Whether the core's rules were checked in this process.
   static bool _consensusChecked = false;
@@ -189,7 +194,9 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
       // One logger for wallet-api and the node: warnings and errors, in the
       // BEAM folder's run/logs (0700, files 0600).
       final core = _core();
-      final integrated = core is FfiBeamCoreLibrary ? core.integrated : null;
+      final integrated = core is BeamCoreIntegratedSource
+          ? core.integrated
+          : null;
       integrated?.initLogging(logDir: logsDir, consoleLevel: 4, fileLevel: 4);
     }
     final removed = await InProcessFiles.sweep(runDir);
@@ -436,7 +443,7 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
         }
       }
     } catch (_) {
-      _busy.remove(dir);
+      if (!_lingering.contains(dir)) _busy.remove(dir);
       rethrow;
     }
   }
@@ -634,15 +641,31 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
         final previousTurn = _startTurn;
         _startTurn = turn.future;
         await previousTurn;
-        final int handle;
+        final ({int result, int instance}) launch;
         try {
-          previousDir = setCurrentDirectory(runDir);
-          handle = await integrated.startInstance(args);
+          final cwdBefore = setCurrentDirectory(runDir);
+          previousDir = cwdBefore;
+          final countBefore = integrated.instanceCount();
+          launch = await integrated.startInstance(args);
+          setCurrentDirectory(cwdBefore);
+          previousDir = null;
+          // Still in this start's turn, so the instance count is ours to
+          // read: nothing opens this wallet again (another port, another
+          // node) while the instance of a failed start may hold wallet.db.
+          if (launch.result <= 0) {
+            await _settleFailedStart(
+              integrated,
+              walletDir,
+              launch.instance,
+              countBefore: countBefore,
+            );
+          }
         } finally {
           if (previousDir != null) setCurrentDirectory(previousDir);
           previousDir = null;
           turn.complete();
         }
+        final handle = launch.result;
         if (handle <= 0) {
           if (handle == BeamCoreInstance.noListen) {
             throw const _InProcessPortTaken();
@@ -750,6 +773,59 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
     }
   }
 
+  /// After a start that did not reach its server: waits up to [stopTimeout]
+  /// (asking it to stop meanwhile) for the instance it created to end, so
+  /// that nothing opens wallet.db next to it. One still going after that
+  /// keeps [walletDir] claimed ([_lingering]) until it ends, and the start
+  /// fails with [BeamHostError.walletInUse].
+  ///
+  /// [instance] is 0 for a core before `beam_wallet_api_start_tracked`: then
+  /// the instance is recognised by [countBefore] (starts take turns, and this
+  /// runs within the start's turn), and one that does not end keeps the
+  /// wallet claimed until the app restarts, because once the turn is over
+  /// the count no longer says which instance is which.
+  Future<void> _settleFailedStart(
+    BeamCoreIntegrated core,
+    String walletDir,
+    int instance, {
+    required int countBefore,
+  }) async {
+    final bool Function() ended = instance > 0
+        ? () => BeamCoreInstance.hasEnded(core.instanceState(instance).state)
+        : () => core.instanceCount() <= countBefore;
+    void stop() {
+      if (instance > 0) core.stopInstance(instance);
+    }
+
+    final deadline = DateTime.now().add(stopTimeout);
+    while (!ended()) {
+      stop();
+      if (DateTime.now().isAfter(deadline)) {
+        _lingering.add(walletDir);
+        _log(
+          'wallet-api of a failed start has not stopped within '
+          '${stopTimeout.inSeconds} s; it keeps the wallet until it does',
+        );
+        if (instance > 0) {
+          unawaited(() async {
+            while (!ended()) {
+              stop();
+              await Future<void>.delayed(const Duration(milliseconds: 250));
+            }
+            _lingering.remove(walletDir);
+            _busy.remove(walletDir);
+            _log('wallet-api of a failed start has stopped');
+          }());
+        }
+        throw const BeamHostException(
+          BeamHostError.walletInUse,
+          'wallet-api of a failed start still has this wallet open',
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+  }
+
   /// Completes with an instance's exit status once it has ended (polled:
   /// the library keeps its state for the life of the process).
   static Future<int> _instanceExit(
@@ -803,6 +879,12 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
       return const BeamHostException(
         BeamHostError.walletInUse,
         'Another BEAM wallet is open; this device runs one at a time',
+      );
+    }
+    if (code == BeamCoreInstance.timeout) {
+      return BeamHostException(
+        BeamHostError.timeout,
+        'wallet-api did not start listening in time ($node)',
       );
     }
     final check = await core.checkWallet(

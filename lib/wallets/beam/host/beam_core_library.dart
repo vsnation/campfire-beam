@@ -110,9 +110,13 @@ abstract interface class BeamCoreIntegrated {
 
   /// `beam_wallet_api_start`: a wallet-api instance on a thread of its own,
   /// next to any others (one per open wallet, as the child processes were).
-  /// Completes once its server listens with a handle > 0, or with a
-  /// negative [BeamCoreInstance] error.
-  Future<int> startInstance(List<String> args);
+  /// Completes once its server listens: `result` is then the handle (> 0).
+  /// Otherwise `result` is a negative [BeamCoreInstance] error, and
+  /// `instance` is the handle of the instance that was created anyway (0 when
+  /// none was, or when this core cannot say: before
+  /// `beam_wallet_api_start_tracked`). Such an instance may not have ended:
+  /// one that timed out can still hold wallet.db open.
+  Future<({int result, int instance})> startInstance(List<String> args);
 
   /// Asks the instance to stop; returns at once.
   void stopInstance(int handle);
@@ -123,6 +127,13 @@ abstract interface class BeamCoreIntegrated {
 
   /// Instances that have not ended yet (must be 0 before the app exits).
   int instanceCount();
+}
+
+/// A core that may carry the [BeamCoreIntegrated] additions
+/// ([FfiBeamCoreLibrary]; tests fake it).
+abstract interface class BeamCoreIntegratedSource {
+  /// The desktop/Android additions, when this core has them.
+  BeamCoreIntegrated? get integrated;
 }
 
 /// `beam_wallet_api_start()` errors and `beam_wallet_api_instance_state()`
@@ -160,7 +171,8 @@ const List<String?> kBeamCoreLibraryCandidates = [
 /// isolates, each opening the same library, so the UI isolate never waits on
 /// the core. [stop], [isRunning], [version] and [rulesSignature] return at
 /// once and are called directly.
-final class FfiBeamCoreLibrary implements BeamCoreLibrary {
+final class FfiBeamCoreLibrary
+    implements BeamCoreLibrary, BeamCoreIntegratedSource {
   FfiBeamCoreLibrary._(this._location, DynamicLibrary lib)
     : _stop = lib.lookupFunction<Void Function(), void Function()>(
         'beam_wallet_api_stop',
@@ -205,7 +217,7 @@ final class FfiBeamCoreLibrary implements BeamCoreLibrary {
   /// The candidate the core was found in (null: the process image).
   String? get location => _location;
 
-  /// The desktop/Android additions, when this core has them.
+  @override
   late final BeamCoreIntegrated? integrated = () {
     final lib = _load(_location);
     return lib.providesSymbol('beam_node_start') &&
@@ -513,7 +525,7 @@ final class _FfiIntegrated implements BeamCoreIntegrated {
   final int Function() _instanceCount;
 
   @override
-  Future<int> startInstance(List<String> args) {
+  Future<({int result, int instance})> startInstance(List<String> args) {
     final location = _location;
     final copy = List<String>.of(args);
     return Isolate.run(
@@ -539,14 +551,14 @@ final class _FfiIntegrated implements BeamCoreIntegrated {
   @override
   int instanceCount() => _instanceCount();
 
-  static int _startInstanceBlocking(String? location, List<String> args) {
-    final start = FfiBeamCoreLibrary._load(location)
-        .lookupFunction<
-          Int64 Function(Int32, Pointer<Pointer<Utf8>>),
-          int Function(int, Pointer<Pointer<Utf8>>)
-        >('beam_wallet_api_start');
+  static ({int result, int instance}) _startInstanceBlocking(
+    String? location,
+    List<String> args,
+  ) {
+    final lib = FfiBeamCoreLibrary._load(location);
     final all = ['wallet-api', ...args];
     final argv = calloc<Pointer<Utf8>>(all.length + 1);
+    final instance = calloc<Int64>();
     final owned = <Pointer<Utf8>>[];
     try {
       for (var i = 0; i < all.length; i++) {
@@ -555,10 +567,28 @@ final class _FfiIntegrated implements BeamCoreIntegrated {
         argv[i] = s;
       }
       argv[all.length] = nullptr;
-      return start(all.length, argv);
+      if (lib.providesSymbol('beam_wallet_api_start_tracked')) {
+        final start = lib
+            .lookupFunction<
+              Int64 Function(Int32, Pointer<Pointer<Utf8>>, Pointer<Int64>),
+              int Function(int, Pointer<Pointer<Utf8>>, Pointer<Int64>)
+            >('beam_wallet_api_start_tracked');
+        final result = start(all.length, argv, instance);
+        return (result: result, instance: instance.value);
+      }
+      // A core from before beam_wallet_api_start_tracked: a failed start
+      // does not say which instance it left behind.
+      final start = lib
+          .lookupFunction<
+            Int64 Function(Int32, Pointer<Pointer<Utf8>>),
+            int Function(int, Pointer<Pointer<Utf8>>)
+          >('beam_wallet_api_start');
+      final result = start(all.length, argv);
+      return (result: result, instance: result > 0 ? result : 0);
     } finally {
       owned.forEach(calloc.free);
       calloc.free(argv);
+      calloc.free(instance);
     }
   }
 
