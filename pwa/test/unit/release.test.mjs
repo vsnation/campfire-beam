@@ -103,11 +103,27 @@ test('tools/build.mjs output verifies with the committed public key', { skip: !(
     const m = await verifyManifest(rel, readFileSync(join(out, 'manifest.json')));
     for (const f of m.files) await verifyFile(f, readFileSync(join(out, f.path)));
     assert.equal(rel.version, '0.0.7');
-    const sw = readFileSync(join(out, 'sw.js'), 'utf8');
-    assert.ok(sw.includes('async function verifyReleaseSignature'), 'release.js is inlined into sw.js');
-    assert.ok(sw.includes(pub.x), 'the public key is built into sw.js');
-    assert.ok(!/__[A-Z_]+__/.test(sw.replace(/__campfire_state/g, '')), 'no placeholders left');
-    assert.ok(!readFileSync(join(out, 'lib', 'version.js'), 'utf8').includes('/*__'));
+    const versionJs = readFileSync(join(out, 'lib', 'version.js'), 'utf8');
+    const loader = (versionJs.match(/LOADER = "(sw-[0-9a-f]{16}\.js)"/) || [])[1];
+    assert.ok(loader, 'version.js names the loader');
+    assert.equal(existsSync(join(out, 'sw.js')), false, 'no fixed-name sw.js: the loader is content-addressed');
+    const sw = readFileSync(join(out, loader), 'utf8');
+    assert.equal(createHash('sha256').update(sw).digest('hex').slice(0, 16), loader.slice(3, 19), 'the name is the hash of the bytes');
+    assert.ok(m.files.some((f) => f.path === loader), 'the loader is in the signed manifest');
+    assert.ok(sw.includes('async function verifyReleaseSignature'), 'release.js is inlined into the loader');
+    assert.ok(sw.includes(pub.x), 'the public key is built into the loader');
+    assert.ok(!sw.includes('0.0.7'), 'nothing release-specific in the loader');
+    assert.ok(!/__[A-Z_]+__/.test(sw.replace(/__campfire_(state|install)/g, '')), 'no placeholders left');
+    assert.ok(!versionJs.includes('/*__') && !versionJs.includes('__LOADER__'));
+    // Same loader code, other release: same name (a phone's registered loader URL never changes bytes).
+    const out2 = mkdtempSync(join(tmpdir(), 'campfire-build-'));
+    try {
+      execFileSync(process.execPath, [join(pwa, 'tools', 'build.mjs'), '--out', out2, '--version', '0.0.8', '--quiet'], { cwd: pwa });
+      assert.ok(existsSync(join(out2, loader)), 'a later release keeps the same loader name');
+      assert.equal(readFileSync(join(out2, loader), 'utf8'), sw);
+    } finally {
+      rmSync(out2, { recursive: true, force: true });
+    }
     const all = m.files.map((f) => readFileSync(join(out, f.path)).toString('latin1')).join('\n');
     const priv = JSON.parse(readFileSync(keyPath, 'utf8'));
     assert.ok(!all.includes(priv.d), 'the private key is not in the release');

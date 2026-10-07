@@ -53,3 +53,26 @@ export function makeWalletDb(dir) {
 export function sha256File(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
+
+/**
+ * Opens a wallet.db with BEAM's native 7.5.14493 CLI - the same core the
+ * desktop app's "Import wallet.db" uses (WalletDB::open) - in a scratch copy, so
+ * the file under test is not changed. Returns whether it opened, and its addresses.
+ * The CLI output is read for those two things only and never printed.
+ */
+export function openWithCli(file, password, scratch) {
+  mkdirSync(scratch, { recursive: true });
+  const dir = join(scratch, `cli-${randomBytes(4).toString('hex')}`);
+  mkdirSync(dir);
+  writeFileSync(join(dir, 'wallet.db'), readFileSync(file));
+  try {
+    const info = runCli(dir, 'info', password);
+    const infoOut = `${info.stdout}${info.stderr}`;
+    const opened = info.status === 0 && /wallet successfully opened/i.test(infoOut) && !/invalid password|file is not a database/i.test(infoOut);
+    const list = opened ? runCli(dir, 'address_list', password) : { stdout: '' };
+    const addresses = [...new Set([...String(list.stdout).matchAll(/^Address:\s+([0-9a-f]{40,})\s*$/gm)].map((m) => m[1]))];
+    return { opened, addresses };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}

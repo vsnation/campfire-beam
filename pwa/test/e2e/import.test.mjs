@@ -22,9 +22,9 @@ import { mkdtempSync, writeFileSync, rmSync, readFileSync, existsSync } from 'no
 import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PWA, startServer, launch, recordedPage, shot, waitScreen, foreignHosts, explorerHeight, sleep, SHOTS } from './harness.mjs';
+import { PWA, startServer, launch, recordedPage, shot, waitScreen, foreignHosts, waitHeightNearExplorer, sleep, SHOTS } from './harness.mjs';
 import { waitHome, waitSynced, unlockWithPassword } from './flows.mjs';
-import { makeWalletDb, cliVersion, sha256File, WANT_CORE, BEAM_CLI } from './walletdb.mjs';
+import { makeWalletDb, cliVersion, sha256File, openWithCli, WANT_CORE, BEAM_CLI } from './walletdb.mjs';
 import { IMPORT_PROBLEM, NO_PHRASE_NOTICE } from '../../src/lib/wallet_file.js';
 
 const PORT = 8792;
@@ -102,6 +102,11 @@ before(async () => {
   ctx = await browser.newContext({ viewport: { width: 375, height: 667 }, deviceScaleFactor: 2 });
   ctx.on('request', (r) => {
     if (!['GET', 'HEAD'].includes(r.method())) nonGet.push(`${r.method()} ${r.url()}`);
+  });
+  // Headless Chrome has no share sheet: the export takes the download path (iPhone: share sheet).
+  await ctx.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, 'share', { value: undefined, configurable: true });
+    Object.defineProperty(Navigator.prototype, 'canShare', { value: undefined, configurable: true });
   });
   ({ page, rec } = await recordedPage(ctx, { label: 'import' }));
   console.log(`# screenshots: ${SHOTS}`);
@@ -216,9 +221,7 @@ test('the right password: the wallet comes in, connects and is Synced on mainnet
   assert.deepEqual({ imported: rec0.imported, restored: rec0.restored, scan: rec0.scan }, { imported: true, restored: false, scan: false });
   assert.equal(await page.evaluate(() => window.__campfire.scanning()), false, 'an imported wallet runs without the block scan');
   assert.equal(await page.evaluate(() => window.__campfire.inSync()), true, 'wallet_status.is_in_sync');
-  await page.waitForFunction(() => window.__campfire.sync().verified === true, null, { timeout: 180000, polling: 1000 });
-  const h = await page.evaluate(() => window.__campfire.height());
-  const ex = await explorerHeight(srv.url);
+  const { height: h, explorer: ex } = await waitHeightNearExplorer(page, srv.url);
   console.log(`# imported wallet height ${h}, explorer height ${ex}, is_in_sync true`);
   assert.ok(Math.abs(h - ex) <= 5, `wallet ${h} vs explorer ${ex}`);
   const addrs = await page.evaluate(() => window.__campfire.addresses());
@@ -230,6 +233,7 @@ test('the right password: the wallet comes in, connects and is Synced on mainnet
   const rules = rec.console.map((m) => m.text).join('\n');
   assert.ok(rules.includes('3928666-96df3f33ee02ad9e'), 'engine follows HF6');
   await sleep(500);
+  assert.equal(await page.isVisible(tid('backup-prompt')), true, 'Home asks for a copy outside this phone: the wallet has no 12 words');
   await shot(page, 'import-06-home-synced');
 });
 
@@ -244,6 +248,32 @@ test('receive: an address of this wallet, valid and mine', { timeout: 120000 }, 
   await shot(page, 'import-07-receive');
   await page.click('.topbar .icon-btn');
   await waitScreen(page, 'home');
+});
+
+test('the backup prompt leads to Export wallet.db; the export opens in BEAM\'s native core; then Home stops asking', { timeout: 300000 }, async () => {
+  await page.click(tid('backup-prompt-export'));
+  await waitScreen(page, 'backup');
+  assert.equal(await page.textContent(tid('export-last')), 'Not exported yet.');
+  await page.click(tid('export-start'));
+  await page.fill(tid('export-pw'), wdb.password);
+  await page.click(tid('export-prepare'));
+  await page.waitForSelector(tid('export-save'), { timeout: 180000 });
+  const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), page.click(tid('export-save'))]);
+  const dest = join(tmp, 'exported-imported.db');
+  await dl.saveAs(dest);
+  const cli = openWithCli(dest, wdb.password, join(tmp, 'cli2'));
+  assert.equal(cli.opened, true, 'the exported copy of the imported wallet opens in BEAM\'s native core with its password');
+  for (const a of wdb.addresses) assert.ok(cli.addresses.includes(a), 'and it is the same wallet');
+  console.log(`# imported wallet exported: ${readFileSync(dest).length} bytes; BEAM CLI ${WANT_CORE} opened it`);
+  await page.evaluate(() => window.__campfire.go('home'));
+  await waitScreen(page, 'home');
+  assert.equal(await page.isVisible(tid('backup-prompt')), false, 'after one export Home no longer asks');
+  await page.evaluate(() => window.__campfire.go('backup'));
+  await waitScreen(page, 'backup');
+  assert.match(await page.textContent(tid('export-last')), /^Last exported /);
+  await page.evaluate(() => window.__campfire.go('home'));
+  await waitScreen(page, 'home');
+  await waitSynced(page, 180000);
 });
 
 test('backup shows the no-phrase notice and never words; nothing offers a rescan', { timeout: 120000 }, async () => {

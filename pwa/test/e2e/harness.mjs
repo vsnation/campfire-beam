@@ -114,3 +114,21 @@ export async function explorerHeight(base) {
   if (!r.ok) return null;
   return (await r.json()).height;
 }
+
+/**
+ * The app no longer asks any explorer (it contacts nothing but its node once
+ * installed), so the tests take the network height themselves and compare.
+ * Returns {height, explorer} once they are within maxLag blocks.
+ */
+export async function waitHeightNearExplorer(page, base, { maxLag = 5, timeout = 180000 } = {}) {
+  const t0 = Date.now();
+  let last = null;
+  while (Date.now() - t0 < timeout) {
+    const h = await page.evaluate(() => window.__campfire && window.__campfire.height());
+    const ex = await explorerHeight(base).catch(() => null);
+    last = { height: h, explorer: ex };
+    if (h && ex && Math.abs(h - ex) <= maxLag) return last;
+    await sleep(2000);
+  }
+  throw new Error(`wallet height never came within ${maxLag} of the explorer: ${JSON.stringify(last)}`);
+}

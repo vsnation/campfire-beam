@@ -1,0 +1,103 @@
+Campfire wasm patch 0105: re-key a copy of a wallet database ("Export wallet.db").
+
+The web app keeps each created or restored wallet.db under a random 64-hex
+database password (sealed in envelopes), which the person never sees. To hand
+out a wallet.db that BEAM's desktop wallet, Campfire desktop or the CLI can
+open, the app copies wallet.db into memory and re-keys THAT COPY to a password
+the person knows; the live wallet.db is never touched.
+
+The wallet API's change_password re-keys only the live database of a running
+wallet, so this adds a static WasmWalletClient.RekeyFile(path, oldPass,
+newPass, cb): on an engine thread (like CheckPassword) it opens the file with
+the old key, proves it reads, sqlite3_rekey()s it, closes it, reopens it
+read-only with the new key to prove the result, and calls cb(ok) on the main
+thread. Neither password is logged. wallet_core links sqlite privately and
+sqlite3.h hides sqlite3_key/sqlite3_rekey without SQLITE_HAS_CODEC, so the
+two are declared explicitly.
+
+--- a/wasmclient/wasmclient.cpp
++++ b/wasmclient/wasmclient.cpp
+@@ -31,6 +31,14 @@
+ #include "mnemonic/mnemonic.h"
+ #include "utility/string_helpers.h"
+ #include "wasm_beamapi.h"
++#include "3rdparty/sqlite/sqlite3.h"
++// Campfire (wasm patch 0105): SQLCipher's key/rekey for RekeyFile below.
++// sqlite3.h declares them only under SQLITE_HAS_CODEC, which the sqlite
++// target defines for itself (wallet_core links it privately).
++extern "C" {
++int sqlite3_key(sqlite3* db, const void* pKey, int nKey);
++int sqlite3_rekey(sqlite3* db, const void* pKey, int nKey);
++}
+ 
+ namespace fs = std::filesystem;
+ using namespace beam;
+@@ -971,6 +979,60 @@
+         MyThread(&WasmWalletClient::CheckPasswordImpl, dbName, pass, pcb).detach();
+     }
+ 
++    // Campfire (wasm patch 0105): re-key a COPY of a wallet database, for
++    // "Export wallet.db". The live wallet.db keeps its own (random) password;
++    // the app copies it into memory, re-keys the copy here to a password the
++    // person knows, and hands that copy out. Opens with the old key, proves it
++    // reads, rekeys, closes, then reopens read-only with the new key to prove
++    // the result. Never logs either password.
++    static bool RekeyFileImpl(const std::string& path, const std::string& oldPass, const std::string& newPass)
++    {
++        auto opens = [](sqlite3* db, const std::string& key)
++        {
++            return sqlite3_key(db, key.data(), static_cast<int>(key.size())) == SQLITE_OK
++                && sqlite3_exec(db, "SELECT count(*) FROM sqlite_master;", nullptr, nullptr, nullptr) == SQLITE_OK;
++        };
++        bool ok = false;
++        sqlite3* db = nullptr;
++        if (sqlite3_open_v2(path.c_str(), &db, SQLITE_OPEN_READWRITE, nullptr) == SQLITE_OK && opens(db, oldPass))
++        {
++            ok = sqlite3_rekey(db, newPass.data(), static_cast<int>(newPass.size())) == SQLITE_OK;
++        }
++        if (db)
++        {
++            sqlite3_close(db);
++            db = nullptr;
++        }
++        if (!ok)
++        {
++            return false;
++        }
++        ok = sqlite3_open_v2(path.c_str(), &db, SQLITE_OPEN_READONLY, nullptr) == SQLITE_OK && opens(db, newPass);
++        if (db)
++        {
++            sqlite3_close(db);
++        }
++        return ok;
++    }
++
++    static void RekeyFileThread(const std::string& path, const std::string& oldPass, const std::string& newPass, std::shared_ptr<val> cb)
++    {
++        auto res = RekeyFileImpl(path, oldPass, newPass);
++        BEAM_LOG_DEBUG() << __FUNCTION__ << TRACE(path) << TRACE(res);
++        auto cbPtr = std::make_unique<CallbackResult>(std::move(cb), res);
++        emscripten_async_run_in_main_runtime_thread(
++            EM_FUNC_SIG_VI,
++            &WasmWalletClient::ProsessCallbackOnMainThread,
++            reinterpret_cast<int>(cbPtr.release()));
++    }
++
++    // JS: WasmWalletClient.RekeyFile(path, oldPass, newPass, (ok) => ...)
++    static void RekeyFile(const std::string& path, const std::string& oldPass, const std::string& newPass, val cb)
++    {
++        auto pcb = std::make_shared<val>(cb);
++        MyThread(&WasmWalletClient::RekeyFileThread, path, oldPass, newPass, pcb).detach();
++    }
++
+     static IWalletDB::Ptr OpenWallet(const std::string& dbName, const std::string& pass)
+     {
+         try
+@@ -1092,6 +1154,7 @@
+         .class_function("DeleteWallet", &WasmWalletClient::DeleteWallet)
+         .class_function("IsInitialized", &WasmWalletClient::IsInitialized)
+         .class_function("CheckPassword", &WasmWalletClient::CheckPassword)
++        .class_function("RekeyFile", &WasmWalletClient::RekeyFile) // Campfire: wasm patch 0105
+         ;
+     class_<WasmAppApiProxy>("AppAPI")
+         .function("callWalletApi", &WasmAppApiProxy::CallWalletAPI)

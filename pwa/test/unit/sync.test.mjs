@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assessSync, HF6_HEIGHT } from '../../src/lib/sync.js';
+import { ageText, assessSync, HF6_HEIGHT } from '../../src/lib/sync.js';
 
 const now = 1_800_000_000;
 const st = (h, age, inSync = true) => ({ current_height: h, current_state_timestamp: now - age, is_in_sync: inSync });
@@ -14,12 +14,25 @@ test('synced and verified: in sync, fresh tip, explorer agrees within 5 blocks',
   assert.equal(r.canSend, true);
 });
 
-test('explorer unavailable: still synced, but says it could not double-check', () => {
+test('no explorer (the installed app asks its web address for nothing): synced from the node\'s own fresh tip, saying so', () => {
   const r = assessSync({ ...base, status: st(4_000_000, 40), explorer: null });
   assert.equal(r.state, 'synced');
   assert.equal(r.verified, false);
   assert.equal(r.canSend, true);
-  assert.match(r.detail, /Can't double-check/);
+  assert.equal(r.detail, 'Block 4,000,000, made 40 s ago (from the BEAM node).');
+});
+
+test('no explorer and a stale node tip: not synced, says how far behind by the clock', () => {
+  const r = assessSync({ ...base, status: { ...st(4_000_000, 40), current_state_timestamp: base.now - 3600, is_in_sync: false }, explorer: null });
+  assert.equal(r.state, 'syncing');
+  assert.equal(r.canSend, false);
+  assert.equal(r.behindBlocks, 60);
+});
+
+test('tip age wording', () => {
+  assert.equal(ageText(5), 'just now');
+  assert.equal(ageText(40), '40 s ago');
+  assert.equal(ageText(300), '5 min ago');
 });
 
 test('explorer 6+ blocks ahead: behind, sending refused, says how far', () => {

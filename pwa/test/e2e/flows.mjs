@@ -19,7 +19,8 @@ export async function createWallet(page, { password, passkey = false, shots = nu
   await page.click(tid('reveal'));
   const words = await page.$$eval('[data-testid="words"] .word span:last-child', (els) => els.map((e) => e.textContent));
   if (words.length !== 12) throw new Error(`expected 12 words, got ${words.length}`);
-  if (shots) await shot(page, `${shots}-03-backup-shown-THROWAWAY`);
+  // No screenshot of the revealed words: never a picture of a seed, not even
+  // a throwaway's (owner rule).
   await page.click(tid('wrote-down'));
   await waitScreen(page, 'confirmWords');
   if (shots) await shot(page, `${shots}-04-confirm`);

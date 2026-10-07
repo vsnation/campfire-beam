@@ -15,7 +15,7 @@ import { webcrypto } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import jsQR from 'jsqr';
-import { PWA, startServer, launch, recordedPage, addVirtualAuthenticator, shot, waitScreen, foreignHosts, explorerHeight, sleep, SHOTS } from './harness.mjs';
+import { PWA, startServer, launch, recordedPage, addVirtualAuthenticator, shot, waitScreen, foreignHosts, explorerHeight, waitHeightNearExplorer, sleep, SHOTS } from './harness.mjs';
 import { createWallet, restoreWallet, waitHome, waitSynced, unlockWithPassword } from './flows.mjs';
 
 const PORT = 8791;
@@ -122,9 +122,7 @@ test('(b) create: backup + confirm + password + passkey (PRF); no download, no s
   assert.equal(mp.ok, false);
   assert.equal(mp.code, -32005);
   assert.equal(off.code, -32005);
-  await page.waitForFunction(() => window.__campfire.sync().verified === true, null, { timeout: 180000, polling: 1000 });
-  const h = await page.evaluate(() => window.__campfire.height());
-  const ex = await explorerHeight(srv.url);
+  const { height: h, explorer: ex } = await waitHeightNearExplorer(page, srv.url);
   console.log(`# wallet height ${h}, explorer height ${ex}`);
   assert.ok(Math.abs(h - ex) <= 5, `wallet ${h} vs explorer ${ex}`);
   await sleep(500);
@@ -216,7 +214,7 @@ test('screens: send, activity, settings, about, IP privacy, change password, del
   assert.match(await page.textContent(tid('passkey-row')), /On/);
   await visit('about', 'e2e-20-about');
   assert.match(await page.textContent(tid('about-rules')), /includes HF6/);
-  assert.equal(await page.textContent(tid('about-loader')), 'yes');
+  assert.match(await page.textContent(tid('about-loader')), /^sw-[0-9a-f]{16}\.js$/, 'About names the content-addressed loader');
   await visit('ipNotice', 'e2e-21-ip-privacy-settings');
   await visit('changePassword', 'e2e-22-change-password');
   await visit('deleteWallet', 'e2e-23-delete-wallet');
