@@ -86,6 +86,7 @@ class DappSession {
     DappScopeStore? scopeStore,
     this.limits = const DappRequestLimits(),
     this.onActivity,
+    this.onCallBusy,
   }) : _version = apiVersion,
        _gate = DappMethodGate(apiVersion),
        _sanitizer = DappRequestSanitizer(limits),
@@ -100,6 +101,11 @@ class DappSession {
   final DappConsentQueue consent;
   final DappRequestLimits limits;
   final void Function(DappActivity activity)? onActivity;
+
+  /// +1 when a call to the wallet starts, -1 when it ends: the screen shows
+  /// that the dApp is waiting on the wallet (a contract read can take tens
+  /// of seconds, with the dApp's own page blank meanwhile).
+  final void Function(int delta)? onCallBusy;
 
   DappApiVersion _version;
   DappMethodGate _gate;
@@ -611,8 +617,14 @@ class DappSession {
     return Map.unmodifiable({...params, 'contract': own});
   }
 
-  Future<Object?> _call(String method, Map<String, Object?> params) =>
-      transport.call(method, params);
+  Future<Object?> _call(String method, Map<String, Object?> params) async {
+    onCallBusy?.call(1);
+    try {
+      return await transport.call(method, params);
+    } finally {
+      onCallBusy?.call(-1);
+    }
+  }
 
   Future<T> _oneShaderAtATime<T>(Future<T> Function() op) {
     final result = _shaderTail.then((_) => op());

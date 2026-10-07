@@ -9,6 +9,8 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import '../../rpc/beam_transport.dart';
 import '../dapp_bridge.dart';
 import '../dapp_bridge_js.dart';
@@ -127,6 +129,9 @@ class DappHostSession {
   final DappIdentity identity;
   final DappCatalogueEntry? bundled;
   final void Function(DappActivity activity)? onActivity;
+
+  /// Calls the open page has made to the wallet that have not answered yet.
+  final ValueNotifier<int> callsInFlight = ValueNotifier(0);
   final DappScopeStore? scopeStore;
   final String _token;
 
@@ -169,6 +174,8 @@ class DappHostSession {
           scopeStore ??
           FileDappScopeStore(installer.dataDirectory(installation.guid)),
       onActivity: onActivity,
+      onCallBusy: (d) => callsInFlight.value =
+          (callsInFlight.value + d).clamp(0, 1 << 20),
     );
     _page = _Page(
       transport,
@@ -186,6 +193,7 @@ class DappHostSession {
 
   /// Ends the page and the server. Pending approvals answer -32021.
   Future<void> close() async {
+    callsInFlight.value = 0;
     if (_closed) return;
     _closed = true;
     final page = _page;

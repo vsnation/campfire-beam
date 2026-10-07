@@ -56,6 +56,47 @@ void main() {
     return pending;
   }
 
+  // Seen in the DMG test: the Asset Minter waited on a contract read for
+  // tens of seconds on a blank page. The screen shows a line while a call
+  // to the wallet is outstanding; the session reports it.
+  test('calls to the wallet are counted while they run, also on error',
+      () async {
+    final busy = <int>[];
+    var inFlight = 0;
+    final gate = Completer<void>();
+    t = FakeTransport({
+      'get_version': (Map<String, Object?> _) async {
+        await gate.future;
+        return {'api_version': '7.4'};
+      },
+    });
+    final s = DappSession(
+      identity: testIdentity(),
+      apiVersion: DappApiVersion.v7_4,
+      transport: t,
+      consent: DappConsentQueue(policy),
+      onCallBusy: (d) => busy.add(inFlight += d),
+    );
+    final res = s.handle(rq(1, 'get_version'));
+    await Future<void>.delayed(Duration.zero);
+    expect(inFlight, 1);
+    gate.complete();
+    await res;
+    expect(inFlight, 0);
+
+    // A call the wallet refuses still ends the count.
+    final failing = DappSession(
+      identity: testIdentity(),
+      apiVersion: DappApiVersion.v7_4,
+      transport: FakeTransport({}),
+      consent: DappConsentQueue(policy),
+      onCallBusy: (d) => inFlight += d,
+    );
+    await failing.handle(rq(2, 'get_version'));
+    expect(inFlight, 0);
+    expect(busy, [1, 0]);
+  });
+
   group('envelope and gate', () {
     test('errors use the core envelope and echo the id', () async {
       final s = testSession(t, policy);

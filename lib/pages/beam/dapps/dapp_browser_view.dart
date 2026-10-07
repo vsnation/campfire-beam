@@ -32,6 +32,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -534,6 +535,8 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
               if (b != null && !b.answer.isCompleted) b.answer.complete(v);
             },
           ),
+        if (_session case final session?)
+          _WalletBusyLine(calls: session.callsInFlight, name: _name),
         if (_walletNotReady != null)
           Container(
             key: const Key('dappWalletNotReady'),
@@ -571,6 +574,68 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// A slim line under the header while the dApp has waited on the wallet for
+/// more than [_after] (a contract read can take tens of seconds, the dApp's
+/// page blank meanwhile). Short calls never show it, so it does not flicker
+/// as the dApp polls.
+class _WalletBusyLine extends StatefulWidget {
+  const _WalletBusyLine({required this.calls, required this.name});
+
+  final ValueListenable<int> calls;
+  final String name;
+
+  @override
+  State<_WalletBusyLine> createState() => _WalletBusyLineState();
+}
+
+class _WalletBusyLineState extends State<_WalletBusyLine> {
+  static const _after = Duration(milliseconds: 700);
+
+  Timer? _timer;
+  bool _shown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.calls.addListener(_changed);
+    _changed();
+  }
+
+  void _changed() {
+    final busy = widget.calls.value > 0;
+    if (!busy) {
+      _timer?.cancel();
+      _timer = null;
+      if (_shown && mounted) setState(() => _shown = false);
+    } else if (!_shown && _timer == null) {
+      _timer = Timer(_after, () {
+        _timer = null;
+        if (mounted && widget.calls.value > 0) setState(() => _shown = true);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    widget.calls.removeListener(_changed);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_shown) return const SizedBox(height: 2);
+    return Semantics(
+      label: '${widget.name} is waiting for your wallet',
+      child: const SizedBox(
+        key: Key('dappWalletBusy'),
+        height: 2,
+        child: LinearProgressIndicator(minHeight: 2),
+      ),
     );
   }
 }
