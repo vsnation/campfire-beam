@@ -6,41 +6,78 @@ Campfire for BEAM is [Campfire](https://github.com/firoorg/campfire) (a white-la
 wallets can do. It runs BEAM's own HF6-capable core (`wallet-api` 7.5.14493) as a local child process
 bound to 127.0.0.1, so keys never leave the device.
 
-**Status: beta, under active development. Not released yet — do not use it with funds you cannot lose.**
+**Status: public beta.** Tested on BEAM mainnet with small amounts. Use it with funds you can afford to
+lose while it is in beta.
+
+![Campfire for BEAM on macOS: wallet home](docs/screenshots/desktop-wallet.png)
+
+## Download
+
+Get the latest build from [Releases](https://github.com/vsnation/campfire-beam/releases): macOS (Apple
+Silicon) `.dmg`, Android (arm64) `.apk`, and Linux and Windows builds as they are published. Every file
+is listed in `SHA256SUMS.txt`; check it before you install:
+
+```bash
+shasum -a 256 -c SHA256SUMS.txt --ignore-missing      # macOS / Linux
+certutil -hashfile Campfire-BEAM-<version>-windows-x86_64.zip SHA256   # Windows
+```
+
+- **macOS:** open the DMG and drag Campfire to Applications. The app is not notarized yet, so the
+  first launch needs right-click → Open.
+- **Android:** open the APK and allow installing from this source. The signing certificate's SHA-256 is
+  `A6:D8:81:7E:AB:D6:A5:19:F4:77:88:70:54:0A:0D:96:72:A1:BA:46:6B:44:7E:7E:06:C5:11:B0:AD:C0:E9:9F`.
+- It installs beside the original Campfire (app id `com.vsnation.campfirebeam`) and never touches it.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Swap and pools, with values in your currency](docs/screenshots/desktop-swap.png) | ![Assets with their value](docs/screenshots/desktop-assets.png) |
+| **Swap** on BEAM's DEX: every pool, named assets, sizes in your currency | **Assets**: every Confidential Asset you hold, valued at today's DEX prices |
+| ![dApp store](docs/screenshots/desktop-dapps.png) | ![The Beam DEX dApp inside Campfire](docs/screenshots/desktop-dapp-dex.png) |
+| **dApps**: BEAM's dApp store; a dApp cannot move money without your approval | BEAM's own dApps run inside Campfire, as in the BEAM wallet |
+| ![BEAM names](docs/screenshots/desktop-names.png) | ![Notifications](docs/screenshots/desktop-notifications.png) |
+| **Names**: pay `alice` instead of a 67-character address | **Notifications** for payments you receive |
+
+![On an iPhone: wallet, pools and assets](docs/screenshots/phone.png)
 
 ## What works today
 
 - Create and restore BEAM wallets (12-word phrase, checksum-checked), Campfire's password, backups and themes.
+- Several wallets side by side, each with its own BEAM core; switching is instant.
 - Opens instantly from cache; sync status is honest (never "synced" when behind or on a dead fork).
 - Send to an address or a **BEAM name** (BANS); receive with regular, offline, max-privacy and public addresses.
-- Transaction history in plain language, cancel, payment proofs.
-- **Confidential Assets** as token wallets, with copycat detection and the BEAM desktop wallet's asset icons.
+- Transaction history in plain language, cancel, payment proofs, notifications for payments received.
+- **Confidential Assets** as token wallets, with copycat detection, names from the chain and values in your
+  currency (BEAM's price, assets priced through their DEX pools).
 - **DEX**: swap, pools, add/withdraw liquidity, create a pool — every confirmation shows what the signed
-  transaction actually does.
+  transaction actually does. A swap interrupted by quitting the app can never run twice.
 - **BEAM names**: register, renew, transfer, sell, buy; money sent to your names is shown on the home screen
   with one-tap Claim.
 - **dApps**: store, browser and one approval sheet for every request.
 - **Airdrop vouchers**, **token minter** and **burn**.
 - **Private node** (desktop): the wallet starts on a public node at once, syncs your own node in the background
-  and switches to it seamlessly.
+  and switches to it seamlessly. Every public BEAM node (`eu-nodes`, `us-nodes`, `eu-node01`–`04`,
+  `us-node01`–`04`) is listed in Settings › Nodes.
 
-Proven live on BEAM mainnet with small amounts: send/receive, DEX swap, airdrop create and claim.
+Proven live on BEAM mainnet with small amounts: send/receive between wallets, DEX swap, airdrop create and
+claim, dApps.
 
 ## Roadmap
 
-**Release 1 — macOS (DMG), Android (APK), Linux**
+**Release 1 — macOS (DMG), Android (APK), Linux, Windows**
 - [x] BEAM wallet core, honest sync, private node with seamless handover
 - [x] Send/receive (all address types), BEAM names, assets, DEX, dApps, airdrops, minter, history
-- [ ] Security hardening from the internal review (dApp approvals, asset look-alikes, price sanity)
-- [ ] Every feature one or two taps from the wallet (menus)
-- [ ] Dashboard: every valuable asset with its fiat value and one-tap send, cached prices
-- [ ] Android build (BEAM core packaged for arm64), macOS DMG
-- [ ] Public beta
+- [x] Security hardening from the internal review (dApp approvals, asset look-alikes, price sanity)
+- [x] Every feature one or two taps from the wallet (side menu on desktop, bottom bar on phones)
+- [x] Dashboard: every valuable asset with its fiat value, cached prices
+- [x] macOS DMG and Android APK
+- [ ] Linux and Windows builds (the BEAM core for both is built in CI)
+- [ ] iOS on the App Store (runs on the iOS Simulator today)
 
 **Release 2**
 - [ ] Ethereum: ETH and ERC-20 tokens, with **WBEAM** as a default token
 - [ ] BEAM ↔ Ethereum bridge (deposit addresses)
-- [ ] iOS
 - [ ] Games (Fuddle, MemeClash) and atomic swaps
 
 ## Building
