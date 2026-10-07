@@ -136,6 +136,11 @@ void main() {
       expect(_textOf(tester, 'claim-fee'), '0.121 BEAM');
       expect(_textOf(tester, 'claim-total'), '+0.379 BEAM');
       expect(find.byKey(const ValueKey('claim-loss-warning')), findsNothing);
+      // The contract reveals the code when claiming: said before the claim.
+      expect(
+        find.byKey(const ValueKey('claim-bearer-notice')),
+        findsOneWidget,
+      );
       expect(t.lastParams('invoke_contract')['create_tx'], isFalse);
       expect(t.callsTo('process_invoke_data'), isEmpty);
       await expectScreen(tester, 'claim_ready');
@@ -258,6 +263,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('You have 667.07641121 BEAM'), findsOneWidget);
       expect(_enabled(tester, 'create-cta'), isFalse);
+      expect(
+        find.byKey(const ValueKey('create-bearer-warning')),
+        findsOneWidget,
+      );
 
       await tester.enterText(
         find.byKey(const ValueKey('create-amount')),

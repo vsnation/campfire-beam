@@ -39,6 +39,28 @@ BeamProblem? beamTransportProblem(Object error) => switch (error) {
   _ => null,
 };
 
+/// What a voucher code is, said where codes are made and claimed.
+///
+/// The live Airdrop contract redeems with the code itself (the preimage of
+/// the hash it stores), so a claim carries the code in a transaction that
+/// the network sees before it is in a block. Anyone watching could take the
+/// code and claim the voucher first. Campfire cannot change that contract;
+/// it says so, so codes are used for amounts where that risk is acceptable.
+abstract final class AirdropBearerText {
+  static const createTitle = 'Codes work like cash';
+
+  static const createMessage =
+      'Anyone who has a code can claim it. Claiming also shows the code to '
+      'the network before it is confirmed, so someone watching could claim '
+      'it first. Use codes for small amounts, and give each one to one '
+      'person.';
+
+  static const claimMessage =
+      'Claiming shows this code to the network before it is confirmed, so '
+      'someone watching could claim it first. That is how this airdrop '
+      'contract works; codes are meant for small amounts.';
+}
+
 /// The airdrop's refusals in plain words.
 BeamProblem airdropProblem(Object error) {
   final t = beamTransportProblem(error);
