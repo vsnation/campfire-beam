@@ -31,7 +31,9 @@ permissions:
 
 jobs:
   linux:
-    runs-on: ubuntu-24.04
+    # 22.04: the app then needs glibc 2.35, so it runs on Ubuntu 22.04 and
+    # later, Debian 12, Mint 21, Fedora 36 and their successors.
+    runs-on: ubuntu-22.04
     timeout-minutes: 90
     env:
       GH_TOKEN: ${{ github.token }}
@@ -47,11 +49,11 @@ jobs:
       - name: Linux build dependencies
         run: |
           sudo apt-get update
-          # As upstream's CI image (Dockerfile): the plugins' native parts
-          # need these (OpenCV for the QR camera, OpenCL, secret storage...).
+          # As upstream's CI image (Dockerfile), less OpenCV: the BEAM build
+          # replaces camera_linux with a stand-in (packages/camera_linux_stub).
           sudo apt-get install -y clang cmake ninja-build pkg-config lsof meson valac \
             automake libtool libgtk-3-dev liblzma-dev libsecret-1-dev libjsoncpp-dev \
-            libstdc++-12-dev libopencv-dev ocl-icd-opencl-dev opencl-headers libclang-dev \
+            libstdc++-12-dev ocl-icd-opencl-dev opencl-headers libclang-dev \
             libgcrypt20-dev libgirepository1.0-dev libgit2-dev libglib2.0-dev libncurses-dev \
             libssl-dev libtss2-dev zlib1g-dev
 

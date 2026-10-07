@@ -1,0 +1,11 @@
+name: camera_linux
+description: >-
+  Campfire for BEAM's stand-in for camera_linux on Linux desktop. The real
+  plugin links all of OpenCV, which most Linux desktops do not have, so the
+  app would not start; this one reports that there is no camera and the QR
+  dialog offers "Select file" or pasting instead.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"

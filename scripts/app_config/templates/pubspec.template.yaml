@@ -321,6 +321,15 @@ dependency_overrides:
   # stellar sdk package needs to get 0.18.0 to remove this override
   toml: ^0.18.0
 
+# %%ENABLE_BEAM%%
+## Linux desktop: camera_linux links every OpenCV library, which most Linux
+## desktops lack, and then the app does not start at all. The stand-in has no
+## native code; the QR dialog says there is no camera and offers a picture
+## file or pasting.
+#  camera_linux:
+#    path: packages/camera_linux_stub
+# %%END_ENABLE_BEAM%%
+
   logger:
     git:
       url: https://github.com/cypherstack/logger

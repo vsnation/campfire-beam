@@ -74,6 +74,8 @@ secp256k1.dll
 ## other generated project files
 
 pubspec.yaml
+# Campfire for BEAM's camera_linux stand-in is a real package, not generated.
+!/packages/camera_linux_stub/pubspec.yaml
 
 /android/app/build.gradle
 /android/app/src/debug/AndroidManifest.xml

@@ -35,6 +35,8 @@ class _QrCodeScannerDialogState extends State<QrCodeScannerDialog> {
   final CameraWindows? _cameraWindowsPlugin =
       Platform.isWindows ? CameraWindows() : null;
   bool _isCameraOpen = false;
+  // No camera could be opened: say so instead of spinning forever.
+  bool _noCamera = false;
   Image? _image;
   bool _isScanning = false;
   int _cameraId = -1;
@@ -52,6 +54,8 @@ class _QrCodeScannerDialogState extends State<QrCodeScannerDialog> {
             _isCameraOpen = true;
           });
           unawaited(_captureAndScanImage());
+        } else if (mounted) {
+          setState(() => _noCamera = true);
         }
       });
     });
@@ -285,6 +289,20 @@ class _QrCodeScannerDialogState extends State<QrCodeScannerDialog> {
                       : const Center(
                           child: CircularProgressIndicator(),
                         )
+                  : _noCamera
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          "No camera found. Choose a picture of the QR code "
+                          "with \"Select file\", or close this and paste "
+                          "the address.",
+                          key: const Key("qrScannerNoCamera"),
+                          textAlign: TextAlign.center,
+                          style: STextStyles.desktopTextSmall(context),
+                        ),
+                      ),
+                    )
                   : const Center(
                       child:
                           CircularProgressIndicator(), // Show progress indicator immediately
