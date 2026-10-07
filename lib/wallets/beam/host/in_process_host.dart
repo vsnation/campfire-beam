@@ -13,6 +13,7 @@ import 'dart:math';
 
 import 'package:path/path.dart' as p;
 
+import '../net/beam_node_route.dart';
 import '../rpc/beam_transport.dart';
 import '../rpc/tcp_line_transport.dart';
 import 'beam_binaries.dart';
@@ -84,11 +85,20 @@ class InProcessHost implements BeamHost {
     this.startupTimeout = const Duration(seconds: 20),
     this.stopTimeout = const Duration(seconds: 15),
     this.setCurrentDirectory = _setCurrentDirectory,
+    BeamNodeRouter? router,
+    this.coreSupportsSocks = kBeamCoreSupportsSocks,
   }) : rootDir = p.normalize(p.absolute(rootDir)),
        _openLibrary = openLibrary ?? FfiBeamCoreLibrary.open,
+       router = router ?? BeamNodeRouter.campfire(),
        _log = log ?? _noLog;
 
   final String rootDir;
+
+  /// Tor or direct, decided at every start (see [ProcessHost.router]).
+  final BeamNodeRouter router;
+
+  /// Whether this core takes `--proxy` (see [kBeamCoreSupportsSocks]).
+  final bool coreSupportsSocks;
 
   /// How long wallet-api may take to listen and answer `get_version`.
   final Duration startupTimeout;
@@ -301,11 +311,20 @@ class InProcessHost implements BeamHost {
     try {
       await _waitForCoreIdle(core);
       await _removeStrayConfigs();
+      final route = await router.route(node);
+      if (route.viaTor && !coreSupportsSocks) {
+        throw const BeamHostException(
+          BeamHostError.torUnsupported,
+          "This build's BEAM core cannot connect through Tor; with Tor on it "
+          'does not connect at all',
+        );
+      }
       return await _launch(
         core: core,
         walletDir: dir,
         password: password,
         node: node,
+        route: route,
         requestBodies: requestBodies,
       );
     } catch (_) {
@@ -392,10 +411,12 @@ class InProcessHost implements BeamHost {
     required BeamNodeEndpoint node,
     required int port,
     required bool requestBodies,
+    String? socksProxy,
   }) => [
     '--wallet_path=${_dbPath(walletDir)}',
     '--config_file=$configPath',
     '--node_addr=$node',
+    if (socksProxy != null) ...['--proxy=1', '--proxy_addr=$socksProxy'],
     '--port=$port',
     '--use_http=0',
     '--tcp_max_line=$_tcpMaxLine',
@@ -421,6 +442,7 @@ class InProcessHost implements BeamHost {
     required String walletDir,
     required String password,
     required BeamNodeEndpoint node,
+    required BeamNodeRoute route,
     required bool requestBodies,
   }) async {
     final port = await _freeLoopbackPort();
@@ -441,7 +463,7 @@ class InProcessHost implements BeamHost {
       );
       _log(
         'Starting wallet-api (in-process) for ${p.basename(walletDir)} on '
-        '$node, port $port${requestBodies ? ', body requests on' : ''}',
+        '$route, port $port${requestBodies ? ', body requests on' : ''}',
       );
       previousDir = setCurrentDirectory(runDir);
       final started = DateTime.now();
@@ -451,9 +473,10 @@ class InProcessHost implements BeamHost {
             walletDir: walletDir,
             configPath: cfg.path,
             aclPath: acl.path,
-            node: node,
+            node: route.address,
             port: port,
             requestBodies: requestBodies,
+            socksProxy: route.socksProxy,
           ),
         ),
       );

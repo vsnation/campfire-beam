@@ -7,10 +7,10 @@
  *
  */
 
-// The private node and Campfire's Tor setting (security review finding 7):
-// beam-node talks to many peers directly, not through Tor, so with Tor on it
-// is off unless the user turns it on with Tor on, and the node panel says
-// why.
+// The private node and Campfire's Tor setting (owner, 2026-10-07: with Tor
+// on, every request goes through Tor): the node runs with Tor on only on a
+// core that routes its peers through Tor, never outside it, and the node
+// panel says why it is off otherwise.
 
 import 'dart:io';
 
@@ -27,12 +27,14 @@ void main() {
     late Directory tmp;
     late String root;
     var tor = false;
+    var capable = false;
 
     BeamPrivateNodePreference pref({bool defaultValue = true}) =>
         BeamPrivateNodePreference(
           beamRoot: () async => root,
           defaultValue: defaultValue,
           torEnabled: () => tor,
+          nodeTorCapable: () => capable,
         );
 
     String stored() =>
@@ -43,43 +45,47 @@ void main() {
       tmp = await Directory.systemTemp.createTemp('beam_pref_tor_');
       root = p.join(tmp.path, 'beam');
       tor = false;
+      capable = false;
     });
     tearDown(() => tmp.delete(recursive: true));
 
-    test('Tor on: the desktop default (on) reads as off', () async {
-      expect(await pref().read(), isTrue);
+    test('Tor on, core without Tor support: off, whatever was chosen',
+        () async {
+      expect(await pref().read(), isTrue, reason: 'desktop default');
       tor = true;
       expect(pref().torEnabled, isTrue);
       expect(await pref().read(), isFalse);
-    });
-
-    test('Tor on: a choice made with Tor off does not carry over', () async {
       await pref().write(true);
       expect(stored(), '{"enabled":true}');
+      expect(await pref().read(), isFalse, reason: 'no way to run outside Tor');
+      tor = false;
+      expect(await pref().read(), isTrue);
+    });
+
+    test('a choice stored by an older build with "tor": true does not run it '
+        'outside Tor', () async {
+      await Directory(root).create(recursive: true);
+      File(p.join(root, BeamPrivateNodePreference.fileName))
+          .writeAsStringSync('{"enabled":true,"tor":true}');
       tor = true;
       expect(await pref().read(), isFalse);
     });
 
-    test('Tor on: turning it on with Tor on keeps it on, also after Tor goes '
-        'off and on again', () async {
+    test('Tor on, core that routes the node through Tor: the choice applies',
+        () async {
       tor = true;
+      capable = true;
+      expect(await pref().read(), isTrue, reason: 'default');
+      await pref().write(false);
+      expect(await pref().read(), isFalse);
       await pref().write(true);
-      expect(stored(), '{"enabled":true,"tor":true}');
-      expect(await pref().read(), isTrue);
-      tor = false;
-      expect(await pref().read(), isTrue);
-      tor = true;
       expect(await pref().read(), isTrue);
     });
 
-    test('off stays off, Tor or not; Tor off behaves as before', () async {
-      tor = true;
+    test('off stays off; a damaged file is the default without Tor', () async {
       await pref().write(false);
       expect(stored(), '{"enabled":false}');
       expect(await pref().read(), isFalse);
-      tor = false;
-      expect(await pref().read(), isFalse);
-      // A damaged file: the default without Tor, off with it.
       File(
         p.join(root, BeamPrivateNodePreference.fileName),
       ).writeAsStringSync('{not json');
@@ -135,13 +141,13 @@ void main() {
       final v = view(tor: true, enabled: false);
       expect(v.privateTitle, 'Off while Tor is on');
       expect(v.privateDetail, BeamNodePanelText.offForTor);
-      expect(v.privateDetail, contains('internet address'));
+      expect(v.privateDetail, contains('internet address stays hidden'));
       expect(v.toggleValue, isFalse);
       // Without Tor, the old wording.
       expect(view(tor: false, enabled: false).privateTitle, 'Off');
     });
 
-    test('running with Tor on: every state says it is not through Tor', () {
+    test('running with Tor on: every state says it goes through Tor', () {
       for (final phase in BeamPrivateNodePhase.values) {
         if (phase == BeamPrivateNodePhase.off) continue;
         final v = view(
@@ -151,7 +157,7 @@ void main() {
         );
         expect(
           v.privateDetail,
-          endsWith(BeamNodePanelText.runsOutsideTor),
+          endsWith(BeamNodePanelText.runsThroughTor),
           reason: phase.name,
         );
         final plain = view(
@@ -161,7 +167,7 @@ void main() {
         );
         expect(
           plain.privateDetail ?? '',
-          isNot(contains(BeamNodePanelText.runsOutsideTor)),
+          isNot(contains(BeamNodePanelText.runsThroughTor)),
           reason: phase.name,
         );
       }

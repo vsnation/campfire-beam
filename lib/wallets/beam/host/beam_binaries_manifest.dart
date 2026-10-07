@@ -18,6 +18,13 @@
 /// launch and refuses anything not pinned. Nothing is downloaded or updated
 /// at runtime; changing a binary means changing this file in a reviewed
 /// commit, together with `scripts/beam/core/manifest.json`.
+/// Whether the pinned cores take `--proxy` / `--proxy_addr` (SOCKS5, for
+/// Tor) in wallet-api and route the node's peers through it. Stock
+/// wallet-api has no proxy option (only beam-wallet does); Campfire's patch
+/// adds it. False until every pin below is a build with that patch: with Tor
+/// on, a core without it is never started (fail closed).
+const bool kBeamCoreSupportsSocks = false;
+
 const Map<String, Map<String, String>> kBeamBinaryManifest = {
   'macos-arm64': {
     'beam-wallet':

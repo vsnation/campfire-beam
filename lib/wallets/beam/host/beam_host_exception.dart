@@ -53,6 +53,14 @@ enum BeamHostError {
 
   /// A child process failed for another reason.
   processFailed,
+
+  /// Tor is switched on but not connected (or cannot resolve the node), so
+  /// nothing connects: never a direct connection while Tor is on.
+  torNotReady,
+
+  /// Tor is switched on and this build's BEAM core cannot route through a
+  /// SOCKS5 proxy, so it does not connect at all.
+  torUnsupported,
 }
 
 /// A failed host operation. [message] never contains a password, a seed

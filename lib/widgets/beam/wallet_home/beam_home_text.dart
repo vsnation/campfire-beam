@@ -530,6 +530,14 @@ abstract final class BeamHomeText {
 
   static BeamBannerContent _problemBanner(BeamWalletException p) {
     final (title, detail) = _split(p.message);
+    // Not a failure: the wallet connects by itself as soon as Tor does.
+    if (p.problem == BeamWalletProblem.waitingForTor) {
+      return BeamBannerContent(
+        title: title,
+        detail: detail,
+        tone: BeamBannerTone.progress,
+      );
+    }
     final BeamHomeAction action;
     final String? label;
     switch (p.problem) {

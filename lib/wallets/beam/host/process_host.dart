@@ -16,6 +16,7 @@ import 'dart:math';
 import 'package:bip39/bip39.dart' as bip39;
 import 'package:path/path.dart' as p;
 
+import '../net/beam_node_route.dart';
 import '../rpc/beam_transport.dart';
 import '../rpc/tcp_line_transport.dart';
 import 'beam_binaries.dart';
@@ -82,12 +83,22 @@ class ProcessHost implements BeamHost {
     this.cliTimeout = const Duration(minutes: 2),
     this.rescanTimeout = const Duration(minutes: 30),
     this._ensureBinaries,
+    BeamNodeRouter? router,
+    this.coreSupportsSocks = kBeamCoreSupportsSocks,
   }) : rootDir = p.normalize(p.absolute(rootDir)),
        binaries = binaries ?? BeamBinaries.locate(beamRoot: rootDir),
+       router = router ?? BeamNodeRouter.campfire(),
        _log = log ?? _noLog;
 
   final String rootDir;
   final BeamBinaries binaries;
+
+  /// Decides, at every start of wallet-api, whether it goes through Tor
+  /// (Campfire's Tor switch) and resolves the node's name through Tor.
+  final BeamNodeRouter router;
+
+  /// Whether this core takes `--proxy` (see [kBeamCoreSupportsSocks]).
+  final bool coreSupportsSocks;
 
   /// How long wallet-api may take to listen and answer `get_version`.
   final Duration startupTimeout;
@@ -349,6 +360,30 @@ class ProcessHost implements BeamHost {
     }
   }
 
+  /// The route wallet-api takes to [node] now: with Tor on, its name
+  /// resolved through Tor and every connection through Tor's SOCKS5 proxy.
+  /// Fails closed (torNotReady, torUnsupported): never a direct connection
+  /// while Tor is on.
+  Future<BeamNodeRoute> routeFor(BeamNodeEndpoint node) async {
+    final route = await router.route(node);
+    if (route.viaTor && !coreSupportsSocks) {
+      throw const BeamHostException(
+        BeamHostError.torUnsupported,
+        "This build's BEAM core cannot connect through Tor; with Tor on it "
+        'does not connect at all',
+      );
+    }
+    return route;
+  }
+
+  /// `--proxy=1 --proxy_addr=<socks>` for a route through Tor, else nothing.
+  static List<String> proxyArgs(BeamNodeRoute route) => [
+    if (route.socksProxy != null) ...[
+      '--proxy=1',
+      '--proxy_addr=${route.socksProxy}',
+    ],
+  ];
+
   @override
   Future<BeamSession> openWallet({
     required String walletDir,
@@ -367,6 +402,7 @@ class ProcessHost implements BeamHost {
         scratchParent: runDir,
       );
       await _removeStrayConfigs();
+      final route = await routeFor(node);
       for (var attempt = 1; ; attempt++) {
         try {
           return await _launchWalletApi(
@@ -374,6 +410,7 @@ class ProcessHost implements BeamHost {
             walletDir: dir,
             password: password,
             node: node,
+            route: route,
             requestBodies: requestBodies,
             lock: lock,
           );
@@ -623,6 +660,7 @@ class ProcessHost implements BeamHost {
     required String walletDir,
     required String password,
     required BeamNodeEndpoint node,
+    required BeamNodeRoute route,
     required bool requestBodies,
     required _WalletLock lock,
   }) async {
@@ -661,7 +699,7 @@ class ProcessHost implements BeamHost {
       final state = _StartupState();
       final cfgName = p.basename(configFile.path);
       _log(
-        'Starting wallet-api for ${p.basename(walletDir)} on $node, '
+        'Starting wallet-api for ${p.basename(walletDir)} on $route, '
         'port $port${requestBodies ? ', body requests on' : ''}',
       );
       final started = await _Child.start(
@@ -669,7 +707,8 @@ class ProcessHost implements BeamHost {
         [
           '--wallet_path=${_dbPath(walletDir)}',
           '--config_file=${configFile.path}',
-          '--node_addr=$node',
+          '--node_addr=${route.address}',
+          ...proxyArgs(route),
           '--port=$port',
           '--use_http=0',
           '--tcp_max_line=$_tcpMaxLine',

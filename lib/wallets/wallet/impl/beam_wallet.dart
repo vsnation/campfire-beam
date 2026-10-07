@@ -23,6 +23,7 @@ import '../../../models/paymint/fee_object_model.dart';
 import '../../../services/event_bus/events/global/blocks_remaining_event.dart';
 import '../../../services/event_bus/events/global/node_connection_status_changed_event.dart';
 import '../../../services/event_bus/events/global/refresh_percent_changed_event.dart';
+import '../../../services/event_bus/events/global/tor_connection_status_changed_event.dart';
 import '../../../services/event_bus/events/global/tor_status_changed_event.dart';
 import '../../../services/event_bus/events/global/wallet_sync_status_changed_event.dart';
 import '../../../services/event_bus/global_event_bus.dart';
@@ -121,6 +122,11 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   StreamSubscription<BeamSession?>? _coordinatorSessionSub;
   StreamSubscription<BeamPrivateNodeStatus>? _coordinatorStatusSub;
   StreamSubscription<TorPreferenceChangedEvent>? _torSub;
+
+  /// Follows Campfire's Tor switch and Tor's connection for the wallet's
+  /// own connection (the coordinator's [_torSub] handles the private node).
+  StreamSubscription<TorPreferenceChangedEvent>? _torPrefWatch;
+  StreamSubscription<TorConnectionStatusChangedEvent>? _torStatusWatch;
   BeamPrivateNodeStatus? _privateNodeStatus;
   Timer? _coordinatorTimer;
   bool _coordinatorReplacing = false;
@@ -258,8 +264,45 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   /// through [syncAssessments] and Campfire's sync events.
   @override
   Future<void> open() async {
+    _watchTor();
     final started = _ensureOpening();
     if (started) _timings?.openReturned = _timings?.since(DateTime.now());
+  }
+
+  /// With Tor on, wallet-api goes through Tor or not at all (the host's
+  /// [BeamNodeRouter]); the route is chosen when wallet-api starts. So:
+  /// Tor switched on or off → restart wallet-api on the same node under the
+  /// new rule; Tor connected while the wallet waits for it → open now.
+  void _watchTor() {
+    _torPrefWatch ??= GlobalEventBus.instance
+        .on<TorPreferenceChangedEvent>()
+        .listen((_) => unawaited(_onTorChanged()));
+    _torStatusWatch ??= GlobalEventBus.instance
+        .on<TorConnectionStatusChangedEvent>()
+        .listen((e) {
+          if (e.newStatus == TorConnectionStatus.connected) {
+            unawaited(_onTorChanged());
+          }
+        });
+  }
+
+  Future<void> _onTorChanged() async {
+    final p = _problem?.problem;
+    if (_api == null) {
+      if (_opening == null &&
+          (p == BeamWalletProblem.waitingForTor ||
+              p == BeamWalletProblem.torUnsupported ||
+              p == BeamWalletProblem.nodeUnreachable)) {
+        _ensureOpening();
+      }
+      return;
+    }
+    final session = _session;
+    // On the private node the wallet talks to 127.0.0.1 only; the node's
+    // own peers follow Tor through the coordinator.
+    if (session == null || session.node.isOwned) return;
+    environment.log('Tor setting or connection changed: reconnecting');
+    await _switchTo(session.node);
   }
 
   @override
@@ -293,6 +336,10 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     await _tracker?.dispose();
     _tracker = null;
     _host = null; // re-read from the environment on the next open
+    await _torPrefWatch?.cancel();
+    _torPrefWatch = null;
+    await _torStatusWatch?.cancel();
+    _torStatusWatch = null;
     await super.exit();
   }
 
@@ -1211,6 +1258,7 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
       final retryable =
           p == null ||
           p.problem == BeamWalletProblem.nodeUnreachable ||
+          p.problem == BeamWalletProblem.waitingForTor ||
           p.problem == BeamWalletProblem.notOpen ||
           p.problem == BeamWalletProblem.other;
       if (retryable) _ensureOpening();

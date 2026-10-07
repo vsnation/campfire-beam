@@ -62,8 +62,8 @@ class BeamNodePanelSnapshot {
   final bool busy;
 
   /// Campfire's Tor is on (`BeamPrivateNodePreference.torEnabled`). The
-  /// private node does not go through Tor, so it stays off unless the user
-  /// turns it on, and the panel says why.
+  /// private node then runs only through Tor, and only on a core that can;
+  /// otherwise it is off and the panel says why.
   final bool torEnabled;
 
   BeamNodePanelSnapshot copyWith({
@@ -247,13 +247,13 @@ abstract final class BeamNodePanelText {
 
   /// Why the private node is off while Tor is on.
   static const String offForTor =
-      "Tor is on, and your private node can't use it: it talks to many other "
-      'BEAM nodes directly, and each of them sees your internet address. '
-      "Turn it on only if that's OK.";
+      "Tor is on, and this version's private node can't connect through Tor. "
+      'With Tor on nothing connects outside it, so the node stays off and '
+      'your internet address stays hidden. It runs again when Tor is off.';
 
   /// Added to the private node's state while it runs with Tor on.
-  static const String runsOutsideTor =
-      'It talks to other BEAM nodes directly, not through Tor.';
+  static const String runsThroughTor =
+      'Its connections to other BEAM nodes go through Tor.';
 
   static String actionLabel(BeamNodePanelAction a) => switch (a) {
     BeamNodePanelAction.retry => 'Try again',
@@ -420,13 +420,12 @@ abstract final class BeamNodePanelModel {
     }
     final state = _privateState(s, st);
     if (!s.torEnabled) return state;
-    // Running (or about to) with Tor on: say every time that it is not
-    // covered by Tor.
+    // Running (or about to) with Tor on: only ever through Tor.
     final detail = state.detail;
     return state.withDetail(
       detail == null
-          ? BeamNodePanelText.runsOutsideTor
-          : '$detail ${BeamNodePanelText.runsOutsideTor}',
+          ? BeamNodePanelText.runsThroughTor
+          : '$detail ${BeamNodePanelText.runsThroughTor}',
     );
   }
 

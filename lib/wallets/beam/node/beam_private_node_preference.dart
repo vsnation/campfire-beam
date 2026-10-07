@@ -17,6 +17,7 @@ import '../../../app_config.dart';
 import '../../../utilities/prefs.dart';
 import '../../../utilities/stack_file_system.dart';
 import '../host/secret_file.dart';
+import '../host/beam_binaries_manifest.dart';
 import 'beam_private_node_coordinator.dart';
 
 /// Whether Campfire routes its traffic through Tor (the app has the Tor
@@ -31,11 +32,12 @@ bool campfireTorEnabled() =>
 /// Until the user has chosen, it reads as [defaultValue]: on for desktop,
 /// off elsewhere (phones cannot run the node).
 ///
-/// **Tor.** `beam-node` talks to many BEAM peers directly, not through Tor
-/// (it has no proxy option). So while Campfire's Tor is on the node is off,
-/// whatever the default or a choice made with Tor off says. It runs only if
-/// the user turned it on *while Tor was on*, which is stored alongside the
-/// choice (`"tor": true`). The node panel says why it is off.
+/// **Tor.** With Campfire's Tor on, every connection goes through Tor or is
+/// not made (owner, 2026-10-07). The node talks to many BEAM peers, so with
+/// Tor on it runs only on a core that routes its peers through Tor's SOCKS5
+/// proxy ([nodeTorCapable], `kBeamCoreSupportsSocks`); on any other core it is
+/// off while Tor is on, whatever was chosen, and the node panel says why. No
+/// choice lets it run outside Tor while Tor is on.
 ///
 /// It is a [BeamPrivateNodeSetting], so the wallet environment can hand it
 /// to every coordinator. Not a secret: it holds one boolean (two with Tor).
@@ -44,10 +46,12 @@ class BeamPrivateNodePreference implements BeamPrivateNodeSetting {
     required this._beamRoot,
     bool? defaultValue,
     bool Function()? torEnabled,
+    bool Function()? nodeTorCapable,
   }) : defaultValue =
            defaultValue ??
            BeamFixedPrivateNodeSetting.platformDefault().enabled,
-       _torEnabled = torEnabled ?? campfireTorEnabled;
+       _torEnabled = torEnabled ?? campfireTorEnabled,
+       _nodeTorCapable = nodeTorCapable ?? (() => kBeamCoreSupportsSocks);
 
   /// The app's BEAM folder (`StackFileSystem.applicationBeamDirectory`).
   factory BeamPrivateNodePreference.app() => BeamPrivateNodePreference(
@@ -59,12 +63,15 @@ class BeamPrivateNodePreference implements BeamPrivateNodeSetting {
 
   final Future<String> Function() _beamRoot;
   final bool Function() _torEnabled;
+  final bool Function() _nodeTorCapable;
+
+  /// The core can route the node's peers through Tor.
+  bool get nodeTorCapable => _nodeTorCapable();
 
   /// What [read] answers before the user has chosen (with Tor off).
   final bool defaultValue;
 
-  /// Campfire's Tor is on now: the private node stays off unless it was
-  /// turned on with Tor on.
+  /// Campfire's Tor is on now: the private node runs only through Tor.
   bool get torEnabled => _torEnabled();
 
   static final StreamController<bool> _changes =
@@ -76,36 +83,33 @@ class BeamPrivateNodePreference implements BeamPrivateNodeSetting {
   Future<File> _file() async => File(p.join(await _beamRoot(), fileName));
 
   /// The stored choice, or [defaultValue]. A missing or unreadable file is
-  /// the default, never an error. With Tor on: true only for a choice made
-  /// with Tor on.
+  /// the default, never an error. With Tor on and a core that cannot route
+  /// the node through Tor: false, whatever is stored.
   @override
   Future<bool> read() async {
-    final tor = torEnabled;
+    if (torEnabled && !nodeTorCapable) return false;
     try {
       final file = await _file();
       if (await file.exists()) {
         final decoded = jsonDecode(await file.readAsString());
         if (decoded is Map && decoded['enabled'] is bool) {
-          final enabled = decoded['enabled'] as bool;
-          return tor ? enabled && decoded['tor'] == true : enabled;
+          return decoded['enabled'] as bool;
         }
       }
     } catch (_) {
       // Fall through to the default.
     }
-    return tor ? false : defaultValue;
+    return defaultValue;
   }
 
   /// Stores [enabled] (atomically: a temp file renamed over the old one).
-  /// Turning the node on while Tor is on records that, so it stays on under
-  /// Tor.
   Future<void> write(bool enabled) async {
     final root = await _beamRoot();
     await ensurePrivateDir(root);
     final target = File(p.join(root, fileName));
     final tmp = File('${target.path}.tmp');
     await tmp.writeAsString(
-      jsonEncode({'enabled': enabled, if (enabled && torEnabled) 'tor': true}),
+      jsonEncode({'enabled': enabled}),
       flush: true,
     );
     await tmp.rename(target.path);

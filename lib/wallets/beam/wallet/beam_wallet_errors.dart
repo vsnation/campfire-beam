@@ -39,6 +39,14 @@ enum BeamWalletProblem {
   /// The configured BEAM node could not be used.
   nodeUnreachable,
 
+  /// Tor is switched on and not connected yet, or cannot reach the node:
+  /// the wallet waits rather than connect outside Tor.
+  waitingForTor,
+
+  /// Tor is switched on and this build's core cannot go through it, so the
+  /// wallet does not connect.
+  torUnsupported,
+
   /// The core is not open yet (or was closed).
   notOpen,
 
@@ -140,6 +148,14 @@ abstract final class BeamWalletMessages {
       'The wallet is still connecting to the BEAM network. Try again in a '
       'few seconds.';
 
+  static const waitingForTor =
+      'Waiting for Tor. BEAM Campfire connects only through Tor while it is '
+      'on, so nothing reveals your IP address.';
+
+  static const torUnsupported =
+      "This version can't reach BEAM through Tor yet, so with Tor on it stays "
+      'offline. Turn Tor off in Settings to connect without it.';
+
   static String nodeUnreachable(String node) =>
       "Couldn't reach the BEAM node $node. Check the node in Settings, or "
       'pick another one.';
@@ -184,6 +200,14 @@ BeamWalletException beamWalletExceptionFrom(Object error, {String? node}) {
       BeamHostError.badNode => BeamWalletException(
         BeamWalletProblem.nodeUnreachable,
         BeamWalletMessages.nodeUnreachable(node ?? 'you picked'),
+      ),
+      BeamHostError.torNotReady => const BeamWalletException(
+        BeamWalletProblem.waitingForTor,
+        BeamWalletMessages.waitingForTor,
+      ),
+      BeamHostError.torUnsupported => const BeamWalletException(
+        BeamWalletProblem.torUnsupported,
+        BeamWalletMessages.torUnsupported,
       ),
       BeamHostError.invalidInput => BeamWalletException(
         BeamWalletProblem.other,
