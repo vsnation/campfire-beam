@@ -1,0 +1,138 @@
+name: BEAM core library
+
+# Builds libbeam_core — the BEAM core as one library inside the app (wallet-api
+# and the private node as threads of the app; no wallet-api or beam-node
+# programs) — for Linux x86_64, Linux arm64 and Windows x64 from tag
+# beam-7.5.14493 + scripts/beam/core/patches + scripts/beam/core/lib/patches,
+# checks each file (exports, no home paths, links only system libraries) and
+# publishes them with their SHA-256 to a pre-release. The app pins those hashes
+# in a reviewed commit (lib/wallets/beam/host/beam_core_location.dart and
+# scripts/beam/core/lib/manifest.json); nothing is fetched at runtime. macOS
+# and Android libraries are built and verified live on the maintainer's Mac
+# (scripts/beam/core/lib/verify_lib.sh) and added to the same release.
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Pre-release to publish the libraries to'
+        required: true
+        default: 'beam-core-7.5.14493-cf2'
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04,     out: lib-linux-x86_64,  key: linux-x86_64 }
+          - { arch: arm64, runner: ubuntu-24.04-arm, out: lib-linux-aarch64, key: linux-arm64 }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    env:
+      BEAM_CORE_BUILD_ROOT: ${{ runner.temp }}/core
+      JOBS: 4
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build (Docker, ubuntu 22.04, pinned sources)
+        run: scripts/beam/core/lib/build_lib_linux.sh ${{ matrix.arch }}
+
+      - name: Check the library
+        run: |
+          lib="$BEAM_CORE_BUILD_ROOT/out/${{ matrix.out }}/libbeam_core.so"
+          file "$lib"
+          readelf -d "$lib" | grep -E 'NEEDED|SONAME'
+          exported=$(nm -D --defined-only "$lib" | awk '{print $3}' | sort)
+          echo "$exported"
+          diff <(echo "$exported") <(sort scripts/beam/core/lib/src/exports.txt)
+          if strings -a "$lib" | grep -E '/home/runner|/Users/'; then
+            echo "the library names a build-machine path"; exit 1
+          fi
+          strings -a "$lib" | grep -q 'beam-7.5.14493-campfire'
+
+      - name: Package
+        run: |
+          mkdir dist
+          cp "$BEAM_CORE_BUILD_ROOT/out/${{ matrix.out }}/libbeam_core.so" "dist/${{ matrix.key }}-libbeam_core.so"
+          (cd dist && sha256sum * | tee "../SHA256SUMS-lib-${{ matrix.key }}.txt")
+          mv "SHA256SUMS-lib-${{ matrix.key }}.txt" dist/
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: lib-${{ matrix.key }}
+          path: dist/
+
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 150
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # Patches must apply to LF sources; Git for Windows would check out CRLF.
+      - run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v6
+
+      - name: Build (Visual Studio 2022, pinned sources)
+        env:
+          BEAM_CORE_BUILD_ROOT: /c/bl
+          JOBS: 4
+        run: scripts/beam/core/lib/build_lib_windows.sh
+
+      - name: Check the library
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $dumpbin = Get-ChildItem "$vs\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe" | Select-Object -Last 1
+          & $dumpbin.FullName /exports C:\bl\out\lib-windows-x86_64\beam_core.dll
+          & $dumpbin.FullName /dependents C:\bl\out\lib-windows-x86_64\beam_core.dll
+
+      - name: Package
+        run: |
+          mkdir dist
+          cp /c/bl/out/lib-windows-x86_64/beam_core.dll dist/windows-x86_64-beam_core.dll
+          (cd dist && sha256sum * | tee ../SHA256SUMS-lib-windows-x86_64.txt)
+          mv SHA256SUMS-lib-windows-x86_64.txt dist/
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: lib-windows-x86_64
+          path: dist/
+
+  publish:
+    needs: [linux, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: libs
+          merge-multiple: true
+
+      - name: Pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          cd libs
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p SHA256SUMS.txt || true
+          fi
+          touch SHA256SUMS.txt
+          cat SHA256SUMS-lib-*.txt >> SHA256SUMS.txt
+          rm SHA256SUMS-lib-*.txt
+          sort -u -k2 -o SHA256SUMS.txt SHA256SUMS.txt
+          sha256sum -c --ignore-missing SHA256SUMS.txt
+          notes="libbeam_core: Campfire's BEAM core as one library inside the app (tag beam-7.5.14493 + scripts/beam/core/patches + scripts/beam/core/lib/patches), built by run ${GITHUB_RUN_ID} (commit ${GITHUB_SHA}). Not an app: BEAM Campfire pins these SHA-256."
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber ./*
+          else
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --prerelease \
+              --target "$GITHUB_SHA" --title "BEAM core library for BEAM Campfire ($TAG)" \
+              --notes "$notes" ./*
+          fi
