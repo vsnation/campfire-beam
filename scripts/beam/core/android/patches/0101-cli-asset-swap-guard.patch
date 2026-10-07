@@ -1,0 +1,35 @@
+Campfire for BEAM, Android only: let the beam-wallet CLI build without asset swap.
+
+Campfire runs beam-wallet on Android for create/restore (ProcessHost.initWallet runs
+`beam-wallet restore`; wallet-api cannot create a wallet.db). Android forces
+BEAM_ASSET_SWAP_SUPPORT off (CMakeLists.txt, ANDROID branch), and at tag
+beam-7.5.14493 wallet/cli/cli.cpp guards the asset-swap command TABLE entries with
+#ifdef BEAM_ASSET_SWAP_SUPPORT but not the functions they name (AssetsSwapList,
+AssetSwapCreate, AssetSwapCancel, AssetSwapAccept), so the CLI does not compile
+there ("use of undeclared identifier 'DexBoard'"). This wraps those functions in the
+same #ifdef. With asset swap on nothing changes.
+
+Android only: applied by scripts/beam/core/android/build_wallet_api.sh after the core
+series (patches/0001-0005), never by the desktop builds. It adds lines to cli.cpp, and
+in the shared series it would shift __LINE__ in the desktop beam-wallet and break its
+pinned hashes. wallet-api does not compile cli.cpp; its Android build is byte-identical
+with and without this patch. patch -p1.
+
+--- a/wallet/cli/cli.cpp
++++ b/wallet/cli/cli.cpp
+@@ -3006,6 +3006,7 @@
+             });
+     }
+ 
++#ifdef BEAM_ASSET_SWAP_SUPPORT  // Campfire: Android builds the CLI without asset swap
+     int AssetsSwapList(const po::variables_map& vm)
+     {
+         CheckAssetsAllowed(vm);
+@@ -3326,6 +3327,7 @@
+ 
+         return 1;
+     }
++#endif  // BEAM_ASSET_SWAP_SUPPORT
+ }  // namespace
+ 
+ io::Reactor::Ptr reactor;

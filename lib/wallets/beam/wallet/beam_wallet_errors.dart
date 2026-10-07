@@ -8,6 +8,7 @@
  */
 
 import 'dart:async';
+import 'dart:io';
 
 import '../host/beam_host_exception.dart';
 import '../rpc/beam_connection_exception.dart';
@@ -97,6 +98,27 @@ abstract final class BeamWalletMessages {
       "The BEAM wallet engine on this computer failed Campfire's safety "
       "check, so it won't be run. Reinstall Campfire.";
 
+  /// [coreNotInstalled] and [coreUntrusted] as a phone says them.
+  static const coreNotInstalledOnPhone =
+      'BEAM core not installed. This copy of Campfire is missing the BEAM '
+      "wallet engine for this device, so it can't create or open BEAM "
+      'wallets yet. Nothing was lost. Install a Campfire build that includes '
+      'the BEAM core.';
+
+  static const coreUntrustedOnPhone =
+      "The BEAM wallet engine on this device failed Campfire's safety "
+      "check, so it won't be run. Reinstall Campfire.";
+
+  static bool get _onPhone => Platform.isAndroid || Platform.isIOS;
+
+  /// The "core not installed" text for the device the app runs on.
+  static String get coreNotInstalledHere =>
+      _onPhone ? coreNotInstalledOnPhone : coreNotInstalled;
+
+  /// The "core failed the safety check" text for the device the app runs on.
+  static String get coreUntrustedHere =>
+      _onPhone ? coreUntrustedOnPhone : coreUntrusted;
+
   static const passwordMissing =
       "This wallet's file can't be unlocked because its key is missing from "
       "Campfire's secure storage. Restore the wallet from its recovery "
@@ -138,14 +160,14 @@ BeamWalletException beamWalletExceptionFrom(Object error, {String? node}) {
   if (error is BeamHostException) {
     return switch (error.kind) {
       BeamHostError.binaryMissing ||
-      BeamHostError.unsupportedPlatform => const BeamWalletException(
+      BeamHostError.unsupportedPlatform => BeamWalletException(
         BeamWalletProblem.coreNotInstalled,
-        BeamWalletMessages.coreNotInstalled,
+        BeamWalletMessages.coreNotInstalledHere,
       ),
       BeamHostError.binaryUntrusted ||
-      BeamHostError.consensusMismatch => const BeamWalletException(
+      BeamHostError.consensusMismatch => BeamWalletException(
         BeamWalletProblem.coreUntrusted,
-        BeamWalletMessages.coreUntrusted,
+        BeamWalletMessages.coreUntrustedHere,
       ),
       BeamHostError.wrongPassword => const BeamWalletException(
         BeamWalletProblem.wrongPassword,
@@ -192,9 +214,9 @@ BeamWalletException beamWalletExceptionFrom(Object error, {String? node}) {
   }
   // `libBeam.createHost` throws a plain Exception when the BEAM flag is off.
   if ('$error'.contains('BEAM not enabled')) {
-    return const BeamWalletException(
+    return BeamWalletException(
       BeamWalletProblem.coreNotInstalled,
-      BeamWalletMessages.coreNotInstalled,
+      BeamWalletMessages.coreNotInstalledHere,
     );
   }
   return BeamWalletException(BeamWalletProblem.other, '$error');

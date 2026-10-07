@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
-# Build BEAM's wallet-api for Android (arm64-v8a, x86_64), from tag beam-7.5.14493
-# with Campfire's core patches (../patches) plus the Android ones (./patches).
+# Build BEAM's Android core, wallet-api and beam-wallet, for arm64-v8a and x86_64 from
+# tag beam-7.5.14493 with Campfire's core patches (../patches) plus the Android-only
+# ones (./patches).
 #
 #   scripts/beam/core/android/build_deps.sh          # once: static OpenSSL + Boost per ABI
-#   scripts/beam/core/android/build_wallet_api.sh    # both ABIs
+#   scripts/beam/core/android/build_wallet_api.sh    # both targets, both ABIs
 #   scripts/beam/core/android/build_wallet_api.sh x86_64
+#   TARGETS=wallet-api scripts/beam/core/android/build_wallet_api.sh   # one target
 #   scripts/beam/core/android/build_wallet_api.sh --prepare-only   # just the patched source tree
 #
-# Output: $BUILD_ROOT/out/android-arm64/wallet-api, $BUILD_ROOT/out/android-x86_64/wallet-api
-# (stripped PIE executables; the app ships them as jniLibs/<abi>/libbeam_wallet_api.so).
+# Output, per ABI ($BUILD_ROOT/out/android-arm64/, $BUILD_ROOT/out/android-x86_64/):
+#   wallet-api   the wallet core       -> jniLibs/<abi>/libbeam_wallet_api.so in the app
+#   beam-wallet  create/restore CLI    -> jniLibs/<abi>/libbeam_wallet.so
+# Both are stripped PIE executables. Each gets .<target>.source (commit + patch series)
+# and .<target>.build_seconds, and must pass verify_android.sh for its own checks.
 #
 # Source tree: a PRIVATE clone at $BUILD_ROOT/android/src. It is never the shared
 # desktop tree ($BUILD_ROOT/beam) and never ~/beam: it is cloned from the shared tree
@@ -16,8 +21,9 @@
 # otherwise from $BEAM_REPO_URL. A tree that is not exactly "pinned commit + this
 # patch series" is thrown away and cloned again.
 #
-# Env: JOBS (default 8), ANDROID_SDK_ROOT, ANDROID_NDK, BEAM_CORE_BUILD_ROOT,
-#      CLEAN_BUILD=1 to delete each ABI's CMake tree after its binary is collected.
+# Env: TARGETS (default "wallet-api beam-wallet"), JOBS (default 8), ANDROID_SDK_ROOT,
+#      ANDROID_NDK, BEAM_CORE_BUILD_ROOT, CLEAN_BUILD=1 to delete each ABI's CMake tree
+#      after its binaries are collected.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
 
@@ -33,6 +39,19 @@ for a in "$@"; do
     esac
 done
 [[ ${#abis[@]} -gt 0 ]] || abis=("${ANDROID_ABIS_DEFAULT[@]}")
+
+# CMake target -> path of the built executable in the build tree. beam-node is never
+# built: phones use public nodes.
+target_path() {
+    case "$1" in
+        wallet-api)  echo "wallet/api/wallet-api" ;;
+        beam-wallet) echo "wallet/cli/beam-wallet" ;;
+        *) die "unknown target '$1' (use wallet-api and/or beam-wallet)" ;;
+    esac
+}
+read -r -a targets <<< "${TARGETS:-wallet-api beam-wallet}"
+[[ ${#targets[@]} -gt 0 ]] || die "TARGETS is empty"
+for tg in "${targets[@]}"; do target_path "$tg" >/dev/null; done
 mkdir -p "$ANDROID_ROOT" "$ANDROID_LOGS"
 
 # ---- source ---------------------------------------------------------------------------
@@ -131,7 +150,7 @@ BRANCH_LABEL="${BEAM_TAG}-campfire"
 build_abi() {
     local abi="$1" plat; plat="$(abi_platform "$abi")"
     local deps="${ANDROID_DEPS}/${abi}" bdir="${ANDROID_BUILD}/${abi}" out="${OUT_ROOT}/${plat}"
-    local log_cfg="${ANDROID_LOGS}/beam-configure-${abi}.log" log_build="${ANDROID_LOGS}/beam-build-${abi}.log"
+    local log_cfg="${ANDROID_LOGS}/beam-configure-${abi}.log"
     [[ -f "${deps}/.stamp" ]] || die "no dependencies for ${abi}: run build_deps.sh ${abi} first"
     local boost="${deps}/boost" ossl="${deps}/openssl"
 
@@ -159,7 +178,7 @@ build_abi() {
         -DCMAKE_BUILD_TYPE=Release
         -DBUILD_SHARED_LIBS=OFF
         -DBEAM_LINK_TYPE=Static
-        -DBEAM_ANDROID_EXECUTABLES=ON               # patches/0005: build wallet-api, not only the JNI lib
+        -DBEAM_ANDROID_EXECUTABLES=ON               # patches/0005: build the executables, not only the JNI lib
         -DBEAM_NO_QT_UI_WALLET=ON
         -DBEAM_IPFS_SUPPORT=OFF
         -DBEAM_LASER_SUPPORT=OFF
@@ -185,25 +204,34 @@ build_abi() {
     check_cmake_version "$bdir"
     grep -E '^(BEAM_BRANCH_NAME|OPENSSL_CRYPTO_LIBRARY|OPENSSL_SSL_LIBRARY|ANDROID_ABI|ANDROID_PLATFORM)[:=]' "${bdir}/CMakeCache.txt" >&2 || true
 
-    log "[${abi}] building wallet-api with -j${JOBS} (log: ${log_build})"
-    local t0 t1; t0=$(date +%s)
-    BOOST_ROOT_ANDROID="$boost" offline "$ANDROID_CMAKE" --build "$bdir" --target wallet-api -j"$JOBS" > "$log_build" 2>&1 \
-        || { grep -nE 'error:|undefined' "$log_build" | head -40; tail -30 "$log_build"; die "[${abi}] build failed"; }
-    t1=$(date +%s)
-    log "[${abi}] wallet-api built in $((t1 - t0)) s"
-
     mkdir -p "$out"
-    "${NDK_TC}/bin/llvm-strip" --strip-all -o "${out}/wallet-api" "${bdir}/wallet/api/wallet-api"
-    chmod 0755 "${out}/wallet-api"
-    echo "$((t1 - t0))" > "${out}/.build_seconds"
-    source_fingerprint > "${out}/.source"
-    "${ANDROID_SCRIPTS_DIR}/verify_android.sh" "$abi" "${out}/wallet-api"
+    # Metadata of the single-target layout (one .source/.build_seconds for wallet-api).
+    rm -f "${out}/.source" "${out}/.build_seconds"
+    local tg log_build t0 t1
+    for tg in "${targets[@]}"; do
+        log_build="${ANDROID_LOGS}/beam-build-${tg}-${abi}.log"
+        log "[${abi}] building ${tg} with -j${JOBS} (log: ${log_build})"
+        t0=$(date +%s)
+        BOOST_ROOT_ANDROID="$boost" offline "$ANDROID_CMAKE" --build "$bdir" --target "$tg" -j"$JOBS" > "$log_build" 2>&1 \
+            || { grep -nE 'error:|undefined' "$log_build" | head -40; tail -30 "$log_build"; die "[${abi}] ${tg} build failed"; }
+        t1=$(date +%s)
+        log "[${abi}] ${tg} built in $((t1 - t0)) s"
+
+        "${NDK_TC}/bin/llvm-strip" --strip-all -o "${out}/${tg}" "${bdir}/$(target_path "$tg")"
+        chmod 0755 "${out}/${tg}"
+        echo "$((t1 - t0))" > "${out}/.${tg}.build_seconds"
+        source_fingerprint > "${out}/.${tg}.source"
+        # A failed check fails the build (set -e).
+        "${ANDROID_SCRIPTS_DIR}/verify_android.sh" "$abi" "${out}/${tg}" "$tg"
+    done
     if [[ "${CLEAN_BUILD:-0}" == "1" ]]; then rm -rf "$bdir"; log "[${abi}] removed ${bdir}"; fi
 }
 
 for abi in "${abis[@]}"; do build_abi "$abi"; done
 log "done"
 for abi in "${abis[@]}"; do
-    f="${OUT_ROOT}/$(abi_platform "$abi")/wallet-api"
-    printf '%s  %s  %s bytes\n' "$(sha256_of "$f")" "$f" "$(wc -c < "$f" | tr -d ' ')"
+    for tg in "${targets[@]}"; do
+        f="${OUT_ROOT}/$(abi_platform "$abi")/${tg}"
+        printf '%s  %s  %s bytes\n' "$(sha256_of "$f")" "$f" "$(wc -c < "$f" | tr -d ' ')"
+    done
 done

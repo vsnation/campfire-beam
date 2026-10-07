@@ -10,6 +10,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../widgets/flag_secure_scope.dart';
 import 'word_table_item.dart';
 
 class WordTable extends ConsumerWidget {
@@ -31,7 +32,8 @@ class WordTable extends ConsumerWidget {
 
     final int rows = words.length ~/ wordsPerRow;
     int index = 0;
-    return Column(
+    // Recovery words: no screenshots, recordings or recents thumbnail.
+    return FlagSecureScope(child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (int i = 1; i <= rows; i++)
@@ -56,6 +58,6 @@ class WordTable extends ConsumerWidget {
             ),
           ),
       ],
-    );
+    ));
   }
 }

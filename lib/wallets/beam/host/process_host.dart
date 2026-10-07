@@ -398,6 +398,14 @@ class ProcessHost implements BeamHost {
     required String walletDir,
     required String password,
   }) async {
+    // The owner key reveals every incoming payment and only the private node
+    // uses it. Phones never run that node, so Android never reads the key.
+    if (Platform.isAndroid) {
+      throw const BeamHostException(
+        BeamHostError.notOwnedNode,
+        'Phones run no private node; the owner key is not read on Android',
+      );
+    }
     validatePassword(password);
     await _prepare();
     final dir = await _existingWallet(walletDir);
@@ -1297,7 +1305,7 @@ class _WalletLock {
   /// The full command line of [target], or null if it is not running.
   static Future<String?> _commandOf(int target) async {
     if (target <= 0) return null;
-    final ps = File('/bin/ps').existsSync() ? '/bin/ps' : 'ps';
+    final ps = _psPath();
     final r = await Process.run(ps, ['-ww', '-p', '$target', '-o', 'command=']);
     final out = '${r.stdout}'.trim();
     return r.exitCode == 0 && out.isNotEmpty ? out : null;
@@ -1318,6 +1326,14 @@ class _WalletLock {
     }
   }
 
+  /// `ps` by absolute path: `/bin` on macOS, Linux and Android 10+,
+  /// `/system/bin` on older Android.
+  static String _psPath() => File('/bin/ps').existsSync()
+      ? '/bin/ps'
+      : File('/system/bin/ps').existsSync()
+      ? '/system/bin/ps'
+      : 'ps';
+
   /// Whether [target] runs and, if [exe] is given, is that executable (so a
   /// recycled pid is not mistaken for the holder).
   static Future<bool> _pidRunning(int target, String? exe) async {
@@ -1334,7 +1350,7 @@ class _WalletLock {
       if (!out.contains('"$target"')) return false;
       return exe == null || out.toLowerCase().contains(exe.toLowerCase());
     }
-    final ps = File('/bin/ps').existsSync() ? '/bin/ps' : 'ps';
+    final ps = _psPath();
     final result = await Process.run(ps, ['-p', '$target', '-o', 'comm=']);
     final out = '${result.stdout}'.trim();
     if (result.exitCode != 0 || out.isEmpty) return false;

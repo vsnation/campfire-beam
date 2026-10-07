@@ -9,6 +9,7 @@
  */
 
 import 'package:flutter/material.dart';
+import '../../../../widgets/flag_secure_scope.dart';
 import 'mnemonic_table_item.dart';
 
 class MnemonicTable extends StatelessWidget {
@@ -34,7 +35,8 @@ class MnemonicTable extends StatelessWidget {
 
     int index = 0;
 
-    return Column(
+    // Recovery words: no screenshots, recordings or recents thumbnail.
+    return FlagSecureScope(child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (int i = 1; i <= rows; i++)
@@ -90,6 +92,6 @@ class MnemonicTable extends StatelessWidget {
             ),
           ),
       ],
-    );
+    ));
   }
 }

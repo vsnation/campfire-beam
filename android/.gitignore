@@ -9,3 +9,7 @@ app/upload-keystore-campfire.jks
 app/upload-keystore-stackwallet.jks
 GeneratedPluginRegistrant.java
 /.kotlin/
+
+# Campfire for BEAM: the pinned BEAM core, staged per build by
+# scripts/android/stage_beam_core.sh. Binaries are never committed.
+/app/src/main/jniLibs/*/libbeam_*.so

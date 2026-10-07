@@ -44,8 +44,13 @@ String _randomHex(int bytes) {
 
 /// `chmod` by absolute path, never through PATH (a PATH entry could
 /// substitute its own). macOS and Linux both have `/bin/chmod`; `/usr/bin`
-/// covers a merged-/usr system without the `/bin` link.
-const List<String> kChmodPaths = ['/bin/chmod', '/usr/bin/chmod'];
+/// covers a merged-/usr system without the `/bin` link, `/system/bin` an
+/// Android older than 10 (which has no `/bin` link to it).
+const List<String> kChmodPaths = [
+  '/bin/chmod',
+  '/usr/bin/chmod',
+  '/system/bin/chmod',
+];
 
 Future<void> _chmod(String mode, String path) async {
   if (!_posix) return;

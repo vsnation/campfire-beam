@@ -15,11 +15,14 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
+import 'android_native_dir.dart';
 import 'beam_binaries_manifest.dart';
 import 'beam_host_exception.dart';
 import 'secret_file.dart';
 
-/// The BEAM executables Campfire runs on desktop.
+/// The BEAM executables Campfire runs as child processes: all three on
+/// desktop; on Android `wallet-api` and `beam-wallet` (phones never run the
+/// private node).
 enum BeamBinary {
   /// `beam-wallet`: create/restore, owner key export, rescan.
   wallet('beam-wallet'),
@@ -35,7 +38,21 @@ enum BeamBinary {
   /// Name without extension; the key in [kBeamBinaryManifest].
   final String id;
 
-  String get fileName => Platform.isWindows ? '$id.exe' : id;
+  /// The file name on this platform.
+  String get fileName => Platform.isWindows
+      ? '$id.exe'
+      : Platform.isAndroid
+      ? androidLibraryName
+      : id;
+
+  /// The name [id] ships under on Android: `jniLibs/<abi>/lib*.so`. Only
+  /// files named like that are extracted to `nativeLibraryDir`, the one
+  /// place an app may execute from (`scripts/android/stage_beam_core.sh`).
+  String get androidLibraryName => switch (this) {
+    BeamBinary.wallet => 'libbeam_wallet.so',
+    BeamBinary.walletApi => 'libbeam_wallet_api.so',
+    BeamBinary.node => 'libbeam_node.so',
+  };
 }
 
 /// Locates the BEAM binaries and proves each one is the pinned build.
@@ -52,8 +69,10 @@ class BeamBinaries {
     bool? allowDevBuilds,
     this.requirePrivateDir = false,
     String? platform,
+    bool? androidLibraries,
   }) : binDir = p.normalize(p.absolute(binDir)),
        platform = platform ?? currentPlatform(),
+       androidLibraries = androidLibraries ?? Platform.isAndroid,
        allowDevBuilds =
            allowDevBuilds ?? (devBinDir(Platform.environment) != null);
 
@@ -67,6 +86,12 @@ class BeamBinaries {
     Map<String, String>? environment,
     bool? overridesAllowed,
   }) {
+    if (Platform.isAndroid) {
+      return BeamBinaries.android(
+        beamRoot: beamRoot,
+        nativeLibraryDir: androidNativeLibraryDir(),
+      );
+    }
     final override = devBinDir(
       environment ?? Platform.environment,
       overridesAllowed: overridesAllowed,
@@ -79,6 +104,27 @@ class BeamBinaries {
             requirePrivateDir: true,
           );
   }
+
+  /// Android: the binaries the APK ships as native libraries, run from the
+  /// directory the system extracted them to ([androidNativeLibraryDir]).
+  ///
+  /// That directory belongs to the system and is read-only to the app, so it
+  /// is not required to be private, and no override applies: an app may not
+  /// execute anything else. Without it (libraries not extracted) the files
+  /// are looked for in `<beamRoot>/bin`, which Android never fills, so
+  /// [verify] reports the core as missing.
+  factory BeamBinaries.android({
+    required String beamRoot,
+    required String? nativeLibraryDir,
+    String? platform,
+    Map<String, Map<String, String>> manifest = kBeamBinaryManifest,
+  }) => BeamBinaries(
+    binDir: nativeLibraryDir ?? p.join(beamRoot, 'bin'),
+    manifest: manifest,
+    allowDevBuilds: false,
+    platform: platform,
+    androidLibraries: true,
+  );
 
   /// Environment variable that points at a directory of binaries.
   static const String binDirEnv = 'BEAM_BIN_DIR';
@@ -123,6 +169,10 @@ class BeamBinaries {
   /// `<os>-<arch>` key into the manifest, e.g. `macos-arm64`.
   final String platform;
 
+  /// Whether the files carry their Android names
+  /// ([BeamBinary.androidLibraryName]). True on Android.
+  final bool androidLibraries;
+
   final Map<String, Map<String, String>> _manifest;
   final Map<String, Map<String, String>> _devManifest;
 
@@ -156,7 +206,10 @@ class BeamBinaries {
     _ => 'unsupported-$abi',
   };
 
-  String pathOf(BeamBinary binary) => p.join(binDir, binary.fileName);
+  String pathOf(BeamBinary binary) => p.join(
+    binDir,
+    androidLibraries ? binary.androidLibraryName : binary.fileName,
+  );
 
   /// The release SHA-256 for [binary] on this platform, if any.
   String? pinnedHash(BeamBinary binary) => _manifest[platform]?[binary.id];
@@ -182,14 +235,21 @@ class BeamBinaries {
     }
     final expected = pinned?[binary.id]?.toLowerCase();
     final devExpected = devPinned?[binary.id]?.toLowerCase();
+    final path = pathOf(binary);
     if (expected == null && devExpected == null) {
+      // Absent and not pinned here: this build does not ship it (Android has
+      // no beam-node). That is a missing core, not a failed safety check.
+      if (await FileSystemEntity.type(path) == FileSystemEntityType.notFound) {
+        throw BeamHostException(
+          BeamHostError.binaryMissing,
+          '${binary.id} is not part of this build for $platform',
+        );
+      }
       throw BeamHostException(
         BeamHostError.binaryUntrusted,
         '${binary.id} is not pinned for $platform',
       );
     }
-
-    final path = pathOf(binary);
     await _checkPlacement(binary, path);
 
     final actual = await sha256OfFile(path);

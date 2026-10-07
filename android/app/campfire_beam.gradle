@@ -1,0 +1,45 @@
+// Campfire for BEAM: the Android build settings the BEAM core needs.
+//
+// Applied to the generated app/build.gradle by
+// scripts/android/campfire_android.sh, for the campfire app config only.
+// Stack Wallet and Stack Duo builds never apply it and keep upstream
+// packaging. Steps and reasons: the project notes.
+
+android {
+    packaging {
+        jniLibs {
+            // The BEAM core runs as child processes (wallet-api, beam-wallet),
+            // shipped as jniLibs/<abi>/libbeam_wallet_api.so and
+            // libbeam_wallet.so. Android lets an app execute files only from
+            // ApplicationInfo.nativeLibraryDir (never from its writable data
+            // directory), and the package manager extracts native libraries
+            // there only with legacy packaging (android:extractNativeLibs).
+            useLegacyPackaging = true
+
+            // Ship the pinned binaries byte for byte. Stripping them would
+            // change their SHA-256, and the app refuses a binary whose hash is
+            // not the pinned one.
+            keepDebugSymbols.add('**/libbeam_wallet_api.so')
+            keepDebugSymbols.add('**/libbeam_wallet.so')
+        }
+    }
+}
+
+// Release signing from outside the repository. Upstream's android/key.properties
+// still wins when it exists. Otherwise the properties file named by
+// CAMPFIRE_ANDROID_KEY_PROPERTIES, or ~/.config/campfire-beam/android/key.properties
+// (written by scripts/android/make_release_keystore.sh, mode 0600), signs the
+// release build. Neither the keystore nor its passwords ever enter the repo.
+if (!rootProject.file('key.properties').exists()) {
+    def campfireKeyPath = System.getenv('CAMPFIRE_ANDROID_KEY_PROPERTIES') ?:
+            "${System.getProperty('user.home')}/.config/campfire-beam/android/key.properties"
+    def campfireKeyFile = new File(campfireKeyPath)
+    if (campfireKeyFile.isFile()) {
+        def campfireKeys = new Properties()
+        campfireKeyFile.withInputStream { campfireKeys.load(it) }
+        android.signingConfigs.release.storeFile = new File(campfireKeys['storeFile'])
+        android.signingConfigs.release.storePassword = campfireKeys['storePassword']
+        android.signingConfigs.release.keyAlias = campfireKeys['keyAlias']
+        android.signingConfigs.release.keyPassword = campfireKeys['keyPassword']
+    }
+}

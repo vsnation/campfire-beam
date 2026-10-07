@@ -51,6 +51,9 @@ Future<int> installBundledBeamBinaries({
   Map<String, String>? environment,
   bool? overridesAllowed,
 }) async {
+  // Android ships the core as native libraries the system has already
+  // extracted (BeamBinaries.android); there is nothing to copy.
+  if (Platform.isAndroid && platform == null) return 0;
   final env = environment ?? Platform.environment;
   if (BeamBinaries.devBinDir(env, overridesAllowed: overridesAllowed) !=
       null) {

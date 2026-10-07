@@ -43,6 +43,12 @@ dart "${APP_PROJECT_ROOT_DIR}/tool/gen_interfaces.dart" \
 # The desktop BEAM core runs as child processes; bundle its pinned binaries.
 bash "${APP_PROJECT_ROOT_DIR}/scripts/beam/core/stage_binaries.sh" "${1:-}"
 
+# Android runs the same core as child processes, shipped as jniLibs so they
+# are extracted to nativeLibraryDir and executable (the project notes).
+if [ "${1:-}" = "android" ]; then
+  bash "${APP_PROJECT_ROOT_DIR}/scripts/android/campfire_android.sh"
+fi
+
 
 pushd "${APP_PROJECT_ROOT_DIR}"
 BUILT_COMMIT_HASH=$(git log -1 --pretty=format:"%H")

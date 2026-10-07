@@ -43,13 +43,19 @@ const Map<String, Map<String, String>> kBeamBinaryManifest = {
     'beam-node':
         'd20218c9f3805ec9fa3c9c5a492d3501f1a19850f8fa54b5553d0be95984832d',
   },
-  // Android: wallet-api only (phones never run the private node), packaged
-  // as jniLibs/<abi>/libbeam_wallet_api.so and run from nativeLibraryDir.
+  // Android: beam-wallet (create/restore) and wallet-api; phones never run
+  // the private node. Packaged as jniLibs/<abi>/libbeam_wallet.so and
+  // libbeam_wallet_api.so and run from nativeLibraryDir
+  // (scripts/beam/core/android/build_wallet_api.sh, the project notes).
   'android-arm64': {
+    'beam-wallet':
+        '4b723937ce035ca2d1ad40b1d8548983ae0d87e1ff5ed077683ad98088b0ad82',
     'wallet-api':
         'c1da9ae7f18a7dbbe7fbf99d6c9dafc2ff6f0bb293e0344c8fb076eeb9251f3d',
   },
   'android-x86_64': {
+    'beam-wallet':
+        '621edff399dcf1066a3a251264e88922c184fb966e8ab02fb76715bd3b4bbb79',
     'wallet-api':
         '22d02e68c74fec724caf2c1c8445342d6006077c139a345aca68862df28c178d',
   },
