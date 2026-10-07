@@ -691,6 +691,46 @@ void main() {
       );
     });
 
+    test('a lost connection stops the core it belonged to before the wallet '
+        'reopens', () async {
+      final w = await newWallet();
+      await w.open();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+      final lost = host.sessions.single;
+
+      // The connection drops; the core behind it still has the wallet.
+      lost.transport.simulateDisconnect();
+      lost.transport.emit('ev_txs_changed', {'change': 0});
+      await waitFor(() => !w.isOpen, what: 'the loss noticed');
+
+      await waitFor(
+        () => host.sessions.length == 2 && w.isOpen,
+        timeout: const Duration(seconds: 8),
+        what: 'reopened on a new session',
+      );
+      expect(lost.closed, isTrue);
+      expect(w.coreProblem, isNull);
+    });
+
+    test('a wallet whose core was still in use opens on the next '
+        'refresh', () async {
+      final w = await newWallet();
+      host.openError = const BeamHostException(
+        BeamHostError.walletInUse,
+        'This wallet is already open or busy',
+      );
+      await w.open();
+      await waitFor(
+        () => w.coreProblem?.problem == BeamWalletProblem.walletInUse,
+        what: 'walletInUse',
+      );
+      expect(w.isOpen, isFalse);
+
+      await w.refresh();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+      expect(w.isOpen, isTrue);
+    });
+
     test('exit closes the core; open works again', () async {
       final w = await newWallet();
       await w.open();

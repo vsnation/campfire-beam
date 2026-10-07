@@ -932,9 +932,20 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     _api = null;
     unawaited(
       Future<void>.delayed(const Duration(seconds: 2), () async {
+        if (gen == _generation) {
+          await _disposeCoordinator();
+          _coordHost?.close();
+        }
+        // Only the connection may have gone: wallet-api can still run with
+        // wallet.db open, and then the reopen finds the wallet in use. The
+        // session is no longer referenced anywhere else, so it is stopped
+        // here even when the wallet was closed meanwhile.
+        try {
+          await session.closeNow();
+        } catch (e) {
+          environment.log('Stopping the lost wallet core failed: $e');
+        }
         if (gen != _generation) return;
-        await _disposeCoordinator();
-        _coordHost?.close();
         _ensureOpening();
       }),
     );
@@ -1281,11 +1292,14 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     if (refreshMutex.isLocked) return;
     if (_api == null) {
       final p = _problem;
+      // walletInUse: a core of this wallet that was still stopping (a lost
+      // connection, a failed start) lets go of it once it has stopped.
       final retryable =
           p == null ||
           p.problem == BeamWalletProblem.nodeUnreachable ||
           p.problem == BeamWalletProblem.waitingForTor ||
           p.problem == BeamWalletProblem.notOpen ||
+          p.problem == BeamWalletProblem.walletInUse ||
           p.problem == BeamWalletProblem.other;
       if (retryable) _ensureOpening();
       if (p != null) {
