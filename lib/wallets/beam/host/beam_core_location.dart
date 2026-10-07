@@ -8,6 +8,7 @@
  */
 
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
@@ -135,7 +136,7 @@ Future<BeamCoreLibraryFile> locateBeamCoreLibrary({
           '$kBeamCoreLibraryEnv names no file',
         );
       }
-      return BeamCoreLibraryFile(dev, _sha256(dev), development: true);
+      return BeamCoreLibraryFile(dev, await _sha256(dev), development: true);
     }
   }
   final pin = manifest[key];
@@ -147,12 +148,17 @@ Future<BeamCoreLibraryFile> locateBeamCoreLibrary({
     throw const BeamCoreLibraryProblem('The BEAM core is not in this build');
   }
   var path = shipped;
+  // The private copy's hash, when it was just read and matched: it is not
+  // read a second time.
+  String? got;
   if (Platform.isLinux || Platform.isWindows) {
     final bin = p.join(beamRoot, 'bin');
     await ensurePrivateDir(bin);
     final copy = p.join(bin, beamCoreLibraryFileName());
     final existing = File(copy);
-    if (!existing.existsSync() || _sha256(copy) != pin) {
+    if (existing.existsSync()) got = await _sha256(copy);
+    if (got != pin) {
+      got = null;
       final tmp = '$copy.part';
       await File(shipped).copy(tmp);
       if (!Platform.isWindows) await setOwnerExecutable(tmp);
@@ -161,7 +167,7 @@ Future<BeamCoreLibraryFile> locateBeamCoreLibrary({
     }
     path = copy;
   }
-  final got = _sha256(path);
+  got ??= await _sha256(path);
   if (got != pin) {
     throw const BeamCoreLibraryProblem(
       'The BEAM core library does not match its pinned SHA-256',
@@ -171,5 +177,11 @@ Future<BeamCoreLibraryFile> locateBeamCoreLibrary({
   return BeamCoreLibraryFile(path, got);
 }
 
-String _sha256(String path) =>
-    sha256.convert(File(path).readAsBytesSync()).toString();
+/// SHA-256 of the file at [path], read in chunks on a background isolate:
+/// the core library is the whole BEAM core, and reading and hashing it on
+/// the UI isolate (up to three times on Linux and Windows) froze the app
+/// while the first wallet opened.
+Future<String> _sha256(String path) => Isolate.run(
+  () async => (await sha256.bind(File(path).openRead()).first).toString(),
+  debugName: 'beam-core-hash',
+);
