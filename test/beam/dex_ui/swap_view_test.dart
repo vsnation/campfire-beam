@@ -107,6 +107,43 @@ void main() {
     return fake;
   }
 
+  // A phone set to a region that writes 0,5 has no "." key on its decimal
+  // pad: the "," it types must become the "." the DEX reads.
+  testWidgets('the decimal key of a comma region types the DEX\'s "."', (
+    tester,
+  ) async {
+    final fake = await openSwap(tester);
+    final field = find.byKey(const Key('dex-pay-amount'));
+    await tester.showKeyboard(field);
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: '0',
+        selection: TextSelection.collapsed(offset: 1),
+      ),
+    );
+    await tester.pump();
+    tester.testTextInput.updateEditingValue(
+      const TextEditingValue(
+        text: '0,',
+        selection: TextSelection.collapsed(offset: 2),
+      ),
+    );
+    await tester.pump();
+    // The keyboard appends to what the field shows now.
+    final shown = tester.widget<TextField>(field).controller!.text;
+    tester.testTextInput.updateEditingValue(
+      TextEditingValue(
+        text: '${shown}1',
+        selection: TextSelection.collapsed(offset: shown.length + 1),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(tester.widget<TextField>(field).controller!.text, '0.1');
+    expect(find.text('Use a dot for decimals, like 0.5'), findsNothing);
+    expect(fake.seenArgs.last, predict(0, 174, '0.1'));
+  });
+
   testWidgets('live quote after the debounce, in plain words', (tester) async {
     final fake = await openSwap(tester, fiat: roundUsd);
     expect(fake.seenArgs, [DexArgs.poolsView()]);

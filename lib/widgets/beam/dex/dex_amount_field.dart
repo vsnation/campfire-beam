@@ -16,6 +16,7 @@ import '../../../utilities/assets.dart';
 import '../../../utilities/constants.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../wallets/beam/assets/beam_asset_catalog.dart';
+import '../beam_decimal_input.dart';
 import 'dex_asset_icon.dart';
 
 /// An amount box with the asset on its right, in the look of Campfire's
@@ -80,6 +81,9 @@ class DexAmountField extends StatelessWidget {
                   decimal: true,
                 ),
                 inputFormatters: [
+                  // The DEX reads "." only; a phone set to a region that
+                  // writes 0,5 has no "." key.
+                  BeamDecimalKeyFormatter('.'),
                   FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
                 ],
                 style: STextStyles.smallMed14(context).copyWith(

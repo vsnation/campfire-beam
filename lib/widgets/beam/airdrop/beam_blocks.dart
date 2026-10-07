@@ -16,6 +16,7 @@ import '../../../utilities/text_styles.dart';
 import '../../rounded_container.dart';
 import '../../rounded_white_container.dart';
 import '../../stack_text_field.dart';
+import '../beam_decimal_input.dart';
 import 'beam_layout.dart';
 
 /// Small building blocks for the BEAM contract screens, made of Campfire's
@@ -373,7 +374,13 @@ class _BeamTextFieldState extends State<BeamTextField> {
             autocorrect: false,
             enableSuggestions: false,
             keyboardType: widget.keyboardType,
-            inputFormatters: widget.inputFormatters,
+            // A decimal keyboard's key types "." whatever the phone's
+            // region (BeamUnits reads "." as the decimal point).
+            inputFormatters: [
+              if (widget.keyboardType?.decimal ?? false)
+                BeamDecimalKeyFormatter('.'),
+              ...?widget.inputFormatters,
+            ],
             textCapitalization: widget.textCapitalization,
             onChanged: widget.onChanged,
             style:

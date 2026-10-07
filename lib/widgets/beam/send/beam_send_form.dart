@@ -22,6 +22,7 @@ import '../../../utilities/assets.dart';
 import '../../../utilities/clipboard_interface.dart';
 import '../../../utilities/constants.dart';
 import '../../../utilities/text_styles.dart';
+import '../../../utilities/util.dart';
 import '../../../wallets/beam/contracts/bans/bans_recipient.dart';
 import '../../custom_buttons/blue_text_button.dart';
 import '../../desktop/desktop_dialog.dart';
@@ -32,6 +33,7 @@ import '../../icon_widgets/qrcode_icon.dart';
 import '../../icon_widgets/x_icon.dart';
 import '../../rounded_container.dart';
 import '../../textfield_icon_button.dart';
+import '../beam_decimal_input.dart';
 import 'beam_recipient_card.dart';
 import 'beam_send_format.dart';
 import 'beam_send_model.dart';
@@ -554,6 +556,12 @@ class BeamSendFormState extends State<BeamSendForm> {
 
   // --------------------------------------------------------------- amount
 
+  /// The app locale's decimal separator when it is "." or ",".
+  String? get _localeSeparator {
+    final sep = Util.getSymbolsFor(locale: widget.locale)?.DECIMAL_SEP ?? '.';
+    return sep == '.' || sep == ',' ? sep : null;
+  }
+
   Widget _amountField(BuildContext context) {
     final c = Theme.of(context).extension<StackColors>()!;
     return TextField(
@@ -568,6 +576,9 @@ class BeamSendFormState extends State<BeamSendForm> {
           : const TextInputType.numberWithOptions(decimal: true),
       textAlign: TextAlign.right,
       inputFormatters: [
+        // The decimal key types the app locale's separator, whatever the
+        // phone's region offers.
+        if (_localeSeparator case final sep?) BeamDecimalKeyFormatter(sep),
         AmountInputFormatter(
           controller: _amount,
           decimals: BeamSendFormat.decimals,
