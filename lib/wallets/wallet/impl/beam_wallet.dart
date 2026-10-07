@@ -188,7 +188,11 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   bool get isScanningForCoins => info.beamData?.restoreScanPending ?? false;
 
   /// Block-body scan progress while [isScanningForCoins].
-  BeamScanProgress? get scanProgress => _tracker?.scanProgress;
+  BeamScanProgress? get scanProgress {
+    final now = _tracker?.scanProgress;
+    if (now == null) return null;
+    return beamScanAcrossRestarts(now, info.beamData?.restoreScanTotal);
+  }
 
   /// Private node state, when the private node is in use.
   BeamPrivateNodeStatus? get privateNodeStatus => _privateNodeStatus;
@@ -917,11 +921,26 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
 
   void _publishScan() {
     if (!isScanningForCoins) return;
-    final scan = _tracker?.scanProgress;
+    _rememberScanTotal();
+    final scan = scanProgress;
     final fraction = scan?.fraction;
     if (scan == null || fraction == null) return;
     _firePercent(fraction);
     _fireBlocksRemaining(scan.total - scan.done);
+  }
+
+  /// Keeps the most requests the core has reported for this scan, so a
+  /// restart's recount does not move the progress back.
+  void _rememberScanTotal() {
+    final total = _tracker?.scanProgress?.total;
+    final data = info.beamData ?? const ExtraBeamWalletInfo();
+    if (total == null || total <= (data.restoreScanTotal ?? 0)) return;
+    unawaited(
+      info.updateExtraBeamWalletInfo(
+        beamData: data.copyWith(restoreScanTotal: total),
+        isar: mainDB.isar,
+      ),
+    );
   }
 
   /// A public node that stays unreachable is swapped for the next public
@@ -1473,7 +1492,7 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   ({WalletSyncStatus sync, NodeConnectionStatus node}) get statusNow {
     final a = _assessment;
     // Up to date but still scanning a restore for coins: not done yet.
-    final scan = _tracker?.scanProgress?.fraction;
+    final scan = scanProgress?.fraction;
     final scanning = isScanningForCoins && scan != null && scan < 1;
     final sync = switch (a) {
       BeamSynced() when scanning => WalletSyncStatus.syncing,

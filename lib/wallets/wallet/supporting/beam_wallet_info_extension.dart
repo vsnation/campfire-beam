@@ -97,11 +97,13 @@ class ExtraBeamWalletInfo {
   const ExtraBeamWalletInfo({
     this.restoreScanPending = false,
     this.restoreScanStartedAt,
+    this.restoreScanTotal,
   });
 
   ExtraBeamWalletInfo.fromMap(Map<String, dynamic> json)
     : restoreScanPending = json['restoreScanPending'] as bool? ?? false,
-      restoreScanStartedAt = json['restoreScanStartedAt'] as int?;
+      restoreScanStartedAt = json['restoreScanStartedAt'] as int?,
+      restoreScanTotal = json['restoreScanTotal'] as int?;
 
   /// The wallet was restored from its phrase and has not yet been scanned
   /// by a node holding its owner key. While true the wallet asks public
@@ -112,18 +114,27 @@ class ExtraBeamWalletInfo {
   /// Unix seconds when that scan began.
   final int? restoreScanStartedAt;
 
+  /// The most block requests the core has reported for this scan
+  /// (`sync_requests_total`). The core counts per session: after a restart
+  /// it starts again over what is left, so progress is measured against
+  /// this, and only moves forward.
+  final int? restoreScanTotal;
+
   Map<String, dynamic> toMap() => {
     'restoreScanPending': restoreScanPending,
     if (restoreScanStartedAt != null)
       'restoreScanStartedAt': restoreScanStartedAt,
+    if (restoreScanTotal != null) 'restoreScanTotal': restoreScanTotal,
   };
 
   ExtraBeamWalletInfo copyWith({
     bool? restoreScanPending,
     int? restoreScanStartedAt,
+    int? restoreScanTotal,
   }) => ExtraBeamWalletInfo(
     restoreScanPending: restoreScanPending ?? this.restoreScanPending,
     restoreScanStartedAt: restoreScanStartedAt ?? this.restoreScanStartedAt,
+    restoreScanTotal: restoreScanTotal ?? this.restoreScanTotal,
   );
 
   @override

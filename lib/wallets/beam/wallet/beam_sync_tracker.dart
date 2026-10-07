@@ -8,6 +8,7 @@
  */
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import '../models/beam_json.dart';
 import '../models/beam_wallet_status.dart';
@@ -31,6 +32,19 @@ class BeamScanProgress {
 
   @override
   int get hashCode => Object.hash(done, total);
+}
+
+/// [now], measured against [largestTotal], the most requests seen for this
+/// scan. The core counts per session: after a restart it starts again from
+/// 0 over what is left, and a scan at 60 % would read 0 %. Against the
+/// largest total, progress only moves forward.
+BeamScanProgress beamScanAcrossRestarts(
+  BeamScanProgress now,
+  int? largestTotal,
+) {
+  final base = math.max(largestTotal ?? 0, now.total);
+  final left = (now.total - now.done).clamp(0, base);
+  return BeamScanProgress(base - left, base);
 }
 
 /// Folds `wallet_status` answers and `ev_*` pushes into the

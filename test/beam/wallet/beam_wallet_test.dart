@@ -501,6 +501,45 @@ void main() {
       expect(p.title, 'Received 0.5 BEAM');
     });
 
+    // Seen in the DMG test: the scan percent went backwards after a
+    // restart. The core counts block requests per session and recounts
+    // what is left after a restart.
+    test('scan progress never goes back when the core recounts after a '
+        'restart', () async {
+      final w = await newWallet(init: false);
+      await w.init(isRestore: true);
+      await w.recover(isRescan: false);
+      await w.open();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+      host.lastTransport!.emit('ev_sync_progress', {
+        'sync_requests_done': 60,
+        'sync_requests_total': 100,
+      });
+      await waitFor(
+        () => w.info.beamData?.restoreScanTotal == 100,
+        what: 'scan total kept',
+      );
+      expect(w.scanProgress!.fraction, closeTo(0.6, 1e-9));
+
+      // A restarted core: 40 requests left, counted from 0.
+      host.lastTransport!.emit('ev_sync_progress', {
+        'sync_requests_done': 0,
+        'sync_requests_total': 40,
+      });
+      await waitFor(() => w.scanProgress?.total == 100, what: 'recount read');
+      expect(w.scanProgress!.fraction, closeTo(0.6, 1e-9));
+      host.lastTransport!.emit('ev_sync_progress', {
+        'sync_requests_done': 30,
+        'sync_requests_total': 40,
+      });
+      await waitFor(
+        () => (w.scanProgress?.fraction ?? 0) > 0.85,
+        what: 'progress moves on',
+      );
+      expect(w.scanProgress!.fraction, closeTo(0.9, 1e-9));
+      expect(w.info.beamData?.restoreScanTotal, 100);
+    });
+
     test('a payment that completes while a restore scan runs is announced: '
         'a restore finds coins, never history rows', () async {
       final w = await newWallet(init: false);
