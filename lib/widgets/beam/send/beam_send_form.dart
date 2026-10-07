@@ -50,6 +50,7 @@ class BeamSendForm extends StatefulWidget {
     this.clipboard = const ClipboardWrapper(),
     this.onScanQr,
     this.onAddressBook,
+    this.assetWorth,
     this.initialRecipient,
     this.initialAmount,
   });
@@ -63,6 +64,10 @@ class BeamSendForm extends StatefulWidget {
   final ClipboardInterface clipboard;
   final BeamPickRecipient? onScanQr;
   final BeamPickRecipient? onAddressBook;
+
+  /// What an amount of an asset is worth ("≈ 0.02 USD"), shown in the asset
+  /// picker; null when there is no price.
+  final String? Function(int assetId, BigInt amount)? assetWorth;
   final String? initialRecipient;
   final BigInt? initialAmount;
 
@@ -499,6 +504,7 @@ class BeamSendFormState extends State<BeamSendForm> {
     // (root or nested) it was shown on.
     Widget list(BuildContext pickerContext) => _AssetList(
       model: _m,
+      worth: widget.assetWorth,
       onPick: (id) => Navigator.of(pickerContext).pop(id),
     );
     final int? picked;
@@ -710,10 +716,11 @@ class BeamSendFormState extends State<BeamSendForm> {
 }
 
 class _AssetList extends StatelessWidget {
-  const _AssetList({required this.model, required this.onPick});
+  const _AssetList({required this.model, required this.onPick, this.worth});
 
   final BeamSendModel model;
   final void Function(int id) onPick;
+  final String? Function(int assetId, BigInt amount)? worth;
 
   @override
   Widget build(BuildContext context) {
@@ -747,12 +754,24 @@ class _AssetList extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Text(
-                    BeamSendFormat.amount(
-                      model.available(id),
-                      model.assetOf(id),
-                    ),
-                    style: STextStyles.itemSubtitle(context),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        BeamSendFormat.amount(
+                          model.available(id),
+                          model.assetOf(id),
+                        ),
+                        style: STextStyles.itemSubtitle(context),
+                      ),
+                      if (worth?.call(id, model.available(id))
+                          case final value?)
+                        Text(
+                          value,
+                          key: Key('beamAssetChoiceWorth_$id'),
+                          style: STextStyles.label(context),
+                        ),
+                    ],
                   ),
                 ],
               ),

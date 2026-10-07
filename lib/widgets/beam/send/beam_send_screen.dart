@@ -47,6 +47,8 @@ import '../../../utilities/amount/amount.dart';
 import '../../../utilities/clipboard_interface.dart';
 import '../../../utilities/logger.dart';
 import '../../../utilities/text_styles.dart';
+import '../../../wallets/beam/assets/beam_asset_providers.dart';
+import '../../../wallets/beam/price/beam_fiat_price.dart';
 import '../../../wallets/crypto_currency/crypto_currency.dart';
 import '../../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../../wallets/wallet/impl/beam_wallet.dart';
@@ -56,6 +58,7 @@ import '../../desktop/desktop_dialog_close_button.dart';
 import '../../desktop/primary_button.dart';
 import '../../desktop/qr_code_scanner_dialog.dart';
 import '../../stack_dialog.dart';
+import '../wiring/beam_wallet_listenables.dart';
 import 'beam_confirm_content.dart';
 import 'beam_send_backend.dart';
 import 'beam_send_form.dart';
@@ -155,6 +158,21 @@ class _BeamSendScreenState extends ConsumerState<BeamSendScreen> {
     return entry?.address;
   }
 
+  /// The same prices as the wallet home: BEAM's from Campfire's price
+  /// lookup, assets' from their DEX pools. Read when the asset picker opens
+  /// (the wallet home keeps them loaded), so this screen starts no price
+  /// reads of its own.
+  String? _worth(int assetId, BigInt amount) {
+    final fiat = beamDexFiatOf(ref.read(pBeamFiatPrice(widget.walletId)));
+    final market = ref.read(pBeamAssetMarket(widget.walletId)).asData?.value;
+    return BeamSendFormat.assetWorth(
+      assetId,
+      amount,
+      inBeam: market?.pricer.valueInGroth,
+      fiat: fiat?.approx,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Balances live in Campfire's wallet cache; any change re-reads them.
@@ -172,6 +190,7 @@ class _BeamSendScreenState extends ConsumerState<BeamSendScreen> {
       balancesChanged: _balances,
       onScanQr: _scan,
       onAddressBook: _addressBook,
+      assetWorth: _worth,
       initialRecipient: auto?.address,
       initialAmount: auto?.amount == null
           ? null
@@ -199,6 +218,7 @@ class BeamSendPage extends StatefulWidget {
     this.balancesChanged,
     this.onScanQr,
     this.onAddressBook,
+    this.assetWorth,
     this.initialRecipient,
     this.initialAmount,
     this.nameDebounce = const Duration(milliseconds: 400),
@@ -217,6 +237,7 @@ class BeamSendPage extends StatefulWidget {
   final Listenable? balancesChanged;
   final BeamPickRecipient? onScanQr;
   final BeamPickRecipient? onAddressBook;
+  final String? Function(int assetId, BigInt amount)? assetWorth;
   final String? initialRecipient;
   final BigInt? initialAmount;
   final Duration nameDebounce;
@@ -424,6 +445,7 @@ class BeamSendPageState extends State<BeamSendPage> {
       clipboard: widget.clipboard,
       onScanQr: widget.onScanQr,
       onAddressBook: widget.onAddressBook,
+      assetWorth: widget.assetWorth,
       initialRecipient: widget.initialRecipient,
       initialAmount: widget.initialAmount,
     );

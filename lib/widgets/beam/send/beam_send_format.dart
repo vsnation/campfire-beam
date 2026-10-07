@@ -84,4 +84,31 @@ abstract final class BeamSendFormat {
 
   /// `ab12…ef90` for a transaction id.
   static String shortTxId(String txId) => shortAddress(txId, keep: 6);
+
+  /// What [amount] of [assetId] is worth, for the asset picker: "≈ 0.02 USD"
+  /// for BEAM; "≈ 24.73 BEAM · 0.21 USD" for an asset priced by its DEX
+  /// pool ([inBeam]); without a fiat price ([fiat] null) the BEAM part only.
+  /// Null when nothing is known, so nothing is shown rather than a 0.
+  static String? assetWorth(
+    int assetId,
+    BigInt amount, {
+    BigInt? Function(int assetId, BigInt amount)? inBeam,
+    String? Function(BigInt groth)? fiat,
+  }) {
+    if (amount <= BigInt.zero) return null;
+    if (assetId == 0) return fiat?.call(amount);
+    final groth = inBeam?.call(assetId, amount);
+    if (groth == null || groth <= BigInt.zero) return null;
+    final beam = '≈ ${_estimate(groth)} BEAM';
+    final f = fiat?.call(groth);
+    return f == null ? beam : '$beam · ${f.replaceFirst('≈ ', '')}';
+  }
+
+  /// An estimate, never more digits than it deserves: 2 decimals from one
+  /// BEAM up, 4 below; rounded down.
+  static String _estimate(BigInt groth) {
+    final keep = groth >= _one ? 2 : 4;
+    final step = BigInt.from(10).pow(decimals - keep);
+    return units(groth - groth.remainder(step));
+  }
 }

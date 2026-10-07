@@ -27,6 +27,7 @@ import 'package:stackwallet/pages/send_view/confirm_transaction_view.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_errors.dart';
 import 'package:stackwallet/widgets/beam/send/beam_confirm_content.dart';
 import 'package:stackwallet/widgets/beam/send/beam_send_result.dart';
+import 'package:stackwallet/widgets/beam/send/beam_send_format.dart';
 import 'package:stackwallet/widgets/beam/send/beam_send_screen.dart';
 
 import '../contracts/bans/bans_fixtures.dart';
@@ -39,6 +40,7 @@ const _amount = Key('beamSendAmountField');
 Widget _page(
   ScriptedBackend b, {
   Duration nameDebounce = const Duration(milliseconds: 400),
+  String? Function(int assetId, BigInt amount)? assetWorth,
 }) => BeamSendPage(
   backend: b,
   coin: Beam(CryptoCurrencyNetwork.main),
@@ -49,6 +51,7 @@ Widget _page(
   minimumBuildTime: Duration.zero,
   routeOnSuccessName: '/',
   nameDebounce: nameDebounce,
+  assetWorth: assetWorth,
 );
 
 Future<ScriptedBackend> _open(
@@ -56,12 +59,13 @@ Future<ScriptedBackend> _open(
   required bool desktop,
   ScriptedBackend? backend,
   Duration nameDebounce = const Duration(milliseconds: 400),
+  String? Function(int assetId, BigInt amount)? assetWorth,
 }) async {
   await setScreen(tester, desktop: desktop);
   final b = backend ?? ScriptedBackend();
   await pumpCampfire(
     tester,
-    home: _page(b, nameDebounce: nameDebounce),
+    home: _page(b, nameDebounce: nameDebounce, assetWorth: assetWorth),
     desktop: desktop,
   );
   await tester.pump(const Duration(milliseconds: 50));
@@ -584,6 +588,71 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+  });
+
+  // Seen in the DMG test: the asset picker listed amounts only, while the
+  // wallet home shows what each is worth.
+  group('asset picker values', () {
+    final one = BigInt.from(100000000);
+
+    test('BEAM in fiat; an asset in BEAM and fiat; nothing without a price', () {
+      String? fiat(BigInt groth) => groth * BigInt.from(100) ~/ one < BigInt.one
+          ? 'under 0.01 USD'
+          : '≈ ${(groth * BigInt.from(100) ~/ one) ~/ BigInt.from(100)}.'
+                '${((groth * BigInt.from(100) ~/ one) % BigInt.from(100)).toString().padLeft(2, '0')} USD';
+      BigInt? inBeam(int id, BigInt amount) =>
+          id == 174 ? amount * BigInt.from(1232) ~/ BigInt.from(10000) : null;
+
+      expect(
+        BeamSendFormat.assetWorth(
+          0,
+          one * BigInt.from(5) ~/ BigInt.two,
+          fiat: fiat,
+        ),
+        '≈ 2.50 USD',
+      );
+      expect(
+        BeamSendFormat.assetWorth(
+          174,
+          one * BigInt.from(200),
+          inBeam: inBeam,
+          fiat: fiat,
+        ),
+        '≈ 24.64 BEAM · 24.64 USD',
+      );
+      expect(
+        BeamSendFormat.assetWorth(174, one, inBeam: inBeam),
+        '≈ 0.1232 BEAM',
+      );
+      expect(BeamSendFormat.assetWorth(321, one, inBeam: inBeam), isNull);
+      expect(BeamSendFormat.assetWorth(0, one), isNull);
+      expect(BeamSendFormat.assetWorth(0, BigInt.zero, fiat: fiat), isNull);
+    });
+
+    testWidgets('the picker shows the worth beside each amount', (
+      tester,
+    ) async {
+      await _open(
+        tester,
+        desktop: true,
+        backend: ScriptedBackend(balances: {0: g(2.5), 174: g(10)}),
+        assetWorth: (id, _) => id == 0 ? '≈ 0.02 USD' : null,
+      );
+      final selector = find.byKey(const Key('beamSendAssetSelector'));
+      await tester.ensureVisible(selector);
+      await tester.pump();
+      await tester.tap(selector);
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(
+        tester
+            .widget<Text>(find.byKey(const Key('beamAssetChoiceWorth_0')))
+            .data,
+        '≈ 0.02 USD',
+      );
+      expect(find.byKey(const Key('beamAssetChoiceWorth_174')), findsNothing);
     });
   });
 
