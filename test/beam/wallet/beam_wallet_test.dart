@@ -244,7 +244,11 @@ void main() {
     created.clear();
   });
 
-  Future<BeamWallet> newWallet({String? mnemonic, bool init = true}) async {
+  Future<BeamWallet> newWallet({
+    String? mnemonic,
+    bool init = true,
+    FakeNodeService? nodeService,
+  }) async {
     final info = WalletInfo.createNew(
       coin: Beam(CryptoCurrencyNetwork.main),
       name: 'beam test',
@@ -253,9 +257,9 @@ void main() {
       walletInfo: info,
       mainDB: MainDB.instance,
       secureStorageInterface: secure,
-      nodeService: FakeNodeService(
-        beamTestNode('eu-nodes.mainnet.beam.mw', 8100),
-      ),
+      nodeService:
+          nodeService ??
+          FakeNodeService(beamTestNode('eu-nodes.mainnet.beam.mw', 8100)),
       prefs: FakePrefs(),
       mnemonic: mnemonic ?? bip39.generateMnemonic(),
       mnemonicPassphrase: '',
@@ -688,6 +692,59 @@ void main() {
             BeamWalletProblem.coreNotInstalled,
           ),
         ),
+      );
+    });
+
+    test('a read that a node switch fails does not tear down the session '
+        'the switch attaches', () async {
+      final nodes = FakeNodeService(
+        beamTestNode('eu-nodes.mainnet.beam.mw', 8100),
+      );
+      final w = await newWallet(nodeService: nodes);
+      await w.open();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+      final old = host.lastTransport!;
+
+      // A history read still waiting when the switch closes its connection,
+      // then failed the way wallet-api's transport fails pending calls.
+      final release = Completer<void>();
+      old.reply('tx_list', (Map<String, Object?> _) async {
+        await release.future;
+        if (!old.isConnected) {
+          throw const BeamConnectionException('transport closed');
+        }
+        return core.txs;
+      });
+      final reads = old.callsTo('tx_list').length;
+      old.emit('ev_txs_changed', {'change': 0});
+      await waitFor(
+        () => old.callsTo('tx_list').length > reads,
+        what: 'a read in flight',
+      );
+
+      host.openDelay = const Duration(milliseconds: 300);
+      nodes.node = beamTestNode('us-nodes.mainnet.beam.mw', 8100);
+      final switching = w.updateNode();
+      await waitFor(() => !old.isConnected, what: 'old connection closed');
+      release.complete();
+      await switching;
+      expect(w.isOpen, isTrue);
+      expect(
+        envLog.where((l) => l.startsWith('Lost the wallet core')),
+        isEmpty,
+      );
+
+      // After the old reopen delay the wallet is still on its session, and
+      // its host still switches.
+      await Future<void>.delayed(const Duration(milliseconds: 2500));
+      host.openDelay = Duration.zero;
+      expect(w.isOpen, isTrue);
+      nodes.node = beamTestNode('eu-node01.mainnet.beam.mw', 8100);
+      await w.updateNode();
+      expect(host.switches, hasLength(2));
+      expect(
+        w.currentNode,
+        const BeamNodeEndpoint('eu-node01.mainnet.beam.mw', 8100),
       );
     });
 
