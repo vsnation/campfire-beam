@@ -74,6 +74,7 @@ import 'utilities/prefs.dart';
 import 'utilities/stack_file_system.dart';
 import 'utilities/util.dart';
 import 'wallets/beam/wallet/beam_shutdown.dart';
+import 'widgets/beam/quit/beam_quit_guard.dart';
 import 'wallets/crypto_currency/crypto_currency.dart';
 import 'wallets/isar/providers/all_wallets_info_provider.dart';
 import 'wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
@@ -704,6 +705,11 @@ class _MaterialAppWithThemeState extends ConsumerState<MaterialAppWithTheme>
       // await ref.read(pMwebService).shutdown();
       // Something like the above would probably be prudent to make.
 
+      // BEAM: a swap still being confirmed can run twice if wallet-api stops
+      // under it (patches/0006); ask first. Cancelable on macOS and Linux.
+      if (!await confirmBeamQuit(ref.read(pNavKey).currentContext)) {
+        return AppExitResponse.cancel;
+      }
       // BEAM: stop wallet-api / beam-node children first, or exit(0) would
       // orphan them (bounded, never blocks quitting).
       await shutdownBeamChildren();

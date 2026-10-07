@@ -24,7 +24,10 @@
 /// * warnings and errors (`W`, `E`, `C`) and untagged lines (the config
 ///   path, exceptions);
 /// * info lines that start with one of [infoAllowed]: startup markers and
-///   chain heights, nothing about this wallet;
+///   chain heights, nothing about this wallet; and the steps of a DEX
+///   ("HFT") contract transaction (variant built, expired, rebuilt,
+///   confirmed), which carry only IDs, hashes and heights and are what tells
+///   a swap that ran twice from one that did not (patches/0006);
 /// * the tab-indented fork list under `Rules signature:` (which consensus
 ///   the binary follows);
 ///
@@ -56,6 +59,20 @@ class BeamWalletApiLogFilter {
     'Rolled back to ',
     'It seems that last known blockchain tip is not up to date',
     'peer disconnected',
+    // contract_transaction.cpp: "TxoID=<id> HFT variant: <hash>",
+    // "... Expired. Retrying HFT tx", "... HFT confirmed", "... HFT
+    // unconfirmed at <height>", "... HFT resumed: no rebuild" (0006), ...
+    'TxoID=',
+    'HFT state changed',
+    'already pending',
+    'waiting prev unconfirm',
+    'same state',
+    'slippage too large',
+    'no invoke',
+    'not HFT',
+    'no rebuild',
+    // wallet.cpp confirm_kernel_ex: " Get proof for kernel: <id>"
+    ' Get proof for kernel',
   ];
 
   /// `<level> <yyyy-mm-dd.hh:mm:ss.mmm> ` and, in builds that add it,

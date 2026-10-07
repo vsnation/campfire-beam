@@ -80,6 +80,31 @@ void main() {
     expect(kept.last, 'Wallet not opened. File is not a database');
   });
 
+  test('the steps of a DEX (HFT) transaction are kept, IDs redacted', () {
+    final hash = 'c4' * 32;
+    final kept = run([
+      'I $_ts TxoID=$_txid HFT variant: $hash',
+      'I $_ts TxoID=$_txid Expired. Retrying HFT tx',
+      'I $_ts waiting prev unconfirm',
+      'I $_ts TxoID=$_txid HFT confirming variants: 2',
+      'I $_ts  Get proof for kernel: $hash',
+      'I $_ts TxoID=$_txid HFT unconfirmed at 4100001',
+      'I $_ts TxoID=$_txid HFT resumed: no rebuild, checking 1 earlier '
+          'variant(s)',
+      'I $_ts TxoID=$_txid HFT inputs missing: no rebuild, confirming '
+          'variants',
+      'I $_ts HFT state changed',
+      '\t$hash',
+      'Shader output: {}',
+    ]);
+    expect(kept, hasLength(10));
+    expect(kept, contains('Shader output: {}'));
+    expect(kept.where((l) => l.contains('4100001')), hasLength(1));
+    for (final line in kept) {
+      expect(line, isNot(matches(RegExp(r'[A-Za-z0-9]{32,}'))));
+    }
+  });
+
   test('long tokens are replaced in every kept line', () {
     final kept = run([
       'E $_ts Transaction $_txid was not imported. Invalid address parameter',

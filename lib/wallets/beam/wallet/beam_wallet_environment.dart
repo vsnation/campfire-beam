@@ -24,6 +24,7 @@ import '../node/beam_private_node_coordinator.dart';
 import '../node/beam_private_node_preference.dart';
 import '../sync/beam_sync_state.dart';
 import 'beam_payment_notice.dart';
+import 'beam_swaps_in_flight.dart';
 
 /// Makes a fresh private node for a coordinator (single use).
 typedef BeamPrivateNodeBuilder = BeamPrivateNode Function(
@@ -50,9 +51,11 @@ class BeamWalletEnvironment {
     this.eventDebounce = const Duration(milliseconds: 250),
     this.privateNodeStartDelay = const Duration(seconds: 20),
     this.onPaymentReceived,
+    BeamSwapsInFlight? swapsInFlight,
     void Function(String message)? log,
   }) : privateNodeSetting =
            privateNodeSetting ?? const BeamFixedPrivateNodeSetting(false),
+       swapsInFlight = swapsInFlight ?? BeamSwapsInFlight.instance,
        log = log ?? _defaultLog;
 
   /// The production wiring.
@@ -124,6 +127,10 @@ class BeamWalletEnvironment {
   /// is open; never for what a restore scan finds. The app posts it to
   /// Campfire's notifications.
   final void Function(BeamPaymentReceived payment)? onPaymentReceived;
+
+  /// Where open wallets report unsettled DEX transactions; the desktop quit
+  /// guard reads it. Defaults to [BeamSwapsInFlight.instance].
+  final BeamSwapsInFlight swapsInFlight;
 
   /// Operational log; never given a secret.
   final void Function(String message) log;

@@ -27,6 +27,7 @@
 // tooltip then); a status line that claims "connected" when it is not (the
 // chip only says what the core reports).
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -41,6 +42,7 @@ import '../../../themes/stack_colors.dart';
 import '../../../utilities/assets.dart';
 import '../../../utilities/text_styles.dart';
 import '../../desktop/living_stack_icon.dart';
+import '../quit/beam_quit_guard.dart';
 import 'beam_sidebar.dart';
 import 'beam_sidebar_node_chip.dart';
 
@@ -247,7 +249,7 @@ class _BeamSidebarMenuState extends ConsumerState<BeamSidebarMenu> {
                         icon: const DesktopExitIcon(),
                         label: 'Exit',
                         value: 7,
-                        onChanged: (_) => exit(0),
+                        onChanged: (_) => unawaited(beamDesktopExit(context)),
                         controller: _controller('exit'),
                         isExpandedInitially: expanded,
                         dense: true,

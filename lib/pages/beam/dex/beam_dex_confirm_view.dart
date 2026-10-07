@@ -415,7 +415,9 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   'If someone else trades first, BEAM redoes your swap at '
-                  'most 1% lower, or cancels it and nothing is spent.',
+                  'most 1% lower, or cancels it and nothing is spent. '
+                  'Keep Campfire open until it is confirmed, usually under '
+                  'a minute.',
                   style: STextStyles.label(context),
                 ),
               ),

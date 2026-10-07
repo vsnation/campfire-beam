@@ -53,6 +53,7 @@ import '../../beam/wallet/beam_payment_notice.dart';
 import '../../beam/wallet/beam_secret_store.dart';
 import '../../beam/wallet/beam_send_rules.dart';
 import '../../beam/wallet/beam_shutdown.dart';
+import '../../beam/wallet/beam_swaps_in_flight.dart';
 import '../../beam/wallet/beam_sync_tracker.dart';
 import '../../beam/wallet/beam_tx_mapper.dart';
 import '../../beam/wallet/beam_wallet_environment.dart';
@@ -130,6 +131,15 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   BeamWalletStatus? _lastStatus;
   Set<String> _ownAddresses = {};
   BeamGateLease? _preparedSend;
+
+  /// Held while a DEX transaction is unsettled (see [BeamSwapsInFlight]), so
+  /// no node switch restarts wallet-api under it. [_swapLeaseIds] are the
+  /// transactions it was taken for: a lease that expired is not renewed for
+  /// the same ones, so a transaction stuck in the core cannot hold the node
+  /// forever.
+  BeamGateLease? _swapLease;
+  Set<String> _swapLeaseIds = const {};
+  BeamNodeSwitchGate? _swapLeaseGate;
 
   final Mutex _coreSync = Mutex();
   Timer? _debounce;
@@ -255,6 +265,7 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     _cancelTimers();
     _preparedSend?.release();
     _preparedSend = null;
+    _releaseSwapLease();
     _gate.dispose();
     _coordHost?.close();
     await _disposeCoordinator();
@@ -506,6 +517,7 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     _statusPoll?.cancel();
     _failoverTimer?.cancel();
     _coordinatorTimer?.cancel();
+    _releaseSwapLease();
     _gate.dispose();
     _coordHost?.close();
     await _disposeCoordinator();
@@ -661,6 +673,7 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
         final txs = await api.txList();
         await _storeTransactions(txs);
         _announceIncoming(txs);
+        _trackSwapsInFlight(txs);
       }
       if (s != null) {
         _lastStatus = s;
@@ -741,6 +754,37 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
       );
     }
   }
+
+  /// Keeps [BeamSwapsInFlight] and the node-switch lease in step with the
+  /// core's history.
+  void _trackSwapsInFlight(List<BeamTransaction> txs) {
+    final ids = environment.swapsInFlight.update(walletId, txs);
+    if (ids.isEmpty) {
+      _releaseSwapLease(forgetWallet: false);
+      return;
+    }
+    final sameLease =
+        identical(_swapLeaseGate, _gate) && _swapLeaseIds.containsAll(ids);
+    if (sameLease) return; // held, or expired for these same transactions
+    _swapLease?.release();
+    _swapLease = _gate.hold(
+      'swap being confirmed',
+      maxHold: const Duration(minutes: 15),
+    );
+    _swapLeaseIds = ids;
+    _swapLeaseGate = _gate;
+  }
+
+  void _releaseSwapLease({bool forgetWallet = true}) {
+    _swapLease?.release();
+    _swapLease = null;
+    _swapLeaseIds = const {};
+    _swapLeaseGate = null;
+    if (forgetWallet) environment.swapsInFlight.forget(walletId);
+  }
+
+  /// Unsettled DEX transactions of this wallet (see [BeamSwapsInFlight]).
+  Set<String> get swapsInFlight => environment.swapsInFlight.of(walletId);
 
   /// Completed incoming payments already looked at; null until the first
   /// history read, which only records what is there.

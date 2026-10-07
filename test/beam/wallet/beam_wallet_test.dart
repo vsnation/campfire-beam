@@ -26,6 +26,7 @@ import 'package:stackwallet/models/isar/models/blockchain_data/address.dart';
 import 'package:stackwallet/models/isar/models/blockchain_data/v2/transaction_v2.dart';
 import 'package:stackwallet/utilities/amount/amount.dart';
 import 'package:stackwallet/utilities/flutter_secure_storage_interface.dart';
+import 'package:stackwallet/wallets/beam/contracts/dex/dex_constants.dart';
 import 'package:stackwallet/wallets/beam/host/beam_host.dart';
 import 'package:stackwallet/wallets/beam/host/beam_host_exception.dart';
 import 'package:stackwallet/wallets/beam/node/beam_node_process.dart';
@@ -36,6 +37,7 @@ import 'package:stackwallet/wallets/beam/rpc/beam_transport.dart';
 import 'package:stackwallet/wallets/beam/sync/beam_sync_state.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_node_switch_gate.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_secret_store.dart';
+import 'package:stackwallet/wallets/beam/wallet/beam_swaps_in_flight.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_payment_notice.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_environment.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_errors.dart';
@@ -195,6 +197,7 @@ void main() {
   final created = <BeamWallet>[];
 
   final received = <BeamPaymentReceived>[];
+  late BeamSwapsInFlight swaps;
 
   void installEnv({
     BeamPrivateNodeBuilder? node,
@@ -212,6 +215,7 @@ void main() {
       eventDebounce: const Duration(milliseconds: 20),
       privateNodeStartDelay: Duration.zero,
       onPaymentReceived: received.add,
+      swapsInFlight: swaps,
       log: envLog.add,
     );
   }
@@ -226,6 +230,7 @@ void main() {
     secure = FakeSecureStorage();
     envLog = [];
     received.clear();
+    swaps = BeamSwapsInFlight();
     installEnv();
   });
 
@@ -772,6 +777,58 @@ void main() {
   });
 
   group('node switch gate and the private node', () {
+    // A core without patches/0006 can run a swap twice when wallet-api is
+    // restarted under it (2026-10-07). Node switches wait; quitting asks.
+    test('a swap being confirmed holds node switches until it settles, and '
+        'is listed for the quit guard', () async {
+      Map<String, Object?> swap(int status) => txJson(
+        txId: 'd1' * 16,
+        status: status,
+        txType: 12,
+        fee: 1100000,
+        invokeData: [
+          {
+            'contract_id': kDexContractId,
+            'amounts': [
+              {'asset_id': 0, 'amount': 2000000},
+              {'asset_id': 174, 'amount': -16000000},
+            ],
+          },
+        ],
+      );
+      final base = core.txs;
+
+      final w = await newWallet();
+      await w.open();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+      expect(w.isBusy, isFalse);
+      expect(swaps.isEmpty, isTrue);
+
+      core.txs = [...base, swap(1)];
+      host.lastTransport!.emit('ev_txs_changed', {'change': 0});
+      await waitFor(() => swaps.count == 1, what: 'swap tracked');
+      expect(w.swapsInFlight, {'d1' * 16});
+      expect(w.isBusy, isTrue);
+      expect(w.nodeSwitchGate.reasons, contains('swap being confirmed'));
+      var idle = false;
+      unawaited(w.nodeSwitchGate.whenIdle().then((_) => idle = true));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(idle, isFalse, reason: 'a node switch would wait');
+
+      core.txs = [...base, swap(3)];
+      host.lastTransport!.emit('ev_txs_changed', {'change': 0});
+      await waitFor(() => swaps.isEmpty, what: 'swap settled');
+      await waitFor(() => idle, what: 'gate free');
+      expect(w.isBusy, isFalse);
+
+      // Closing the wallet stops its core: nothing left to interrupt.
+      core.txs = [...base, swap(5)];
+      host.lastTransport!.emit('ev_txs_changed', {'change': 0});
+      await waitFor(() => swaps.count == 1, what: 'tracked again');
+      await w.exit();
+      expect(swaps.isEmpty, isTrue);
+    });
+
     test('gate: waits for release, expiry frees it, dispose frees '
         'everything', () async {
       final gate = BeamNodeSwitchGate();

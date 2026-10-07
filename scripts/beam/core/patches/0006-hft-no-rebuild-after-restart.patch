@@ -1,0 +1,269 @@
+Campfire for BEAM: an HFT contract tx never runs twice after a wallet restart
+
+DEX trades are "dependent" (HFT) contract calls: each variant is valid at exactly one
+block height, and when it misses its block the core re-runs the app shader and builds
+another variant (contract_transaction.cpp RetryHft / State::RebuildHft). Before building
+one it checks that no earlier variant got in ("waiting prev unconfirm") and that none is
+still pending (IsHftPending).
+
+Stock builds persist the invoke data only once, at process_invoke_data
+(ContractDataPacked, shaders_manager.cpp:358). A rebuild replaces it in memory only
+(contract_transaction.cpp:676). After a restart, Init() therefore pairs the CURRENT
+variant's kernel/inputs/outputs with the FIRST variant's parent context. Then:
+
+  * IsExpired() uses the old parent height and can call a live variant expired;
+  * IsHftPending() derives the wrong dependent context and cannot see the variant the
+    node is holding, while the node's dependent state is not even received yet right
+    after HftSubscribe (fly_client.cpp:88-112, node.cpp:3538-3540);
+  * RetryHft -> SaveToHftv files the live variant under the old height (and, since the
+    tx was moved out before EnsureNewCtx(), dereferences an empty m_pNewCtx for its hash);
+  * ConfirmHfts and the rebuild guard skip variants keyed at or below
+    KernelUnconfirmedHeight, so the live variant's kernel is never looked up.
+
+Mainnet, 2026-10-07: a small BEAM -> FOMO swap was quit while unconfirmed. After the
+restart the core built two variants on top of its own pending one (node: "Inputs
+missing" twice), the pending one was mined, its kernel was never checked, and another
+variant was mined three blocks later. One swap, executed twice.
+
+This patch makes double execution impossible on that path, and keeps the variant data
+truthful:
+
+  1. A rebuilt variant's invoke data is persisted (ContractDataPacked) before its kernel,
+     so after a restart the parent context matches the transaction in the DB.
+  2. An HFT tx resumed in flight (state past Initial, or any earlier variant) never builds
+     another variant (m_NoRebuild). It re-checks every variant's kernel
+     (KernelUnconfirmedHeight is reset) and then completes with the one that got in, or
+     fails as expired with nothing spent. Stopped between variants (RebuildHft, or Initial
+     with variants, or no current kernel) it only confirms the earlier ones.
+  3. A registration answer of InvalidInput ("Inputs missing") for an HFT variant stops
+     rebuilding too: something already spent its inputs, most likely our own variant.
+  4. Heights come from the kernels: a dependent kernel's height range is exactly its block.
+     Used for the current variant (IsExpired, ConfirmHfts, the confirm key), for the key
+     SaveToHftv files a variant under, and to re-key variants loaded from the DB (older
+     builds could have filed them under a stale height).
+
+Trade-off: a swap interrupted by a restart, or answered "Inputs missing", is no longer
+redone at a new price. It completes if one of its variants got in, otherwise it ends as
+failed (expired) a few blocks later and nothing is spent; the user swaps again. Same-run
+rebuilds (someone else traded first, no restart) are unchanged.
+
+Regression test: scripts/beam/core/tests/hft_resume_test.cpp, run by
+scripts/beam/core/test_hft_resume.sh (fails on the stock file, passes with this patch).
+
+Applies after 0005-neutral-source-dir-and-android-exec.patch, to tag beam-7.5.14493,
+with patch -p1. Touches only wallet/core/contract_transaction.cpp.
+
+--- a/wallet/core/contract_transaction.cpp
++++ b/wallet/core/contract_transaction.cpp
+@@ -54,6 +54,9 @@
+         bool m_RebuildFailed = false;
+         bool m_AllUnconfirmed = false;
+         bool m_ExplicitMaxSpend = false;
++        // Campfire: never build another variant. Set when an in-flight HFT tx is resumed
++        // (wallet restarted) and when the node answers "inputs missing" for a variant.
++        bool m_NoRebuild = false;
+         boost::optional<Merkle::Hash> m_pNewCtx;
+ 
+         static void Fail(const char* sz = nullptr)
+@@ -114,6 +117,13 @@
+                 {
+                     auto pHftv = std::make_unique<HftVariant>();
+                     der & *pHftv;
++
++                    // Campfire: a variant is valid at exactly its kernel's height. Unpatched
++                    // builds could file it under the height of a stale parent context (after a
++                    // restart), which hid it from ConfirmHfts. Re-key from the kernel.
++                    if (!pHftv->m_Tx.m_vKernels.empty())
++                        pHftv->m_Key.m_Height = pHftv->m_Tx.m_vKernels.front()->m_Height.m_Max;
++
+                     m_Variants.insert(*pHftv.release());
+                 }
+             }
+@@ -158,9 +168,25 @@
+ 
+         bool CanRebuildHft() const
+         {
+-            return m_HftSubscribed && !m_Data.m_AppInvoke.m_App.empty();
++            return m_HftSubscribed && !m_NoRebuild && !m_Data.m_AppInvoke.m_App.empty();
+         }
+ 
++        bool HasCurrentKernel() const
++        {
++            return m_pTransaction && !m_pTransaction->m_vKernels.empty();
++        }
++
++        // Campfire: the height the current variant is valid at. Its kernel is authoritative;
++        // m_pParentCtx comes from ContractDataPacked, which unpatched builds never updated
++        // after a rebuild, so after a restart it could describe an older variant.
++        Height get_CurrentHeight() const
++        {
++            if (m_pKrn)
++                return m_pKrn->m_Height.m_Max;
++            assert(m_pParentCtx);
++            return m_pParentCtx->m_Height;
++        }
++
+         struct KernelCallback
+             :public INegotiatorGateway::IConfirmCallback
+         {
+@@ -552,6 +578,30 @@
+         {
+             builder.m_HftSubscribed = true;
+             GetGateway().HftSubscribe(true);
++
++            // Campfire: an HFT tx that was in flight when the wallet stopped. What this process
++            // knew about it (which variant is pending in which dependent context, which kernels
++            // were already checked) is gone, and the node's dependent state arrives only later.
++            // Rebuilding now can put a second variant on top of one that is still pending, or
++            // after one that was already mined. So never build another variant: only find out
++            // whether one of those already built got in, then complete or fail as expired.
++            auto s = GetState<State>();
++            if ((State::Initial != s) || !builder.m_HftState.m_Variants.empty())
++            {
++                builder.m_NoRebuild = true;
++
++                // re-check every variant's kernel; do not trust heights concluded before
++                SetParameter(TxParameterID::KernelUnconfirmedHeight, Zero);
++
++                if ((State::RebuildHft == s) || (State::Initial == s) || !builder.HasCurrentKernel())
++                {
++                    // stopped between variants: there is no current one to send
++                    builder.m_RebuildFailed = true;
++                    SetState(State::Registration);
++                }
++
++                BEAM_LOG_INFO() << "TxoID=" << GetTxID() << " HFT resumed: no rebuild, checking " << builder.m_HftState.m_Variants.size() << " earlier variant(s)";
++            }
+         }
+     }
+ 
+@@ -611,6 +661,13 @@
+         {
+             if (!builder.m_pAppExec)
+             {
++                if (builder.m_NoRebuild)
++                {
++                    builder.OnRebuildFailed();
++                    BEAM_LOG_INFO() << "no rebuild";
++                    return true;
++                }
++
+                 if (builder.IsHftPending())
+                 {
+                     builder.OnRebuildFailed();
+@@ -688,6 +745,12 @@
+                 return true;
+             }
+ 
++            // Campfire: keep the saved form of the data (app invoke, max spend) the same as
++            // the one process_invoke_data stored, so it can be persisted with the variant.
++            vData.m_vec.front().m_Flags |= bvm2::ContractInvokeEntry::Flags::SaveAppInvoke;
++            if (builder.m_ExplicitMaxSpend)
++                vData.m_vec.front().m_Flags |= bvm2::ContractInvokeEntry::Flags::SaveSpendMax;
++
+             s = State::Initial;
+             SetState(s);
+         }
+@@ -754,6 +817,17 @@
+             builder.SaveCoins();
+ 
+             builder.AddCoinOffsets(pKdf);
++
++            if (!builder.m_HftState.m_Variants.empty())
++            {
++                // Campfire: a rebuilt variant. Persist the invoke data it was built from (parent
++                // context included) before its kernel, so after a restart ContractDataPacked
++                // describes the transaction held in Kernel/Inputs/Outputs, not the first variant.
++                // Unpatched builds kept only the first variant's data: after a restart the current
++                // variant was mis-keyed, not recognised as pending, and rebuilt on top of itself.
++                SetParameter(TxParameterID::ContractDataPacked, vData, GetSubTxID());
++            }
++
+             builder.OnSigned();
+ 
+             s = State::GeneratingCoins;
+@@ -964,7 +1038,7 @@
+         if (!pV)
+         {
+             EnsureNewCtx();
+-            pCallback->m_Hh.m_Height = m_pParentCtx->m_Height;
++            pCallback->m_Hh.m_Height = get_CurrentHeight(); // Campfire: same key SaveToHftv files it under
+             pCallback->m_Hh.m_Hash = *m_pNewCtx;
+         }
+         
+@@ -1117,10 +1191,11 @@
+ 
+         m_pAsyncCtx->m_hTipAtStart = hTip;
+ 
+-        if (!m_RebuildFailed)
++        if (!m_RebuildFailed && HasCurrentKernel())
+         {
+             assert(m_pParentCtx);
+-            if ((m_pParentCtx->m_Height <= hTip) && (m_pParentCtx->m_Height > hLastUnconfirmed))
++            Height hCur = get_CurrentHeight();
++            if ((hCur <= hTip) && (hCur > hLastUnconfirmed))
+                 ConfirmKernelEx(nullptr);
+         }
+ 
+@@ -1207,6 +1282,17 @@
+                             OnFailed(TxFailureReason::FailedToRegister, true);
+                             return 0;
+                         }
++
++                        if (proto::TxStatus::InvalidInput == nTxRegStatus)
++                        {
++                            // Campfire: "inputs missing". Something already spent this variant's
++                            // inputs, most likely one of our own variants (pending or mined).
++                            // Building yet another variant is how one swap runs twice: confirm
++                            // the kernels already built instead, then complete or expire.
++                            if (!builder.m_NoRebuild)
++                                BEAM_LOG_INFO() << "TxoID=" << GetTxID() << " HFT inputs missing: no rebuild, confirming variants";
++                            builder.m_NoRebuild = true;
++                        }
+                     }
+                 }
+             }
+@@ -1231,7 +1317,7 @@
+ 
+         Height hMax;
+         if (builder.m_pParentCtx)
+-            hMax = builder.m_pParentCtx->m_Height;
++            hMax = builder.get_CurrentHeight(); // Campfire: the built variant's own height when there is one
+         else
+         {
+             if (builder.m_pKrn)
+@@ -1335,6 +1421,16 @@
+ 
+         SetParameter(TxParameterID::MutualTxState, Zero); // otherwise BaseTxBuilder won't re-normalize the newly-built tx
+ 
++        // Campfire: key the variant while it is still the current tx. Once moved out it has no
++        // kernels, EnsureNewCtx() does nothing, and an unset m_pNewCtx was dereferenced below.
++        Height hVariant = 0;
++        if (!m_RebuildFailed)
++        {
++            assert(m_pParentCtx);
++            hVariant = get_CurrentHeight(); // its kernel's height, not a possibly stale parent ctx
++            EnsureNewCtx();
++        }
++
+         auto pHftv = std::make_unique<HftVariant>();
+         pHftv->m_Tx = std::move(*m_pTransaction);
+         pHftv->m_Coins = std::move(m_Coins);
+@@ -1346,12 +1442,12 @@
+             if (m_HftState.m_Variants.empty() && !m_ExplicitMaxSpend)
+                 m_HftState.m_SpendInitial = m_Data.get_FullSpend();
+ 
+-            EnsureNewCtx();
++            pHftv->m_Key.m_Height = hVariant;
++            if (m_pNewCtx)
++                pHftv->m_Key.m_Hash = *m_pNewCtx;
++            else
++                pHftv->m_Key.m_Hash = Zero; // never drop a variant: it is still confirmed by kernel ID
+ 
+-            assert(m_pParentCtx && m_pNewCtx);
+-            pHftv->m_Key.m_Height = m_pParentCtx->m_Height;
+-            pHftv->m_Key.m_Hash = *m_pNewCtx;
+-
+             m_HftState.m_Variants.insert(*pHftv.release());
+ 
+             Serializer ser;
