@@ -27,6 +27,7 @@ import 'package:stackwallet/pages_desktop_specific/my_stack_view/my_stack_view.d
 import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/beam_desktop_asset_view.dart';
 import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/desktop_wallet_view.dart';
 import 'package:stackwallet/pages_desktop_specific/settings/settings_menu/desktop_support_view.dart';
+import 'package:stackwallet/providers/desktop/desktop_open_wallet_request.dart';
 import 'package:stackwallet/providers/global/active_wallet_provider.dart';
 import 'package:stackwallet/widgets/beam/sidebar/beam_sidebar.dart';
 
@@ -85,6 +86,27 @@ void main() {
     await tapMenu(tester, const ValueKey('myStack'));
     expect(find.byType(DesktopWalletView), findsNothing);
     expect(_onTop(tester, find.byType(MyStackView)), isTrue);
+    await finishSidebar(tester);
+  });
+
+  // The restore dialog's "Open my wallet" on desktop: it cannot reach My
+  // Campfire's navigator, so it asks the desktop home.
+  testWidgets('an open-wallet request shows that wallet in My Campfire, '
+      'from any item', (tester) async {
+    final wallet = await openBeamWallet(tester, db, core: SidebarCore());
+    final container = await pumpSidebar(tester, wallets: [wallet]);
+    await tapMenu(tester, const ValueKey('support'));
+    expect(find.byType(DesktopSupportView), findsOneWidget);
+
+    container.read(desktopOpenWalletRequestProvider.state).state =
+        wallet.walletId;
+    // Opening runs the wallet's init/open (real I/O) under a loading overlay.
+    await settle(tester, rounds: 10);
+    expect(find.text('Opening ${wallet.info.name}'), findsNothing);
+    expect(find.byType(DesktopWalletView), findsOneWidget);
+    expect(_onTop(tester, find.byType(DesktopWalletView)), isTrue);
+    expect(container.read(currentWalletIdProvider), wallet.walletId);
+    expect(container.read(desktopOpenWalletRequestProvider), isNull);
     await finishSidebar(tester);
   });
 

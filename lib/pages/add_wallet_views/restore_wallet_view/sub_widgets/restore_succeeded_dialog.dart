@@ -14,10 +14,138 @@ import '../../../../themes/stack_colors.dart';
 import '../../../../utilities/assets.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../utilities/util.dart';
+import '../../../../wallets/wallet/impl/beam_wallet.dart'
+    show kBeamRestoreScanningMessage;
 import '../../../../widgets/desktop/desktop_dialog.dart';
 import '../../../../widgets/desktop/desktop_dialog_close_button.dart';
 import '../../../../widgets/desktop/primary_button.dart';
 import '../../../../widgets/stack_dialog.dart';
+
+// Campfire for BEAM — the dialog after a BEAM restore:
+//   Job:  say the wallet is back and that its coins are still being found
+//         (a 0 balance meanwhile is not a loss), then get into the wallet.
+//   CTA:  "Open my wallet" (phone and desktop).
+//   Taps: the button (1).
+// Exit-intent: "My balance is 0, did the restore fail?" → the text says why
+// before the user sees the 0, and the button says where it goes.
+
+/// The button: opens the restored wallet.
+const kBeamRestoredOpenWallet = "Open my wallet";
+
+/// A restored BEAM wallet: the honest scan text and one button labelled with
+/// its outcome. The dialog closes itself, then runs [onAction].
+class BeamRestoreSucceededDialog extends StatelessWidget {
+  const BeamRestoreSucceededDialog({
+    super.key,
+    required this.isDesktop,
+    required this.actionLabel,
+    required this.onAction,
+    this.message = kBeamRestoreScanningMessage,
+  });
+
+  final bool isDesktop;
+  final String actionLabel;
+  final VoidCallback onAction;
+  final String message;
+
+  void _act(BuildContext context) {
+    Navigator.of(context).pop();
+    onAction();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<StackColors>()!;
+    if (isDesktop) {
+      return DesktopDialog(
+        maxWidth: 580,
+        maxHeight: null,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const DesktopDialogCloseButton(),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
+                child: Column(
+                  children: [
+                    SvgPicture.asset(
+                      Assets.svg.checkCircle,
+                      width: 40,
+                      height: 40,
+                      colorFilter: ColorFilter.mode(
+                        colors.accentColorDark,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      "Wallet restored",
+                      style: STextStyles.desktopH2(context),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      message,
+                      style: STextStyles.desktopTextMedium(
+                        context,
+                      ).copyWith(color: colors.textDark3),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+                    PrimaryButton(
+                      key: const Key("beamRestoredAction"),
+                      width: 272.5,
+                      label: actionLabel,
+                      onPressed: () => _act(context),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    // StackDialog's look, with the one button full width (StackDialog
+    // gives a lone button half the row).
+    return StackDialogBase(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  "Wallet restored",
+                  style: STextStyles.pageTitleH2(context),
+                ),
+              ),
+              SvgPicture.asset(
+                Assets.svg.checkCircle,
+                width: 24,
+                height: 24,
+                colorFilter: ColorFilter.mode(
+                  colors.accentColorGreen,
+                  BlendMode.srcIn,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(message, style: STextStyles.smallMed14(context)),
+          const SizedBox(height: 20),
+          TextButton(
+            key: const Key("beamRestoredAction"),
+            style: colors.getPrimaryEnabledButtonStyle(context),
+            onPressed: () => _act(context),
+            child: Text(actionLabel, style: STextStyles.button(context)),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class RestoreSucceededDialog extends StatelessWidget {
   const RestoreSucceededDialog({super.key});

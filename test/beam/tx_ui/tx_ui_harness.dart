@@ -39,6 +39,8 @@ import 'package:stackwallet/wallets/beam/wallet/beam_tx_mapper.dart';
 import 'package:stackwallet/wallets/crypto_currency/crypto_currency.dart';
 import 'package:stackwallet/wallets/isar/providers/wallet_info_provider.dart';
 import 'package:stackwallet/widgets/beam/tx/beam_tx_backend.dart';
+import 'package:stackwallet/widgets/beam/wallet_home/beam_wallet_home.dart'
+    show BeamCoinScan, pBeamCoinScan, pBeamRestoredWithFunds;
 
 const kWalletId = 'beam-tx-ui-test-wallet';
 final kBeam = Beam(CryptoCurrencyNetwork.main);
@@ -313,11 +315,15 @@ void setSurface(WidgetTester tester, {required bool desktop, double? h}) {
 const kShot = ValueKey('beam-tx-ui-shot');
 
 /// [home] inside Campfire's theme with every BEAM provider faked.
+/// [coinScan] is a restore scan still looking for the wallet's coins;
+/// [restoredWithFunds] a restored wallet that holds something.
 Widget app({
   required Widget home,
   required FakeTxBackend fake,
   required bool desktop,
   RouteFactory? onGenerateRoute,
+  BeamCoinScan? coinScan,
+  bool restoredWithFunds = false,
 }) {
   return RepaintBoundary(
     key: kShot,
@@ -329,6 +335,12 @@ Widget app({
         ),
         pBeamTxFiat.overrideWithProvider(
           (_) => Provider<BeamTxFiat?>((_) => null),
+        ),
+        pBeamCoinScan.overrideWithProvider(
+          (_) => Provider.autoDispose<BeamCoinScan?>((_) => coinScan),
+        ),
+        pBeamRestoredWithFunds.overrideWithProvider(
+          (_) => Provider.autoDispose<bool>((_) => restoredWithFunds),
         ),
         pAmountFormatter.overrideWithProvider(
           (coin) => Provider<AmountFormatter>(

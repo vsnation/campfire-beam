@@ -13,16 +13,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../db/isar/main_db.dart';
 import '../../../models/isar/models/contract.dart';
+import '../../../providers/global/wallets_provider.dart';
 import '../../../providers/wallet/public_private_balance_state_provider.dart';
 import '../../../themes/stack_colors.dart';
 import '../../../utilities/amount/amount.dart';
 import '../../../utilities/amount/amount_formatter.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../utilities/util.dart';
+import '../../../wallets/crypto_currency/coins/beam.dart';
 import '../../../wallets/crypto_currency/coins/solana.dart';
 import '../../../wallets/isar/providers/eth/token_balance_provider.dart';
 import '../../../wallets/isar/providers/solana/sol_token_balance_provider.dart';
 import '../../../wallets/isar/providers/wallet_info_provider.dart';
+import '../../beam/wallet_home/beam_home_text.dart';
+import '../../beam/wallet_home/beam_scan_state.dart';
 
 class WalletInfoRowBalance extends ConsumerWidget {
   const WalletInfoRowBalance({
@@ -39,6 +43,31 @@ class WalletInfoRowBalance extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final info = ref.watch(pWalletInfo(walletId));
+    final style = Util.isDesktop
+        ? STextStyles.desktopTextExtraSmall(context).copyWith(
+            color: Theme.of(context).extension<StackColors>()!.textSubtitle1,
+          )
+        : STextStyles.itemSubtitle(context);
+
+    // Campfire for BEAM: a restored wallet whose coins are still being
+    // found says so, rather than a bare 0 that looks like a loss. (Rebuilt
+    // with the wallet info, which changes with every block the wallet sees.)
+    if (contractAddress == null &&
+        info.coin is Beam &&
+        beamListShowsScanning(
+          info,
+          ref
+              .read(pWallets)
+              .wallets
+              .where((w) => w.walletId == walletId)
+              .firstOrNull,
+        )) {
+      return Text(
+        BeamHomeText.scanningHeadline(null),
+        key: const Key("beamWalletRowScanning"),
+        style: style,
+      );
+    }
 
     final Amount totalBalance;
     Contract? contract;
@@ -92,11 +121,7 @@ class WalletInfoRowBalance extends ConsumerWidget {
       ref
           .watch(pAmountFormatter(info.coin))
           .format(totalBalance, tokenContract: contract),
-      style: Util.isDesktop
-          ? STextStyles.desktopTextExtraSmall(context).copyWith(
-              color: Theme.of(context).extension<StackColors>()!.textSubtitle1,
-            )
-          : STextStyles.itemSubtitle(context),
+      style: style,
     );
   }
 }

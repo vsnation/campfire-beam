@@ -51,7 +51,46 @@ extension BeamWalletInfoExtension on WalletInfo {
       BeamBalanceMapper.parseAssetTotals(
         otherData[WalletInfoKeys.beamAssetTotals],
       );
+
+  /// A restored wallet whose scan is still pending and that has found
+  /// nothing yet: any balance shown for it would be a bare 0, which must not
+  /// look like a loss. (Whether the scan still runs is the live wallet's to
+  /// say; see beam_scan_state.dart.)
+  bool get beamScanFoundNothing => beamNothingFoundYet(
+    scanning: beamData?.restoreScanPending ?? false,
+    beamTotal: cachedBalance.total.raw,
+    totals: beamAssetTotals,
+  );
+
+  /// Restored from its phrase and holding something. A restore finds coins,
+  /// not past payments (BEAM keeps no history on the chain), so such a
+  /// wallet can have a balance and an empty list of transactions.
+  bool get beamRestoredWithFunds {
+    final d = beamData;
+    if (d == null ||
+        !(d.restoreScanPending || d.restoreScanStartedAt != null)) {
+      return false;
+    }
+    return !beamNothingFoundYet(
+      scanning: true,
+      beamTotal: cachedBalance.total.raw,
+      totals: beamAssetTotals,
+    );
+  }
 }
+
+/// The rule behind [BeamWalletInfoExtension.beamScanFoundNothing], for the
+/// screens that read the live scan state instead of the cached flag: a
+/// restore scan runs and neither BEAM ([beamTotal], arriving included) nor
+/// any asset in [totals] has turned up yet.
+bool beamNothingFoundYet({
+  required bool scanning,
+  required BigInt beamTotal,
+  required Map<int, BeamCachedAssetTotals> totals,
+}) =>
+    scanning &&
+    beamTotal == BigInt.zero &&
+    totals.values.every((t) => t.total == BigInt.zero);
 
 /// BEAM wallet state that must survive restarts.
 class ExtraBeamWalletInfo {

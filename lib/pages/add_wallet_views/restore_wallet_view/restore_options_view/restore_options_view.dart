@@ -63,6 +63,27 @@ class RestoreOptionsView extends ConsumerStatefulWidget {
 
   static const routeName = "/restoreOptions";
 
+  /// Campfire for BEAM: a BEAM phrase is always 12 words, with no passphrase
+  /// and no start date, so this page would only ask a question with one
+  /// answer. BEAM goes straight to the phrase, on desktop and phone alike.
+  static bool skipsOptionsFor(CryptoCurrency coin) => coin is Beam;
+
+  /// The step after naming a wallet to restore: this page, or the phrase
+  /// entry with the only possible options where there is nothing to choose.
+  static (String, Object) nextStepFor(String walletName, CryptoCurrency coin) =>
+      skipsOptionsFor(coin)
+      ? (
+          RestoreWalletView.routeName,
+          Tuple5<String, CryptoCurrency, int, int, String>(
+            walletName,
+            coin,
+            coin.defaultSeedPhraseLength,
+            0,
+            "",
+          ),
+        )
+      : (routeName, Tuple2<String, CryptoCurrency>(walletName, coin));
+
   final String walletName;
   final CryptoCurrency coin;
 

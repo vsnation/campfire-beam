@@ -116,12 +116,10 @@ class _NameYourWalletViewState extends ConsumerState<NameYourWalletView> {
             break;
 
           case AddWalletType.Restore:
-            unawaited(
-              Navigator.of(context).pushNamed(
-                RestoreOptionsView.routeName,
-                arguments: Tuple2(name, coin),
-              ),
-            );
+            // Restore options, or the phrase directly when there is nothing
+            // to choose (BEAM).
+            final (route, args) = RestoreOptionsView.nextStepFor(name, coin);
+            unawaited(Navigator.of(context).pushNamed(route, arguments: args));
             break;
         }
       }

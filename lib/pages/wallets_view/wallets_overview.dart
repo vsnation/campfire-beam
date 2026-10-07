@@ -8,6 +8,8 @@
  *
  */
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/svg.dart';
@@ -66,6 +68,7 @@ class _EthWalletsOverviewState extends ConsumerState<WalletsOverview> {
 
   late final TextEditingController _searchController;
   late final FocusNode searchFieldFocusNode;
+  StreamSubscription<WalletsChangedEvent>? _walletsChanged;
 
   String _searchString = "";
 
@@ -203,14 +206,19 @@ class _EthWalletsOverviewState extends ConsumerState<WalletsOverview> {
     updateWallets();
 
     if (AppConfig.isSingleCoinApp) {
-      GlobalEventBus.instance.on<WalletsChangedEvent>().listen((_) {
-        updateWallets();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            setState(() {});
-          }
-        });
-      });
+      // Cancelled in dispose: a wallet added after this list is gone must
+      // not reach it (it reads providers through a dead element).
+      _walletsChanged = GlobalEventBus.instance
+          .on<WalletsChangedEvent>()
+          .listen((_) {
+            if (!mounted) return;
+            updateWallets();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                setState(() {});
+              }
+            });
+          });
     }
 
     super.initState();
@@ -218,6 +226,7 @@ class _EthWalletsOverviewState extends ConsumerState<WalletsOverview> {
 
   @override
   void dispose() {
+    unawaited(_walletsChanged?.cancel());
     _searchController.dispose();
     searchFieldFocusNode.dispose();
     super.dispose();

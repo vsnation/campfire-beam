@@ -250,13 +250,31 @@ abstract final class BeamHomeText {
   static String? arriving(String formattedPending, BigInt pendingGroth) =>
       pendingGroth > BigInt.zero ? '+ $formattedPending arriving' : null;
 
-  /// The line that replaces a bare 0 while a restored wallet is scanned.
-  static String scanning(BeamScanProgress? scan) {
+  /// How far a restore scan is, in whole percent (rounded down, so it never
+  /// says 100% before the end), or null when the core reports no progress.
+  static int? scanPercent(BeamScanProgress? scan) {
     final f = scan?.fraction;
-    return f == null
-        ? 'Scanning for your coins…'
-        : 'Scanning for your coins… ${(f * 100).floor()}%';
+    return f == null ? null : (f * 100).floor();
   }
+
+  /// "Scanning for your coins… 43%": the banner's title during a restore
+  /// scan.
+  static String scanning(BeamScanProgress? scan) {
+    final p = scanPercent(scan);
+    return p == null
+        ? 'Scanning for your coins…'
+        : 'Scanning for your coins… $p%';
+  }
+
+  /// The headline in place of the balance while a restored wallet has found
+  /// nothing yet: never a bare 0, which would look like a loss.
+  static String scanningHeadline(BeamScanProgress? scan) {
+    final p = scanPercent(scan);
+    return p == null ? 'Scanning…' : 'Scanning… $p%';
+  }
+
+  /// Under the amount while the scan still runs: more may turn up.
+  static const foundSoFar = 'Found so far';
 
   /// The portfolio lines from the cached per-asset totals and, once it is
   /// known, the DEX pricer. [fiat] formats a BEAM amount in the user's

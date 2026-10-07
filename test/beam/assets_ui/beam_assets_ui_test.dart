@@ -45,6 +45,7 @@ import 'package:stackwallet/wallets/models/tx_data.dart';
 import 'package:stackwallet/wallets/wallet/impl/beam_wallet.dart';
 import 'package:stackwallet/wallets/wallet/impl/sub_wallets/beam_asset_wallet.dart';
 import 'package:stackwallet/wallets/wallet/supporting/beam_wallet_info_extension.dart';
+import 'package:stackwallet/widgets/beam/stickers/beam_sticker.dart';
 
 import '../asset_wallet/asset_test_support.dart';
 import 'assets_ui_harness.dart';
@@ -62,6 +63,10 @@ TxData _pay(String address, BigInt amount) => TxData(
 
 Future<void> _golden(String name) =>
     expectLater(find.byKey(goldenKey), matchesGoldenFile('goldens/$name.png'));
+
+BeamSticker _emptySticker(WidgetTester tester) => tester
+    .widget<BeamStickerImage>(find.byKey(const Key('beamAssetsEmptySticker')))
+    .sticker;
 
 String? textOf(WidgetTester tester, Key key) {
   final w = tester.widget(find.byKey(key));
@@ -319,7 +324,38 @@ void main() {
       expect(find.text('No assets yet'), findsOneWidget);
       expect(find.byKey(const Key('beamAssetsReceive')), findsOneWidget);
       expect(find.byKey(const Key('beamAssetsManageButton')), findsNothing);
+      // Not the empty history's sticker: on desktop the two sit side by
+      // side.
+      expect(_emptySticker(tester), BeamMoments.emptyAssets);
+      expect(BeamMoments.emptyAssets, isNot(BeamMoments.emptyHistory));
       await _golden('assets_empty_phone');
+    });
+
+    testWidgets('no assets during a restore scan: they are on their way', (
+      tester,
+    ) async {
+      await pumpAssets(
+        tester,
+        MyTokensView(walletId: wallet.walletId),
+        wallet: wallet,
+        desktop: false,
+        market: market,
+        totals: {0: wallet.info.beamAssetTotals[0]!},
+        coinScan: (percent: 43),
+      );
+      expect(find.text('No assets yet'), findsNothing);
+      expect(find.text('Still looking for your assets'), findsOneWidget);
+      expect(
+        textOf(tester, const Key('beamAssetsEmptyDetail')),
+        'Your assets appear here as your coins are found. You can receive '
+        'meanwhile.',
+      );
+      // Still one tap to receive.
+      final receive = find.byKey(const Key('beamAssetsReceive'));
+      expect(receive, findsOneWidget);
+      expect(tester.getRect(receive).bottom, lessThanOrEqualTo(phone.height));
+      expect(_emptySticker(tester), BeamMoments.emptyAssets);
+      await _golden('assets_empty_scanning_phone');
     });
   });
 

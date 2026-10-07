@@ -21,7 +21,9 @@
 //   * "Spam airdrops clutter my list" → the eye button hides them, and the
 //     footer always offers to show them again (no dead end).
 //   * "Nothing here" → the empty state says how assets arrive and offers
-//     the receive screen in one tap.
+//     the receive screen in one tap. While a restored wallet's coins are
+//     still being found it says they will appear as they are found, not
+//     that there are none.
 
 import 'dart:async';
 
@@ -42,6 +44,8 @@ import '../../wallets/beam/assets/beam_hidden_assets.dart';
 import '../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../widgets/background.dart';
 import '../../widgets/beam/stickers/beam_sticker.dart';
+import '../../widgets/beam/wallet_home/beam_wallet_home.dart'
+    show BeamCoinScan, pBeamCoinScan;
 import '../../widgets/conditional_parent.dart';
 import '../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../widgets/custom_buttons/blue_text_button.dart';
@@ -155,7 +159,10 @@ class _BeamAssetsViewState extends ConsumerState<BeamAssetsView> {
 
     Widget body;
     if (holdings.isEmpty) {
-      body = _Empty(onReceive: _openReceive);
+      body = _Empty(
+        scan: ref.watch(pBeamCoinScan(widget.walletId)),
+        onReceive: _openReceive,
+      );
     } else {
       body = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -341,8 +348,10 @@ class _Total extends ConsumerWidget {
 }
 
 class _Empty extends StatelessWidget {
-  const _Empty({required this.onReceive});
+  const _Empty({required this.scan, required this.onReceive});
 
+  /// A restore scan still looking for coins, or null.
+  final BeamCoinScan? scan;
   final VoidCallback onReceive;
 
   @override
@@ -354,17 +363,27 @@ class _Empty extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const BeamStickerImage(BeamMoments.emptyHistory, size: 96),
+              const BeamStickerImage(
+                BeamMoments.emptyAssets,
+                key: Key('beamAssetsEmptySticker'),
+                size: 96,
+              ),
               const SizedBox(height: 16),
               Text(
-                'No assets yet',
+                scan == null
+                    ? 'No assets yet'
+                    : 'Still looking for your assets',
                 style: STextStyles.pageTitleH2(context),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
-                'Assets like FOMO or BeamX arrive at your BEAM address. '
-                'Share it to receive them; they appear here.',
+                scan == null
+                    ? 'Assets like FOMO or BeamX arrive at your BEAM address. '
+                          'Share it to receive them; they appear here.'
+                    : 'Your assets appear here as your coins are found. You '
+                          'can receive meanwhile.',
+                key: const Key('beamAssetsEmptyDetail'),
                 style: STextStyles.itemSubtitle(context),
                 textAlign: TextAlign.center,
               ),

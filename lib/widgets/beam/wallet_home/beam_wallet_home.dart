@@ -70,6 +70,39 @@ final pBeamHome = ChangeNotifierProvider.autoDispose
       (ref, id) => BeamHomeController(ref.watch(pBeamHomeSource(id)))..start(),
     );
 
+/// A restore scan still looking for coins, with its whole percent when the
+/// core reports one.
+typedef BeamCoinScan = ({int? percent});
+
+/// [BeamCoinScan] for one wallet, or null when no restore scan runs: for the
+/// lists that would otherwise say "nothing yet" while coins are still being
+/// found. It starts from the cached flag, so a wallet that is not scanning
+/// never starts the home's live state from here; a scan that is over (the
+/// wallet up to date, nothing outstanding) is null too. Tests replace it.
+final pBeamCoinScan = Provider.autoDispose.family<BeamCoinScan?, String>((
+  ref,
+  id,
+) {
+  final pending = ref.watch(
+    pWalletInfo(id).select((i) => i.beamData?.restoreScanPending ?? false),
+  );
+  if (!pending) return null;
+  final running = ref.watch(pBeamHome(id).select((h) => h.isScanningForCoins));
+  if (!running) return null;
+  return (
+    percent: ref.watch(
+      pBeamHome(id).select((h) => BeamHomeText.scanPercent(h.scanProgress)),
+    ),
+  );
+});
+
+/// A restored wallet that holds something, whose list therefore starts at
+/// the restore (BEAM keeps no history on the chain). Tests replace it.
+final pBeamRestoredWithFunds = Provider.autoDispose.family<bool, String>(
+  (ref, id) =>
+      ref.watch(pWalletInfo(id).select((i) => i.beamRestoredWithFunds)),
+);
+
 /// Per-asset totals from Campfire's cache (the last `wallet_status`).
 final pBeamAssetTotals =
     Provider.family<Map<int, BeamCachedAssetTotals>, String>(
@@ -147,14 +180,23 @@ BeamBalanceLines beamBalanceLines({
   final holdsAssets = totals.entries.any(
     (e) => e.key != 0 && e.value.total > BigInt.zero,
   );
+  final scanning = home.isScanningForCoins;
+  // A restore scan that has found nothing yet: the headline says so instead
+  // of a bare 0 (and no "0.00 USD" under it). The percent's explanation is
+  // the banner's.
+  final nothingYet = beamNothingFoundYet(
+    scanning: scanning,
+    beamTotal: balance.total.raw,
+    totals: totals,
+  );
   return BeamBalanceLines(
-    spendable: format.formatBeam(balance.spendable),
-    fiat: format.fiat(balance.spendable),
-    reserveFiat: format.pricesOn,
+    spendable: nothingYet
+        ? BeamHomeText.scanningHeadline(home.scanProgress)
+        : format.formatBeam(balance.spendable),
+    fiat: nothingYet ? null : format.fiat(balance.spendable),
+    reserveFiat: !nothingYet && format.pricesOn,
+    foundSoFar: scanning && !nothingYet ? BeamHomeText.foundSoFar : null,
     arriving: BeamHomeText.arriving(format.formatBeam(pending), pending.raw),
-    scanning: home.isScanningForCoins
-        ? BeamHomeText.scanning(home.scanProgress)
-        : null,
     portfolio: BeamHomeText.portfolio(
       totals: totals,
       pricer: home.pricer,

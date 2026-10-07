@@ -25,7 +25,10 @@
 //   * A spinner over the balance, or a balance that jumps when live data
 //     lands: the balance renders from Campfire's cache at once and the lines
 //     under it keep their slots (R11).
-//   * A bare "0 BEAM" after a restore: the card says it is still scanning.
+//   * A bare "0 BEAM" after a restore: while nothing is found the headline
+//     says "Scanning… 43%" (no fiat 0 under it), and once coins turn up the
+//     amount says "Found so far". The percent and the explanation are in
+//     the banner, once.
 //   * A Send button that fails for no visible reason: it is dimmed, and a
 //     tap says why and when it comes back.
 //   * A sync bar that flashes on every open: non-urgent banners wait a few
@@ -55,15 +58,16 @@ class BeamBalanceLines {
     this.title = 'Available balance',
     this.fiat,
     this.reserveFiat = false,
+    this.foundSoFar,
     this.arriving,
-    this.scanning,
     this.portfolio,
     this.reservePortfolio = false,
   });
 
   final String title;
 
-  /// "12.5 BEAM", Campfire's formatter.
+  /// "12.5 BEAM", Campfire's formatter; "Scanning… 43%" while a restored
+  /// wallet has found nothing yet (never a bare 0).
   final String spendable;
 
   /// "0.11 USD", or null while no price is known.
@@ -72,11 +76,12 @@ class BeamBalanceLines {
   /// Keep the fiat line's space even before a price arrives (prices on).
   final bool reserveFiat;
 
+  /// "Found so far" while a restore scan runs and has found something:
+  /// the amount is not everything yet.
+  final String? foundSoFar;
+
   /// "+ 0.5 BEAM arriving".
   final String? arriving;
-
-  /// "Scanning for your coins… 43%" after a restore.
-  final String? scanning;
 
   final BeamPortfolioText? portfolio;
 
@@ -219,8 +224,12 @@ class BeamBalanceCardContent extends StatelessWidget {
                     STextStyles.subtitle500(context)
                         .copyWith(color: c.textFavoriteCard),
                   ),
-                if (lines.scanning != null)
-                  line(lines.scanning, small, key: const Key('beamHomeScan')),
+                if (lines.foundSoFar != null)
+                  line(
+                    lines.foundSoFar,
+                    small,
+                    key: const Key('beamHomeFoundSoFar'),
+                  ),
                 if (lines.arriving != null)
                   line(
                     lines.arriving,
@@ -272,9 +281,9 @@ class BeamDesktopBalance extends StatelessWidget {
     final c = _colors(context);
     final small = STextStyles.desktopTextExtraExtraSmall(context)
         .copyWith(color: c.textSubtitle1);
-    Widget line(String? text, TextStyle style) => Padding(
+    Widget line(String? text, TextStyle style, {Key? key}) => Padding(
       padding: const EdgeInsets.only(top: 2),
-      child: Text(text ?? '', maxLines: 1, style: style),
+      child: Text(text ?? '', key: key, maxLines: 1, style: style),
     );
     final p = lines.portfolio;
     return Row(
@@ -294,7 +303,12 @@ class BeamDesktopBalance extends StatelessWidget {
                 STextStyles.desktopTextExtraSmall(context)
                     .copyWith(color: c.textSubtitle1),
               ),
-            if (lines.scanning != null) line(lines.scanning, small),
+            if (lines.foundSoFar != null)
+              line(
+                lines.foundSoFar,
+                small,
+                key: const Key('beamHomeFoundSoFar'),
+              ),
             if (lines.arriving != null) line(lines.arriving, small),
             if (p != null || lines.reservePortfolio) ...[
               line(p?.total, small),

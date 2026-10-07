@@ -40,6 +40,8 @@ import 'package:stackwallet/wallets/crypto_currency/crypto_currency.dart';
 import 'package:stackwallet/wallets/isar/providers/beam/current_beam_asset_wallet_provider.dart';
 import 'package:stackwallet/wallets/wallet/impl/beam_wallet.dart';
 import 'package:stackwallet/wallets/wallet/impl/sub_wallets/beam_asset_wallet.dart';
+import 'package:stackwallet/widgets/beam/wallet_home/beam_wallet_home.dart'
+    show BeamCoinScan, pBeamCoinScan;
 
 final StackTheme campfireLight = () {
   final zip = File('asset_sources/default_themes/campfire/light.zip')
@@ -149,7 +151,8 @@ Future<void> loadFonts(WidgetTester tester) async {
 /// Pumps [home] in the phone or desktop layout. [wallet] is what the asset
 /// screens find for its id, [market] what the DEX answers (null: prices not
 /// loaded), [assetWallet] the asset being viewed, and [totals] replaces the
-/// wallet's cached per-asset totals when given.
+/// wallet's cached per-asset totals when given. [coinScan] is a restore
+/// scan still looking for the wallet's coins.
 Future<void> pumpAssets(
   WidgetTester tester,
   Widget home, {
@@ -159,6 +162,7 @@ Future<void> pumpAssets(
   BeamAssetWallet? assetWallet,
   Map<int, BeamCachedAssetTotals>? totals,
   Set<int>? hidden,
+  BeamCoinScan? coinScan,
 }) async {
   await loadFonts(tester);
   final size = desktop ? desktopWindow : phone;
@@ -192,6 +196,10 @@ Future<void> pumpAssets(
       beamAssetWalletStateProvider.overrideWithValue(
         StateController<BeamAssetWallet?>(assetWallet),
       ),
+      if (coinScan != null)
+        pBeamCoinScan.overrideWithProvider(
+          (id) => Provider.autoDispose<BeamCoinScan?>((ref) => coinScan),
+        ),
     ],
   );
   addTearDown(() async {

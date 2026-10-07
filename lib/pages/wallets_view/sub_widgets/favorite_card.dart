@@ -26,9 +26,12 @@ import '../../../utilities/show_loading.dart';
 import '../../../utilities/show_node_tor_settings_mismatch.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../utilities/util.dart';
+import '../../../wallets/crypto_currency/coins/beam.dart';
 import '../../../wallets/crypto_currency/coins/firo.dart';
 import '../../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../../wallets/wallet/intermediate/external_wallet.dart';
+import '../../../widgets/beam/wallet_home/beam_home_text.dart';
+import '../../../widgets/beam/wallet_home/beam_scan_state.dart';
 import '../../../widgets/coin_card.dart';
 import '../../../widgets/conditional_parent.dart';
 import '../../wallet_view/wallet_view.dart';
@@ -211,6 +214,32 @@ class _FavoriteCardState extends ConsumerState<FavoriteCard> {
                   ),
                   Builder(
                     builder: (context) {
+                      // Campfire for BEAM: a restored wallet whose coins
+                      // are still being found says so, rather than a bare
+                      // 0 (and a 0.00 in fiat) that looks like a loss. Read
+                      // again with every block the wallet sees.
+                      if (coin is Beam &&
+                          beamListShowsScanning(
+                            ref.watch(pWalletInfo(walletId)),
+                            ref
+                                .read(pWallets)
+                                .wallets
+                                .where((w) => w.walletId == walletId)
+                                .firstOrNull,
+                          )) {
+                        return Text(
+                          BeamHomeText.scanningHeadline(null),
+                          key: const Key("beamFavoriteScanning"),
+                          style: STextStyles.titleBold12(context).copyWith(
+                            fontSize: 16,
+                            color:
+                                Theme.of(
+                                  context,
+                                ).extension<StackColors>()!.textFavoriteCard,
+                          ),
+                        );
+                      }
+
                       final balance = ref.watch(pWalletBalance(walletId));
 
                       Amount total = balance.total;

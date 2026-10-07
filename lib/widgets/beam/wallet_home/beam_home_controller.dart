@@ -20,6 +20,7 @@ import '../../../wallets/beam/wallet/beam_sync_tracker.dart';
 import '../../../wallets/beam/wallet/beam_wallet_errors.dart';
 import 'beam_home_source.dart';
 import 'beam_home_text.dart';
+import 'beam_scan_state.dart';
 
 /// The live half of the BEAM wallet home: sync verdict, restore scan,
 /// private node, core problems, money waiting for the user's names, and
@@ -71,7 +72,12 @@ class BeamHomeController extends ChangeNotifier {
 
   BeamSyncAssessment get assessment => _assessment;
   bool get canSpend => _canSpend;
-  bool get isScanningForCoins => _scanning;
+
+  /// A restore scan the user is waiting for ([beamScanRunning]): false once
+  /// the wallet is up to date with the scan done, even while it keeps
+  /// asking for block bodies until a private node takes over.
+  bool get isScanningForCoins =>
+      beamScanRunning(pending: _scanning, scan: _scan, canSpend: _canSpend);
   BeamScanProgress? get scanProgress => _scan;
   BeamPrivateNodeStatus? get privateNodeStatus => _node;
   BeamWalletException? get coreProblem => _problem;
@@ -86,7 +92,7 @@ class BeamHomeController extends ChangeNotifier {
   /// The banner for the current state, or null when all is well.
   BeamBannerContent? get banner => BeamHomeText.syncBanner(
     assessment: _assessment,
-    scanning: _scanning,
+    scanning: isScanningForCoins,
     scan: _scan,
     problem: _problem,
     maxBlocksBehind: _maxBlocksBehind,

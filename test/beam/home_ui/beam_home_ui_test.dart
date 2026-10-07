@@ -68,6 +68,8 @@ Future<void> _finishAnimations(WidgetTester tester) async {
 Future<void> _desktop(
   WidgetTester tester,
   FakeHomeSource source, {
+  num spendable = 12.5,
+  num pending = 0.5,
   Map<int, num> assets = const {},
   FakeAuth? auth,
 }) async {
@@ -78,7 +80,7 @@ Future<void> _desktop(
     frame: const DesktopHomeFrame(),
     overrides: homeOverrides(
       source: source,
-      balance: beamBalance(spendable: 12.5, pending: 0.5),
+      balance: beamBalance(spendable: spendable, pending: pending),
       totals: {
         for (final e in assets.entries) e.key: assetTotals(e.key, e.value),
       },
@@ -97,6 +99,11 @@ Future<void> _done(WidgetTester tester) async {
 }
 
 Finder _text(String s) => find.textContaining(s, findRichText: true);
+
+/// The headline where the balance goes.
+String? _spendable(WidgetTester tester) => tester
+    .widget<SelectableText>(find.byKey(const Key('beamHomeSpendable')))
+    .data;
 
 /// The Send button sits inside the 375x812 phone screen: no scrolling.
 void _sendVisible(WidgetTester tester, {required bool enabled}) {
@@ -204,19 +211,111 @@ void main() {
       await _done(tester);
     });
 
-    testWidgets('restore scan: never a bare zero', (tester) async {
+    testWidgets('restore scan, nothing found yet: never a bare zero', (
+      tester,
+    ) async {
       final source = FakeHomeSource(
         isScanningForCoins: true,
         scanProgress: const BeamScanProgress(430, 1000),
       );
       await _mobile(tester, source, spendable: 0);
 
-      expect(_text('Scanning for your coins… 43%'), findsNWidgets(2));
+      // The headline says it is scanning; no 0 BEAM, no 0.00 USD under it.
+      expect(_spendable(tester), 'Scanning… 43%');
+      expect(_text('0.00000000'), findsNothing);
+      expect(_text('USD'), findsNothing);
+      expect(find.byKey(const Key('beamHomeFoundSoFar')), findsNothing);
+      // The percent and its explanation are said once, in the banner.
+      expect(_text('Scanning for your coins… 43%'), findsOneWidget);
       expect(_text('may look low until this finishes'), findsOneWidget);
       await expectLater(
         find.byKey(_golden),
         matchesGoldenFile('goldens/mobile_restore_scanning.png'),
       );
+
+      // The scan moves on: the headline follows.
+      source.scanProgress = const BeamScanProgress(610, 1000);
+      source.fireEvent();
+      await _finishAnimations(tester);
+      expect(_spendable(tester), 'Scanning… 61%');
+      expect(_text('Scanning for your coins… 61%'), findsOneWidget);
+      await _done(tester);
+    });
+
+    testWidgets('restore scan, coins found: the amount, "Found so far"', (
+      tester,
+    ) async {
+      final source = FakeHomeSource(
+        isScanningForCoins: true,
+        scanProgress: const BeamScanProgress(610, 1000),
+      );
+      await _mobile(tester, source, spendable: 2.5);
+
+      expect(_spendable(tester), '2.50000000 BEAM');
+      expect(
+        tester.widget<Text>(find.byKey(const Key('beamHomeFoundSoFar'))).data,
+        'Found so far',
+      );
+      expect(_text('Scanning for your coins… 61%'), findsOneWidget);
+      expect(_text('Scanning…'), findsNothing);
+      await expectLater(
+        find.byKey(_golden),
+        matchesGoldenFile('goldens/mobile_restore_found_so_far.png'),
+      );
+      await _done(tester);
+    });
+
+    testWidgets('restore scan over without a private node (the pending '
+        'flag stays set): the plain home, no banner, no "Found so far"', (
+      tester,
+    ) async {
+      // What the app showed after a real restore: up to date, the core
+      // reporting nothing left to scan, 2.79 BEAM found. (BEAM only: the
+      // asset list reads Campfire's global prefs, which only this file's
+      // first test may do; the wiring test covers a restore with assets.)
+      final source = FakeHomeSource(isScanningForCoins: true);
+      await _mobile(tester, source, spendable: 2.79);
+      expect(_spendable(tester), '2.79000000 BEAM');
+      expect(find.byKey(const Key('beamHomeFoundSoFar')), findsNothing);
+      expect(find.byKey(const Key('beamHomeSyncBanner')), findsNothing);
+      expect(_text('Scanning'), findsNothing);
+      await expectLater(
+        find.byKey(_golden),
+        matchesGoldenFile('goldens/mobile_restore_scan_done.png'),
+      );
+      await _done(tester);
+    });
+
+    testWidgets('restore scan: the banner and "Found so far" go when it ends', (
+      tester,
+    ) async {
+      final source = FakeHomeSource(
+        assessment: catchingUp(40),
+        isScanningForCoins: true,
+        scanProgress: const BeamScanProgress(990, 1000),
+      );
+      await _mobile(tester, source, spendable: 2.79);
+      expect(_text('Scanning for your coins… 99%'), findsOneWidget);
+      expect(find.byKey(const Key('beamHomeFoundSoFar')), findsOneWidget);
+
+      // The core reports the last bodies and the wallet is up to date.
+      source.scanProgress = const BeamScanProgress(1000, 1000);
+      source.assessment = synced();
+      await _finishAnimations(tester);
+      expect(_spendable(tester), '2.79000000 BEAM');
+      expect(_text('Scanning'), findsNothing);
+      expect(find.byKey(const Key('beamHomeFoundSoFar')), findsNothing);
+      expect(find.byKey(const Key('beamHomeSyncBanner')), findsNothing);
+      await _done(tester);
+    });
+
+    testWidgets('scan finished: the plain balance, no qualifier', (
+      tester,
+    ) async {
+      await _mobile(tester, FakeHomeSource(), spendable: 0);
+      expect(_spendable(tester), '0.00000000 BEAM');
+      expect(find.byKey(const Key('beamHomeFoundSoFar')), findsNothing);
+      expect(_text('Scanning'), findsNothing);
       await _done(tester);
     });
 
@@ -426,6 +525,25 @@ void main() {
       await expectLater(
         find.byKey(_golden),
         matchesGoldenFile('goldens/desktop_synced_names.png'),
+      );
+      await _done(tester);
+    });
+
+    testWidgets('restore scan, nothing found yet: "Scanning…", said once', (
+      tester,
+    ) async {
+      final source = FakeHomeSource(
+        isScanningForCoins: true,
+        scanProgress: const BeamScanProgress(430, 1000),
+      );
+      await _desktop(tester, source, spendable: 0, pending: 0);
+      expect(_spendable(tester), 'Scanning… 43%');
+      expect(_text('0.00000000'), findsNothing);
+      expect(_text('USD'), findsNothing);
+      expect(_text('Scanning for your coins… 43%'), findsOneWidget);
+      await expectLater(
+        find.byKey(_golden),
+        matchesGoldenFile('goldens/desktop_restore_scanning.png'),
       );
       await _done(tester);
     });

@@ -68,10 +68,10 @@ import '../supporting/beam_wallet_info_extension.dart';
 /// balance reads 0 until the scan finds the coins; that must not look like
 /// a loss (ARCHITECTURE.md §4.5).
 const String kBeamRestoreScanningMessage =
-    "Scanning for your coins… Until they are found, your balance shows 0. "
-    "That doesn't mean they are gone. Campfire looks for them in the "
-    "background, which can take hours. Keep this wallet open in Campfire; "
-    "you can receive payments meanwhile.";
+    "Campfire is looking for your coins on the BEAM network. Your balance "
+    "fills in as they are found, usually within an hour. Payments from "
+    "before the restore aren't listed: BEAM keeps no history on the chain. "
+    "Keep this wallet open; you can receive payments meanwhile.";
 
 /// A BEAM wallet (Mimblewimble with Confidential Assets), mirroring
 /// [EpiccashWallet] for the Mimblewimble parts and [LibSalviumWallet] for

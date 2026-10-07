@@ -24,7 +24,11 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../notifications/show_flush_bar.dart';
 import '../../../pages_desktop_specific/desktop_home_view.dart';
+import '../../../pages_desktop_specific/desktop_menu.dart'
+    show DesktopMenuItemId;
 import '../../../pages_desktop_specific/my_stack_view/exit_to_my_stack_button.dart';
+import '../../../providers/desktop/current_desktop_menu_item.dart';
+import '../../../providers/desktop/desktop_open_wallet_request.dart';
 import '../../../providers/global/secure_store_provider.dart';
 import '../../../providers/providers.dart';
 import '../../../services/transaction_notification_tracker.dart';
@@ -37,6 +41,7 @@ import '../../../utilities/constants.dart';
 import '../../../utilities/custom_text_selection_controls.dart';
 import '../../../utilities/enums/form_input_status_enum.dart';
 import '../../../utilities/logger.dart';
+import '../../../utilities/show_loading.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../utilities/util.dart';
 import '../../../wallets/crypto_currency/crypto_currency.dart';
@@ -58,7 +63,6 @@ import '../../../widgets/desktop/desktop_scaffold.dart';
 import '../../../widgets/desktop/primary_button.dart';
 import '../../../widgets/icon_widgets/clipboard_icon.dart';
 import '../../../widgets/icon_widgets/qrcode_icon.dart';
-import '../../../widgets/stack_dialog.dart';
 import '../../../widgets/table_view/table_view.dart';
 import '../../../widgets/table_view/table_view_cell.dart';
 import '../../../widgets/table_view/table_view_row.dart';
@@ -66,6 +70,7 @@ import '../../../wl_gen/interfaces/cs_monero_interface.dart';
 import '../../../wl_gen/interfaces/cs_wownero_interface.dart';
 import '../../../wl_gen/interfaces/lib_xelis_interface.dart';
 import '../../home_view/home_view.dart';
+import '../../wallet_view/wallet_view.dart';
 import '../add_token_view/edit_wallet_tokens_view.dart';
 import '../select_wallet_for_token_view.dart';
 import '../verify_recovery_phrase_view/verify_recovery_phrase_view.dart';
@@ -94,6 +99,37 @@ class RestoreWalletView extends ConsumerStatefulWidget {
   final int restoreBlockHeight;
 
   final ClipboardInterface clipboard;
+
+  /// The BEAM dialog's phone button: opens the restored wallet the way the
+  /// wallet list does (load it, then its home).
+  @visibleForTesting
+  static Future<void> openRestoredWallet(
+    NavigatorState nav,
+    Wallet wallet,
+  ) async {
+    if (!nav.mounted) return;
+    final Future<void> load = wallet is ExternalWallet
+        ? wallet.init().then((_) => wallet.open())
+        : wallet.init();
+    await showLoading(
+      whileFuture: load,
+      context: nav.context,
+      message: "Opening ${wallet.info.name}",
+    );
+    if (!nav.mounted) return;
+    unawaited(nav.pushNamed(WalletView.routeName, arguments: wallet.walletId));
+  }
+
+  /// The BEAM dialog's desktop button: the desktop home opens the restored
+  /// wallet in My Campfire (only it can reach that list's navigator).
+  @visibleForTesting
+  static void openOnDesktop(ProviderContainer container, String walletId) {
+    container.read(currentDesktopMenuItemProvider.state).state =
+        DesktopMenuItemId.myStack;
+    container.read(prevDesktopMenuItemProvider.state).state =
+        DesktopMenuItemId.myStack;
+    container.read(desktopOpenWalletRequestProvider.state).state = walletId;
+  }
 
   @override
   ConsumerState<RestoreWalletView> createState() => _RestoreWalletViewState();
@@ -405,6 +441,13 @@ class _RestoreWalletViewState extends ConsumerState<RestoreWalletView> {
             }
 
             if (mounted) {
+              // Kept for the BEAM dialog's button, which runs after this
+              // page has left the stack.
+              final nav = Navigator.of(context);
+              final container = ProviderScope.containerOf(
+                context,
+                listen: false,
+              );
               if (isDesktop) {
                 Navigator.of(
                   context,
@@ -440,10 +483,18 @@ class _RestoreWalletViewState extends ConsumerState<RestoreWalletView> {
                   if (wallet is BeamWallet) {
                     // A restored BEAM wallet finds its coins by scanning;
                     // until then it shows 0, which must not look like loss.
-                    return const StackOkDialog(
-                      title: "Wallet restored",
-                      message: kBeamRestoreScanningMessage,
-                      maxWidth: 520,
+                    // One button, labelled with where it goes.
+                    return BeamRestoreSucceededDialog(
+                      isDesktop: isDesktop,
+                      actionLabel: kBeamRestoredOpenWallet,
+                      onAction: isDesktop
+                          ? () => RestoreWalletView.openOnDesktop(
+                              container,
+                              wallet.walletId,
+                            )
+                          : () => unawaited(
+                              RestoreWalletView.openRestoredWallet(nav, wallet),
+                            ),
                     );
                   }
                   return const RestoreSucceededDialog();

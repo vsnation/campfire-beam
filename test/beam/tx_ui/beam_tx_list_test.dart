@@ -9,7 +9,9 @@
 
 // The BEAM history list: Campfire's own TransactionCardV2 and
 // DesktopTransactionCardRow, which hand BEAM transactions to the BEAM
-// widgets, rendered at 375 px (phone) and on desktop; and the empty state.
+// widgets, rendered at 375 px (phone) and on desktop; and the empty state,
+// also while a restored wallet's coins are still being found and in the
+// short slot a 375 × 667 phone leaves it.
 //
 //   scripts/beam/host_test.sh --no-analyze --update-goldens test/beam/tx_ui
 
@@ -22,6 +24,7 @@ import 'package:stackwallet/pages/wallet_view/transaction_views/tx_v2/transactio
 import 'package:stackwallet/utilities/constants.dart';
 import 'package:stackwallet/wallets/beam/models/beam_transaction.dart';
 import 'package:stackwallet/widgets/beam/tx/beam_no_transactions.dart';
+import 'package:stackwallet/widgets/beam/stickers/beam_sticker.dart';
 import 'package:stackwallet/widgets/beam/tx/beam_transaction_card.dart';
 import 'package:stackwallet/widgets/rounded_white_container.dart';
 
@@ -97,6 +100,26 @@ Widget _cards(List<TransactionV2> txs) => Builder(
     ),
   ),
 );
+
+/// The empty history as the tests place it: top of a padded screen, 640 px
+/// wide on desktop.
+Widget _emptyFrame(bool desktop, VoidCallback onReceive) => Scaffold(
+  backgroundColor: kColors.background,
+  body: Padding(
+    padding: const EdgeInsets.all(12),
+    child: Align(
+      alignment: Alignment.topCenter,
+      child: SizedBox(
+        width: desktop ? 640 : null,
+        child: BeamNoTransactions(walletId: kWalletId, onReceive: onReceive),
+      ),
+    ),
+  ),
+);
+
+BeamSticker _sticker(WidgetTester tester) => tester
+    .widget<BeamStickerImage>(find.byKey(const Key('beamNoTxSticker')))
+    .sticker;
 
 void main() {
   late List<Map<String, Object?>> json;
@@ -247,6 +270,7 @@ void main() {
       );
       await settle(tester);
       expect(find.text('No transactions yet'), findsOneWidget);
+      expect(_sticker(tester), BeamMoments.emptyHistory);
       // The button is on screen without scrolling.
       final button = tester.getRect(find.text('Receive BEAM'));
       expect(button.bottom, lessThan(desktop ? 520 : 600));
@@ -258,7 +282,189 @@ void main() {
       await tester.pump();
       expect(receives, 1);
     });
+
+    testWidgets('$name: during a restore scan, the coins are on their way', (
+      tester,
+    ) async {
+      setSurface(tester, desktop: desktop, h: desktop ? 520 : 600);
+      await loadFonts(tester);
+      var receives = 0;
+      await tester.pumpWidget(
+        app(
+          home: _emptyFrame(desktop, () => receives++),
+          fake: FakeTxBackend(),
+          desktop: desktop,
+          coinScan: (percent: 43),
+        ),
+      );
+      await settle(tester);
+      // Not "nothing yet": the coins are still being found, and the list
+      // will not fill with the past (a restore finds coins, not history).
+      expect(find.text('No transactions yet'), findsNothing);
+      expect(find.text('Still looking for your coins'), findsOneWidget);
+      expect(
+        find.text(
+          'They show in your balance as they are found (43%). Payments from '
+          "before the restore aren't listed: BEAM keeps no history on the "
+          'chain.',
+        ),
+        findsOneWidget,
+      );
+      // Its own sticker, not the "send me beams" of an empty wallet.
+      expect(_sticker(tester), BeamMoments.coinsOnTheirWay);
+      final button = tester.getRect(find.text('Receive BEAM'));
+      expect(button.bottom, lessThan(desktop ? 520 : 600));
+      await expectLater(
+        find.byKey(kShot),
+        matchesGoldenFile('goldens/empty_history_scanning_$name.png'),
+      );
+      await tester.tap(find.text('Receive BEAM'));
+      await tester.pump();
+      expect(receives, 1);
+    });
+
+    testWidgets('$name: restored with a balance, the list says why it is '
+        'empty', (tester) async {
+      setSurface(tester, desktop: desktop, h: desktop ? 520 : 600);
+      await loadFonts(tester);
+      var receives = 0;
+      await tester.pumpWidget(
+        app(
+          home: _emptyFrame(desktop, () => receives++),
+          fake: FakeTxBackend(),
+          desktop: desktop,
+          restoredWithFunds: true,
+        ),
+      );
+      await settle(tester);
+      expect(find.text('No transactions yet'), findsNothing);
+      expect(find.text('No payments since the restore'), findsOneWidget);
+      expect(
+        find.text(
+          "Payments from before the restore aren't listed: BEAM keeps no "
+          'history on the chain. Your balance is complete, and new payments '
+          'appear here.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Payments you send'), findsNothing);
+      final button = tester.getRect(find.text('Receive BEAM'));
+      expect(button.bottom, lessThan(desktop ? 520 : 600));
+      await expectLater(
+        find.byKey(kShot),
+        matchesGoldenFile('goldens/empty_history_restored_$name.png'),
+      );
+      await tester.tap(find.text('Receive BEAM'));
+      await tester.pump();
+      expect(receives, 1);
+    });
   }
+
+  test('a running scan outranks "restored with a balance"', () {
+    expect(
+      BeamNoTransactions.title((percent: 10), restoredWithFunds: true),
+      'Still looking for your coins',
+    );
+    expect(
+      BeamNoTransactions.title(null, restoredWithFunds: true),
+      'No payments since the restore',
+    );
+    expect(BeamNoTransactions.title(null), 'No transactions yet');
+  });
+
+  testWidgets('a scan without a reported percent says no number', (
+    tester,
+  ) async {
+    setSurface(tester, desktop: false);
+    await loadFonts(tester);
+    await tester.pumpWidget(
+      app(
+        home: const Scaffold(body: BeamNoTransactions(walletId: kWalletId)),
+        fake: FakeTxBackend(),
+        desktop: false,
+        coinScan: (percent: null),
+      ),
+    );
+    await settle(tester);
+    expect(
+      find.text(
+        "They show in your balance as they are found. Payments from before "
+        "the restore aren't listed: BEAM keeps no history on the chain.",
+      ),
+      findsOneWidget,
+    );
+  });
+
+  // WalletView on a 375 × 667 phone leaves the empty history about 110 px
+  // under the balance card and the asset list (it overflowed by 27 px).
+  for (final room in [110.0, 300.0]) {
+    testWidgets('phone: a ${room.round()} px slot never overflows; the '
+        'sticker gives way and the rest scrolls', (tester) async {
+      setSurface(tester, desktop: false, h: 667);
+      await loadFonts(tester);
+      var receives = 0;
+      await tester.pumpWidget(
+        app(
+          home: Scaffold(
+            backgroundColor: kColors.background,
+            body: Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                height: room,
+                child: BeamNoTransactions(
+                  walletId: kWalletId,
+                  onReceive: () => receives++,
+                ),
+              ),
+            ),
+          ),
+          fake: FakeTxBackend(),
+          desktop: false,
+        ),
+      );
+      await settle(tester);
+      // An overflow would have failed the test already; the words stay.
+      expect(find.byKey(const Key('beamNoTxSticker')), findsNothing);
+      expect(find.text('No transactions yet'), findsOneWidget);
+      await tester.ensureVisible(find.text('Receive BEAM'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Receive BEAM'));
+      await tester.pump();
+      expect(receives, 1);
+    });
+  }
+
+  testWidgets('desktop: a short slot shrinks the sticker before the words', (
+    tester,
+  ) async {
+    setSurface(tester, desktop: true, h: 520);
+    await loadFonts(tester);
+    await tester.pumpWidget(
+      app(
+        home: const Scaffold(
+          body: Align(
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              key: Key('slot'),
+              width: 640,
+              height: 300,
+              child: BeamNoTransactions(walletId: kWalletId),
+            ),
+          ),
+        ),
+        fake: FakeTxBackend(),
+        desktop: true,
+      ),
+    );
+    await settle(tester);
+    final size = tester.getSize(find.byKey(const Key('beamNoTxSticker')));
+    expect(size.height, inExclusiveRange(64, 160));
+    // The words and the button still fit without scrolling.
+    expect(
+      tester.getRect(find.text('Receive BEAM')).bottom,
+      lessThanOrEqualTo(tester.getRect(find.byKey(const Key('slot'))).bottom),
+    );
+  });
 
   testWidgets('phone: "Receive BEAM" opens Campfire\'s receive screen', (
     tester,

@@ -18,6 +18,7 @@ import 'package:stackwallet/wallets/beam/node/beam_private_node_coordinator.dart
 import 'package:stackwallet/wallets/beam/price/beam_asset_pricer.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_sync_tracker.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_errors.dart';
+import 'package:stackwallet/wallets/wallet/supporting/beam_wallet_info_extension.dart';
 import 'package:stackwallet/widgets/beam/wallet_home/beam_home_text.dart';
 
 import 'home_ui_support.dart';
@@ -200,6 +201,48 @@ void main() {
       expect(b.title, 'Scanning for your coins… 43%');
       expect(b.progress, 0.43);
       expect(b.urgent, isTrue);
+    });
+
+    test('restore scan: the headline says it is scanning, not 0', () {
+      expect(
+        BeamHomeText.scanningHeadline(const BeamScanProgress(430, 1000)),
+        'Scanning… 43%',
+      );
+      // Rounded down: 99.9% is not "100%" while the scan still runs.
+      expect(
+        BeamHomeText.scanningHeadline(const BeamScanProgress(999, 1000)),
+        'Scanning… 99%',
+      );
+      expect(BeamHomeText.scanningHeadline(null), 'Scanning…');
+      expect(
+        BeamHomeText.scanningHeadline(const BeamScanProgress(0, 0)),
+        'Scanning…',
+      );
+      expect(BeamHomeText.scanPercent(const BeamScanProgress(1, 3)), 33);
+      expect(BeamHomeText.foundSoFar, 'Found so far');
+    });
+
+    test('restore scan: "nothing found yet" until any coin turns up', () {
+      bool nothing({
+        bool scanning = true,
+        BigInt? beam,
+        Map<int, num> assets = const {},
+      }) => beamNothingFoundYet(
+        scanning: scanning,
+        beamTotal: beam ?? BigInt.zero,
+        totals: {
+          for (final e in assets.entries) e.key: assetTotals(e.key, e.value),
+        },
+      );
+
+      expect(nothing(), isTrue);
+      expect(nothing(assets: {0: 0, 174: 0}), isTrue);
+      // Not scanning: a 0 is just a 0.
+      expect(nothing(scanning: false), isFalse);
+      // BEAM found, or arriving (the cached total includes what arrives).
+      expect(nothing(beam: BigInt.one), isFalse);
+      // Only an asset found so far.
+      expect(nothing(assets: {174: 5}), isFalse);
     });
 
     test('a stuck node outranks the restore scan', () {

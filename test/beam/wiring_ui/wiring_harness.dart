@@ -150,13 +150,15 @@ class WiringDb {
 
 /// A real BEAM wallet over [core], open and live, registered in Campfire's
 /// [Wallets] like a wallet the user opened. [explorerHeight] above [kTip]
-/// leaves the wallet behind (sending paused).
+/// leaves the wallet behind (sending paused). Pass [host] to push core
+/// events to the wallet (its transport is `host.lastTransport`).
 Future<BeamWallet> openBeamWallet(
   WidgetTester tester,
   WiringDb db, {
   WiringCore? core,
   int explorerHeight = kTip,
   String name = 'Everyday BEAM',
+  FakeBeamHost? host,
 }) async {
   final c = core ?? WiringCore();
   late BeamWallet wallet;
@@ -164,10 +166,10 @@ Future<BeamWallet> openBeamWallet(
     final root = (await Directory(
       p.join(db.tmp.path, 'root-${DateTime.now().microsecondsSinceEpoch}'),
     ).create(recursive: true)).path;
-    final host = FakeBeamHost(replies: c.replies);
+    final fakeHost = host ?? FakeBeamHost(replies: c.replies);
     BeamWalletEnvironment.instance = BeamWalletEnvironment(
       beamRoot: () async => root,
-      createHost: (_) => host,
+      createHost: (_) => fakeHost,
       createExplorer: () => FakeExplorer(explorerHeight),
       privateNodeSetting: const BeamFixedPrivateNodeSetting(false),
       explorerPollInterval: const Duration(hours: 1),
@@ -380,14 +382,12 @@ class NoNotifications extends ChangeNotifier implements NotificationsService {
 ///   wallet's feature row) lays all its buttons out once to measure them
 ///   before it moves the ones that do not fit under "More"; that one
 ///   measuring frame overflows on purpose (upstream behaviour).
-/// * `beam_no_transactions.dart`: the BEAM empty history (not part of this
-///   task) is 27 px taller than the space WalletView leaves it on a 375 × 667
-///   phone. A real defect, reported with B-WIRING-1; the goldens show its
-///   overflow stripe on purpose.
 ///
-/// Every other overflow still fails the test.
+/// Every other overflow still fails the test. (The BEAM empty history used
+/// to overflow a 375 × 667 phone by 27 px; it now fits, so it is no longer
+/// tolerated.)
 void tolerateKnownOverflows() {
-  const known = ['static_overflow_row.dart', 'beam_no_transactions.dart'];
+  const known = ['static_overflow_row.dart'];
   final previous = FlutterError.onError;
   FlutterError.onError = (details) {
     final text = details.toString();

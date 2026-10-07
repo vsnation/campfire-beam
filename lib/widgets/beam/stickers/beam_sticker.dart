@@ -76,6 +76,14 @@ String _snake(String camel) =>
 abstract final class BeamMoments {
   static const emptyWallets = BeamSticker.welcome;
   static const emptyHistory = BeamSticker.sendMeBeams;
+
+  /// The empty asset list. Not [emptyHistory]: on desktop the two empty
+  /// lists sit side by side.
+  static const emptyAssets = BeamSticker.receivingBeams;
+
+  /// An empty history while a restored wallet's coins are still being
+  /// found (they are on their way, not missing).
+  static const coinsOnTheirWay = BeamSticker.beamMeUp;
   static const receive = BeamSticker.receivingBeams;
   static const sending = BeamSticker.sendingBeams;
   static const paymentArrived = BeamSticker.receivedBeams;

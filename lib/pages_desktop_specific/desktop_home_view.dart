@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/desktop/current_desktop_menu_item.dart';
+import '../providers/desktop/desktop_open_wallet_request.dart';
 import '../providers/global/active_wallet_provider.dart';
 import '../providers/global/auto_swb_service_provider.dart';
 import '../providers/global/notifications_provider.dart';
@@ -26,6 +27,8 @@ import '../themes/stack_colors.dart';
 import '../utilities/enums/backup_frequency_type.dart';
 import '../utilities/idle_monitor.dart';
 import '../utilities/prefs.dart';
+import '../utilities/show_loading.dart';
+import '../wallets/wallet/intermediate/external_wallet.dart';
 import '../widgets/background.dart';
 import '../widgets/beam/sidebar/beam_sidebar.dart';
 import 'address_book_view/desktop_address_book.dart';
@@ -34,6 +37,7 @@ import 'desktop_buy/desktop_buy_view.dart';
 import 'desktop_exchange/desktop_exchange_view.dart';
 import 'desktop_menu.dart';
 import 'my_stack_view/my_stack_view.dart';
+import 'my_stack_view/wallet_view/desktop_wallet_view.dart';
 import 'notifications/desktop_notifications_view.dart';
 import 'password/desktop_unlock_app_dialog.dart';
 import 'services/desktop_services_view.dart';
@@ -286,8 +290,38 @@ class _DesktopHomeViewState extends ConsumerState<DesktopHomeView> {
     }
   }
 
+  /// Campfire for BEAM: opens [walletId] in My Campfire, the way its wallet
+  /// list does (init, open, then the wallet page), for screens that cannot
+  /// reach that list's navigator.
+  Future<void> _openWallet(String walletId) async {
+    ref.read(currentDesktopMenuItemProvider.state).state =
+        DesktopMenuItemId.myStack;
+    ref.read(prevDesktopMenuItemProvider.state).state =
+        DesktopMenuItemId.myStack;
+    final nav = myStackViewNavKey.currentState as NavigatorState?;
+    if (nav == null) return;
+    nav.popUntil(ModalRoute.withName(MyStackView.routeName));
+    final wallet = ref.read(pWallets).getWallet(walletId);
+    final load = wallet is ExternalWallet
+        ? wallet.init().then((_) => wallet.open())
+        : wallet.init();
+    await showLoading(
+      whileFuture: load,
+      context: nav.context,
+      message: "Opening ${wallet.info.name}",
+      rootNavigator: true,
+    );
+    if (!nav.mounted) return;
+    unawaited(nav.pushNamed(DesktopWalletView.routeName, arguments: walletId));
+  }
+
   @override
   Widget build(BuildContext context) {
+    ref.listen<String?>(desktopOpenWalletRequestProvider, (_, walletId) {
+      if (walletId == null) return;
+      ref.read(desktopOpenWalletRequestProvider.state).state = null;
+      unawaited(_openWallet(walletId));
+    });
     return Material(
       color: Theme.of(context).extension<StackColors>()!.background,
       child: Background(
