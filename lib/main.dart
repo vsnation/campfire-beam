@@ -801,6 +801,11 @@ class _MaterialAppWithThemeState extends ConsumerState<MaterialAppWithTheme>
       navigatorKey: ref.read(pNavKey),
       title: AppConfig.appName,
       onGenerateRoute: RouteGenerator.generateRoute,
+      // Above the navigator, so no navigation can remove it: wrapping the
+      // first route, it was disposed by the desktop login's
+      // pushNamedAndRemoveUntil, and no payment notice reached the app.
+      builder: (context, child) =>
+          CryptoNotifications(child: child ?? const SizedBox.shrink()),
       theme: ThemeData(
         extensions: [colorScheme],
         highlightColor: colorScheme.highlight,
@@ -894,81 +899,79 @@ class _MaterialAppWithThemeState extends ConsumerState<MaterialAppWithTheme>
           ),
         ),
       ),
-      home: CryptoNotifications(
-        child: Util.isDesktop
-            ? FutureBuilder(
-                future: loadShared(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done) {
-                    if (_desktopHasPassword) {
-                      String? startupWalletId;
-                      if (ref
+      home: Util.isDesktop
+          ? FutureBuilder(
+              future: loadShared(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.done) {
+                  if (_desktopHasPassword) {
+                    String? startupWalletId;
+                    if (ref
+                        .read(prefsChangeNotifierProvider)
+                        .gotoWalletOnStartup) {
+                      startupWalletId = ref
                           .read(prefsChangeNotifierProvider)
-                          .gotoWalletOnStartup) {
-                        startupWalletId = ref
-                            .read(prefsChangeNotifierProvider)
-                            .startupWalletId;
-                      }
+                          .startupWalletId;
+                    }
 
-                      return DesktopLoginView(
-                        startupWalletId: startupWalletId,
-                        load: () => load(true),
-                      );
+                    return DesktopLoginView(
+                      startupWalletId: startupWalletId,
+                      load: () => load(true),
+                    );
+                  } else {
+                    return const IntroView();
+                  }
+                } else {
+                  return const LoadingView();
+                }
+              },
+            )
+          : FutureBuilder(
+              future: load(false),
+              builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
+                if (snapshot.connectionState == ConnectionState.done) {
+                  // FlutterNativeSplash.remove();
+                  if (ref.read(pAllWalletsInfo).isNotEmpty ||
+                      ref.read(prefsChangeNotifierProvider).hasPin) {
+                    // return HomeView();
+
+                    String? startupWalletId;
+                    if (ref
+                        .read(prefsChangeNotifierProvider)
+                        .gotoWalletOnStartup) {
+                      startupWalletId = ref
+                          .read(prefsChangeNotifierProvider)
+                          .startupWalletId;
+                    }
+
+                    return LockscreenView(
+                      isInitialAppLogin: true,
+                      routeOnSuccess: HomeView.routeName,
+                      routeOnSuccessArguments: startupWalletId,
+                      biometricsAuthenticationTitle:
+                          "Unlock ${AppConfig.prefix}",
+                      biometricsLocalizedReason:
+                          "Unlock your ${AppConfig.appName} using biometrics",
+                      biometricsCancelButtonString: "Cancel",
+                    );
+                  } else {
+                    if (AppConfig.appName == "Campfire" &&
+                        !CampfireMigration.didRun &&
+                        CampfireMigration.hasOldWallets) {
+                      return const CampfireMigrateView();
                     } else {
                       return const IntroView();
                     }
-                  } else {
-                    return const LoadingView();
                   }
-                },
-              )
-            : FutureBuilder(
-                future: load(false),
-                builder: (BuildContext context, AsyncSnapshot<void> snapshot) {
-                  if (snapshot.connectionState == ConnectionState.done) {
-                    // FlutterNativeSplash.remove();
-                    if (ref.read(pAllWalletsInfo).isNotEmpty ||
-                        ref.read(prefsChangeNotifierProvider).hasPin) {
-                      // return HomeView();
-
-                      String? startupWalletId;
-                      if (ref
-                          .read(prefsChangeNotifierProvider)
-                          .gotoWalletOnStartup) {
-                        startupWalletId = ref
-                            .read(prefsChangeNotifierProvider)
-                            .startupWalletId;
-                      }
-
-                      return LockscreenView(
-                        isInitialAppLogin: true,
-                        routeOnSuccess: HomeView.routeName,
-                        routeOnSuccessArguments: startupWalletId,
-                        biometricsAuthenticationTitle:
-                            "Unlock ${AppConfig.prefix}",
-                        biometricsLocalizedReason:
-                            "Unlock your ${AppConfig.appName} using biometrics",
-                        biometricsCancelButtonString: "Cancel",
-                      );
-                    } else {
-                      if (AppConfig.appName == "Campfire" &&
-                          !CampfireMigration.didRun &&
-                          CampfireMigration.hasOldWallets) {
-                        return const CampfireMigrateView();
-                      } else {
-                        return const IntroView();
-                      }
-                    }
-                  } else {
-                    // CURRENTLY DISABLED as cannot be animated
-                    // technically not needed as FlutterNativeSplash will overlay
-                    // anything returned here until the future completes but
-                    // FutureBuilder requires you to return something
-                    return const LoadingView();
-                  }
-                },
-              ),
-      ),
+                } else {
+                  // CURRENTLY DISABLED as cannot be animated
+                  // technically not needed as FlutterNativeSplash will overlay
+                  // anything returned here until the future completes but
+                  // FutureBuilder requires you to return something
+                  return const LoadingView();
+                }
+              },
+            ),
     );
   }
 }

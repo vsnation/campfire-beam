@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/providers.dart';
 import '../services/notifications_api.dart';
 import '../themes/coin_icon_provider.dart';
+import '../utilities/logger.dart';
 import '../wallets/crypto_currency/crypto_currency.dart';
 
 abstract class CryptoNotificationsEventBus {
@@ -91,7 +92,17 @@ class _CryptoNotificationsState extends ConsumerState<CryptoNotifications> {
         .on<CryptoNotificationEvent>()
         .listen(
       (event) async {
-        unawaited(_showNotification(event));
+        // A failure here used to vanish (unawaited, no handler), and with
+        // it the notice: say why in the log.
+        unawaited(
+          _showNotification(event).catchError((Object e, StackTrace s) {
+            Logging.instance.w(
+              "Notification not shown: ${event.title}",
+              error: e,
+              stackTrace: s,
+            );
+          }),
+        );
       },
     );
 
