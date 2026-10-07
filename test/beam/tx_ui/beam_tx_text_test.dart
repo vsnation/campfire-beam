@@ -10,10 +10,12 @@
 // What the BEAM history says for each state, from fixture transactions
 // mapped through the committed BeamTxMapper and read back by BeamTxView.
 
+import 'package:decimal/decimal.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/utilities/amount/amount_formatter.dart';
 import 'package:stackwallet/utilities/amount/amount_unit.dart';
 import 'package:stackwallet/wallets/beam/models/beam_transaction.dart';
+import 'package:stackwallet/widgets/beam/tx/beam_transaction_card.dart';
 import 'package:stackwallet/widgets/beam/tx/beam_tx_text.dart';
 import 'package:stackwallet/widgets/beam/tx/beam_tx_view.dart';
 
@@ -225,6 +227,51 @@ void main() {
       );
     },
   );
+
+  // Seen in the DMG test: a 0.01 BEAM send to the wallet's own address read
+  // "−0.01 BEAM", "−0.00 USD", though only the 0.001 fee left.
+  test('a send to yourself: the fee is what left; the amount only moved', () {
+    final v = _view(
+      simpleTxJson(seed: 31, status: BeamTxStatus.completed, value: 1000000)
+        ..['receiver'] = kOwnAddress
+        ..['fee'] = 100000,
+    );
+    expect(v.isToSelf, isTrue);
+    final e = BeamTxEntryText.of(v, formatter: _fmt, signed: true);
+    expect(e.title, 'Sent to yourself');
+    expect(e.primary, '−${BeamTxText.amount(BigInt.from(100000), 0, _fmt)}');
+    expect(
+      e.secondary,
+      '${BeamTxText.amount(BigInt.from(1000000), 0, _fmt)} moved to your own '
+      'address',
+    );
+  });
+
+  test('a fiat value under a cent says so, never "0.00"', () {
+    final v = _view(
+      simpleTxJson(seed: 32, status: BeamTxStatus.completed, value: 1000000),
+    );
+    final e = BeamTxEntryText.of(
+      v,
+      formatter: _fmt,
+      signed: true,
+      fiat: (price: Decimal.parse('0.0087'), currency: 'USD', locale: 'en_US'),
+    );
+    expect(e.secondary, 'under 0.01 USD');
+    final big = BeamTxEntryText.of(
+      _view(
+        simpleTxJson(
+          seed: 33,
+          status: BeamTxStatus.completed,
+          value: 100000000000,
+        ),
+      ),
+      formatter: _fmt,
+      signed: true,
+      fiat: (price: Decimal.parse('0.0087'), currency: 'USD', locale: 'en_US'),
+    );
+    expect(big.secondary, '−8.70 USD');
+  });
 
   test('a fee-only contract call moved nothing but its fee', () {
     final v = _view(contractTxJson(seed: 22, dex: false, feeOnly: true));

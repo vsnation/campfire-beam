@@ -110,13 +110,31 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
   bool _disposed = false;
   DateTime? _lastRefusalNotice;
 
+  /// Why the wallet cannot act yet ("Catching up with the network…"), shown
+  /// above the dApp: its calls wait on a core that is not up to date, so
+  /// the dApp may sit on its own spinner with no word from Campfire.
+  String? _walletNotReady;
+  Timer? _readyPoll;
+
+  /// How often [_walletNotReady] is read again.
+  static const _readyPollInterval = Duration(seconds: 3);
+
   bool get _desktop => widget.desktop ?? Util.isDesktop;
   bool get _available => widget.webviewAvailable ?? dappWebviewAvailable();
   String get _name => widget.installation.manifest.name;
 
+  void _readWalletReady() {
+    final reason = widget.host.wallet.spendBlockedReason;
+    if (reason != _walletNotReady && mounted) {
+      setState(() => _walletNotReady = reason);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _walletNotReady = widget.host.wallet.spendBlockedReason;
+    _readyPoll = Timer.periodic(_readyPollInterval, (_) => _readWalletReady());
     if (_available) {
       widget.host.presenter.attach(_showApproval);
       unawaited(_start());
@@ -125,6 +143,7 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
 
   @override
   void dispose() {
+    _readyPoll?.cancel();
     _disposed = true;
     widget.host.presenter.detach(_showApproval);
     final banner = _banner;
@@ -489,6 +508,18 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
               final b = _banner;
               if (b != null && !b.answer.isCompleted) b.answer.complete(v);
             },
+          ),
+        if (_walletNotReady != null)
+          Container(
+            key: const Key('dappWalletNotReady'),
+            color: colors.warningBackground,
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            child: Text(
+              'This app may not load or may show old numbers until your '
+              'wallet is up to date. $_walletNotReady',
+              style: STextStyles.smallMed12(context)
+                  .copyWith(color: colors.warningForeground),
+            ),
           ),
         if (_loading)
           Padding(

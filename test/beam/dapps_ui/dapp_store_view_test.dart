@@ -209,6 +209,49 @@ void main() {
     c.dispose();
   });
 
+  // Seen in the DMG test: Beam DEX sat on its own splash for 30+ s while the
+  // wallet was catching up, with no word from Campfire.
+  testWidgets('while the wallet is not up to date, the dApp says why; the '
+      'note goes once it is', (tester) async {
+    await loadCampfireFonts(tester);
+    setSurface(tester, const Size(375, 812));
+    final installation = DappInstallation(
+      manifest: const DappManifest(
+        guid: dexGuid,
+        name: 'Beam DEX',
+        description: 'AMM based decentralized exchange',
+        startPath: 'app/index.html',
+        version: '1.0.0',
+      ),
+      apiVersion: DappApiVersion.v7_0,
+      packageSha256: '00' * 32,
+      directory: '${root.path}/dapps/$dexGuid/1.0.0',
+      installedAt: DateTime.utc(2026, 10, 6),
+    );
+    final l = link(root)..blocked = 'Catching up with the network.';
+    await tester.pumpWidget(
+      campfireApp(
+        home: DappBrowserView(
+          host: hostFor(l),
+          installation: installation,
+          desktop: false,
+          webviewAvailable: true,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byKey(const Key('dappWalletNotReady')), findsOneWidget);
+    expect(
+      find.textContaining('may not load or may show old numbers'),
+      findsOneWidget,
+    );
+
+    l.blocked = null;
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.byKey(const Key('dappWalletNotReady')), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('a dApp on a platform without the dApp window', (tester) async {
     await loadCampfireFonts(tester);
     setSurface(tester, const Size(375, 812));

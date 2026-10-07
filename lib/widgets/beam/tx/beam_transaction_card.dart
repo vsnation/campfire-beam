@@ -22,6 +22,7 @@
 
 import 'dart:async';
 
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -71,6 +72,13 @@ class BeamTxEntryText {
       // A contract call that moved nothing but its fee.
       primary = BeamTxText.amount(-v.paidFee, 0, formatter, sign: !stopped);
       secondary = 'Network fee';
+    } else if (v.isToSelf && !v.isContract) {
+      // Only the fee left the wallet; the amount moved between its own
+      // addresses. "−0.01 BEAM" would read as money gone.
+      primary = BeamTxText.amount(-v.paidFee, 0, formatter, sign: !stopped);
+      secondary =
+          '${BeamTxText.amount(v.amount, v.assetId, formatter)} moved to '
+          'your own address';
     } else {
       // What arrived reads first: "+4,864 CHAD" above "−0.07 BEAM".
       final ordered = [
@@ -111,7 +119,15 @@ class BeamTxEntryText {
             : ordered.first.delta < BigInt.zero
             ? '−'
             : '+';
-        secondary = '$sign$text ${fiat.currency}';
+        // "−0.00 USD" reads as nothing; it is something, just under a cent.
+        final cent = Decimal.parse('0.01');
+        final tiny = value > Decimal.zero && value < cent;
+        final centText = cent
+            .toAmount(fractionDigits: 2)
+            .fiatString(locale: fiat.locale);
+        secondary = tiny
+            ? 'under $centText ${fiat.currency}'
+            : '$sign$text ${fiat.currency}';
       }
     }
     return BeamTxEntryText._(
