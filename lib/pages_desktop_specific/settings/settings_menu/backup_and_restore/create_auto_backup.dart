@@ -25,6 +25,7 @@ import '../../../../pages/settings_views/global_settings_view/stack_backup_views
 import '../../../../pages/settings_views/global_settings_view/stack_backup_views/helpers/swb_file_system.dart';
 import '../../../../providers/global/prefs_provider.dart';
 import '../../../../providers/global/secure_store_provider.dart';
+import '../../../../providers/global/wallets_provider.dart';
 import '../../../../themes/stack_colors.dart';
 import '../../../../utilities/assets.dart';
 import '../../../../utilities/constants.dart';
@@ -36,6 +37,7 @@ import '../../../../utilities/logger.dart';
 import '../../../../utilities/show_loading.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../utilities/util.dart';
+import '../../../../wallets/beam/wallet/beam_backup_notice.dart';
 import '../../../../widgets/desktop/desktop_dialog.dart';
 import '../../../../widgets/desktop/desktop_dialog_close_button.dart';
 import '../../../../widgets/desktop/primary_button.dart';
@@ -96,6 +98,10 @@ class _CreateAutoBackup extends ConsumerState<CreateAutoBackup> {
     if (validateFail(context, pathToSave, passphrase, repeatPassphrase)) return;
 
     if (mounted) {
+      // Wallets this backup cannot hold, said once it is saved.
+      final notice = beamBackupOmissionNotice(
+        beamWalletsNotInBackup(ref.read(pWallets).wallets),
+      );
       final now = DateTime.now();
       Exception? ex;
       final savedPath = await showLoading(
@@ -182,6 +188,15 @@ class _CreateAutoBackup extends ConsumerState<CreateAutoBackup> {
                           const DesktopDialogCloseButton(),
                         ],
                       ),
+                      if (notice != null) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          notice,
+                          style: STextStyles.desktopTextExtraExtraSmall(
+                            context,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 40),
                       Row(
                         children: [
