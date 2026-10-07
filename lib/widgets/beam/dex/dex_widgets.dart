@@ -7,7 +7,10 @@
  *
  */
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../themes/stack_colors.dart';
@@ -441,13 +444,24 @@ Future<T?> showDexPage<T>(
   if (deps.desktop) {
     return showDialog<T>(
       context: context,
+      // A click beside it must not drop a half-filled form; Escape closes
+      // it, as desktop dialogs do (maybePop: a swap being sent stays).
       barrierDismissible: false,
-      builder: (context) => DesktopDialog(
-        maxWidth: 580,
-        maxHeight: 760,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: builder(context),
+      builder: (context) => CallbackShortcuts(
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.escape): () =>
+              unawaited(Navigator.of(context).maybePop()),
+        },
+        child: Focus(
+          autofocus: true,
+          child: DesktopDialog(
+            maxWidth: 580,
+            maxHeight: 760,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: builder(context),
+            ),
+          ),
         ),
       ),
     );

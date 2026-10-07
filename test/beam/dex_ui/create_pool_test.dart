@@ -8,6 +8,7 @@
  */
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/pages/beam/dex/beam_dex_confirm_view.dart';
 import 'package:stackwallet/pages/beam/dex/beam_dex_create_pool_view.dart';
@@ -16,6 +17,7 @@ import 'package:stackwallet/wallets/beam/contracts/dex/dex_args.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_constants.dart';
 import 'package:stackwallet/widgets/beam/dex/dex_deps.dart';
 import 'package:stackwallet/widgets/beam/dex/dex_format.dart';
+import 'package:stackwallet/widgets/beam/dex/dex_widgets.dart';
 import 'package:stackwallet/widgets/desktop/primary_button.dart';
 
 import 'dex_ui_harness.dart';
@@ -56,6 +58,41 @@ void main() {
 
   bool ctaEnabled(WidgetTester tester, String key) =>
       tester.widget<PrimaryButton>(find.byKey(Key(key))).enabled;
+
+  // Seen in the DMG test: Escape did nothing in the desktop asset picker
+  // and the Create pool dialog.
+  testWidgets('desktop: Escape closes the asset picker, then the dialog', (
+    tester,
+  ) async {
+    final fake = DexUiFake({DexArgs.poolsView(): () => recorded('pools_view')});
+    final deps = makeDeps(
+      fake,
+      desktop: true,
+      balances: {0: beam('12.5')},
+    );
+    await pumpDex(
+      tester,
+      Builder(
+        builder: (context) => Center(
+          child: TextButton(
+            onPressed: () => showDexPage<void>(
+              context,
+              deps,
+              (_) => const Text('dex dialog'),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+      size: desktopWindow,
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('dex dialog'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.text('dex dialog'), findsNothing);
+  });
 
   testWidgets('the deposit is stated first; confirm needs the tick', (
     tester,
