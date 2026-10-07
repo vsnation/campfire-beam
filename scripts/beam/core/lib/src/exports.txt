@@ -11,6 +11,7 @@ beam_node_start
 beam_node_stop
 beam_node_get_status
 beam_wallet_api_start
+beam_wallet_api_start_tracked
 beam_wallet_api_stop_instance
 beam_wallet_api_instance_state
 beam_wallet_api_instance_count

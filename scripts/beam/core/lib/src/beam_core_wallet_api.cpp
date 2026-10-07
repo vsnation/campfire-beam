@@ -588,7 +588,14 @@ namespace campfire_wallet_api
 
 CAMPFIRE_EXPORT int64_t beam_wallet_api_start(int argc, char** argv)
 {
+    return beam_wallet_api_start_tracked(argc, argv, nullptr);
+}
+
+CAMPFIRE_EXPORT int64_t beam_wallet_api_start_tracked(int argc, char** argv, int64_t* instance)
+{
     using namespace campfire_wallet_api;
+    if (instance)
+        *instance = 0;
     if (argc < 1 || !argv)
         return BEAM_WALLET_API_START_FAILED;
 
@@ -616,6 +623,10 @@ CAMPFIRE_EXPORT int64_t beam_wallet_api_start(int argc, char** argv)
             return BEAM_WALLET_API_START_THREAD_FAILED;
         }
     }
+    // From here on the instance exists: whatever start-up returns, the caller can
+    // follow it until it has ended (a timed-out one may still hold wallet.db).
+    if (instance)
+        *instance = inst->id;
 
     std::unique_lock<std::mutex> lock(inst->m);
     const bool decided = inst->cv.wait_for(lock, kStartLimit, [&] { return inst->listening || inst->serverFailed || inst->ended; });
