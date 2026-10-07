@@ -50,6 +50,7 @@ class BeamWalletEnvironment {
     this.statusPollInterval = const Duration(seconds: 60),
     this.eventDebounce = const Duration(milliseconds: 250),
     this.privateNodeStartDelay = const Duration(seconds: 20),
+    this.privateNodeReadyHold = const Duration(seconds: 60),
     this.onPaymentReceived,
     this.readAssetTable,
     BeamSwapsInFlight? swapsInFlight,
@@ -133,6 +134,10 @@ class BeamWalletEnvironment {
   /// How long after the first honest "synced" the private node may start,
   /// so its brief start-up pause stays out of the first seconds of use.
   final Duration privateNodeStartDelay;
+
+  /// How long the private node must stay ready before the wallet moves to
+  /// it ([BeamPrivateNodeCoordinator.readyHoldFor]).
+  final Duration privateNodeReadyHold;
 
   /// Called once for each incoming payment that completes while its wallet
   /// is open; never for what a restore scan finds. The app posts it to

@@ -282,6 +282,7 @@ class ReceiveWorld {
       statusPollInterval: const Duration(hours: 1),
       eventDebounce: const Duration(milliseconds: 20),
       privateNodeStartDelay: Duration.zero,
+      privateNodeReadyHold: Duration.zero,
       log: w.log.add,
     );
     return w;

@@ -224,6 +224,15 @@ abstract final class BeamPrivateNodeMessages {
           actionLabel: label,
         );
       case BeamPrivateNodePhase.fellBehind:
+        if (s.issue == BeamPrivateNodeIssue.notServingWallet) {
+          return const BeamSyncMessage(
+            title: "Your private node isn't ready yet — back on a public node",
+            detail:
+                'It did not answer the wallet in time, so you can keep '
+                'sending on a public node. The wallet tries your node again '
+                'in a few minutes.',
+          );
+        }
         return BeamSyncMessage(
           title: 'Your private node fell behind — back on a public node',
           detail:

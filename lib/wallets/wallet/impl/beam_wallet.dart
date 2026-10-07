@@ -1089,6 +1089,10 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
       storedOwnerKey: _secrets.readOwnerKey,
       whenIdle: () => _gate.whenIdle(),
       requestBodies: () => isScanningForCoins,
+      // A node that took the wallet must let it send soon after; a restore
+      // scan is exempt (the node is what finishes it, over an hour or so).
+      walletCanSend: () => isScanningForCoins || _assessment.canSpend,
+      readyHoldFor: environment.privateNodeReadyHold,
     );
     _coordinator = coordinator;
     _coordinatorSessionSub = coordinator.sessions.listen(

@@ -123,6 +123,7 @@ void main() {
       statusPollInterval: const Duration(hours: 1),
       eventDebounce: const Duration(milliseconds: 20),
       privateNodeStartDelay: Duration.zero,
+      privateNodeReadyHold: Duration.zero,
     );
     BeamWalletEnvironment.instance = env;
 

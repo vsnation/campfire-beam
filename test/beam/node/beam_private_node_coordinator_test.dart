@@ -301,6 +301,10 @@ class Harness {
     bool Function()? requestBodies,
     BeamNodeDiskProbe? diskProbe,
     Duration diskCheckInterval = const Duration(minutes: 1),
+    Duration readyHoldFor = Duration.zero,
+    Duration walletReadyTimeout = const Duration(minutes: 2),
+    Duration retryAfterNotServing = const Duration(minutes: 10),
+    bool Function()? walletCanSend,
   }) {
     initial = FakeSession(host, _eu, FakeTransport());
     host.sessions.add(initial);
@@ -327,6 +331,10 @@ class Harness {
       requestBodies: requestBodies,
       diskProbe: diskProbe,
       diskCheckInterval: diskCheckInterval,
+      readyHoldFor: readyHoldFor,
+      walletReadyTimeout: walletReadyTimeout,
+      retryAfterNotServing: retryAfterNotServing,
+      walletCanSend: walletCanSend,
     );
     coordinator.statuses.listen(statuses.add);
     coordinator.sessions.listen(sessionEvents.add);
@@ -700,6 +708,59 @@ void main() {
       );
       h.expectNoR8Violation();
       h.expectPrivateReceiveOnlyWhenConfirmed();
+      await h.dispose();
+    });
+
+    test('ready must hold for readyHoldFor before the wallet moves '
+        '(owner: a new wallet sat on a node that was not ready)', () async {
+      final h = Harness(readyHoldFor: const Duration(milliseconds: 400));
+      await h.startDownloading();
+      h.node.ready(behind: 3);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(h.coordinator.session!.node.isOwned, isFalse, reason: 'too soon');
+      expect(h.status.phase, isNot(Phase.active));
+      await h.phase(Phase.active);
+      expect(h.coordinator.session!.node.isOwned, isTrue);
+      await h.dispose();
+    });
+
+    test('a wallet that cannot send on the node goes back to a public node, '
+        'and the next switch waits', () async {
+      var canSend = false;
+      final h = Harness(
+        walletReadyTimeout: const Duration(milliseconds: 300),
+        retryAfterNotServing: const Duration(minutes: 10),
+        walletCanSend: () => canSend,
+      );
+      await h.startDownloading();
+      h.node.ready(behind: 3);
+      await h.phase(Phase.active);
+      expect(h.coordinator.session!.node.isOwned, isTrue);
+      await h.phase(Phase.fellBehind);
+      expect(h.status.issue, BeamPrivateNodeIssue.notServingWallet);
+      expect(h.coordinator.session!.node.isOwned, isFalse);
+      // Still ready, but no new switch before retryAfterNotServing.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(h.coordinator.session!.node.isOwned, isFalse);
+      expect(
+        h.log.any((l) => l.contains('could not send')),
+        isTrue,
+      );
+      canSend = true;
+      await h.dispose();
+    });
+
+    test('a wallet that can send stays on the node', () async {
+      final h = Harness(
+        walletReadyTimeout: const Duration(milliseconds: 200),
+        walletCanSend: () => true,
+      );
+      await h.startDownloading();
+      h.node.ready(behind: 3);
+      await h.phase(Phase.active);
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+      expect(h.status.phase, Phase.active);
+      expect(h.coordinator.session!.node.isOwned, isTrue);
       await h.dispose();
     });
 

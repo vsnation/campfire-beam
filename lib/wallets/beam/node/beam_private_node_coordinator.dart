@@ -168,6 +168,13 @@ enum BeamPrivateNodeIssue {
   /// `own_node` was true and then stayed false.
   ownNodeLost,
 
+  /// The wallet moved to the node but could not send within
+  /// [BeamPrivateNodeCoordinator.walletReadyTimeout]: the node answered
+  /// `own_node` but did not serve the wallet (a node busy with "Raising
+  /// Fossil" right after fast sync looks like this). Back on a public node;
+  /// the switch is tried again later.
+  notServingWallet,
+
   /// Not started: the disk has too little free space for the node
   /// ([BeamPrivateNodeStatus.disk] has the numbers).
   notEnoughDisk,
@@ -290,15 +297,21 @@ class BeamPrivateNodeStatus {
 ///    with the key. The key lives in a local variable until the node has
 ///    read its config.
 /// 3. The wallet moves to the node only when the node logged
-///    `Tx replication is ON` after its last fast-sync line **and** its
-///    newest `My Tip:` is within [readyWithinBlocks] of a fresh explorer
-///    height. No explorer, no handover.
+///    `Tx replication is ON` after its last fast-sync line, is not in a
+///    long step ("Raising Fossil"), **and** its newest `My Tip:` is within
+///    [readyWithinBlocks] of a fresh explorer height — continuously for
+///    [readyHoldFor] (owner, 2026-10-07: a new wallet sat "syncing", unable
+///    to send, on a node that was not ready yet). No explorer, no handover.
 /// 4. After the move, `ev_connection_changed.own_node == true` must arrive
 ///    within [ownNodeTimeout], or the wallet goes back to a public node.
 ///    [BeamPrivateNodeStatus.privateReceiveAvailable] is true only while it
 ///    holds.
 /// 5. A node that dies, or falls more than [failoverBehindBlocks] behind on
 ///    two checks in a row, sends the wallet back to a public node.
+/// 6. If the wallet cannot send within [walletReadyTimeout] of the move
+///    ([walletCanSend]), it goes back to a public node too, and the next
+///    switch waits [retryAfterNotServing]: the wallet never sits on a node
+///    that does not serve it.
 ///
 /// A node that does not take the owner key is stopped; the coordinator
 /// never runs a keyless node.
@@ -337,6 +350,10 @@ class BeamPrivateNodeCoordinator {
     this.checkInterval = const Duration(seconds: 20),
     this.maxExplorerTipAge = const Duration(minutes: 10),
     this.stallAfter = const Duration(minutes: 15),
+    this.readyHoldFor = const Duration(seconds: 60),
+    this.walletReadyTimeout = const Duration(minutes: 2),
+    this.retryAfterNotServing = const Duration(minutes: 10),
+    this._walletCanSend,
     DateTime Function()? now,
   }) : setting = setting ?? BeamFixedPrivateNodeSetting.platformDefault(),
        _session = session,
@@ -402,6 +419,19 @@ class BeamPrivateNodeCoordinator {
   /// reported as stuck rather than catching up.
   final Duration stallAfter;
 
+  /// How long the node must stay ready before the wallet moves to it.
+  final Duration readyHoldFor;
+
+  /// How long after the move the wallet may take to be able to send.
+  final Duration walletReadyTimeout;
+
+  /// After a node did not serve the wallet, how long until the next switch.
+  final Duration retryAfterNotServing;
+
+  /// Whether the wallet can send now (its honest sync verdict). Null: not
+  /// checked.
+  final bool Function()? _walletCanSend;
+
   final BeamPasswordProvider _password;
   final BeamNetworkTipSource _explorer;
   final BeamPrivateNodeFactory _nodeFactory;
@@ -426,6 +456,9 @@ class BeamPrivateNodeCoordinator {
   StreamSubscription<BeamEvent>? _ownNodeSub;
   Timer? _timer;
   Timer? _ownNodeGrace;
+  Timer? _walletReadyTimer;
+  DateTime? _readySince;
+  DateTime? _noSwitchBefore;
   bool _checkQueued = false;
   int _behindStrikes = 0;
   bool _disposed = false;
@@ -545,6 +578,8 @@ class BeamPrivateNodeCoordinator {
   Future<bool> _leavePrivateNode() async {
     _ownNodeGrace?.cancel();
     _ownNodeGrace = null;
+    _walletReadyTimer?.cancel();
+    _walletReadyTimer = null;
     await _ownNodeSub?.cancel();
     _ownNodeSub = null;
     if (!_onPrivate) return true;
@@ -566,6 +601,7 @@ class BeamPrivateNodeCoordinator {
     }
     _timer?.cancel();
     _ownNodeGrace?.cancel();
+    _walletReadyTimer?.cancel();
     await _ownNodeSub?.cancel();
     // An operation in flight (e.g. waiting for own_node) sees _disposed at
     // its next step; do not hold app shutdown for it.
@@ -859,15 +895,24 @@ class BeamPrivateNodeCoordinator {
     // to hand over is made on a height fetched just now.
     var network = await _freshExplorer(force: false);
     final tip = p.bestHeight;
-    if (network != null && tip != null) {
+    if (network != null && tip != null && p.finishingPercent == null) {
       if ((network - tip).abs() <= readyWithinBlocks) {
         network = await _freshExplorer(force: true);
         if (network != null && (network - tip).abs() <= readyWithinBlocks) {
-          await _handover(tip, network);
+          final since = _readySince ??= _now();
+          final held = _now().difference(since) >= readyHoldFor;
+          final allowed =
+              _noSwitchBefore == null || !_now().isBefore(_noSwitchBefore!);
+          if (held && allowed) {
+            await _handover(tip, network);
+            return;
+          }
+          _set(waiting ?? _Phase.catchingUp, issue: null, network: network);
           return;
         }
       }
     }
+    _readySince = null;
     if (network == null) {
       _set(
         _Phase.cannotVerify,
@@ -1005,6 +1050,7 @@ class BeamPrivateNodeCoordinator {
       );
       _watchOwnNode(next.transport);
       _set(_Phase.active, issue: null, network: network, privateReceive: true);
+      _watchWalletServed();
       return;
     }
     _log(
@@ -1018,6 +1064,34 @@ class BeamPrivateNodeCoordinator {
       network: network,
       nodeAlreadyStopped: true,
     );
+  }
+
+  /// After a move to the node: if the wallet still cannot send after
+  /// [walletReadyTimeout], back to a public node, and no new switch for
+  /// [retryAfterNotServing].
+  void _watchWalletServed() {
+    final canSend = _walletCanSend;
+    if (canSend == null) return;
+    _walletReadyTimer?.cancel();
+    _walletReadyTimer = Timer(walletReadyTimeout, () {
+      _walletReadyTimer = null;
+      if (_disposed || !_onPrivate || canSend()) return;
+      unawaited(
+        _serial(() async {
+          if (_disposed || !_onPrivate || canSend()) return;
+          _log(
+            'The wallet could not send ${walletReadyTimeout.inSeconds} s '
+            'after moving to the private node; back to a public node, next '
+            'try in ${retryAfterNotServing.inMinutes} min',
+          );
+          _noSwitchBefore = _now().add(retryAfterNotServing);
+          await _failover(
+            _Phase.fellBehind,
+            BeamPrivateNodeIssue.notServingWallet,
+          );
+        }),
+      );
+    });
   }
 
   /// Subscribes to `ev_connection_changed` on [transport] (only that event,
@@ -1115,6 +1189,9 @@ class BeamPrivateNodeCoordinator {
   }) async {
     _ownNodeGrace?.cancel();
     _ownNodeGrace = null;
+    _walletReadyTimer?.cancel();
+    _walletReadyTimer = null;
+    _readySince = null;
     await _ownNodeSub?.cancel();
     _ownNodeSub = null;
     // Private receive is off from this moment, before anything slow.
