@@ -24,7 +24,9 @@ import 'secret_file.dart' show kSecretPrefix;
 /// `chmod(2)` through `dart:ffi` instead, which works in the app sandbox (and
 /// on macOS, where the tests run). The iOS sandbox already keeps other apps
 /// out of the container; the modes are the same belt and braces the desktop
-/// host uses.
+/// host uses. Windows has no `chmod`: there, as in `secret_file.dart`, the
+/// per-user profile directory's ACL keeps these files private, and modes are
+/// neither set nor checked.
 abstract final class InProcessFiles {
   static const int _modeDir = 0x1c0; // 0700
   static const int _modeFile = 0x180; // 0600
@@ -32,6 +34,8 @@ abstract final class InProcessFiles {
   static const int _permissionBits = 0x1ff; // 0777
 
   static final Random _random = Random.secure();
+
+  static bool get _posix => !Platform.isWindows;
 
   static final int Function(Pointer<Utf8>, int) _chmod = _lookupChmod();
 
@@ -51,6 +55,7 @@ abstract final class InProcessFiles {
   }
 
   static void chmod(String path, int mode) {
+    if (!_posix) return;
     final cPath = path.toNativeUtf8(allocator: calloc);
     try {
       if (_chmod(cPath, mode) != 0) {
@@ -79,6 +84,7 @@ abstract final class InProcessFiles {
         'Not a ${dir ? 'directory' : 'file'}: ${p.basename(path)}',
       );
     }
+    if (!_posix) return;
     if ((stat.mode & _permissionBits) != mode ||
         (stat.mode & _groupOther) != 0) {
       throw BeamHostException(
