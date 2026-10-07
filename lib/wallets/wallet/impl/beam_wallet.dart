@@ -791,8 +791,10 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   Set<String>? _seenIncoming;
 
   /// Announces each incoming payment that completes while the wallet is
-  /// open, once. The first read of a session and whatever a restore scan
-  /// finds are history, not news.
+  /// open, once. The first read of a session is history, not news. A
+  /// restore scan finds coins, never history rows, so a payment that
+  /// completes during one is news too (seen in the DMG test: a 0.01 BEAM
+  /// payment to a scanning wallet arrived without a notice).
   void _announceIncoming(List<BeamTransaction> txs) {
     final completed = [
       for (final t in txs)
@@ -803,9 +805,7 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
           t,
     ];
     final seen = _seenIncoming;
-    final scanning =
-        isScanningForCoins && (_tracker?.scanProgress?.fraction ?? 0) < 1;
-    if (seen == null || scanning) {
+    if (seen == null) {
       (_seenIncoming ??= <String>{}).addAll(completed.map((t) => t.txId));
       return;
     }

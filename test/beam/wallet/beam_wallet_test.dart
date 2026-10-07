@@ -501,34 +501,28 @@ void main() {
       expect(p.title, 'Received 0.5 BEAM');
     });
 
-    test('coins a restore scan finds are not announced', () async {
+    test('a payment that completes while a restore scan runs is announced: '
+        'a restore finds coins, never history rows', () async {
       final w = await newWallet(init: false);
       await w.init(isRestore: true);
       await w.recover(isRescan: false);
       await w.open();
       await w.whenLive.timeout(const Duration(seconds: 5));
+      expect(w.isScanningForCoins, isTrue);
       core.txs = [
         ...core.txs,
         txJson(
           txId: '05' * 16,
           status: 3,
           income: true,
-          value: 7000000,
+          value: 1000000,
           receiver: _myAddr,
         ),
       ];
       host.lastTransport!.emit('ev_txs_changed', {'change': 0});
-      await waitFor(
-        () =>
-            isar.transactionV2s
-                .where()
-                .walletIdEqualTo(w.walletId)
-                .countSync() ==
-            2,
-        what: 'found coin stored',
-      );
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-      expect(received, isEmpty);
+      await waitFor(() => received.isNotEmpty, what: 'announced');
+      expect(received.single.txId, '05' * 16);
+      expect(received.single.title, 'Received 0.01 BEAM');
     });
 
     test('events drive refreshes: a new transaction shows up without '
