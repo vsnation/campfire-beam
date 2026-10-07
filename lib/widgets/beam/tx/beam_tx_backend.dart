@@ -13,6 +13,7 @@ import 'package:isar_community/isar.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../models/isar/models/beam/beam_asset_contract.dart';
 import '../../../models/isar/models/blockchain_data/v2/transaction_v2.dart';
 import '../../../providers/db/main_db_provider.dart';
 import '../../../providers/global/prefs_provider.dart';
@@ -39,6 +40,7 @@ class BeamTxBackend {
     required this.share,
     required this.skipExplorerWarning,
     required this.setSkipExplorerWarning,
+    this.assetRow = _noRow,
   });
 
   /// The wallet's core API, through `BeamWalletServices` so calls follow
@@ -60,6 +62,12 @@ class BeamTxBackend {
   final Future<void> Function(String text) share;
   final bool Function() skipExplorerWarning;
   final void Function(bool skip) setSkipExplorerWarning;
+
+  /// Campfire's cached row for an asset (its name as learnt from the chain
+  /// and the DEX), or null when there is none.
+  final BeamAssetContract? Function(int assetId) assetRow;
+
+  static BeamAssetContract? _noRow(int assetId) => null;
 }
 
 /// The app's [BeamTxBackend] for [walletId].
@@ -87,6 +95,15 @@ final pBeamTxBackend = Provider.family<BeamTxBackend, String>((ref, walletId) {
         ref.read(prefsChangeNotifierProvider).hideBlockExplorerWarning,
     setSkipExplorerWarning: (skip) =>
         ref.read(prefsChangeNotifierProvider).hideBlockExplorerWarning = skip,
+    assetRow: (assetId) {
+      try {
+        return db.isar.beamAssetContracts.getByAddressSync(
+          BeamAssetContract.addressFor(assetId),
+        );
+      } catch (_) {
+        return null;
+      }
+    },
   );
 });
 

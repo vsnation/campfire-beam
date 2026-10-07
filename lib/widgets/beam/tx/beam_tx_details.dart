@@ -39,7 +39,6 @@ import '../../../utilities/assets.dart';
 import '../../../utilities/constants.dart';
 import '../../../utilities/format.dart';
 import '../../../utilities/text_styles.dart';
-import '../../../wallets/beam/assets/beam_asset_catalog.dart';
 import '../../../wallets/beam/rpc/beam_transport.dart';
 import '../../../wallets/crypto_currency/crypto_currency.dart';
 import '../../background.dart';
@@ -293,7 +292,11 @@ class _BeamTxDetailsState extends ConsumerState<BeamTxDetails> {
           label: 'Asset',
           isDesktop: isDesktop,
           value: Text(
-            _assetName(v.assetId),
+            BeamTxText.assetName(
+              v.assetId,
+              cached: _backend.assetRow(v.assetId),
+            ),
+            key: const Key('beamTxAsset'),
             style: _detail(context, isDesktop),
           ),
         ),
@@ -556,14 +559,6 @@ class _BeamTxDetailsState extends ConsumerState<BeamTxDetails> {
         ),
       ),
     );
-  }
-
-  static String _assetName(int assetId) {
-    final a = BeamAssetCatalog.display(assetId, null);
-    if (a.verified) {
-      return a.name == a.symbol ? a.symbol : '${a.name} (${a.symbol})';
-    }
-    return 'Asset ${a.idLabel} — not verified by Campfire';
   }
 }
 

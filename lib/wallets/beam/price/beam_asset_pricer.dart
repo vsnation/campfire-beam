@@ -32,10 +32,20 @@ import '../contracts/dex/beam_ratio.dart';
 ///   asset can show as worth more than the BEAM someone locked in its pool.
 ///   The UI marks such values ([isSaleValue]).
 ///
+/// A DEX liquidity (LP) token is valued from its pool, never from a pool
+/// trading the LP token itself: it is worth what a withdraw of it pays out
+/// (lpAmount / ctl of each reserve), each side valued as above. For a pool
+/// of verified assets that is (lpAmount / ctl) × (tok1·price1 +
+/// tok2·price2) at spot. An unverified side whose price comes from this
+/// very pool is valued as sold back into what the withdraw leaves in it, so
+/// a spam pool's LP tokens are never worth more than the BEAM in the pool.
+///
 /// Values are estimates either way and are labelled so in the UI. A holding
 /// is valued in groth directly from the reserves, so an asset's decimals
 /// are never needed to value it. Most assets on chain declare none we can
-/// trust.
+/// trust. LP tokens have 8 decimals like every Confidential Asset, and
+/// their supply is the pool's `ctl` in the same smallest units (asset 175's
+/// explorer supply equals pool 0/174's `ctl`).
 class BeamAssetPricer {
   BeamAssetPricer(
     Iterable<BeamPool> pools, {
@@ -89,9 +99,18 @@ class BeamAssetPricer {
   BeamPool? pricingPool(int assetId) => _beamPools[assetId];
 
   /// True when [valueInGroth] values [assetId] as a sale into its pool (an
-  /// unverified asset), not at a verified asset's spot price.
-  bool isSaleValue(int assetId) =>
-      assetId != 0 && !_isVerified(assetId) && _beamPools[assetId] != null;
+  /// unverified asset, or an LP token with an unverified side), not at a
+  /// verified asset's spot price.
+  bool isSaleValue(int assetId) => _isSale(assetId, 0);
+
+  bool _isSale(int assetId, int depth) {
+    if (assetId == 0) return false;
+    final lp = _byLpToken[assetId];
+    if (lp != null && depth < _maxLpDepth) {
+      return _isSale(lp.aid1, depth + 1) || _isSale(lp.aid2, depth + 1);
+    }
+    return !_isVerified(assetId) && _beamPools[assetId] != null;
+  }
 
   /// Groth per smallest unit of [assetId] at its pool's spot price. BEAM is
   /// exactly one. For an unverified asset this is the pool's quote, not
@@ -114,17 +133,22 @@ class BeamAssetPricer {
 
   /// What [amount] smallest units of [assetId] are worth in groth, rounded
   /// down: spot for a verified asset, what its pool would pay for an
-  /// unverified one ([isSaleValue]). LP tokens are valued as their share of
-  /// both pool reserves, each side valued the same way. Null when the asset
-  /// cannot be priced.
-  BigInt? valueInGroth(int assetId, BigInt amount) {
+  /// unverified one ([isSaleValue]), and for an LP token what a withdraw
+  /// of it pays out, valued the same way (see the class comment). Null
+  /// when the asset cannot be priced.
+  BigInt? valueInGroth(int assetId, BigInt amount) =>
+      _value(assetId, amount, 0);
+
+  /// LP tokens of pools of LP tokens of… are valued this many levels deep
+  /// at most.
+  static const _maxLpDepth = 3;
+
+  BigInt? _value(int assetId, BigInt amount, int depth) {
     if (amount <= BigInt.zero) return BigInt.zero;
     if (assetId == 0) return amount;
-    final direct = _directValue(assetId, amount);
-    if (direct != null) return direct;
-    final pool = _byLpToken[assetId];
-    if (pool != null) return _lpValue(pool, amount);
-    return null;
+    final lp = _byLpToken[assetId];
+    if (lp != null && depth < _maxLpDepth) return _lpValue(lp, amount, depth);
+    return _directValue(assetId, amount);
   }
 
   BigInt? _directValue(int assetId, BigInt amount) {
@@ -140,20 +164,52 @@ class BeamAssetPricer {
     return pool.tok1 * amount ~/ (pool.tok2 + amount);
   }
 
-  BigInt? _lpValue(BeamPool pool, BigInt lpAmount) {
+  /// [lpAmount] LP tokens of [pool]: the share lpAmount / ctl of each
+  /// reserve, each valued, added exactly and rounded down once.
+  BigInt? _lpValue(BeamPool pool, BigInt lpAmount, int depth) {
     final share = BeamRatio(
       lpAmount > pool.ctl ? pool.ctl : lpAmount,
       pool.ctl,
     );
-    final side1 = _sideValue(pool.aid1, pool.tok1);
-    final side2 = _sideValue(pool.aid2, pool.tok2);
-    if (side1 == null || side2 == null) return null;
-    return _floor(share * BeamRatio(side1 + side2, BigInt.one));
+    final v1 = _sideValue(pool, pool.aid1, pool.tok1, share, depth);
+    final v2 = _sideValue(pool, pool.aid2, pool.tok2, share, depth);
+    if (v1 == null || v2 == null) return null;
+    return (v1 + v2).floor();
   }
 
-  BigInt? _sideValue(int assetId, BigInt reserve) {
-    if (assetId == 0) return reserve;
-    return _directValue(assetId, reserve);
+  /// [share] of [pool]'s [reserve] of [assetId], in groth.
+  BeamRatio? _sideValue(
+    BeamPool pool,
+    int assetId,
+    BigInt reserve,
+    BeamRatio share,
+    int depth,
+  ) {
+    final part = share * BeamRatio(reserve, BigInt.one);
+    if (assetId == 0) return part;
+    final pricing = _beamPools[assetId];
+    if (pricing != null &&
+        _isVerified(assetId) &&
+        _byLpToken[assetId] == null) {
+      // At spot: share × reserve × tok1 / tok2 of its BEAM pool.
+      return part * BeamRatio(pricing.tok1, pricing.tok2);
+    }
+    // Sold, so in whole smallest units: what a withdraw would pay out
+    // (rounded down, `Totals::Remove`).
+    final amount = part.floor();
+    if (pricing != null &&
+        pricing.lpToken == pool.lpToken &&
+        _byLpToken[assetId] == null) {
+      // This very pool prices the asset: sold back into what the withdraw
+      // leaves in it ([pool] is then BEAM/asset, BEAM its first side).
+      final beamLeft = pool.tok1 - share.floorTimes(pool.tok1);
+      if (beamLeft <= BigInt.zero || amount == BigInt.zero) {
+        return BeamRatio.zero;
+      }
+      return BeamRatio(beamLeft * amount ~/ pool.tok2, BigInt.one);
+    }
+    final v = _value(assetId, amount, depth + 1);
+    return v == null ? null : BeamRatio(v, BigInt.one);
   }
 
   /// Values every holding in [balances] (asset id → smallest units).

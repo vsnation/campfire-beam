@@ -7,10 +7,12 @@
  *
  */
 
+import '../../../models/isar/models/beam/beam_asset_contract.dart';
 import '../../../utilities/amount/amount.dart';
 import '../../../utilities/amount/amount_formatter.dart';
 import '../../../utilities/amount/amount_unit.dart';
 import '../../../wallets/beam/assets/beam_asset_catalog.dart';
+import '../../../wallets/beam/assets/beam_asset_registry.dart';
 import '../../../wallets/beam/models/beam_transaction.dart';
 import '../../../wallets/beam/tx/beam_tx_actions.dart';
 import 'beam_tx_view.dart';
@@ -170,6 +172,26 @@ abstract final class BeamTxText {
     if (v.amount == BigInt.zero) return const [];
     final delta = v.isIncoming ? v.amount : -v.amount;
     return [(assetId: v.isContract ? 0 : v.assetId, delta: delta)];
+  }
+
+  /// The details screen's name for a payment's asset: "BEAM", "Gothic
+  /// Crown (CROWN)", a DEX liquidity token as everywhere else ("BEAM/FOMO
+  /// LP", "BEAM/BB #3 LP"), and "Asset #557 — not verified by Campfire"
+  /// for anything else. [cached] is Campfire's row for the asset: an LP
+  /// token's row names unverified sides from their on-chain metadata, which
+  /// the DEX's pool list alone cannot ("BEAM/#3 LP").
+  static String assetName(int assetId, {BeamAssetContract? cached}) {
+    if (cached != null && cached.assetId == assetId && cached.isPoolShare) {
+      // Today's look of the row: an older version cached "BEAM / FOMO pool
+      // share".
+      return BeamAssetRegistry.refreshLook(cached).name;
+    }
+    final a = BeamAssetCatalog.display(assetId, null);
+    if (a.isPoolShare) return a.name;
+    if (a.verified) {
+      return a.name == a.symbol ? a.symbol : '${a.name} (${a.symbol})';
+    }
+    return 'Asset ${a.idLabel} — not verified by Campfire';
   }
 
   /// "4,864.10722456 CHAD", "0.00069843 BEAM", "1.00000000 #188" for an

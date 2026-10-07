@@ -13,6 +13,7 @@ import 'package:stackwallet/pages/beam/dex/beam_dex_pool_detail_view.dart';
 import 'package:stackwallet/pages/beam/dex/beam_dex_pools_view.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_args.dart';
 import 'package:stackwallet/wallets/beam/rpc/beam_transport.dart';
+import 'package:stackwallet/widgets/beam/dex/dex_asset_icon.dart';
 import 'package:stackwallet/widgets/beam/dex/dex_deps.dart';
 
 import 'dex_ui_harness.dart';
@@ -155,6 +156,41 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('dex-pools-error')), findsNothing);
     expect(find.text('Your pools'), findsOneWidget);
+  });
+
+  testWidgets('an LP token traded in a pool is named after its pair; every '
+      'pair icon has the same box', (tester) async {
+    await openPools(tester);
+    await tester.enterText(find.byKey(const Key('dex-pools-search')), 'nph');
+    await tester.pump();
+    // Pool 0/60: BEAM against LP 60, the BEAM/NPH pool's LP token (its
+    // metadata says "Amm Liquidity Token 0-47-2", ticker AMML).
+    final card = find.byKey(const Key('dex-pool-0-60-2'));
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.textContaining(
+          'BEAM / (BEAM/NPH LP)',
+          findRichText: true,
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('AMML', findRichText: true), findsNothing);
+    final boxes = {for (final e in find.byType(DexPairIcon).evaluate()) e.size};
+    expect(boxes, hasLength(1));
+    await settleImages(tester);
+    expect({
+      for (final e in find.byType(DexPairIcon).evaluate()) e.size,
+    }, boxes);
+    // The golden shows the NPH pairs and, at the bottom, the LP token's.
+    await tester.ensureVisible(card);
+    await tester.pumpAndSettle();
+    await settleImages(tester);
+    await expectLater(
+      find.byKey(goldenKey),
+      matchesGoldenFile('goldens/pools_mobile_nph.png'),
+    );
   });
 
   testWidgets('tapping a pool opens it', (tester) async {

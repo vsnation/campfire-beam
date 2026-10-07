@@ -27,6 +27,8 @@ import '../../../models/isar/models/beam/beam_asset_contract.dart';
 import '../../../pages/send_view/send_view.dart';
 import '../../../pages/token_view/beam_asset_navigation.dart';
 import '../../../pages/token_view/my_tokens_view.dart';
+import '../../../pages/token_view/sub_widgets/beam_asset_icon.dart'
+    show beamAssetLook;
 import '../../../providers/global/prefs_provider.dart';
 import '../../../themes/stack_colors.dart';
 import '../../../utilities/amount/amount.dart';
@@ -147,13 +149,18 @@ class BeamDashboardModel {
       // An unverified asset is valued at what its pool would pay for it
       // (BeamAssetPricer.isSaleValue), so say that rather than a price.
       final sold = h.saleValue ? ' if sold now' : '';
-      final look = BeamAssetCatalog.display(c.assetId, null);
       final copied = c.impersonates;
       rows.add(
         BeamDashboardRow(
           assetId: c.assetId,
-          title: c.verified ? c.symbol : '${c.symbol} #${c.assetId}',
-          amount: '${shortAmount(h.totals.total)} ${c.symbol}',
+          // A pool share is named after its pair, "BEAM/FOMO LP"; each side
+          // already carries its own "#id" unless verified.
+          title: c.verified || c.isPoolShare
+              ? c.symbol
+              : '${c.symbol} #${c.assetId}',
+          amount:
+              '${shortAmount(h.totals.total)} '
+              '${c.isPoolShare ? 'LP' : c.symbol}',
           value:
               fiatValue ??
               (inBeam == null ? 'No price' : '≈ ${formatBeam(inBeam)}$sold'),
@@ -166,15 +173,7 @@ class BeamDashboardModel {
                     '${BeamAssetCatalog.verified[copied]?.symbol ?? '#$copied'}'
                     ' (#$copied)',
           contract: c,
-          display: BeamAssetDisplay(
-            assetId: c.assetId,
-            name: c.name,
-            symbol: c.symbol,
-            verified: look.verified,
-            icon: look.icon,
-            color: look.color,
-            impersonates: copied,
-          ),
+          display: beamAssetLook(c),
         ),
       );
     }

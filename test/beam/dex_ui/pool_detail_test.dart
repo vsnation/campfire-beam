@@ -136,7 +136,7 @@ void main() {
     );
     expect(
       textOf(tester, const Key('dex-confirm-receives-175')),
-      '${DexFormat.exact(d.receives[175]!)} BEAM/FOMO pool tokens',
+      '${DexFormat.exact(d.receives[175]!)} BEAM/FOMO LP',
     );
     expect(
       textOf(tester, const Key('dex-confirm-fee')),
@@ -186,10 +186,7 @@ void main() {
     await tester.pumpAndSettle();
     final d = BeamInvokeData.decode(rawVector('withdraw'));
     expect(d.pays, {175: g(100000000)});
-    expect(
-      textOf(tester, const Key('dex-confirm-pays-175')),
-      '1 BEAM/FOMO pool tokens',
-    );
+    expect(textOf(tester, const Key('dex-confirm-pays-175')), '1 BEAM/FOMO LP');
     expect(
       textOf(tester, const Key('dex-confirm-receives-0')),
       '${DexFormat.exact(d.receives[0]!)} BEAM',
@@ -201,7 +198,7 @@ void main() {
     expect(textOf(tester, const Key('dex-confirm-fee')), '0.011 BEAM');
     expect(
       textOf(tester, const Key('dex-confirm-total')),
-      '0.011 BEAM + 1 BEAM/FOMO pool tokens',
+      '0.011 BEAM + 1 BEAM/FOMO LP',
     );
     // Pool tokens are valued as their share of both sides.
     expect(

@@ -23,6 +23,7 @@ import '../../wallet/supporting/beam_wallet_info_extension.dart';
 import '../wallet/beam_balance_mapper.dart';
 import 'beam_asset_holdings.dart';
 import 'beam_asset_market_source.dart';
+import 'beam_asset_registry.dart';
 import 'beam_hidden_assets.dart';
 
 /// The open BEAM wallet [walletId] names, or null when it is not a BEAM
@@ -76,9 +77,12 @@ class _ContractsWatcher extends ChangeNotifier {
 
   Map<int, BeamAssetContract> get value => _value;
 
-  Map<int, BeamAssetContract> _read() => Map.unmodifiable({
-    for (final c in _collection.where().findAllSync()) c.assetId: c,
-  });
+  Map<int, BeamAssetContract> _read() {
+    final rows = _collection.where().findAllSync();
+    // LP tokens named by an earlier DEX read are known before the next.
+    BeamAssetRegistry.learnPools(rows);
+    return Map.unmodifiable({for (final c in rows) c.assetId: c});
+  }
 
   @override
   void dispose() {

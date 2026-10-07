@@ -15,6 +15,7 @@ import '../common/invoke_data.dart';
 import '../common/pinned_shader.dart';
 import '../common/shader_output.dart';
 import 'beam_dex_quotes.dart';
+import 'beam_lp_tokens.dart';
 import 'beam_pool.dart';
 import 'dex_args.dart';
 import 'dex_constants.dart';
@@ -149,6 +150,8 @@ class BeamDexService {
       for (final row in ShaderOutput.list(out['res'], 'res'))
         BeamPool.fromJson(ShaderOutput.map(row, 'res[]')),
     ];
+    // Every screen that names an asset learns which ones are LP tokens.
+    BeamLpTokens.learnPools(pools);
     return List.unmodifiable(
       includeEmpty ? pools : pools.where((p) => !p.isEmpty),
     );
@@ -163,12 +166,14 @@ class BeamDexService {
     final out = await _view(
       DexArgs.poolView(aidA: aidA, aidB: aidB, kind: kind, cid: contractId),
     );
-    return BeamPool.fromPoolView(
+    final pool = BeamPool.fromPoolView(
       ShaderOutput.map(out['res'], 'res'),
       aidA: aidA,
       aidB: aidB,
       kind: kind,
     );
+    BeamLpTokens.learnPools([pool]);
+    return pool;
   }
 
   // ----------------------------------------------------------------- quotes

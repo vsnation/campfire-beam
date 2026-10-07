@@ -455,7 +455,10 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  '${a1.symbol} / ${a2.symbol}',
+                  // "BEAM / FOMO", "BEAM / PEPE #777", "BEAM / (BEAM/NPH LP)".
+                  [a1, a2]
+                      .map((a) => a.isPoolShare ? '(${a.label})' : a.label)
+                      .join(' / '),
                   style: STextStyles.pageTitleH2(context),
                 ),
               ),

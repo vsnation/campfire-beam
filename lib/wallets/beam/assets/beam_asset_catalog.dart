@@ -9,6 +9,7 @@
 
 import 'package:flutter/widgets.dart' show Characters;
 
+import '../contracts/dex/beam_lp_tokens.dart';
 import '../models/beam_asset_info.dart';
 import 'beam_asset_lookalike.dart';
 
@@ -45,6 +46,7 @@ class BeamAssetDisplay {
     this.icon,
     this.color,
     this.impersonates,
+    this.pool,
   });
 
   final int assetId;
@@ -53,6 +55,10 @@ class BeamAssetDisplay {
 
   /// In [BeamAssetCatalog.verified]. Anything else is shown with its asset
   /// id, because anyone can mint an asset and call it anything.
+  ///
+  /// A DEX liquidity token ([pool]) counts as verified when both of its
+  /// pool's assets are: its name is Campfire's, made from the DEX contract's
+  /// own pool list, never from the token's metadata.
   final bool verified;
   final String? icon;
   final int? color;
@@ -63,8 +69,21 @@ class BeamAssetDisplay {
   /// FOMO (#174)".
   final int? impersonates;
 
+  /// For a DEX liquidity (LP) token: the pool it is a share of
+  /// ([BeamLpTokens]). Its icon is the pair's.
+  final BeamLpPool? pool;
+
+  /// A DEX liquidity token.
+  bool get isPoolShare => pool != null;
+
   /// Always shown next to unverified assets.
   String get idLabel => '#$assetId';
+
+  /// The ticker as a sentence names it: "FOMO" for a verified asset (or a
+  /// liquidity token of two, "BEAM/FOMO LP"), "FOMO #999" for anything else,
+  /// because anyone can mint an asset and call it FOMO.
+  String get label =>
+      verified || symbol == idLabel ? symbol : '$symbol $idLabel';
 }
 
 abstract final class BeamAssetCatalog {
@@ -103,6 +122,22 @@ abstract final class BeamAssetCatalog {
 
   /// For an asset id the network does not know.
   static const missingIcon = '$_generic/asset-err.svg';
+
+  /// Bundled icons that are not a filled circle of their own, with how far
+  /// (a fraction of the icon's size) to inset them: they are drawn on a
+  /// neutral disc with a hairline edge, so every asset is the same round
+  /// coin. NPH's logo is a bare triangle (inset so its corners stay inside
+  /// the circle), GIGA's a face cut out on transparency, CHAD's a face on a
+  /// white square. Every other bundled icon fills its circle.
+  static const Map<String, double> _framedIcons = {
+    '$_icons/47.svg': 0.17,
+    '$_icons/186.png': 0,
+    '$_icons/187.png': 0,
+  };
+
+  /// How far [iconPath] is inset on its neutral disc, or null when the icon
+  /// is a filled circle and needs no disc.
+  static double? frameInset(String iconPath) => _framedIcons[iconPath];
 
   /// The desktop wallet's accent colours, in the same order as its icons.
   static const _genericColors = [
@@ -239,7 +274,28 @@ abstract final class BeamAssetCatalog {
   /// they get the desktop wallet's generic icon for their id
   /// ([unverifiedIcon]). Verified assets without a bundled icon get one
   /// too.
-  static BeamAssetDisplay display(int assetId, BeamAssetMetadata? metadata) {
+  ///
+  /// A DEX liquidity token ([BeamLpTokens]) is named after its pool,
+  /// "BEAM/FOMO LP", whatever its own metadata says ("Amm Liquidity Token
+  /// 0-174-2"); [metadataOf] gives the on-chain metadata of the pool's
+  /// assets, for unverified ones ("BEAM/PEPE #777 LP"). Without it they read
+  /// "#777".
+  static BeamAssetDisplay display(
+    int assetId,
+    BeamAssetMetadata? metadata, {
+    BeamAssetMetadata? Function(int assetId)? metadataOf,
+  }) => _display(assetId, metadata, metadataOf, 0);
+
+  /// An LP token of a pool of LP tokens of… is named this many levels deep
+  /// at most; deeper ones read "#id".
+  static const _maxLpDepth = 3;
+
+  static BeamAssetDisplay _display(
+    int assetId,
+    BeamAssetMetadata? metadata,
+    BeamAssetMetadata? Function(int assetId)? metadataOf,
+    int depth,
+  ) {
     final known = verified[assetId];
     if (known != null) {
       return BeamAssetDisplay(
@@ -250,6 +306,10 @@ abstract final class BeamAssetCatalog {
         icon: known.icon ?? genericIcon(assetId),
         color: known.color,
       );
+    }
+    final pool = BeamLpTokens.of(assetId);
+    if (pool != null && depth < _maxLpDepth) {
+      return _lpDisplay(pool, metadataOf, depth);
     }
     final rawName = metadata?.name;
     final rawSymbol = metadata?.unitName ?? metadata?.shortName;
@@ -266,6 +326,45 @@ abstract final class BeamAssetCatalog {
       impersonates: impersonationOf(rawName, rawSymbol),
     );
   }
+
+  /// How to show [pool]'s liquidity token, "BEAM/FOMO LP" (see [display]).
+  static BeamAssetDisplay lpDisplay(
+    BeamLpPool pool, {
+    BeamAssetMetadata? Function(int assetId)? metadataOf,
+  }) => _lpDisplay(pool, metadataOf, 0);
+
+  static BeamAssetDisplay _lpDisplay(
+    BeamLpPool pool,
+    BeamAssetMetadata? Function(int assetId)? metadataOf,
+    int depth,
+  ) {
+    BeamAssetDisplay side(int id) =>
+        _display(id, metadataOf?.call(id), metadataOf, depth + 1);
+    final a = side(pool.aid1);
+    final b = side(pool.aid2);
+    final name = '${pairName(a, b)} LP';
+    return BeamAssetDisplay(
+      assetId: pool.lpToken,
+      name: name,
+      symbol: name,
+      verified: a.verified && b.verified,
+      // For screens that cannot draw a pair: the desktop wallet's generic
+      // icon for the id.
+      icon: unverifiedIcon(pool.lpToken),
+      color: genericColor(pool.lpToken),
+      pool: pool,
+    );
+  }
+
+  /// "BEAM/FOMO": a pool's two assets as its LP token and the DEX name
+  /// them, in the pool's order. Each side is its [BeamAssetDisplay.label],
+  /// so an unverified side keeps its "#id" ("BEAM/FOMO #999" is never the
+  /// real pair); an LP-token side is bracketed ("BEAM/(BEAM/NPH LP)").
+  static String pairName(BeamAssetDisplay a, BeamAssetDisplay b) =>
+      '${_pairSide(a)}/${_pairSide(b)}';
+
+  static String _pairSide(BeamAssetDisplay d) =>
+      d.isPoolShare ? '(${d.label})' : d.label;
 
   /// "Asset #557": an unverified asset whose metadata gave no name.
   static String placeholderName(int assetId) => 'Asset #$assetId';

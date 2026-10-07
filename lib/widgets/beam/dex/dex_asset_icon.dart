@@ -16,7 +16,7 @@ import '../assets/beam_asset_logo.dart';
 
 /// An asset's round icon: [BeamAssetLogo], the same icon every BEAM screen
 /// shows (BEAM's logo, a verified asset's own icon, or the BEAM desktop
-/// wallet's generic icon for the asset's id).
+/// wallet's generic icon for the asset's id; an LP token's pair).
 class DexAssetIcon extends StatelessWidget {
   const DexAssetIcon({super.key, required this.asset, this.size = 24});
 
@@ -27,7 +27,10 @@ class DexAssetIcon extends StatelessWidget {
   Widget build(BuildContext context) => BeamAssetLogo(asset, size: size);
 }
 
-/// Two overlapping icons for a pool's pair.
+/// Two overlapping icons for a pool's pair ([BeamPairIcons]): both coins
+/// [size] across, a gap of the card's colour where they overlap, and a box
+/// of fixed size whatever the icons are, so rows never shift while the
+/// pictures load.
 class DexPairIcon extends StatelessWidget {
   const DexPairIcon({
     super.key,
@@ -41,24 +44,8 @@ class DexPairIcon extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size * 1.6,
-      height: size,
-      child: Stack(
-        children: [
-          Positioned(
-            left: 0,
-            child: DexAssetIcon(asset: first, size: size),
-          ),
-          Positioned(
-            left: size * 0.6,
-            child: DexAssetIcon(asset: second, size: size),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      BeamPairIcons(first: first, second: second, size: size);
 }
 
 /// The asset's ticker, with "#id" for anything unverified and a warning

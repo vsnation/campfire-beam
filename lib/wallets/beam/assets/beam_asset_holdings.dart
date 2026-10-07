@@ -12,6 +12,7 @@ import 'package:meta/meta.dart';
 import '../../../models/balance.dart';
 import '../../../models/isar/models/beam/beam_asset_contract.dart';
 import '../../../utilities/amount/amount.dart';
+import '../contracts/dex/beam_lp_tokens.dart';
 import '../contracts/dex/beam_pool.dart';
 import '../models/beam_asset_info.dart';
 import '../price/beam_asset_pricer.dart';
@@ -19,12 +20,17 @@ import '../wallet/beam_balance_mapper.dart';
 import 'beam_asset_registry.dart';
 
 /// What the DEX says right now: prices and which assets are pool shares.
+///
+/// Making one teaches [BeamLpTokens] its LP tokens, so a snapshot saved at
+/// the last launch names them before the DEX is read again.
 class BeamAssetMarket {
   BeamAssetMarket(List<BeamPool> pools, {DateTime? readAt})
     : pools = List.unmodifiable(pools),
       pricer = BeamAssetPricer(pools),
       readAt = readAt ?? DateTime.now(),
-      poolsByLpToken = Map.unmodifiable({for (final p in pools) p.lpToken: p});
+      poolsByLpToken = Map.unmodifiable({for (final p in pools) p.lpToken: p}) {
+    BeamLpTokens.learnPools(pools);
+  }
 
   final List<BeamPool> pools;
   final BeamAssetPricer pricer;
@@ -122,17 +128,17 @@ abstract final class BeamAssetHoldings {
       if (t.assetId <= 0) continue;
       if (t.total == BigInt.zero && t.sending == BigInt.zero) continue;
       var contract = contracts[t.assetId];
-      final pool = market?.poolsByLpToken[t.assetId];
-      if (contract == null || (pool != null && !contract.isPoolShare)) {
-        contract = pool != null
-            ? BeamAssetRegistry.build(
-                t.assetId,
-                pool: pool,
-                pairLabel:
-                    '${BeamAssetRegistry.sideLabel(pool.aid1, null)} / '
-                    '${BeamAssetRegistry.sideLabel(pool.aid2, null)}',
-              )
-            : BeamAssetRegistry.build(t.assetId);
+      final isLp =
+          market?.poolsByLpToken[t.assetId] != null ||
+          BeamLpTokens.of(t.assetId) != null;
+      if (contract == null || (isLp && !contract.isPoolShare)) {
+        // Not cached yet, or cached before the DEX named it ("Amm Liquidity
+        // Token 0-174-2"): named from the catalogue and the DEX until the
+        // next sync names it from the chain.
+        contract = BeamAssetRegistry.build(t.assetId);
+      } else if (contract.isPoolShare) {
+        // Cached by an older version as "BEAM / FOMO pool share".
+        contract = BeamAssetRegistry.refreshLook(contract);
       }
       final value = market?.pricer.valueInGroth(t.assetId, t.total);
       out.add(

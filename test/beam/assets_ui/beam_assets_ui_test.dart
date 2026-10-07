@@ -45,6 +45,7 @@ import 'package:stackwallet/wallets/models/tx_data.dart';
 import 'package:stackwallet/wallets/wallet/impl/beam_wallet.dart';
 import 'package:stackwallet/wallets/wallet/impl/sub_wallets/beam_asset_wallet.dart';
 import 'package:stackwallet/wallets/wallet/supporting/beam_wallet_info_extension.dart';
+import 'package:stackwallet/widgets/beam/assets/beam_asset_logo.dart';
 import 'package:stackwallet/widgets/beam/stickers/beam_sticker.dart';
 
 import '../asset_wallet/asset_test_support.dart';
@@ -173,9 +174,18 @@ void main() {
         200,
         scrollable: list,
       );
-      expect(find.text('BEAM / FOMO'), findsOneWidget);
-      expect(find.text('Pool share #175'), findsOneWidget);
+      // A pool share is named after its pair, with its fee tier and a
+      // pair icon (owner, 2026-10-07).
+      expect(find.text('BEAM/FOMO LP'), findsOneWidget);
+      expect(find.text('Pool share · 1% fee'), findsWidgets);
       expect(find.text('0.46659234 LP'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('beamAssetRow_175')),
+          matching: find.byType(BeamPairLogo),
+        ),
+        findsOneWidget,
+      );
       await tester.scrollUntilVisible(
         find.byKey(const Key('beamAssetRow_$fakeFomoId')),
         200,
@@ -428,9 +438,10 @@ void main() {
         assetWallet: assetWallet(175),
       );
       expect(
-        find.text('Your share of the BEAM / FOMO pool (1% fee)'),
+        find.text('Your share of the BEAM/FOMO pool (1% fee)'),
         findsOneWidget,
       );
+      expect(find.text('BEAM/FOMO LP'), findsOneWidget);
       await _golden('asset_page_lp_phone');
     });
 

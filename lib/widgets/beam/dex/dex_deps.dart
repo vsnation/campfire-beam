@@ -152,8 +152,13 @@ class BeamDexDeps {
 
   bool get canSpend => sync.value.canSpend;
 
-  BeamAssetDisplay display(int assetId) =>
-      BeamAssetCatalog.display(assetId, metadataOf(assetId));
+  /// How [assetId] is shown: its name from the catalogue or the chain, or
+  /// for an LP token its pair, "BEAM/FOMO LP".
+  BeamAssetDisplay display(int assetId) => BeamAssetCatalog.display(
+    assetId,
+    metadataOf(assetId),
+    metadataOf: metadataOf,
+  );
 
   /// What the wallet can spend of [assetId] right now.
   BigInt available(int assetId) =>
@@ -169,22 +174,20 @@ class BeamDexDeps {
 
   /// The ticker as the DEX writes it in a sentence: "FOMO" for a verified
   /// asset, "FOMO #999" for anything else, because anyone can mint an
-  /// asset and call it FOMO.
-  String assetLabel(int assetId) {
-    final d = display(assetId);
-    if (d.verified || d.symbol == d.idLabel) return d.symbol;
-    return '${d.symbol} ${d.idLabel}';
-  }
+  /// asset and call it FOMO; "BEAM/FOMO LP" for an LP token.
+  String assetLabel(int assetId) => display(assetId).label;
 
-  /// "BEAM/FOMO", in pool order ("BEAM/FOMO #999" for a copy).
+  /// "BEAM/FOMO", in pool order ("BEAM/FOMO #999" for a copy), as the
+  /// pool's LP token is named ([BeamAssetCatalog.pairName]).
   String pairLabel(BeamPool pool) =>
-      '${assetLabel(pool.aid1)}/${assetLabel(pool.aid2)}';
+      BeamAssetCatalog.pairName(display(pool.aid1), display(pool.aid2));
 
   /// How an asset is named in a sentence. LP tokens are named after their
-  /// pool, because their own metadata is a meaningless "Asset #175".
+  /// pool ("BEAM/FOMO LP"), because their own metadata is a meaningless
+  /// "Amm Liquidity Token 0-174-2".
   String assetName(int assetId) {
     final pool = poolOfLpToken(assetId);
-    if (pool != null) return '${pairLabel(pool)} pool tokens';
+    if (pool != null) return '${pairLabel(pool)} LP';
     return assetLabel(assetId);
   }
 

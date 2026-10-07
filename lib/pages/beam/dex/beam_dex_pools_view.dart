@@ -29,6 +29,7 @@ import 'package:flutter/material.dart';
 
 import '../../../themes/stack_colors.dart';
 import '../../../utilities/text_styles.dart';
+import '../../../wallets/beam/assets/beam_asset_catalog.dart';
 import '../../../wallets/beam/contracts/dex/beam_pool.dart';
 import '../../../wallets/beam/models/beam_wallet_status.dart';
 import '../../../widgets/beam/dex/dex_asset_icon.dart';
@@ -327,6 +328,21 @@ class _BeamDexPoolsViewState extends State<BeamDexPoolsView> {
     ),
   );
 
+  /// One side of a pool's name: "FOMO", "PEPE #777" (the number in a
+  /// quieter colour), or an LP token's pair in brackets, "(BEAM/NPH LP)".
+  List<InlineSpan> _side(BeamAssetDisplay a, StackColors colors) => [
+    if (a.isPoolShare)
+      TextSpan(text: '(${a.label})')
+    else ...[
+      TextSpan(text: a.symbol),
+      if (!a.verified && a.symbol != a.idLabel)
+        TextSpan(
+          text: ' ${a.idLabel}',
+          style: TextStyle(color: colors.textSubtitle1),
+        ),
+    ],
+  ];
+
   Widget _card(
     BuildContext context,
     BeamPool p,
@@ -353,19 +369,9 @@ class _BeamDexPoolsViewState extends State<BeamDexPoolsView> {
                       child: Text.rich(
                         TextSpan(
                           children: [
-                            TextSpan(text: a1.symbol),
-                            if (!a1.verified && a1.symbol != a1.idLabel)
-                              TextSpan(
-                                text: ' ${a1.idLabel}',
-                                style: TextStyle(color: colors.textSubtitle1),
-                              ),
+                            ..._side(a1, colors),
                             const TextSpan(text: ' / '),
-                            TextSpan(text: a2.symbol),
-                            if (!a2.verified && a2.symbol != a2.idLabel)
-                              TextSpan(
-                                text: ' ${a2.idLabel}',
-                                style: TextStyle(color: colors.textSubtitle1),
-                              ),
+                            ..._side(a2, colors),
                           ],
                         ),
                         style: STextStyles.smallMed14(context)

@@ -203,18 +203,50 @@ abstract final class BeamAssetText {
     return 'Unverified ${asset.idLabel}';
   }
 
-  /// "BEAM / FOMO · 1% fee pool" for a liquidity token.
-  static String? poolLine(BeamAssetContract asset) {
+  /// "BEAM/FOMO" for the liquidity token "BEAM/FOMO LP": the pool it is a
+  /// share of. Null for any other asset.
+  static String? poolPair(BeamAssetContract asset) {
+    if (!asset.isPoolShare) return null;
+    return asset.name.replaceFirst(RegExp(r' LP$'), '');
+  }
+
+  /// "1% fee": a liquidity token's pool fee tier; null for any other asset.
+  static String? poolFee(BeamAssetContract asset) {
     final kind = asset.poolKind;
     if (!asset.isPoolShare || kind == null) return null;
-    final pair = asset.name.replaceFirst(RegExp(r' pool share$'), '');
-    String fee;
     try {
-      fee = BeamPoolKind.fromWire(kind).feePercent;
+      return '${BeamPoolKind.fromWire(kind).feePercent} fee';
     } on FormatException {
-      fee = '?';
+      return null;
     }
-    return 'Your share of the $pair pool ($fee fee)';
+  }
+
+  /// "Your share of the BEAM/FOMO pool (1% fee)" for a liquidity token.
+  static String? poolLine(BeamAssetContract asset) {
+    final pair = poolPair(asset);
+    if (pair == null) return null;
+    final fee = poolFee(asset);
+    return 'Your share of the $pair pool${fee == null ? '' : ' ($fee)'}';
+  }
+
+  /// "Pool share · 1% fee": what a liquidity token is, under its name in a
+  /// list, where the fee tier tells the pools of one pair apart.
+  static String? poolSubtitle(BeamAssetContract asset) {
+    if (!asset.isPoolShare) return null;
+    final fee = poolFee(asset);
+    return fee == null ? 'Pool share' : 'Pool share · $fee';
+  }
+
+  /// "2,728.25 LP": a liquidity token's amount where its name ("BEAM/FOMO
+  /// LP") is already written next to it; [rounded] for anything else.
+  static String roundedShort(
+    Amount value,
+    BeamAssetContract asset, {
+    required String locale,
+  }) {
+    final text = rounded(value, asset, locale: locale);
+    if (!asset.isPoolShare || !text.endsWith(' ${asset.symbol}')) return text;
+    return '${text.substring(0, text.length - asset.symbol.length)}LP';
   }
 
   /// The fee sentence on the send form.

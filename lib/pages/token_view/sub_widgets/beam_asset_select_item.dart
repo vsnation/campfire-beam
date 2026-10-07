@@ -51,17 +51,15 @@ class BeamAssetSelectItem extends ConsumerWidget {
     final locale = ref.watch(
       localeServiceChangeNotifierProvider.select((s) => s.locale),
     );
-    // Rounded to what a person reads; the asset page shows every digit.
-    final balanceText = BeamAssetText.rounded(
+    // Rounded to what a person reads; the asset page shows every digit. A
+    // pool share's amount says "LP": its title already names the pair.
+    final balanceText = BeamAssetText.roundedShort(
       holding.balance.total,
       asset,
       locale: locale,
     );
-    // A pool share's row says "Pool share" underneath; its title is the
-    // pair.
-    final title = asset.isPoolShare
-        ? asset.name.replaceFirst(RegExp(r' pool share$'), '')
-        : asset.name;
+    // A pool share's title is its pair, "BEAM/FOMO LP".
+    final title = asset.name;
     final value = holding.valueGroth;
     final valueText = value != null
         ? BeamAssetText.valueEstimate(
@@ -74,7 +72,7 @@ class BeamAssetSelectItem extends ConsumerWidget {
         : '';
     final badge = BeamAssetText.badge(asset);
     final subtitle = asset.isPoolShare
-        ? 'Pool share ${asset.idLabel}'
+        ? BeamAssetText.poolSubtitle(asset)!
         : badge.isEmpty
         ? asset.symbol
         : '${asset.symbol == asset.idLabel ? '' : '${asset.symbol} · '}'
@@ -116,7 +114,10 @@ class BeamAssetSelectItem extends ConsumerWidget {
                     Row(
                       children: [
                         Expanded(
-                          flex: 5,
+                          // A pool share's name is its pair ("BEAM/FOMO
+                          // LP") and its amount short ("2,728.25 LP"):
+                          // the name gets the room.
+                          flex: asset.isPoolShare ? 7 : 5,
                           child: Text(
                             title,
                             style: titleStyle,
@@ -125,7 +126,7 @@ class BeamAssetSelectItem extends ConsumerWidget {
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          flex: 6,
+                          flex: asset.isPoolShare ? 4 : 6,
                           child: Align(
                             alignment: Alignment.centerRight,
                             child: FittedBox(

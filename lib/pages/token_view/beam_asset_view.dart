@@ -63,7 +63,7 @@ class BeamAssetView extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              BeamAssetIcon(asset: asset, size: 24),
+              BeamAssetIcon(asset: asset, size: 24, surface: colors.background),
               const SizedBox(width: 10),
               Flexible(
                 child: Text(

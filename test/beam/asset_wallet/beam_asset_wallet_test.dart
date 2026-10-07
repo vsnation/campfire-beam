@@ -420,11 +420,11 @@ void main() {
       expect(rows[fakeFomoId]!.symbol, 'FOMO');
       expect(rows[fakeFomoId]!.verified, isFalse);
       expect(rows[fakeFomoId]!.impersonates, 174);
-      expect(rows[175]!.name, 'BEAM / FOMO pool share');
+      expect(rows[175]!.name, 'BEAM/FOMO LP');
       expect(rows[175]!.isPoolShare, isTrue);
       expect((rows[175]!.poolAssetA, rows[175]!.poolAssetB), (0, 174));
-      expect(rows[50]!.name, 'BEAM / BEAMX pool share');
-      expect(rows[188]!.name, 'BEAM / CHAD pool share');
+      expect(rows[50]!.name, 'BEAM/BEAMX LP');
+      expect(rows[188]!.name, 'BEAM/CHAD LP');
       expect(rows[174]!.verified, isTrue);
       // Icons as the BEAM desktop wallet draws them: bundled for verified
       // assets, the generic one for the id otherwise (never the creator's).

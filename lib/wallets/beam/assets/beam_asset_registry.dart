@@ -11,6 +11,7 @@ import 'package:isar_community/isar.dart';
 
 import '../../../models/isar/models/beam/beam_asset_contract.dart';
 import '../api/beam_api.dart';
+import '../contracts/dex/beam_lp_tokens.dart';
 import '../contracts/dex/beam_pool.dart';
 import '../models/beam_asset_info.dart';
 import 'beam_asset_catalog.dart';
@@ -23,40 +24,47 @@ import 'beam_asset_catalog.dart';
 ///   (one call for everything the wallet knows), with `get_asset_info` for
 ///   the few it does not. Until then they show as "Asset #id".
 /// * DEX liquidity tokens are recognised only from the DEX contract's own
-///   pool list (`lp-token`), never from a name: anyone can mint an asset
-///   called "Amm Liquidity Token".
+///   pool list (`lp-token`, [BeamLpTokens]), never from a name: anyone can
+///   mint an asset called "Amm Liquidity Token 0-174-2". They are named
+///   after their pool, "BEAM/FOMO LP", as the DEX names it.
 abstract final class BeamAssetRegistry {
   /// At most this many `get_asset_info` calls per sync: a wallet sent
   /// hundreds of spam assets must not hold the core up.
   static const int maxSingleLookups = 20;
 
   /// The row for [assetId] from what is known now. [metadata] is the
-  /// on-chain metadata, [pool] the DEX pool whose LP token this is, and
-  /// [pairLabel] how that pool's assets read ("BEAM / FOMO").
+  /// on-chain metadata; [pool] the DEX pool whose LP token this is (by
+  /// default whatever [BeamLpTokens] knows), and [metadataOf] the metadata
+  /// of that pool's assets, so an unverified side reads "PEPE #777".
   static BeamAssetContract build(
     int assetId, {
     BeamAssetMetadata? metadata,
-    BeamPool? pool,
-    String? pairLabel,
+    BeamLpPool? pool,
+    BeamAssetMetadata? Function(int assetId)? metadataOf,
   }) {
     final address = BeamAssetContract.addressFor(assetId);
     final decimals = BeamAssetInfo.decimalsFor(assetId);
-    if (pool != null) {
+    final lp = BeamAssetCatalog.verified.containsKey(assetId)
+        ? null
+        : pool ?? BeamLpTokens.of(assetId);
+    if (lp != null && lp.lpToken == assetId) {
+      final d = BeamAssetCatalog.lpDisplay(lp, metadataOf: metadataOf);
       return BeamAssetContract(
         address: address,
         assetId: assetId,
-        name: '${pairLabel ?? '#${pool.aid1} / #${pool.aid2}'} pool share',
-        symbol: 'LP',
+        name: d.name,
+        symbol: d.symbol,
         decimals: decimals,
-        verified: false,
+        verified: d.verified,
         metadataKnown: true,
         // The desktop wallet's generic icon for the LP token's id (never
-        // one a verified asset wears).
-        iconAsset: BeamAssetCatalog.unverifiedIcon(assetId),
-        color: BeamAssetCatalog.genericColor(assetId),
-        poolAssetA: pool.aid1,
-        poolAssetB: pool.aid2,
-        poolKind: pool.kind.wire,
+        // one a verified asset wears), for screens that cannot draw the
+        // pair; `BeamAssetLogo` draws the pair from the pool.
+        iconAsset: d.icon,
+        color: d.color,
+        poolAssetA: lp.aid1,
+        poolAssetB: lp.aid2,
+        poolKind: lp.kind,
       );
     }
     final d = BeamAssetCatalog.display(assetId, metadata);
@@ -74,16 +82,58 @@ abstract final class BeamAssetRegistry {
     );
   }
 
+  /// The pool [row] is the LP token of, or null for any other asset.
+  static BeamLpPool? poolOf(BeamAssetContract row) {
+    final a = row.poolAssetA, b = row.poolAssetB, kind = row.poolKind;
+    if (a == null || b == null || kind == null) return null;
+    return BeamLpPool(lpToken: row.assetId, aid1: a, aid2: b, kind: kind);
+  }
+
+  /// Teaches [BeamLpTokens] the pools of the LP tokens among [rows] (rows
+  /// cached from an earlier DEX read), so they are named before the DEX is
+  /// read again.
+  static void learnPools(Iterable<BeamAssetContract> rows) {
+    for (final r in rows) {
+      if (poolOf(r) case final pool?) BeamLpTokens.learn(pool);
+    }
+  }
+
   /// [row] with today's catalogue look (icon, colour, verified), which a
   /// cached row may predate. What was learnt from the chain is kept, but an
   /// unverified asset's name and ticker are cleaned and checked for a
   /// copied verified asset again ([BeamAssetCatalog.relook]): a stricter
   /// check, or a newly verified asset, applies to rows cached before it.
+  /// An LP token's row is named again from its pool ("BEAM / FOMO pool
+  /// share" from an older version becomes "BEAM/FOMO LP"), keeping the
+  /// names it had for unverified sides.
   static BeamAssetContract refreshLook(BeamAssetContract row) {
+    final pool = poolOf(row);
+    if (pool != null) {
+      final fresh = build(row.assetId, pool: pool);
+      // Both sides verified: the catalogue names them. Otherwise keep the
+      // names the row was built with (from the sides' metadata, which a
+      // build without it would turn into "#777").
+      final name = fresh.verified
+          ? fresh.name
+          : _legacyName(row.name) ?? row.name;
+      return BeamAssetContract(
+        address: row.address,
+        assetId: row.assetId,
+        name: name,
+        symbol: name,
+        decimals: BeamAssetInfo.decimalsFor(row.assetId),
+        verified: fresh.verified,
+        metadataKnown: true,
+        iconAsset: fresh.iconAsset,
+        color: fresh.color,
+        poolAssetA: row.poolAssetA,
+        poolAssetB: row.poolAssetB,
+        poolKind: row.poolKind,
+      )..id = row.id;
+    }
     final verified = BeamAssetCatalog.verified.containsKey(row.assetId);
     final look = BeamAssetCatalog.display(row.assetId, null);
-    final pool = row.isPoolShare;
-    final text = verified || pool
+    final text = verified
         ? null
         : BeamAssetCatalog.relook(row.assetId, row.name, row.symbol);
     return BeamAssetContract(
@@ -94,23 +144,28 @@ abstract final class BeamAssetRegistry {
       decimals: BeamAssetInfo.decimalsFor(row.assetId),
       verified: verified,
       metadataKnown: row.metadataKnown,
-      iconAsset: pool
-          ? BeamAssetCatalog.unverifiedIcon(row.assetId)
-          : look.icon,
+      iconAsset: look.icon,
       color: look.color,
       impersonates: text?.impersonates,
-      poolAssetA: row.poolAssetA,
-      poolAssetB: row.poolAssetB,
-      poolKind: row.poolKind,
     )..id = row.id;
   }
 
+  /// "BEAM / PEPE #777 pool share", as versions before 2026-10-07 named an
+  /// LP token, as "BEAM/PEPE #777 LP"; null for any other name.
+  static String? _legacyName(String name) {
+    const suffix = ' pool share';
+    if (!name.endsWith(suffix)) return null;
+    final sides = name.substring(0, name.length - suffix.length).split(' / ');
+    if (sides.length != 2) return null;
+    return '${sides[0]}/${sides[1]} LP';
+  }
+
   /// "FOMO" for a verified asset, "SCAM #999" for anything else, so a pool
-  /// of a copycat never reads like the real pair.
+  /// of a copycat never reads like the real pair; "(BEAM/NPH LP)" for an LP
+  /// token ([BeamAssetCatalog.pairName]).
   static String sideLabel(int assetId, BeamAssetMetadata? metadata) {
     final d = BeamAssetCatalog.display(assetId, metadata);
-    if (d.verified || d.symbol == d.idLabel) return d.symbol;
-    return '${d.symbol} ${d.idLabel}';
+    return d.isPoolShare ? '(${d.label})' : d.label;
   }
 
   /// Refreshes the cached rows of [heldIds] in [isar].
@@ -134,21 +189,33 @@ abstract final class BeamAssetRegistry {
       for (final c in isar.beamAssetContracts.where().findAllSync())
         c.assetId: c,
     };
-    final byLp = pools == null ? null : {for (final p in pools) p.lpToken: p};
+    // LP tokens the DEX named before (cached rows), and the ones it names
+    // now ([pools]): from here on [BeamLpTokens] knows every one of them.
+    learnPools(existing.values);
+    if (pools != null) BeamLpTokens.learnPools(pools);
+
+    // An LP token whose cached row already names its pool is kept as it is
+    // when this sync could not name it better: the DEX was not read, or the
+    // core cannot name the pool's unverified assets.
+    bool keepPoolRow(int id) {
+      final old = existing[id];
+      if (old == null || (pools != null && api != null)) return false;
+      final pool = poolOf(old);
+      return pool != null && pool == BeamLpTokens.of(id);
+    }
 
     // Metadata for unverified assets (and pool sides) not named yet.
     final wanted = <int>{
       for (final id in ids)
         if (!BeamAssetCatalog.verified.containsKey(id) &&
             !(existing[id]?.metadataKnown ?? false) &&
-            !(byLp?.containsKey(id) ?? false))
+            BeamLpTokens.of(id) == null)
           id,
-      if (byLp != null)
-        for (final id in ids)
-          if (byLp[id] case final pool?) ...[
-            if (!BeamAssetCatalog.verified.containsKey(pool.aid1)) pool.aid1,
-            if (!BeamAssetCatalog.verified.containsKey(pool.aid2)) pool.aid2,
-          ],
+      for (final id in ids)
+        if (BeamLpTokens.of(id) case final pool? when !keepPoolRow(id)) ...[
+          if (!BeamAssetCatalog.verified.containsKey(pool.aid1)) pool.aid1,
+          if (!BeamAssetCatalog.verified.containsKey(pool.aid2)) pool.aid2,
+        ],
     }..remove(0);
     final metadata = <int, BeamAssetMetadata>{};
     if (api != null && wanted.isNotEmpty) {
@@ -177,21 +244,14 @@ abstract final class BeamAssetRegistry {
     final changed = <BeamAssetContract>[];
     for (final id in ids) {
       final old = existing[id];
-      final pool = byLp?[id];
+      final pool = BeamLpTokens.of(id);
       BeamAssetContract next;
-      if (pool != null) {
-        next = build(
-          id,
-          pool: pool,
-          pairLabel:
-              '${sideLabel(pool.aid1, metaOf(pool.aid1))} / '
-              '${sideLabel(pool.aid2, metaOf(pool.aid2))}',
-        );
-      } else if (byLp == null && old != null && old.isPoolShare) {
-        // Pools not loaded this time: keep what the DEX said before.
-        next = refreshLook(old);
+      if (pool != null && keepPoolRow(id)) {
+        next = refreshLook(old!);
+      } else if (pool != null) {
+        next = build(id, pool: pool, metadataOf: metaOf);
       } else if (metadata[id] == null && old != null && old.metadataKnown) {
-        next = old.isPoolShare ? build(id) : refreshLook(old);
+        next = refreshLook(old);
       } else {
         next = build(id, metadata: metadata[id]);
       }
