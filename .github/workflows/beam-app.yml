@@ -164,6 +164,19 @@ jobs:
       - name: Build
         run: flutter build windows --release
 
+      # The app (not the cores, which link it statically) needs the Visual C++
+      # runtime; a fresh Windows lacks it ("MSVCP140.dll was not found").
+      # Microsoft allows these files to ship next to the app (app-local).
+      - name: Bundle the Visual C++ runtime
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $crt = Get-ChildItem "$vs\VC\Redist\MSVC\*\x64\Microsoft.VC14*.CRT" -Directory | Sort-Object FullName | Select-Object -Last 1
+          foreach ($dll in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') {
+            Copy-Item (Join-Path $crt.FullName $dll) "build/windows/x64/runner/Release/"
+          }
+          Get-ChildItem build/windows/x64/runner/Release/*.dll | Select-Object Name
+
       - name: Package
         shell: pwsh
         run: |
