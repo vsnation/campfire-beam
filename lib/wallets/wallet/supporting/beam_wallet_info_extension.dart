@@ -98,12 +98,14 @@ class ExtraBeamWalletInfo {
     this.restoreScanPending = false,
     this.restoreScanStartedAt,
     this.restoreScanTotal,
+    this.importedFromFile = false,
   });
 
   ExtraBeamWalletInfo.fromMap(Map<String, dynamic> json)
     : restoreScanPending = json['restoreScanPending'] as bool? ?? false,
       restoreScanStartedAt = json['restoreScanStartedAt'] as int?,
-      restoreScanTotal = json['restoreScanTotal'] as int?;
+      restoreScanTotal = json['restoreScanTotal'] as int?,
+      importedFromFile = json['importedFromFile'] as bool? ?? false;
 
   /// The wallet was restored from its phrase and has not yet been scanned
   /// by a node holding its owner key. While true the wallet asks public
@@ -120,21 +122,30 @@ class ExtraBeamWalletInfo {
   /// this, and only moves forward.
   final int? restoreScanTotal;
 
+  /// The wallet came from an existing `wallet.db` and its password, not from
+  /// a recovery phrase: BEAM Campfire holds no phrase for it, so nothing can
+  /// rebuild its file. "Show recovery phrase", rescan and phrase backups do
+  /// not apply; the original file and its password are its backup.
+  final bool importedFromFile;
+
   Map<String, dynamic> toMap() => {
     'restoreScanPending': restoreScanPending,
     if (restoreScanStartedAt != null)
       'restoreScanStartedAt': restoreScanStartedAt,
     if (restoreScanTotal != null) 'restoreScanTotal': restoreScanTotal,
+    if (importedFromFile) 'importedFromFile': true,
   };
 
   ExtraBeamWalletInfo copyWith({
     bool? restoreScanPending,
     int? restoreScanStartedAt,
     int? restoreScanTotal,
+    bool? importedFromFile,
   }) => ExtraBeamWalletInfo(
     restoreScanPending: restoreScanPending ?? this.restoreScanPending,
     restoreScanStartedAt: restoreScanStartedAt ?? this.restoreScanStartedAt,
     restoreScanTotal: restoreScanTotal ?? this.restoreScanTotal,
+    importedFromFile: importedFromFile ?? this.importedFromFile,
   );
 
   @override

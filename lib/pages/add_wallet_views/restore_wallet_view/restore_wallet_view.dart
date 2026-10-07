@@ -102,7 +102,6 @@ class RestoreWalletView extends ConsumerStatefulWidget {
 
   /// The BEAM dialog's phone button: opens the restored wallet the way the
   /// wallet list does (load it, then its home).
-  @visibleForTesting
   static Future<void> openRestoredWallet(
     NavigatorState nav,
     Wallet wallet,
@@ -122,7 +121,6 @@ class RestoreWalletView extends ConsumerStatefulWidget {
 
   /// The BEAM dialog's desktop button: the desktop home opens the restored
   /// wallet in My Campfire (only it can reach that list's navigator).
-  @visibleForTesting
   static void openOnDesktop(ProviderContainer container, String walletId) {
     container.read(currentDesktopMenuItemProvider.state).state =
         DesktopMenuItemId.myStack;

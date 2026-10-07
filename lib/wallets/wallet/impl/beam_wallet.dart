@@ -193,6 +193,20 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   /// A restored wallet whose coins are still being looked for.
   bool get isScanningForCoins => info.beamData?.restoreScanPending ?? false;
 
+  /// Imported from a `wallet.db` and its password: there is no recovery
+  /// phrase (ExtraBeamWalletInfo.importedFromFile).
+  bool get isImportedFromFile => info.beamData?.importedFromFile ?? false;
+
+  /// An imported wallet has no phrase: an empty one, never a made-up one.
+  /// Every screen that shows a phrase says so when it gets none.
+  @override
+  Future<String> getMnemonic() async =>
+      isImportedFromFile ? '' : super.getMnemonic();
+
+  @override
+  Future<List<String>> getMnemonicAsWords() async =>
+      isImportedFromFile ? const <String>[] : super.getMnemonicAsWords();
+
   /// Block-body scan progress while [isScanningForCoins].
   BeamScanProgress? get scanProgress {
     final now = _tracker?.scanProgress;
@@ -351,6 +365,14 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   /// existing one (its Campfire history is kept and refreshed).
   @override
   Future<void> recover({required bool isRescan}) async {
+    // Rebuilding deletes wallet.db and makes a new one from the phrase. An
+    // imported wallet has no phrase: its file is all there is.
+    if (isImportedFromFile) {
+      throw const BeamWalletException(
+        BeamWalletProblem.other,
+        BeamWalletMessages.importedNoRescan,
+      );
+    }
     await refreshMutex.protect(() async {
       final wasOpen = _api != null || _opening != null;
       if (wasOpen) await _closeForMaintenance();

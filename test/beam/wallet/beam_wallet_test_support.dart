@@ -30,6 +30,7 @@ import 'package:stackwallet/utilities/enums/sync_type_enum.dart';
 import 'package:stackwallet/utilities/prefs.dart';
 import 'package:stackwallet/wallets/beam/explorer/beam_explorer_client.dart';
 import 'package:stackwallet/wallets/beam/host/beam_host.dart';
+import 'package:stackwallet/wallets/beam/host/beam_host_exception.dart';
 import 'package:stackwallet/wallets/beam/rpc/fake_transport.dart';
 import 'package:stackwallet/wallets/crypto_currency/crypto_currency.dart';
 import 'package:stackwallet/wallets/isar/models/frost_wallet_info.dart';
@@ -176,7 +177,7 @@ class FakeBeamSession implements BeamSession {
 
 /// A host that keeps "wallet.db" as a marker file and serves sessions on
 /// [FakeTransport]s built by [replies].
-class FakeBeamHost implements BeamHost {
+class FakeBeamHost implements BeamHost, BeamWalletFileImporter {
   FakeBeamHost({required this.replies, this.openDelay = Duration.zero});
 
   /// Replies for each new session's transport.
@@ -217,6 +218,31 @@ class FakeBeamHost implements BeamHost {
     final db = File(p.join(walletDir, 'wallet.db'));
     if (await db.exists()) throw StateError('wallet.db exists');
     await db.writeAsString('fake');
+    passwords[walletDir] = password;
+  }
+
+  /// What opens each importable file: source path -> its password.
+  final Map<String, String> importable = {};
+
+  @override
+  Future<void> importWalletFile({
+    required String walletDir,
+    required String sourcePath,
+    required String password,
+  }) async {
+    calls.add('importWalletFile');
+    final db = File(p.join(walletDir, 'wallet.db'));
+    if (await db.exists()) {
+      throw const BeamHostException(BeamHostError.walletExists, 'exists');
+    }
+    if (importable[sourcePath] != password) {
+      throw const BeamHostException(
+        BeamHostError.wrongPassword,
+        'The password does not open this wallet file',
+      );
+    }
+    await Directory(walletDir).create(recursive: true);
+    await File(sourcePath).copy(db.path);
     passwords[walletDir] = password;
   }
 

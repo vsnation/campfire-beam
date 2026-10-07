@@ -427,6 +427,61 @@ void main() {
         ).list().toList()).map((e) => p.basename(e.path));
         expect(names.where((n) => n.startsWith(kSecretPrefix)), isEmpty);
       });
+
+      test('importWalletFile: a wrong password is refused and leaves no copy; '
+          'the right one imports; the source is never changed', () async {
+        final source = File(p.join(walletDir, 'wallet.db'));
+        final before = await source.readAsBytes();
+        final target = host.walletDirFor('imported');
+
+        await expectLater(
+          host.importWalletFile(
+            walletDir: target,
+            sourcePath: source.path,
+            password: '${password}x',
+          ),
+          throwsA(_hostError(BeamHostError.wrongPassword)),
+        );
+        expect(await File(p.join(target, 'wallet.db')).exists(), isFalse);
+
+        final notAWallet = File(p.join(root.path, 'not-a-wallet.db'));
+        await notAWallet.writeAsBytes(List.filled(8192, 7));
+        await expectLater(
+          host.importWalletFile(
+            walletDir: target,
+            sourcePath: notAWallet.path,
+            password: password,
+          ),
+          throwsA(_hostError(BeamHostError.wrongPassword)),
+        );
+
+        final sw = Stopwatch()..start();
+        await host.importWalletFile(
+          walletDir: target,
+          sourcePath: source.path,
+          password: password,
+        );
+        _evidence('importWalletFile took ${sw.elapsedMilliseconds} ms');
+        final copy = p.join(target, 'wallet.db');
+        await _expectPrivate(copy, 0x180);
+        expect(await File(copy).readAsBytes(), before);
+        expect(await source.readAsBytes(), before, reason: 'source untouched');
+        // The copy is a working wallet: its owner key reads with the
+        // password, like the original's.
+        final key = await host.exportOwnerKey(
+          walletDir: target,
+          password: password,
+        );
+        expect(key, isNotEmpty);
+        await expectLater(
+          host.importWalletFile(
+            walletDir: target,
+            sourcePath: source.path,
+            password: password,
+          ),
+          throwsA(_hostError(BeamHostError.walletExists)),
+        );
+      });
     },
     skip: !enabled || binDir == null || home == null
         ? 'set BEAM_HOST_IT=1 and BEAM_BIN_DIR to run against mainnet'

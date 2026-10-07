@@ -9,6 +9,10 @@
  */
 
 import 'package:flutter/material.dart';
+
+import '../../../../themes/stack_colors.dart';
+import '../../../../utilities/constants.dart';
+import '../../../../utilities/text_styles.dart';
 import '../../../../widgets/flag_secure_scope.dart';
 import 'mnemonic_table_item.dart';
 
@@ -27,6 +31,9 @@ class MnemonicTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     debugPrint("BUILD: $runtimeType");
+    // A BEAM wallet imported from its wallet.db has no phrase: say so
+    // rather than show an empty grid.
+    if (words.isEmpty) return NoRecoveryPhraseNotice(isDesktop: isDesktop);
     final wordsPerRow = isDesktop ? 4 : 3;
 
     final int rows = words.length ~/ wordsPerRow;
@@ -94,4 +101,33 @@ class MnemonicTable extends StatelessWidget {
       ],
     ));
   }
+}
+
+/// Shown wherever a recovery phrase would be, for a wallet that has none (a
+/// BEAM wallet imported from its wallet.db file).
+class NoRecoveryPhraseNotice extends StatelessWidget {
+  const NoRecoveryPhraseNotice({super.key, required this.isDesktop});
+
+  final bool isDesktop;
+
+  static const text =
+      'This wallet was imported from its wallet.db file and has no recovery '
+      'phrase in BEAM Campfire. Its original file and password are its '
+      'backup: keep them safe.';
+
+  @override
+  Widget build(BuildContext context) => Container(
+    key: const ValueKey('no-recovery-phrase'),
+    padding: EdgeInsets.all(isDesktop ? 20 : 16),
+    decoration: BoxDecoration(
+      color: Theme.of(context).extension<StackColors>()!.warningBackground,
+      borderRadius: BorderRadius.circular(Constants.size.circularBorderRadius),
+    ),
+    child: Text(
+      text,
+      style: STextStyles.label(context).copyWith(
+        color: Theme.of(context).extension<StackColors>()!.warningForeground,
+      ),
+    ),
+  );
 }

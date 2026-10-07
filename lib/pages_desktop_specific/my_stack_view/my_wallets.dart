@@ -15,10 +15,12 @@ import '../../app_config.dart';
 import '../../models/add_wallet_list_entity/sub_classes/coin_entity.dart';
 import '../../pages/add_wallet_views/add_wallet_view/add_wallet_view.dart';
 import '../../pages/add_wallet_views/create_or_restore_wallet_view/create_or_restore_wallet_view.dart';
+import '../../pages/beam/import/beam_import_wallet_file_view.dart';
 import '../../pages/wallets_view/wallets_overview.dart';
 import '../../providers/providers.dart';
 import '../../themes/stack_colors.dart';
 import '../../utilities/text_styles.dart';
+import '../../wallets/crypto_currency/crypto_currency.dart';
 import '../../widgets/custom_buttons/blue_text_button.dart';
 import 'desktop_favorite_wallets.dart';
 import 'wallet_summary_table.dart';
@@ -69,6 +71,15 @@ class _MyWalletsState extends ConsumerState<MyWallets> {
                   ),
                 ),
                 const Spacer(),
+                if (AppConfig.coins.any((c) => c is Beam)) ...[
+                  CustomTextButton(
+                    key: const ValueKey('import-wallet-db'),
+                    text: BeamImportWalletFileView.entryLabel,
+                    onTap: () => Navigator.of(context, rootNavigator: true)
+                        .pushNamed(BeamImportWalletFileView.routeName),
+                  ),
+                  const SizedBox(width: 20),
+                ],
                 CustomTextButton(
                   text: "Add new wallet",
                   onTap: () {

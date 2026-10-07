@@ -291,6 +291,14 @@ abstract class SWB {
 
       final List<dynamic> backupWallets = [];
       for (final wallet in _wallets.wallets) {
+        // A BEAM wallet imported from its wallet.db has no phrase: a phrase
+        // backup cannot hold it (its file and password are its backup).
+        if (wallet is BeamWallet && wallet.isImportedFromFile) {
+          Logging.instance.i(
+            "SWB skips ${wallet.walletId}: imported from wallet.db, no phrase",
+          );
+          continue;
+        }
         final Map<String, dynamic> backupWallet = {};
         backupWallet['name'] = wallet.info.name;
         backupWallet['id'] = wallet.walletId;

@@ -174,7 +174,12 @@ abstract class Wallet<T extends CryptoCurrency> {
         value: viewOnlyData!.toJsonEncodedString(),
       );
     } else if (wallet is MnemonicInterface) {
-      if (wallet is CryptonoteWallet || wallet is XelisWallet) {
+      // A BEAM wallet imported from its wallet.db has no phrase at all: none
+      // is written, and none is made up (see ExtraBeamWalletInfo
+      // .importedFromFile).
+      if (wallet is BeamWallet && mnemonic == null) {
+        // nothing to store
+      } else if (wallet is CryptonoteWallet || wallet is XelisWallet) {
         //
         // currently a special case due to the xmr/wow/xelis libraries handling their
         // own mnemonic generation on new wallet creation

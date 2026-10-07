@@ -73,7 +73,7 @@ void _noLog(String _) {}
 /// wallet-api runs in TCP line mode on a random loopback port with a fresh
 /// 256-bit ACL key and `--ip_whitelist=127.0.0.1`. The stock binary still
 /// binds 0.0.0.0; the loopback-patched build (task B-BIN-1) closes that.
-class ProcessHost implements BeamHost {
+class ProcessHost implements BeamHost, BeamWalletFileImporter {
   ProcessHost({
     required String rootDir,
     BeamBinaries? binaries,
@@ -427,6 +427,82 @@ class ProcessHost implements BeamHost {
     } catch (_) {
       await lock.release();
       rethrow;
+    }
+  }
+
+  @override
+  Future<void> importWalletFile({
+    required String walletDir,
+    required String sourcePath,
+    required String password,
+  }) async {
+    validatePassword(password);
+    await _prepare();
+    final dir = _normalize(walletDir);
+    await ensurePrivateDir(dir);
+    final db = _dbPath(dir);
+    final lock = await _WalletLock.acquire(dir, _log);
+    var ownsDb = false;
+    try {
+      if (await File(db).exists()) {
+        throw const BeamHostException(
+          BeamHostError.walletExists,
+          'wallet.db already exists in the wallet directory',
+        );
+      }
+      await checkImportSource(sourcePath);
+      ownsDb = true;
+      await File(sourcePath).copy(db);
+      await setOwnerOnly(db);
+      // `info` opens the database with the password and prints a summary;
+      // stopped as soon as the summary starts, so no balance or transaction
+      // line is read, let alone logged.
+      final result = await _runCli(
+        command: 'info',
+        dbPath: db,
+        config: {'pass': password},
+        secrets: [password],
+        lock: lock,
+        timeout: cliTimeout,
+        stopWhen: (line) => line.contains('Wallet summary'),
+      );
+      if (!result.stoppedOnMarker) {
+        throw _cliFailure(result, 'This file did not open as a BEAM wallet');
+      }
+      ownsDb = false;
+      _log('Imported a wallet.db into ${p.basename(dir)}');
+    } catch (_) {
+      if (ownsDb) await _deleteDb(db);
+      rethrow;
+    } finally {
+      await lock.release();
+    }
+  }
+
+  /// The checks every importer makes before copying [sourcePath].
+  static Future<void> checkImportSource(String sourcePath) async {
+    final src = File(sourcePath);
+    if (!await src.exists()) {
+      throw const BeamHostException(
+        BeamHostError.invalidInput,
+        'The wallet file is no longer there',
+      );
+    }
+    final size = await src.length();
+    if (size < 1024) {
+      throw const BeamHostException(
+        BeamHostError.wrongPassword,
+        'This file is too small to be a BEAM wallet',
+      );
+    }
+    // SQLite's rollback journal: another program is writing the wallet
+    // right now (or crashed while it did). A copy would miss its changes.
+    if (await File('$sourcePath-journal').exists() ||
+        await File('$sourcePath-wal').exists()) {
+      throw const BeamHostException(
+        BeamHostError.walletInUse,
+        'Another program is using this wallet file',
+      );
     }
   }
 

@@ -75,7 +75,7 @@ void _noLog(String _) {}
 /// run/            current directory during start-up; transient .s-* secret
 ///                 files; logs/ (BEAM's own file log, warnings and errors)
 /// ```
-class InProcessHost implements BeamHost {
+class InProcessHost implements BeamHost, BeamWalletFileImporter {
   InProcessHost({
     required String rootDir,
     this._library,
@@ -229,6 +229,56 @@ class InProcessHost implements BeamHost {
 
   // ---------------------------------------------------------------------------
   // BeamHost
+
+  @override
+  Future<void> importWalletFile({
+    required String walletDir,
+    required String sourcePath,
+    required String password,
+  }) async {
+    ProcessHost.validatePassword(password);
+    await _prepare();
+    final core = _core();
+    final dir = _normalize(walletDir);
+    await InProcessFiles.ensurePrivateDir(dir);
+    final db = _dbPath(dir);
+    _claim(dir);
+    var ownsDb = false;
+    try {
+      if (await File(db).exists()) {
+        throw const BeamHostException(
+          BeamHostError.walletExists,
+          'wallet.db already exists in the wallet directory',
+        );
+      }
+      await ProcessHost.checkImportSource(sourcePath);
+      ownsDb = true;
+      await File(sourcePath).copy(db);
+      InProcessFiles.chmod(db, 0x180);
+      final rc = await core.checkWallet(dbPath: db, password: password);
+      switch (rc) {
+        case BeamCoreWalletResult.ok:
+          break;
+        case BeamCoreWalletResult.wrongPassword:
+          throw const BeamHostException(
+            BeamHostError.wrongPassword,
+            'The password does not open this wallet file',
+          );
+        default:
+          throw BeamHostException(
+            BeamHostError.wrongPassword,
+            'This file did not open as a BEAM wallet (core result $rc)',
+          );
+      }
+      ownsDb = false;
+      _log('Imported a wallet.db into ${p.basename(dir)}');
+    } catch (_) {
+      if (ownsDb) await _deleteDb(db);
+      rethrow;
+    } finally {
+      _busy.remove(dir);
+    }
+  }
 
   @override
   Future<void> initWallet({

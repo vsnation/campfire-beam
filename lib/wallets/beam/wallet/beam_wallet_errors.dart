@@ -148,6 +148,11 @@ abstract final class BeamWalletMessages {
       'The wallet is still connecting to the BEAM network. Try again in a '
       'few seconds.';
 
+  static const importedNoRescan =
+      'This wallet was imported from its wallet.db file and has no recovery '
+      'phrase here, so it cannot be rebuilt. Import the original file again '
+      'if you need a fresh copy.';
+
   static const waitingForTor =
       'Waiting for Tor. BEAM Campfire connects only through Tor while it is '
       'on, so nothing reveals your IP address.';

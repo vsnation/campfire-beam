@@ -64,6 +64,7 @@ import 'pages/beam/dapps/dapp_browser_view.dart';
 import 'pages/beam/dapps/dapp_store_view.dart';
 import 'pages/beam/dex/beam_dex_swap_view.dart';
 import 'pages/beam/minter/beam_burn_view.dart';
+import 'pages/beam/import/beam_import_wallet_file_view.dart';
 import 'pages/beam/minter/beam_mint_token_view.dart';
 import 'pages/beam/minter/beam_my_tokens_view.dart';
 import 'pages/beam/names/beam_names_home_view.dart';
@@ -3085,6 +3086,13 @@ class RouteGenerator {
           );
         }
         return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case BeamImportWalletFileView.routeName:
+        return getRoute(
+          shouldUseMaterialRoute: useMaterialPageRoute,
+          builder: (_) => const BeamImportWalletFileView(),
+          settings: RouteSettings(name: settings.name),
+        );
 
       case BeamMintTokenView.routeName:
         if (args is BeamWallet) {

@@ -307,11 +307,18 @@ class BeamTextField extends StatefulWidget {
     this.fieldKey,
     this.textCapitalization = TextCapitalization.none,
     this.style,
+    this.obscureText = false,
+    this.onSubmitted,
   });
 
   final TextEditingController controller;
   final String? label;
   final String? hint;
+
+  /// A password: hidden as typed (and never offered to the keyboard's
+  /// suggestions, like every field here).
+  final bool obscureText;
+  final ValueChanged<String>? onSubmitted;
 
   /// Shown in the error colour; wins over [helper].
   final String? error;
@@ -370,7 +377,9 @@ class _BeamTextFieldState extends State<BeamTextField> {
               controller: widget.controller,
               focusNode: _focus,
               enabled: widget.enabled,
-              maxLines: widget.maxLines,
+              obscureText: widget.obscureText,
+              onSubmitted: widget.onSubmitted,
+              maxLines: widget.obscureText ? 1 : widget.maxLines,
               minLines: 1,
               autocorrect: false,
               enableSuggestions: false,

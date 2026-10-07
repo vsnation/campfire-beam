@@ -52,6 +52,24 @@ abstract class BeamHost {
   });
 }
 
+/// Brings an existing BEAM `wallet.db` (from BEAM's own wallets, BEAM Light
+/// Wallet, or another computer) into Campfire with its password: the owner
+/// has such files and no recovery phrase. [ProcessHost] and [InProcessHost]
+/// implement it.
+abstract class BeamWalletFileImporter {
+  /// Copies [sourcePath] to `wallet.db` in [walletDir] (0600) and checks
+  /// that [password] opens the copy with BEAM's own code. The source is only
+  /// read. Throws [BeamHostException]: walletExists (the directory already
+  /// holds a wallet), wrongPassword (the password does not open it, or it is
+  /// not a BEAM wallet), walletInUse (another program is in the middle of
+  /// writing it), invalidInput. Nothing is left behind on failure.
+  Future<void> importWalletFile({
+    required String walletDir,
+    required String sourcePath,
+    required String password,
+  });
+}
+
 /// An open wallet.
 abstract class BeamSession {
   BeamTransport get transport;

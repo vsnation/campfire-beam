@@ -57,6 +57,13 @@ class BeamSecretStore {
     return password;
   }
 
+  /// Stores the password of an imported `wallet.db` (the one its owner
+  /// set), which opens it from now on like a generated one.
+  Future<void> writePassword(String password) => _storage.write(
+    key: BeamSecretKeys.walletPassword(walletId),
+    value: password,
+  );
+
   Future<String?> readOwnerKey() async {
     final key = await _storage.read(key: BeamSecretKeys.ownerKey(walletId));
     return key == null || key.isEmpty ? null : key;
