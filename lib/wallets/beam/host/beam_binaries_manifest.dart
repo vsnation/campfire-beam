@@ -29,19 +29,27 @@ const Map<String, Map<String, String>> kBeamBinaryManifest = {
   },
   'linux-arm64': {
     'beam-wallet':
-        '3a0fa1c14494680d334b838b2ab69e536d71dac69c8641ba14b68d9b5091dff1',
+        '400d460025f4b7aa7cef35ee8882d41b01cbcda19dee457802663a8bf0b56697',
     'wallet-api':
-        '6cd49cb4c23f8de5f9d0fc19fb603148fcfba450414fd94ae7153fe7e87a4b25',
+        '20230bc35f9aa7d8e406a746a556f1e7acffa12ebdb4cc445fe2fccadc21ec9a',
     'beam-node':
-        'e5317ac88a8b0d8ffb0ecbd75ccb59c189c3122db7aebdfb00880c6ce863be59',
+        '6c1c43ec9d8aff2d5f793d993491cda7cc04b66f7fecc1d29b8e0242666d5a61',
   },
   'linux-x86_64': {
     'beam-wallet':
-        '8d388c96728caf931a5d76baa126da42961728d2398136b64851b33175bb3615',
+        '403f34e65b88510b4dd6f900f5cb385e5b8d6e95b6958badd14af715e080444b',
     'wallet-api':
-        'f8f41c5e137d07b4f21d45c412b54e6806f77209d90f81dbfd542a24aef3540c',
+        '166f26ab35ef32a6f74170fa0dc3c0bcf107ba23e9cd732fdd0efae47c990048',
     'beam-node':
-        'd20218c9f3805ec9fa3c9c5a492d3501f1a19850f8fa54b5553d0be95984832d',
+        '8a88a3f671459d95b759c4239397cdab629b452f9db7394748da75abc20bc7d4',
+  },
+  'windows-x86_64': {
+    'beam-wallet':
+        'a5acd1258a2bbda59f16f798cf11505d5df2b1d5b2e5ab8cfcf156e37d18da44',
+    'wallet-api':
+        'f9866d2be93d0528826347629105ea177e495f1fe16982c5e98ce4a5e3edf201',
+    'beam-node':
+        'c999ee432cd155cf21adcd9135c2c697b30adda173e55454adea870bd43f79d1',
   },
   // Android: beam-wallet (create/restore) and wallet-api; phones never run
   // the private node. Packaged as jniLibs/<abi>/libbeam_wallet.so and

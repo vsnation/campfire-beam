@@ -471,6 +471,7 @@ flutter:
 #    - assets/beam/bin/macos-arm64/
 #    - assets/beam/bin/linux-arm64/
 #    - assets/beam/bin/linux-x86_64/
+#    - assets/beam/bin/windows-x86_64/
 # %%END_ENABLE_BEAM%%
 
 import_sorter:

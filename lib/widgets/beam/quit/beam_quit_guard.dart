@@ -33,10 +33,16 @@ import '../../desktop/primary_button.dart';
 import '../../desktop/secondary_button.dart';
 
 /// True where the pinned core is built with patches/0006 (an interrupted
-/// swap then completes or is cancelled, never runs twice): macOS and
-/// Android since 2026-10-07. The Linux pins predate it; add Linux here in
-/// the same change that re-pins them. The dialog text follows.
-bool get kBeamCoreSwapRestartSafe => Platform.isMacOS || Platform.isAndroid;
+/// swap then completes or is cancelled, never runs twice): macOS, Android
+/// and iOS since 2026-10-07, Linux and Windows since their CI-built cores
+/// (beam-core.yml, pre-release beam-core-7.5.14493-cf1). The dialog text
+/// follows.
+bool get kBeamCoreSwapRestartSafe =>
+    Platform.isMacOS ||
+    Platform.isAndroid ||
+    Platform.isIOS ||
+    Platform.isLinux ||
+    Platform.isWindows;
 
 abstract final class BeamQuitText {
   static String title(int count) => count == 1

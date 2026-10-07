@@ -1,0 +1,202 @@
+name: BEAM app
+
+# Builds Campfire for BEAM for Linux x86_64 and Windows x64 with the BEAM core
+# from a "BEAM core" pre-release (beam-core.yml). Before packaging, each job runs
+# the app's own host (ProcessHost) against that core and BEAM mainnet with a
+# throwaway wallet. The core's SHA-256 must equal the pins in
+# scripts/beam/core/manifest.json, or staging refuses it. The packages and their
+# SHA-256 are added to an app release.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App version (e.g. 1.0.0)'
+        required: true
+        default: '1.0.0'
+      build_number:
+        description: 'Build number'
+        required: true
+        default: '8'
+      core_tag:
+        description: 'Pre-release holding the BEAM core binaries'
+        required: true
+        default: 'beam-core-7.5.14493-cf1'
+      release_tag:
+        description: 'App release to add the packages to (empty: artifacts only)'
+        required: false
+        default: 'beam-v1.0.0'
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.2
+          channel: stable
+          cache: true
+
+      - name: Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config lsof \
+            libgtk-3-dev liblzma-dev libsecret-1-dev libjsoncpp-dev libstdc++-12-dev
+
+      - name: BEAM core from ${{ inputs.core_tag }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/core/linux-x86_64"
+          cd "$RUNNER_TEMP/core/linux-x86_64"
+          gh release download "${{ inputs.core_tag }}" -R "$GITHUB_REPOSITORY" -p 'linux-x86_64-*' -p SHA256SUMS.txt
+          grep ' linux-x86_64-' SHA256SUMS.txt | sha256sum -c -
+          for b in wallet-api beam-node beam-wallet; do mv "linux-x86_64-$b" "$b"; chmod 0755 "$b"; done
+
+      - name: Configure Campfire for BEAM
+        run: |
+          cd scripts
+          echo "yes" | ./build_app.sh -v "${{ inputs.version }}" -b "${{ inputs.build_number }}" -p linux -a campfire -d -s
+          ./prebuild.sh
+
+      - name: Stage the pinned core
+        env:
+          BEAM_CORE_OUT: ${{ runner.temp }}/core
+        run: scripts/beam/core/stage_binaries.sh linux
+
+      - name: The app's host against the real core and mainnet
+        env:
+          BEAM_HOST_IT: '1'
+          BEAM_BIN_DIR: ${{ runner.temp }}/core/linux-x86_64
+        run: flutter test test/beam/host/process_host_integration_test.dart
+
+      - name: Build
+        env:
+          USE_SYSTEM_SECURE_STORAGE_DEPS: '1'
+        run: flutter build linux --release
+
+      - name: Package
+        run: |
+          name="Campfire-BEAM-${{ inputs.version }}-linux-x86_64"
+          mkdir -p dist
+          cp -r build/linux/x64/release/bundle "dist/$name"
+          tar -czf "dist/$name.tar.gz" -C dist "$name"
+          rm -rf "dist/$name"
+          (cd dist && sha256sum ./*.tar.gz | sed 's# \./# #')
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: app-linux-x86_64
+          path: dist/*.tar.gz
+
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.2
+          channel: stable
+
+      - name: BEAM core from ${{ inputs.core_tag }}
+        run: |
+          mkdir -p /c/core/windows-x86_64
+          cd /c/core/windows-x86_64
+          gh release download "${{ inputs.core_tag }}" -R "$GITHUB_REPOSITORY" -p 'windows-x86_64-*' -p SHA256SUMS.txt
+          grep ' windows-x86_64-' SHA256SUMS.txt | sha256sum -c -
+          for b in wallet-api beam-node beam-wallet; do mv "windows-x86_64-$b.exe" "$b.exe"; done
+
+      - name: Configure Campfire for BEAM
+        run: |
+          cd scripts
+          echo "yes" | ./build_app.sh -v "${{ inputs.version }}" -b "${{ inputs.build_number }}" -p windows -a campfire -d -s
+          ./prebuild.sh
+
+      # The runner user cannot create symbolic links, so link_assets.sh's links
+      # are broken; copy the five asset folders instead (as upstream's build.yaml).
+      - name: Replace asset symlinks with copies
+        run: |
+          set -euo pipefail
+          for dirname in default_themes icon lottie in_app_logo_icons svg; do
+            target="assets/${dirname}"
+            source="asset_sources/${dirname}/campfire"
+            if [ -e "$target" ] || [ -L "$target" ]; then
+              cmd.exe /c rmdir "$(cygpath -w "$target")" 2>/dev/null || rm -rf "$target"
+            fi
+            mkdir -p "$target"
+            cp -r "${source}/." "$target/"
+          done
+
+      - name: Stage the pinned core
+        env:
+          BEAM_CORE_OUT: /c/core
+        run: scripts/beam/core/stage_binaries.sh windows
+
+      - name: The app's host against the real core and mainnet
+        env:
+          BEAM_HOST_IT: '1'
+          BEAM_BIN_DIR: C:\core\windows-x86_64
+        run: flutter test test/beam/host/process_host_integration_test.dart
+
+      - name: Build secp256k1.dll
+        run: dart run coinlib:build_windows
+
+      - name: Build
+        run: flutter build windows --release
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $name = "Campfire-BEAM-${{ inputs.version }}-windows-x86_64"
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item -Recurse "build/windows/x64/runner/Release" "dist/$name"
+          Compress-Archive -Path "dist/$name" -DestinationPath "dist/$name.zip"
+          Remove-Item -Recurse "dist/$name"
+          Get-FileHash "dist/$name.zip" -Algorithm SHA256 | Format-List
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: app-windows-x86_64
+          path: dist/*.zip
+
+  publish:
+    if: inputs.release_tag != ''
+    needs: [linux, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.release_tag }}
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Add to ${{ inputs.release_tag }}
+        run: |
+          cd dist
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p SHA256SUMS.txt
+          for f in Campfire-BEAM-*; do
+            grep -v " $f\$" SHA256SUMS.txt > s.tmp || true
+            sha256sum "$f" >> s.tmp
+            mv s.tmp SHA256SUMS.txt
+          done
+          sort -k2 -o SHA256SUMS.txt SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber Campfire-BEAM-* SHA256SUMS.txt
