@@ -74,6 +74,9 @@ class FakeSession implements BeamSession {
   }
 
   @override
+  Future<void> get stopped => Future.value();
+
+  @override
   String toString() => 'FakeSession($node)';
 }
 

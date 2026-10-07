@@ -374,13 +374,66 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
       );
     }
     await refreshMutex.protect(() async {
+      // Deleting wallet.db loses every transaction still being negotiated
+      // or confirmed, with its payment proof.
+      if (isRescan) await _checkNothingInFlight();
       final wasOpen = _api != null || _opening != null;
-      if (wasOpen) await _closeForMaintenance();
+      if (wasOpen && !await _closeForMaintenance()) {
+        // The core still has wallet.db open: the file stays as it is.
+        _ensureOpening();
+        throw const BeamWalletException(
+          BeamWalletProblem.walletInUse,
+          BeamWalletMessages.rescanCoreStillOpen,
+        );
+      }
       final dir = await _walletDir();
       await _deleteWalletFile(dir);
       await _createWalletFile(dir, restore: true);
       if (wasOpen) _ensureOpening();
     });
+  }
+
+  static const _unsettled = {
+    BeamTxStatus.pending,
+    BeamTxStatus.inProgress,
+    BeamTxStatus.registering,
+    BeamTxStatus.confirming,
+  };
+
+  /// Throws when a money flow is open or a transaction is not final yet.
+  /// The core's history when it is open, Campfire's copy of it otherwise.
+  Future<void> _checkNothingInFlight() async {
+    if (_gate.isBusy) {
+      throw const BeamWalletException(
+        BeamWalletProblem.other,
+        BeamWalletMessages.rescanWhileBusy,
+      );
+    }
+    var unsettled = swapsInFlight.isNotEmpty;
+    if (!unsettled) {
+      List<BeamTransaction>? live;
+      try {
+        live = await _api?.txList();
+      } catch (_) {
+        live = null; // read below from Campfire's copy
+      }
+      if (live != null) {
+        unsettled = live.any((t) => _unsettled.contains(t.status));
+      } else {
+        final names = {for (final s in _unsettled) s.name};
+        final cached = await mainDB.isar.transactionV2s
+            .where()
+            .walletIdEqualTo(walletId)
+            .findAll();
+        unsettled = cached.any((t) => names.contains(t.beamTxStatus));
+      }
+    }
+    if (unsettled) {
+      throw const BeamWalletException(
+        BeamWalletProblem.other,
+        BeamWalletMessages.rescanWithTxInFlight,
+      );
+    }
   }
 
   // ===========================================================================
@@ -582,9 +635,12 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   }
 
   /// Closes the core without forgetting the wallet (rescan, node change
-  /// failure). Unlike [exit] it leaves Campfire's timers alone.
-  Future<void> _closeForMaintenance() async {
+  /// failure). Unlike [exit] it leaves Campfire's timers alone. Returns
+  /// whether the core has let go of wallet.db (within
+  /// [BeamWalletEnvironment.coreStopWait]).
+  Future<bool> _closeForMaintenance() async {
     _generation++;
+    final opening = _opening;
     _opening = null;
     _debounce?.cancel();
     _statusPoll?.cancel();
@@ -599,13 +655,23 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     _api = null;
     await _eventSub?.cancel();
     _eventSub = null;
-    if (s != null) {
-      try {
-        await s.closeNow();
-      } catch (_) {
-        // Already gone.
-      }
+    // An open still starting sees the new generation and closes what it
+    // opened; it never throws.
+    await opening;
+    if (s == null) return true;
+    try {
+      await s.closeNow();
+    } catch (_) {
+      // Already gone.
     }
+    var stopped = true;
+    await s.stopped.timeout(
+      environment.coreStopWait,
+      onTimeout: () {
+        stopped = false;
+      },
+    );
+    return stopped;
   }
 
   Future<void> _prewarmCore() async {

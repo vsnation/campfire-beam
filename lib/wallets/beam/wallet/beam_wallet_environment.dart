@@ -54,6 +54,7 @@ class BeamWalletEnvironment {
     this.eventDebounce = const Duration(milliseconds: 250),
     this.privateNodeStartDelay = const Duration(seconds: 20),
     this.privateNodeReadyHold = const Duration(seconds: 60),
+    this.coreStopWait = const Duration(seconds: 30),
     this.onPaymentReceived,
     this.readAssetTable,
     BeamSwapsInFlight? swapsInFlight,
@@ -158,6 +159,10 @@ class BeamWalletEnvironment {
   /// How long the private node must stay ready before the wallet moves to
   /// it ([BeamPrivateNodeCoordinator.readyHoldFor]).
   final Duration privateNodeReadyHold;
+
+  /// How long a rescan waits, after closing the core, for it to let go of
+  /// wallet.db before it gives up and leaves the file as it is.
+  final Duration coreStopWait;
 
   /// Called once for each incoming payment that completes while its wallet
   /// is open; never for what a restore scan finds. The app posts it to

@@ -148,6 +148,19 @@ abstract final class BeamWalletMessages {
       'The wallet is still connecting to the BEAM network. Try again in a '
       'few seconds.';
 
+  static const rescanWhileBusy =
+      'A payment, swap or dApp approval is open in this wallet. Finish or '
+      'close it, then rescan.';
+
+  static const rescanWithTxInFlight =
+      'Some transactions of this wallet are still being sent, received or '
+      'confirmed. Rescanning now would lose them; rescan once they have '
+      'completed or been canceled.';
+
+  static const rescanCoreStillOpen =
+      "The wallet engine hasn't finished closing this wallet, so it can't "
+      'be rebuilt yet. Nothing was changed. Try again in a minute.';
+
   static const importedNoRescan =
       'This wallet was imported from its wallet.db file and has no recovery '
       'phrase here, so it cannot be rebuilt. Import the original file again '

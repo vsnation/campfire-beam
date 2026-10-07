@@ -1035,6 +1035,9 @@ class ProcessSession implements BeamSession {
   /// Completes when wallet-api has exited, for any reason.
   Future<void> get done => _child.exitCode.then((_) {});
 
+  @override
+  Future<void> get stopped => done;
+
   /// Stops this wallet-api and starts a new one on [node] with the same
   /// password and body-request setting. wallet-api has no runtime node
   /// switch. This session is closed even if the new one fails to open.

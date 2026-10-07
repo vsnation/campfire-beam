@@ -82,6 +82,11 @@ abstract class BeamSession {
 
   /// Closes the wallet and stops anything this session started.
   Future<void> close();
+
+  /// Completes once the core of this session has stopped and let go of
+  /// `wallet.db` (for any reason). [close] may return before that when the
+  /// core is slow to stop. Never fails.
+  Future<void> get stopped;
 }
 
 /// A BEAM node address, `host:port`. BEAM nodes are not URLs.

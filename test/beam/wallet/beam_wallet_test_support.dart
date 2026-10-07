@@ -155,6 +155,13 @@ class FakeBeamSession implements BeamSession {
 
   bool closed = false;
 
+  /// Completed by [close] unless a test holds the core: then by
+  /// [FakeBeamHost.releaseCores].
+  final _stopped = Completer<void>();
+
+  @override
+  Future<void> get stopped => _stopped.future;
+
   @override
   Future<BeamSession> switchNode(BeamNodeEndpoint node) async {
     host.switches.add(node);
@@ -170,8 +177,17 @@ class FakeBeamSession implements BeamSession {
   Future<void> close() async {
     if (closed) return;
     closed = true;
-    host.open.remove(walletDir);
     await transport.close();
+    if (host.holdCores) {
+      host._heldCores.add(this);
+      return;
+    }
+    _release();
+  }
+
+  void _release() {
+    host.open.remove(walletDir);
+    if (!_stopped.isCompleted) _stopped.complete();
   }
 }
 
@@ -199,6 +215,19 @@ class FakeBeamHost implements BeamHost, BeamWalletFileImporter {
   final Map<String, FakeBeamSession> open = {};
   final List<FakeBeamSession> sessions = [];
   final List<BeamNodeEndpoint> switches = [];
+
+  /// While true, a closed session's core keeps running (and the wallet
+  /// stays open in [open]) until [releaseCores].
+  bool holdCores = false;
+  final List<FakeBeamSession> _heldCores = [];
+
+  void releaseCores() {
+    holdCores = false;
+    for (final s in _heldCores) {
+      s._release();
+    }
+    _heldCores.clear();
+  }
   final List<String> calls = [];
   final List<bool> requestBodies = [];
   int ownerKeyCounter = 0;
