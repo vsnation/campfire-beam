@@ -17,8 +17,11 @@ import '../../../wl_gen/interfaces/libbeam_interface.dart';
 import '../explorer/beam_explorer_client.dart';
 import '../explorer/campfire_proxy_info.dart';
 import '../host/beam_binaries.dart';
+import '../host/beam_core_location.dart';
 import '../host/beam_host.dart';
+import '../host/in_process_host.dart';
 import '../host/process_host.dart';
+import '../node/beam_in_process_node.dart';
 import '../node/beam_node_process.dart';
 import '../node/beam_private_node_coordinator.dart';
 import '../node/beam_private_node_preference.dart';
@@ -87,16 +90,33 @@ class BeamWalletEnvironment {
       // phones use public nodes (the project notes).
       createPrivateNode: Platform.isIOS
           ? null
-          : (root, host) => BeamNodeProcess(
-              rootDir: root,
-              binaries: host is ProcessHost
-                  ? host.binaries
-                  : BeamBinaries.locate(beamRoot: root),
-              log: _defaultLog,
-            ),
+          : (root, host) {
+              // The node as a thread of the app when the core is the
+              // library (no beam-node program), else the child process.
+              final core = host is InProcessHost ? host.integratedCore : null;
+              if (core != null) {
+                return BeamInProcessNode(
+                  rootDir: root,
+                  core: core,
+                  log: _defaultLog,
+                );
+              }
+              return BeamNodeProcess(
+                rootDir: root,
+                binaries: host is ProcessHost
+                    ? host.binaries
+                    : BeamBinaries.locate(beamRoot: root),
+                log: _defaultLog,
+              );
+            },
       // The user's choice from the node panel, kept across launches
-      // (on by default on desktop, off on phones).
-      privateNodeSetting: BeamPrivateNodePreference.app(),
+      // (on by default on desktop, off on phones). With Tor on, the node
+      // runs only on the library core, whose peers go through Tor.
+      privateNodeSetting: BeamPrivateNodePreference(
+        beamRoot: () async =>
+            (await StackFileSystem.applicationBeamDirectory()).path,
+        nodeTorCapable: beamCoreLibraryAvailableHere,
+      ),
       onPaymentReceived: announceBeamPayment,
     );
   }

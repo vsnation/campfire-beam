@@ -19,6 +19,7 @@ import '../rpc/tcp_line_transport.dart';
 import 'beam_binaries.dart';
 import 'beam_binaries_manifest.dart';
 import 'beam_core_library.dart';
+import 'beam_core_location.dart';
 import 'beam_host.dart';
 import 'beam_host_exception.dart';
 import 'in_process_files.dart';
@@ -79,16 +80,16 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
   InProcessHost({
     required String rootDir,
     this._library,
-    BeamCoreLibrary? Function()? openLibrary,
+    this._openLibrary,
     this._transportFactory,
     BeamHostLog? log,
     this.startupTimeout = const Duration(seconds: 20),
     this.stopTimeout = const Duration(seconds: 15),
     this.setCurrentDirectory = _setCurrentDirectory,
     BeamNodeRouter? router,
-    this.coreSupportsSocks = kBeamCoreSupportsSocks,
+    this._coreSupportsSocks,
+    this._locateLibrary,
   }) : rootDir = p.normalize(p.absolute(rootDir)),
-       _openLibrary = openLibrary ?? FfiBeamCoreLibrary.open,
        router = router ?? BeamNodeRouter.campfire(),
        _log = log ?? _noLog;
 
@@ -97,8 +98,24 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
   /// Tor or direct, decided at every start (see [ProcessHost.router]).
   final BeamNodeRouter router;
 
-  /// Whether this core takes `--proxy` (see [kBeamCoreSupportsSocks]).
-  final bool coreSupportsSocks;
+  final bool? _coreSupportsSocks;
+
+  /// Whether this core takes `--proxy`: `libbeam_core` (desktop, Android)
+  /// does; the iOS core does not yet ([kBeamCoreSupportsSocks]).
+  bool get coreSupportsSocks =>
+      _coreSupportsSocks ?? (integratedCore != null || kBeamCoreSupportsSocks);
+
+  /// Finds and checks `libbeam_core` (desktop, Android): its path, loaded
+  /// instead of the iOS candidates. Null on iOS.
+  final Future<String> Function()? _locateLibrary;
+  String? _libraryPath;
+
+  /// The desktop/Android additions (owner key, the node, Tor), once the
+  /// library is loaded. Null on iOS and before the first operation.
+  BeamCoreIntegrated? get integratedCore {
+    final lib = _library;
+    return lib is FfiBeamCoreLibrary ? lib.integrated : null;
+  }
 
   /// How long wallet-api may take to listen and answer `get_version`.
   final Duration startupTimeout;
@@ -113,7 +130,7 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
 
   final BeamTransportFactory? _transportFactory;
   final BeamHostLog _log;
-  final BeamCoreLibrary? Function() _openLibrary;
+  final BeamCoreLibrary? Function()? _openLibrary;
   BeamCoreLibrary? _library;
 
   static String _setCurrentDirectory(String path) {
@@ -157,6 +174,24 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
     await InProcessFiles.ensurePrivateDir(runDir);
     await InProcessFiles.ensurePrivateDir(logsDir);
     await InProcessFiles.ensurePrivateDir(walletsDir);
+    final locate = _locateLibrary;
+    if (locate != null) {
+      try {
+        _libraryPath = await locate();
+      } on BeamCoreLibraryProblem catch (e) {
+        throw BeamHostException(
+          e.untrusted
+              ? BeamHostError.binaryUntrusted
+              : BeamHostError.binaryMissing,
+          e.message,
+        );
+      }
+      // One logger for wallet-api and the node: warnings and errors, in the
+      // BEAM folder's run/logs (0700, files 0600).
+      final core = _core();
+      final integrated = core is FfiBeamCoreLibrary ? core.integrated : null;
+      integrated?.initLogging(logDir: logsDir, consoleLevel: 4, fileLevel: 4);
+    }
     final removed = await InProcessFiles.sweep(runDir);
     if (removed > 0) {
       _log('Removed $removed secret file(s) left by an earlier run');
@@ -166,7 +201,7 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
   /// The linked core, after a one-time check that it follows mainnet's
   /// current consensus (HF6), as [BeamBinaries.prepare] checks a binary.
   BeamCoreLibrary _core() {
-    final lib = _library ??= _openLibrary();
+    final lib = _library ??= _open();
     if (lib == null) {
       throw const BeamHostException(
         BeamHostError.binaryMissing,
@@ -186,6 +221,15 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
       _log('BEAM core ${lib.version()} (in-process)');
     }
     return lib;
+  }
+
+  BeamCoreLibrary? _open() {
+    final open = _openLibrary;
+    if (open != null) return open();
+    final path = _libraryPath;
+    return path != null
+        ? FfiBeamCoreLibrary.open(candidates: [path])
+        : FfiBeamCoreLibrary.open();
   }
 
   /// Claims [walletDir] for one operation or session (rule R8).
@@ -359,7 +403,9 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
     final dir = await _existingWallet(walletDir);
     _claim(dir);
     try {
-      await _waitForCoreIdle(core);
+      // libbeam_core runs one wallet-api per open wallet, side by side; the
+      // iOS core runs one at a time.
+      if (integratedCore == null) await _waitForCoreIdle(core);
       await _removeStrayConfigs();
       final route = await router.route(node);
       if (route.viaTor && !coreSupportsSocks) {
@@ -369,32 +415,77 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
           'does not connect at all',
         );
       }
-      return await _launch(
-        core: core,
-        walletDir: dir,
-        password: password,
-        node: node,
-        route: route,
-        requestBodies: requestBodies,
-      );
+      for (var attempt = 1; ; attempt++) {
+        try {
+          return await _launch(
+            core: core,
+            walletDir: dir,
+            password: password,
+            node: node,
+            route: route,
+            requestBodies: requestBodies,
+          );
+        } on _InProcessPortTaken {
+          if (attempt >= 3) {
+            throw const BeamHostException(
+              BeamHostError.processFailed,
+              'wallet-api could not bind a free port in 3 attempts',
+            );
+          }
+          _log('wallet-api port was taken by another process; retrying');
+        }
+      }
     } catch (_) {
       _busy.remove(dir);
       rethrow;
     }
   }
 
-  /// No private node on iOS, so the owner key is never needed, and it is not
-  /// read: it would reveal every incoming payment. Same error as Android's
-  /// [ProcessHost.exportOwnerKey].
+  /// The owner key, for the private node: read in-process on the desktop
+  /// (`libbeam_core`). Phones run no private node, so it is never read there:
+  /// it would reveal every incoming payment.
   @override
   Future<String> exportOwnerKey({
     required String walletDir,
     required String password,
   }) async {
-    throw const BeamHostException(
-      BeamHostError.notOwnedNode,
-      'Phones run no private node; the owner key is not read on iOS',
-    );
+    await _prepare();
+    final integrated = integratedCore;
+    if (integrated == null || Platform.isAndroid || Platform.isIOS) {
+      throw const BeamHostException(
+        BeamHostError.notOwnedNode,
+        'Phones run no private node; the owner key is not read there',
+      );
+    }
+    ProcessHost.validatePassword(password);
+    final dir = await _existingWallet(walletDir);
+    _claim(dir);
+    try {
+      final r = await integrated.exportOwnerKey(
+        dbPath: _dbPath(dir),
+        password: password,
+      );
+      final key = r.key;
+      if (r.code == BeamCoreWalletResult.ok && key != null && key.isNotEmpty) {
+        return key;
+      }
+      throw switch (r.code) {
+        BeamCoreWalletResult.wrongPassword => const BeamHostException(
+          BeamHostError.wrongPassword,
+          'The wallet password is wrong',
+        ),
+        BeamCoreWalletResult.notFound => const BeamHostException(
+          BeamHostError.walletNotFound,
+          'No wallet.db in the wallet directory',
+        ),
+        _ => BeamHostException(
+          BeamHostError.processFailed,
+          'Reading the owner key failed (core result ${r.code})',
+        ),
+      };
+    } finally {
+      _busy.remove(dir);
+    }
   }
 
   /// A rescan needs the user's own node, which phones do not run.
@@ -413,10 +504,20 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
 
   /// Stops the open wallet-api, if any. For the app's shutdown path.
   static Future<void> shutdownAll() async {
-    final session = _active;
-    if (session != null) await session.close();
+    await Future.wait([
+      for (final s in List.of(_openSessions)) s.close(),
+      if (_active != null) _active!.close(),
+    ]);
     await _lastStopped;
   }
+
+  /// Every open session of every host in this process.
+  static final Set<InProcessSession> _openSessions = {};
+
+  /// wallet-api reads `./wallet-api.cfg` and `./beam-common.cfg` from the
+  /// process's current directory while it starts; start-ups that move it to
+  /// `run/` take turns.
+  static Future<void> _startTurn = Future.value();
 
   // ---------------------------------------------------------------------------
   // wallet-api
@@ -515,21 +616,53 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
         'Starting wallet-api (in-process) for ${p.basename(walletDir)} on '
         '$route, port $port${requestBodies ? ', body requests on' : ''}',
       );
-      previousDir = setCurrentDirectory(runDir);
-      final started = DateTime.now();
-      final thisRun = _CoreRun(
-        core.run(
-          walletApiArgs(
-            walletDir: walletDir,
-            configPath: cfg.path,
-            aclPath: acl.path,
-            node: route.address,
-            port: port,
-            requestBodies: requestBodies,
-            socksProxy: route.socksProxy,
-          ),
-        ),
+      final args = walletApiArgs(
+        walletDir: walletDir,
+        configPath: cfg.path,
+        aclPath: acl.path,
+        node: route.address,
+        port: port,
+        requestBodies: requestBodies,
+        socksProxy: route.socksProxy,
       );
+      final started = DateTime.now();
+      final integrated = integratedCore;
+      final _CoreRun thisRun;
+      if (integrated != null) {
+        // One instance per wallet; it returns once its server listens.
+        final turn = Completer<void>();
+        final previousTurn = _startTurn;
+        _startTurn = turn.future;
+        await previousTurn;
+        final int handle;
+        try {
+          previousDir = setCurrentDirectory(runDir);
+          handle = await integrated.startInstance(args);
+        } finally {
+          if (previousDir != null) setCurrentDirectory(previousDir);
+          previousDir = null;
+          turn.complete();
+        }
+        if (handle <= 0) {
+          if (handle == BeamCoreInstance.noListen) {
+            throw const _InProcessPortTaken();
+          }
+          throw await _startupFailure(
+            core,
+            handle,
+            walletDir,
+            password,
+            route.address,
+          );
+        }
+        thisRun = _CoreRun(
+          _instanceExit(integrated, handle),
+          stopper: () => integrated.stopInstance(handle),
+        );
+      } else {
+        previousDir = setCurrentDirectory(runDir);
+        thisRun = _CoreRun(core.run(args));
+      }
       run = thisRun;
 
       // wallet-api reads its config and ACL, opens the database, and only
@@ -537,7 +670,13 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
       while (true) {
         final code = thisRun.code;
         if (code != null) {
-          throw await _startupFailure(core, code, walletDir, password, node);
+          throw await _startupFailure(
+            core,
+            code,
+            walletDir,
+            password,
+            route.address,
+          );
         }
         if (await _accepts(port)) break;
         if (DateTime.now().difference(started) > startupTimeout) {
@@ -549,7 +688,7 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
         }
         await Future<void>.delayed(const Duration(milliseconds: 100));
       }
-      setCurrentDirectory(previousDir);
+      if (previousDir != null) setCurrentDirectory(previousDir);
       previousDir = null;
       await InProcessFiles.deleteSecret(cfg);
       await InProcessFiles.deleteSecret(acl);
@@ -581,7 +720,11 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
         port: port,
         run: thisRun,
       );
-      _active = session;
+      if (integratedCore == null) {
+        _active = session;
+      } else {
+        _openSessions.add(session);
+      }
       _lastStopped = thisRun.done;
       unawaited(thisRun.done.then((_) => session._coreExited(thisRun.code!)));
       _log(
@@ -607,6 +750,19 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
     }
   }
 
+  /// Completes with an instance's exit status once it has ended (polled:
+  /// the library keeps its state for the life of the process).
+  static Future<int> _instanceExit(
+    BeamCoreIntegrated core,
+    int handle,
+  ) async {
+    while (true) {
+      final s = core.instanceState(handle);
+      if (BeamCoreInstance.hasEnded(s.state)) return s.exitStatus;
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+  }
+
   /// Asks wallet-api to stop until [run] has returned or [stopTimeout]
   /// passes. The request is repeated: one that arrives before wallet-api's
   /// event loop exists is kept by the core, but this also covers a run that
@@ -616,7 +772,8 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
   Future<bool> _stopCore(BeamCoreLibrary core, _CoreRun run) async {
     final deadline = DateTime.now().add(stopTimeout);
     while (!run.hasExited) {
-      core.stop();
+      final stop = run.stopper;
+      stop != null ? stop() : core.stop();
       if (DateTime.now().isAfter(deadline)) {
         _log(
           'wallet-api did not stop within ${stopTimeout.inSeconds} s; it '
@@ -797,6 +954,7 @@ class InProcessSession implements BeamSession {
 
   void _release() {
     InProcessHost._busy.remove(walletDir);
+    InProcessHost._openSessions.remove(this);
     if (identical(InProcessHost._active, this)) InProcessHost._active = null;
   }
 
@@ -810,11 +968,15 @@ class InProcessSession implements BeamSession {
   String toString() => 'InProcessSession($node, port $port)';
 }
 
+class _InProcessPortTaken implements Exception {
+  const _InProcessPortTaken();
+}
+
 /// One `beam_wallet_api_run()` call. Whether it has returned is known
 /// synchronously ([hasExited]): its first listener records the status, before
 /// anything else that waits for it (another session's start included) runs.
 class _CoreRun {
-  _CoreRun(this.exit) {
+  _CoreRun(this.exit, {this.stopper}) {
     done = exit.then(
       (c) {
         code = c;
@@ -826,6 +988,10 @@ class _CoreRun {
   }
 
   final Future<int> exit;
+
+  /// Stops this run only (a wallet-api instance); null for the one
+  /// `beam_wallet_api_run()` run, which `beam_wallet_api_stop()` stops.
+  final void Function()? stopper;
 
   /// Completes once the run has returned and [code] is set. Never fails.
   late final Future<void> done;

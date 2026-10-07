@@ -47,6 +47,12 @@ class BeamNodeException implements Exception {
   String toString() => 'BeamNodeException(${kind.name}): $message';
 }
 
+/// A private node that keeps its storage in a directory (the coordinator
+/// measures that directory's disk).
+abstract interface class BeamNodeStorage {
+  String get nodeDir;
+}
+
 /// What the handover coordinator needs from a private node.
 /// [BeamNodeProcess] is the desktop implementation.
 abstract interface class BeamPrivateNode {
@@ -89,7 +95,7 @@ abstract interface class BeamPrivateNode {
 ///   log after [BeamNodeLogRedactor].
 /// * A `beam-node` left running on this storage by a crashed app is found
 ///   through `.node.lock` and stopped before a new one starts.
-class BeamNodeProcess implements BeamPrivateNode {
+class BeamNodeProcess implements BeamPrivateNode, BeamNodeStorage {
   BeamNodeProcess({
     required String rootDir,
     required this.binaries,
@@ -128,6 +134,7 @@ class BeamNodeProcess implements BeamPrivateNode {
 
   static final Set<BeamNodeProcess> _live = {};
 
+  @override
   String get nodeDir => p.join(rootDir, 'node');
   String get logsDir => p.join(nodeDir, 'logs');
 

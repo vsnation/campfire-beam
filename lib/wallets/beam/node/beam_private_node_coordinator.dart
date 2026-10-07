@@ -626,7 +626,9 @@ class BeamPrivateNodeCoordinator {
     // 1. Room on disk, before anything else happens.
     _nodeDiskProbe =
         _diskProbe ??
-        (node is BeamNodeProcess ? BeamNodeDisk.probe(node.nodeDir) : null);
+        (node is BeamNodeStorage
+            ? BeamNodeDisk.probe((node as BeamNodeStorage).nodeDir)
+            : null);
     final disk = await _measureDisk();
     _lastDiskCheck = _now();
     if (disk != null && !disk.allowsStart) {

@@ -13,6 +13,7 @@ import 'dart:io';
 import '../../../utilities/flutter_secure_storage_interface.dart';
 import '../host/in_process_host.dart';
 import '../host/process_host.dart';
+import '../node/beam_in_process_node.dart';
 import '../node/beam_node_process.dart';
 import 'beam_secret_store.dart';
 import 'beam_wallet_environment.dart';
@@ -31,6 +32,9 @@ Future<void> shutdownBeamChildren({
       // iOS: the in-process wallet-api (closes wallet.db before a wipe).
       InProcessHost.shutdownAll(),
       BeamNodeProcess.stopAll(),
+      // Desktop/Android: the node and wallet-api as threads of the app
+      // (libbeam_core) must end before the process does.
+      BeamInProcessNode.stopAll(),
     ]).timeout(timeout);
   } catch (_) {
     // Quitting anyway; a child that survives is found and stopped through
