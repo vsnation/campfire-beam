@@ -26,6 +26,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../utilities/text_styles.dart';
+import '../../../wallets/beam/node/beam_in_process_node.dart';
 import '../../../wallets/beam/wallet/beam_shutdown.dart';
 import '../../../wallets/beam/wallet/beam_swaps_in_flight.dart';
 import '../../desktop/desktop_dialog.dart';
@@ -58,11 +59,22 @@ abstract final class BeamQuitText {
               'run again.';
   }
 
+  static const nodeTitle = 'Your private node is finishing a step';
+
+  static String nodeBody(int percent) =>
+      'It is tidying its data after syncing ($percent% done). If you quit '
+      'now, it starts this step over the next time BEAM Campfire opens, '
+      'which can take a while. Your wallet is not affected.';
+
   static const wait = 'Wait';
   static const quitAnyway = 'Quit anyway';
 }
 
 Future<bool>? _asking;
+
+/// How far the app's private node is through a long maintenance step, or
+/// null when it runs none ([BeamInProcessNode.finishingPercentNow]).
+int? beamNodeFinishingStep() => BeamInProcessNode.finishingPercentNow;
 
 /// Whether the app may quit now. Asks only while a swap is in flight;
 /// without a context to ask through it never holds quitting hostage. A
@@ -70,16 +82,18 @@ Future<bool>? _asking;
 Future<bool> confirmBeamQuit(
   BuildContext? context, {
   BeamSwapsInFlight? swaps,
+  int? Function()? nodeFinishing,
 }) {
   final s = swaps ?? BeamSwapsInFlight.instance;
-  if (s.isEmpty) return Future.value(true);
+  final finishing = nodeFinishing ?? beamNodeFinishingStep;
+  if (s.isEmpty && finishing() == null) return Future.value(true);
   if (context == null || !context.mounted) return Future.value(true);
   return _asking ??= () async {
     try {
       final quit = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => BeamQuitDialog(swaps: s),
+        builder: (_) => BeamQuitDialog(swaps: s, nodeFinishing: finishing),
       );
       return quit ?? false; // Esc: stay
     } finally {
@@ -97,9 +111,12 @@ Future<void> beamDesktopExit(BuildContext context) async {
 }
 
 class BeamQuitDialog extends StatefulWidget {
-  const BeamQuitDialog({super.key, required this.swaps});
+  const BeamQuitDialog({super.key, required this.swaps, this.nodeFinishing});
 
   final BeamSwapsInFlight swaps;
+
+  /// The private node's long step, if one runs ([beamNodeFinishingStep]).
+  final int? Function()? nodeFinishing;
 
   @override
   State<BeamQuitDialog> createState() => _BeamQuitDialogState();
@@ -107,7 +124,9 @@ class BeamQuitDialog extends StatefulWidget {
 
 class _BeamQuitDialogState extends State<BeamQuitDialog> {
   StreamSubscription<void>? _sub;
+  Timer? _nodePoll;
   late int _count = widget.swaps.count;
+  late int? _finishing = widget.nodeFinishing?.call();
   bool _closed = false;
 
   void _close(bool quit) {
@@ -120,18 +139,28 @@ class _BeamQuitDialogState extends State<BeamQuitDialog> {
   void initState() {
     super.initState();
     _sub = widget.swaps.changes.listen((_) => _onChange());
+    final finishing = widget.nodeFinishing;
+    if (finishing != null && _finishing != null) {
+      _nodePoll = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted || _closed) return;
+        final f = finishing();
+        if (f == _finishing) return;
+        _finishing = f;
+        _onChange(force: true);
+      });
+    }
     // settled between the check and this dialog
-    if (widget.swaps.isEmpty) {
+    if (widget.swaps.isEmpty && _finishing == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _onChange());
     }
   }
 
-  void _onChange() {
+  void _onChange({bool force = false}) {
     if (!mounted || _closed) return;
     final n = widget.swaps.count;
-    if (n == 0) {
+    if (n == 0 && _finishing == null) {
       _close(true);
-    } else if (n != _count) {
+    } else if (n != _count || force) {
       setState(() => _count = n);
     }
   }
@@ -139,6 +168,7 @@ class _BeamQuitDialogState extends State<BeamQuitDialog> {
   @override
   void dispose() {
     _sub?.cancel();
+    _nodePoll?.cancel();
     super.dispose();
   }
 
@@ -154,13 +184,18 @@ class _BeamQuitDialogState extends State<BeamQuitDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              BeamQuitText.title(_count),
+              _count > 0
+                  ? BeamQuitText.title(_count)
+                  : BeamQuitText.nodeTitle,
               key: const Key('beamQuitTitle'),
               style: STextStyles.desktopH3(context),
             ),
             const SizedBox(height: 16),
             Text(
-              BeamQuitText.body(_count),
+              [
+                if (_count > 0) BeamQuitText.body(_count),
+                if (_finishing != null) BeamQuitText.nodeBody(_finishing!),
+              ].join('\n\n'),
               key: const Key('beamQuitBody'),
               style: STextStyles.desktopTextSmall(context),
             ),

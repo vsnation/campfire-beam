@@ -43,10 +43,11 @@ BeamTransaction _swap(String id, {int status = 1}) => BeamTransaction.fromJson({
 });
 
 class _Quitter extends StatelessWidget {
-  const _Quitter(this.swaps, this.answers);
+  const _Quitter(this.swaps, this.answers, {this.nodeFinishing});
 
   final BeamSwapsInFlight swaps;
   final List<bool> answers;
+  final int? Function()? nodeFinishing;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -54,7 +55,13 @@ class _Quitter extends StatelessWidget {
       child: TextButton(
         key: const Key('quit'),
         onPressed: () async =>
-            answers.add(await confirmBeamQuit(context, swaps: swaps)),
+            answers.add(
+              await confirmBeamQuit(
+                context,
+                swaps: swaps,
+                nodeFinishing: nodeFinishing,
+              ),
+            ),
         child: const Text('Quit'),
       ),
     ),
@@ -138,6 +145,56 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(BeamQuitDialog), findsNothing);
     expect(answers, [true]);
+  });
+
+  testWidgets('the private node in a long step: asks; quits by itself once '
+      'the step is done', (tester) async {
+    int? finishing = 42;
+    await pumpBeamPage(
+      tester,
+      _Quitter(swaps, answers, nodeFinishing: () => finishing),
+      desktop: true,
+    );
+    await tester.tap(find.byKey(const Key('quit')));
+    await tester.pumpAndSettle();
+    expect(find.text(BeamQuitText.nodeTitle), findsOneWidget);
+    expect(find.text(BeamQuitText.nodeBody(42)), findsOneWidget);
+    expect(answers, isEmpty);
+
+    finishing = 77;
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text(BeamQuitText.nodeBody(77)), findsOneWidget);
+
+    finishing = null;
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.byType(BeamQuitDialog), findsNothing);
+    expect(answers, [true]);
+  });
+
+  testWidgets('a swap and the node step: both are said; the swap settling '
+      'alone does not quit', (tester) async {
+    swaps.update('w1', [_swap('a1' * 16)]);
+    int? finishing = 10;
+    await pumpBeamPage(
+      tester,
+      _Quitter(swaps, answers, nodeFinishing: () => finishing),
+      desktop: true,
+    );
+    await tester.tap(find.byKey(const Key('quit')));
+    await tester.pumpAndSettle();
+    expect(find.text('A swap is still being confirmed'), findsOneWidget);
+    final body = tester.widget<Text>(find.byKey(const Key('beamQuitBody')));
+    expect(body.data, contains(BeamQuitText.nodeBody(10)));
+
+    swaps.update('w1', [_swap('a1' * 16, status: 3)]);
+    await tester.pumpAndSettle();
+    expect(find.text(BeamQuitText.nodeTitle), findsOneWidget);
+    expect(answers, isEmpty);
+
+    await tester.tap(find.byKey(const Key('beamQuitWait')));
+    await tester.pumpAndSettle();
+    expect(answers, [false]);
   });
 
   testWidgets('a second quit request while asking shows no second dialog', (
