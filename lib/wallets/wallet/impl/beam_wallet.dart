@@ -812,6 +812,7 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     final announce = environment.onPaymentReceived;
     for (final t in completed) {
       if (!seen.add(t.txId) || announce == null) continue;
+      environment.log('Payment received; announcing it');
       announce(
         BeamPaymentReceived(
           walletId: walletId,

@@ -151,6 +151,33 @@ abstract final class NotificationApi {
     }
   }();
 
+  /// The system banner for an entry already in Campfire's list. Never
+  /// throws: no permission or an unsigned build only means no banner.
+  static Future<void> _showOsBanner({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    try {
+      await init();
+      await _askPermissionOnce();
+      await _notifications.show(
+        id: id,
+        title: title,
+        body: body,
+        notificationDetails: await _notificationDetails(),
+        payload: payload,
+      );
+    } catch (e, s) {
+      Logging.instance.w(
+        "Notification banner not shown; it is in Campfire's list",
+        error: e,
+        stackTrace: s,
+      );
+    }
+  }
+
   static Future<int> _showOsNotification({
     required String title,
     required String body,
@@ -183,11 +210,23 @@ abstract final class NotificationApi {
     String? changeNowId,
     String? payload,
   }) async {
-    final id = await _showOsNotification(
-      title: title,
-      body: body,
-      payload: payload,
-    );
+    final int id;
+    if (BeamAppIdentity.isActive) {
+      // Campfire for BEAM: the entry in Campfire's own list never depends
+      // on the system banner. An ad-hoc signed build, or a user who said no,
+      // makes the banner fail, and the list entry used to be lost with it
+      // (seen in the DMG test: a received payment, an empty list).
+      id = await prefs.incrementCurrentNotificationIndex();
+      unawaited(
+        _showOsBanner(id: id, title: title, body: body, payload: payload),
+      );
+    } else {
+      id = await _showOsNotification(
+        title: title,
+        body: body,
+        payload: payload,
+      );
+    }
 
     String confirms = "";
     if (txid != null &&

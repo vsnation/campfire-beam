@@ -160,7 +160,21 @@ class PriceAPI {
             : null,
       );
 
-      final coinGeckoData = jsonDecode(coinGeckoResponse.body) as List<dynamic>;
+      final decoded = jsonDecode(coinGeckoResponse.body);
+      if (coinGeckoResponse.code != 200 || decoded is! List<dynamic>) {
+        // CoinGecko's free API answers 429 (an object, not the list) when
+        // called too often: keep the last prices and wait 5 minutes before
+        // asking again rather than failing every minute.
+        if (coinGeckoResponse.code == 429) {
+          _lastCalled = now.add(const Duration(minutes: 4));
+        }
+        Logging.instance.w(
+          "getPricesAnd24hChange($baseCurrency): no prices "
+          "(HTTP ${coinGeckoResponse.code}); keeping the last ones",
+        );
+        return _cachedPrices;
+      }
+      final coinGeckoData = decoded;
 
       for (final map in coinGeckoData) {
         final String coinName = map["name"] as String;

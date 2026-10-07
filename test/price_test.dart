@@ -356,6 +356,37 @@ void main() {
     expectEmptyPriceSnapshot(price.toString());
   });
 
+  // Campfire for BEAM: CoinGecko's free API answers 429 with an object,
+  // not the list; seen every few minutes in the macOS app.
+  test("rate limited (429): last prices kept, no retry for minutes", () async {
+    final client = MockHTTP();
+    var calls = 0;
+    when(
+      client.get(
+        proxyInfo: null,
+        url: anyNamed('url'),
+        headers: {'Content-Type': 'application/json'},
+      ),
+    ).thenAnswer((_) async {
+      calls++;
+      return Response(
+        utf8.encode('{"status":{"error_code":429,"error_message":"limit"}}'),
+        429,
+      );
+    });
+
+    final priceAPI = PriceAPI(client);
+    priceAPI.resetLastCalledToForceNextCallToUpdateCache();
+
+    final price = await priceAPI.getPricesAnd24hChange(baseCurrency: "btc");
+    expectEmptyPriceSnapshot(price.toString());
+    expect(calls, 1);
+
+    // Asked again a minute later: still backing off.
+    await priceAPI.getPricesAnd24hChange(baseCurrency: "btc");
+    expect(calls, 1);
+  });
+
   test("no internet available", () async {
     final client = MockHTTP();
 
