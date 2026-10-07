@@ -47,15 +47,21 @@ jobs:
       - name: Linux build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake ninja-build pkg-config lsof \
-            libgtk-3-dev liblzma-dev libsecret-1-dev libjsoncpp-dev libstdc++-12-dev
+          # As upstream's CI image (Dockerfile): the plugins' native parts
+          # need these (OpenCV for the QR camera, OpenCL, secret storage...).
+          sudo apt-get install -y clang cmake ninja-build pkg-config lsof meson valac \
+            automake libtool libgtk-3-dev liblzma-dev libsecret-1-dev libjsoncpp-dev \
+            libstdc++-12-dev libopencv-dev ocl-icd-opencl-dev opencl-headers libclang-dev \
+            libgcrypt20-dev libgirepository1.0-dev libgit2-dev libglib2.0-dev libncurses-dev \
+            libssl-dev libtss2-dev zlib1g-dev
 
       - name: BEAM core from ${{ inputs.core_tag }}
         run: |
           mkdir -p "$RUNNER_TEMP/core/linux-x86_64"
           cd "$RUNNER_TEMP/core/linux-x86_64"
           gh release download "${{ inputs.core_tag }}" -R "$GITHUB_REPOSITORY" -p 'linux-x86_64-*' -p SHA256SUMS.txt
-          grep ' linux-x86_64-' SHA256SUMS.txt | sha256sum -c -
+          # Lines read '<hash>  <file>' or, from Git Bash, '<hash> *<file>'.
+          grep -E '[ *]linux-x86_64-' SHA256SUMS.txt | sha256sum -c -
           for b in wallet-api beam-node beam-wallet; do mv "linux-x86_64-$b" "$b"; chmod 0755 "$b"; done
 
       - name: Configure Campfire for BEAM
@@ -117,7 +123,7 @@ jobs:
           mkdir -p /c/core/windows-x86_64
           cd /c/core/windows-x86_64
           gh release download "${{ inputs.core_tag }}" -R "$GITHUB_REPOSITORY" -p 'windows-x86_64-*' -p SHA256SUMS.txt
-          grep ' windows-x86_64-' SHA256SUMS.txt | sha256sum -c -
+          grep -E '[ *]windows-x86_64-' SHA256SUMS.txt | sha256sum -c -
           for b in wallet-api beam-node beam-wallet; do mv "windows-x86_64-$b.exe" "$b.exe"; done
 
       - name: Configure Campfire for BEAM
