@@ -427,15 +427,28 @@ void main() {
       await waitFor(() => w.isOpen, what: 'reopened once the core let go');
     });
 
-    test('delete removes wallet.db and both secrets', () async {
+    test('delete removes wallet.db, both secrets and voucher codes', () async {
       final w = await newWallet();
       await w.open();
       await w.whenLive.timeout(const Duration(seconds: 5));
       await w.exit();
       expect(host.open, isEmpty);
+      // Saved airdrop voucher codes: bearer secrets of this wallet.
+      final index = 'BEAM_AIRDROP_INDEX:${w.walletId}';
+      final record = 'BEAM_AIRDROP_CODES:${w.walletId}:batch_1';
+      await secure.write(
+        key: index,
+        value: jsonEncode({
+          'v': 1,
+          'ids': ['batch_1'],
+        }),
+      );
+      await secure.write(key: record, value: '{}');
       await deleteBeamWallet(walletId: w.walletId, secureStore: secure);
       expect(await secure.read(key: keyOf(w)), isNull);
       expect(await secure.read(key: ownerOf(w)), isNull);
+      expect(await secure.read(key: index), isNull);
+      expect(await secure.read(key: record), isNull);
       expect(Directory(dirOf(w)).existsSync(), isFalse);
     });
 
