@@ -1,81 +1,63 @@
 #!/usr/bin/env bash
-# Stage the pinned BEAM core for Android as native libraries:
+# Stage the pinned BEAM core for Android: one library per ABI, loaded into the
+# app's process (wallet-api and its node connection run as threads of the
+# app; nothing is executed as a child process).
 #
-#   wallet-api  -> android/app/src/main/jniLibs/<abi>/libbeam_wallet_api.so
-#   beam-wallet -> android/app/src/main/jniLibs/<abi>/libbeam_wallet.so
+#   libbeam_core.so -> android/app/src/main/jniLibs/arm64-v8a/libbeam_core.so
+#                      android/app/src/main/jniLibs/x86_64/libbeam_core.so
 #
-# Android executes app files only from ApplicationInfo.nativeLibraryDir, and
-# only files packaged as jniLibs/<abi>/lib*.so land there (extracted because
-# android/app/campfire_beam.gradle turns on legacy packaging). beam-node is
-# never shipped: phones do not run the private node.
+# scripts/beam/core/lib/stage_lib.sh copies each only when its SHA-256 equals
+# the pin in scripts/beam/core/lib/manifest.json (keys android-arm64,
+# android-x86_64), the same pin the app checks before it loads the library
+# (kBeamCoreLibraryManifest), and refuses a mismatch (exit 1). Each must also
+# be a 64-bit ELF shared object for its ABI.
 #
-# A binary is copied only when its SHA-256 equals the pin for its platform in
-# scripts/beam/core/manifest.json (keys android-arm64, android-x86_64), the
-# same pin the app checks before every launch. A built but unpinned binary is
-# skipped, a mismatching one refused (exit 1). Without binaries the APK still
-# builds and the app says "BEAM core not installed".
+# The app hashes the file on disk in ApplicationInfo.nativeLibraryDir, so
+# android/app/campfire_beam.gradle keeps legacy packaging (the installer
+# extracts it there) and keeps AGP from stripping it (stripping would change
+# its hash).
 #
-# Source: $BEAM_CORE_OUT (default ~/Desktop/Beam/beam-core-build/out),
-# folders android-arm64/ and android-x86_64/. Nothing is downloaded here.
+# Earlier builds shipped wallet-api and beam-wallet as libbeam_wallet_api.so
+# and libbeam_wallet.so; every libbeam_*.so is removed first so none of them
+# is ever packaged again. With no library built at all the APK still builds
+# and the app says "BEAM core not installed"; scripts/beam/release/
+# build_android_apk.sh refuses such an APK.
+#
+# Source: $BEAM_CORE_LIB_OUT (default ~/Desktop/Beam/beam-core-build/out),
+# folders lib-android-arm64/ and lib-android-x86_64/. Nothing is downloaded.
 set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SRC="${BEAM_CORE_OUT:-$HOME/Desktop/Beam/beam-core-build/out}"
-MANIFEST="$REPO/scripts/beam/core/manifest.json"
+OUT="${BEAM_CORE_LIB_OUT:-$HOME/Desktop/Beam/beam-core-build/out}"
 DEST="$REPO/android/app/src/main/jniLibs"
 
-# <abi> <manifest key and out folder> <`file` machine string>
+# <abi> <out folder> <`file` machine string>
 TARGETS=(
-  "arm64-v8a android-arm64 aarch64"
-  "x86_64 android-x86_64 x86-64"
+  "arm64-v8a lib-android-arm64 aarch64"
+  "x86_64 lib-android-x86_64 x86-64"
 )
 
-lib_name() {
-  case "$1" in
-    wallet-api) echo libbeam_wallet_api.so ;;
-    beam-wallet) echo libbeam_wallet.so ;;
-  esac
-}
-
-pin() {
-  python3 -I -c '
-import json, sys
-m = json.load(open(sys.argv[1]))
-print(m.get(sys.argv[2], {}).get(sys.argv[3], {}).get("sha256", ""))
-' "$MANIFEST" "$1" "$2"
-}
-
-sha() { (shasum -a 256 "$1" 2>/dev/null || sha256sum "$1") | cut -d' ' -f1; }
-
-staged=0
+built=0
 for t in "${TARGETS[@]}"; do
-  read -r abi key machine <<<"$t"
+  read -r abi dir _ <<<"$t"
   mkdir -p "$DEST/$abi"
   rm -f "$DEST/$abi"/libbeam_*.so
-  for b in wallet-api beam-wallet; do
-    from="$SRC/$key/$b"
-    to="$DEST/$abi/$(lib_name "$b")"
-    if [ ! -f "$from" ]; then
-      echo "stage_beam_core: $key/$b not built ($from missing) - skipped"
-      continue
-    fi
-    want="$(pin "$key" "$b")"
-    if [ -z "$want" ]; then
-      echo "stage_beam_core: $key/$b is NOT PINNED in scripts/beam/core/manifest.json - skipped" >&2
-      continue
-    fi
-    got="$(sha "$from")"
-    if [ "$got" != "$want" ]; then
-      echo "stage_beam_core: REFUSED $key/$b - sha256 $got does not match the pin" >&2
-      exit 1
-    fi
-    if ! file -b "$from" | grep -q "ELF 64-bit.*$machine"; then
-      echo "stage_beam_core: REFUSED $key/$b - not a 64-bit $machine ELF: $(file -b "$from")" >&2
-      exit 1
-    fi
-    cp "$from" "$to"
-    chmod 0755 "$to"
-    staged=$((staged + 1))
-    echo "stage_beam_core: $abi/$(lib_name "$b") staged (pin verified)"
-  done
+  [ -f "$OUT/$dir/libbeam_core.so" ] && built=$((built + 1))
 done
-echo "stage_beam_core: $staged binaries staged into android/app/src/main/jniLibs"
+if [ "$built" -eq 0 ]; then
+  echo "stage_beam_core: libbeam_core.so not built ($OUT/lib-android-*) - the APK has no BEAM core"
+  exit 0
+fi
+
+bash "$REPO/scripts/beam/core/lib/stage_lib.sh" android "$DEST"
+
+for t in "${TARGETS[@]}"; do
+  read -r abi _ machine <<<"$t"
+  f="$DEST/$abi/libbeam_core.so"
+  kind="$(file -b "$f")"
+  if ! grep -q "ELF 64-bit.*shared object.*$machine" <<<"$kind"; then
+    rm -f "$f"
+    echo "stage_beam_core: REFUSED $abi/libbeam_core.so - not a 64-bit $machine ELF library: $kind" >&2
+    exit 1
+  fi
+done
+echo "stage_beam_core: libbeam_core.so staged for arm64-v8a and x86_64 (pins verified)"

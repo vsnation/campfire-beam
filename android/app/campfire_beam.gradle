@@ -8,19 +8,18 @@
 android {
     packaging {
         jniLibs {
-            // The BEAM core runs as child processes (wallet-api, beam-wallet),
-            // shipped as jniLibs/<abi>/libbeam_wallet_api.so and
-            // libbeam_wallet.so. Android lets an app execute files only from
-            // ApplicationInfo.nativeLibraryDir (never from its writable data
-            // directory), and the package manager extracts native libraries
-            // there only with legacy packaging (android:extractNativeLibs).
+            // The BEAM core is one library, jniLibs/<abi>/libbeam_core.so,
+            // loaded into the app's process (scripts/android/stage_beam_core.sh).
+            // The app hashes the file in ApplicationInfo.nativeLibraryDir
+            // against its pin before loading it, so the file must be on disk
+            // there: the package manager extracts native libraries only with
+            // legacy packaging (android:extractNativeLibs).
             useLegacyPackaging = true
 
-            // Ship the pinned binaries byte for byte. Stripping them would
-            // change their SHA-256, and the app refuses a binary whose hash is
-            // not the pinned one.
-            keepDebugSymbols.add('**/libbeam_wallet_api.so')
-            keepDebugSymbols.add('**/libbeam_wallet.so')
+            // Ship the pinned library byte for byte. Stripping it would change
+            // its SHA-256, and the app refuses a library whose hash is not the
+            // pinned one.
+            keepDebugSymbols.add('**/libbeam_core.so')
         }
     }
 }
