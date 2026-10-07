@@ -76,6 +76,24 @@ class NodeService extends ChangeNotifier {
       }
     }
 
+    // Campfire for BEAM: every public BEAM node is listed, not only the
+    // default (added once; never overwrites what the user changed).
+    for (final coin in AppConfig.coins.whereType<Beam>()) {
+      for (final node in coin.alternateNodes) {
+        if (DB.instance.get<NodeModel>(
+              boxName: DB.boxNameNodeModels,
+              key: node.id,
+            ) ==
+            null) {
+          await DB.instance.put<NodeModel>(
+            boxName: DB.boxNameNodeModels,
+            key: node.id,
+            value: node,
+          );
+        }
+      }
+    }
+
     for (final defaultNode in AppConfig.coins.map(
       (e) => e.defaultNode(isPrimary: true),
     )) {

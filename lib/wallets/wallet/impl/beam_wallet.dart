@@ -1465,6 +1465,30 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   // ===========================================================================
   // Campfire events
 
+  /// Campfire's sync and connection status now, for a screen that starts
+  /// listening after the events were sent: events only say what changed,
+  /// so a header opened after "syncing" was sent would otherwise guess from
+  /// upstream fields BEAM does not set and show "Unable to sync".
+  ({WalletSyncStatus sync, NodeConnectionStatus node}) get statusNow {
+    final a = _assessment;
+    // Up to date but still scanning a restore for coins: not done yet.
+    final scan = _tracker?.scanProgress?.fraction;
+    final scanning = isScanningForCoins && scan != null && scan < 1;
+    final sync = switch (a) {
+      BeamSynced() when scanning => WalletSyncStatus.syncing,
+      BeamSynced() => WalletSyncStatus.synced,
+      BeamSyncCatchingUp() || BeamSyncConnecting() => WalletSyncStatus.syncing,
+      BeamSyncNotConnected() || BeamSyncStalled() =>
+        WalletSyncStatus.unableToSync,
+    };
+    return (
+      sync: _problem != null ? WalletSyncStatus.unableToSync : sync,
+      node: _problem != null || a is BeamSyncNotConnected
+          ? NodeConnectionStatus.disconnected
+          : NodeConnectionStatus.connected,
+    );
+  }
+
   void _fireSync(WalletSyncStatus status, {bool force = false}) {
     if (!force && status == _lastSyncStatus) return;
     _lastSyncStatus = status;

@@ -24,6 +24,8 @@ import 'package:path/path.dart' as p;
 import 'package:stackwallet/db/isar/main_db.dart';
 import 'package:stackwallet/models/isar/models/blockchain_data/address.dart';
 import 'package:stackwallet/models/isar/models/blockchain_data/v2/transaction_v2.dart';
+import 'package:stackwallet/services/event_bus/events/global/node_connection_status_changed_event.dart';
+import 'package:stackwallet/services/event_bus/events/global/wallet_sync_status_changed_event.dart';
 import 'package:stackwallet/utilities/amount/amount.dart';
 import 'package:stackwallet/utilities/flutter_secure_storage_interface.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_constants.dart';
@@ -36,9 +38,9 @@ import 'package:stackwallet/wallets/beam/rpc/beam_connection_exception.dart';
 import 'package:stackwallet/wallets/beam/rpc/beam_transport.dart';
 import 'package:stackwallet/wallets/beam/sync/beam_sync_state.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_node_switch_gate.dart';
+import 'package:stackwallet/wallets/beam/wallet/beam_payment_notice.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_secret_store.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_swaps_in_flight.dart';
-import 'package:stackwallet/wallets/beam/wallet/beam_payment_notice.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_environment.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_errors.dart';
 import 'package:stackwallet/wallets/crypto_currency/crypto_currency.dart';
@@ -602,6 +604,29 @@ void main() {
       });
       await w.whenCanSend.timeout(const Duration(seconds: 5));
       expect(w.syncAssessment, isA<BeamSynced>());
+    });
+
+    // Seen in the DMG test: a wallet opened right after its restore showed
+    // "Unable to sync" in the header while it was catching up, because the
+    // header subscribed after "syncing" was sent and guessed the rest.
+    test('statusNow says where the wallet is, for screens that subscribe '
+        'late', () async {
+      core.status = statusJson(height: 0);
+      final w = await newWallet();
+      await w.open();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+      await waitFor(
+        () => w.syncAssessment is BeamSyncCatchingUp,
+        what: 'catching up',
+      );
+      expect(w.statusNow.sync, WalletSyncStatus.syncing);
+      expect(w.statusNow.node, NodeConnectionStatus.connected);
+
+      core.status = statusJson(height: _height, available: _g(0.05));
+      // Any core event re-reads the status.
+      host.lastTransport!.emit('ev_txs_changed', {'change': 0});
+      await waitFor(() => w.canSpend, what: 'synced');
+      expect(w.statusNow.sync, WalletSyncStatus.synced);
     });
 
     test('"BEAM core not installed": open() still returns, the state says '

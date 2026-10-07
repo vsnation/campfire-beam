@@ -33,14 +33,43 @@ class Beam extends Bip39Currency {
     }
   }
 
-  /// BEAM's current public mainnet nodes (`getDefaultPeers`,
-  /// `wallet/core/default_peers.cpp`). Each name is a round-robin over
-  /// several machines. The first is the default node; the rest are
-  /// alternates for failover. `eu-node01` and friends are on the core's
-  /// outdated list.
+  /// BEAM's public mainnet nodes: the two round-robin names of the core's
+  /// `getDefaultPeers` (`wallet/core/default_peers.cpp`), then each machine
+  /// behind them (all ten resolve and answer on 8100 as of 2026-10-07; the
+  /// `ap-node*` names no longer resolve). The first is the default node; the
+  /// rest are failover alternates, and all are listed in Settings › Nodes.
   static const List<BeamNodeEndpoint> mainnetNodes = [
     BeamNodeEndpoint("eu-nodes.mainnet.beam.mw", 8100),
     BeamNodeEndpoint("us-nodes.mainnet.beam.mw", 8100),
+    BeamNodeEndpoint("eu-node01.mainnet.beam.mw", 8100),
+    BeamNodeEndpoint("eu-node02.mainnet.beam.mw", 8100),
+    BeamNodeEndpoint("eu-node03.mainnet.beam.mw", 8100),
+    BeamNodeEndpoint("eu-node04.mainnet.beam.mw", 8100),
+    BeamNodeEndpoint("us-node01.mainnet.beam.mw", 8100),
+    BeamNodeEndpoint("us-node02.mainnet.beam.mw", 8100),
+    BeamNodeEndpoint("us-node03.mainnet.beam.mw", 8100),
+    BeamNodeEndpoint("us-node04.mainnet.beam.mw", 8100),
+  ];
+
+  /// The public nodes after the default, as Campfire node entries, so the
+  /// node list offers every one of them (the default is [defaultNode]).
+  List<NodeModel> get alternateNodes => [
+    if (network == CryptoCurrencyNetwork.main)
+      for (final n in mainnetNodes.skip(1))
+        NodeModel(
+          host: n.host,
+          port: n.port,
+          name: n.host.split('.').first,
+          id: 'beam_public_${n.host}',
+          useSSL: false,
+          enabled: true,
+          coinName: identifier,
+          isFailover: true,
+          isDown: false,
+          torEnabled: false,
+          clearnetEnabled: true,
+          isPrimary: false,
+        ),
   ];
 
   static const String _mainnetExplorer = "https://explorer.beam.mw";

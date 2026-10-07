@@ -32,10 +32,11 @@ import '../../desktop/desktop_dialog.dart';
 import '../../desktop/primary_button.dart';
 import '../../desktop/secondary_button.dart';
 
-/// True once the pinned cores are built with patches/0006 (an interrupted
-/// swap then completes or is cancelled, never runs twice). Flip it in the
-/// same change that re-pins the binaries; the dialog text follows.
-const bool kBeamCoreSwapRestartSafe = false;
+/// True where the pinned core is built with patches/0006 (an interrupted
+/// swap then completes or is cancelled, never runs twice): macOS and
+/// Android since 2026-10-07. The Linux pins predate it; add Linux here in
+/// the same change that re-pins them. The dialog text follows.
+bool get kBeamCoreSwapRestartSafe => Platform.isMacOS || Platform.isAndroid;
 
 abstract final class BeamQuitText {
   static String title(int count) => count == 1

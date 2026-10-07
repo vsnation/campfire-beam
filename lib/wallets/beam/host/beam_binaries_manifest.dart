@@ -21,9 +21,9 @@
 const Map<String, Map<String, String>> kBeamBinaryManifest = {
   'macos-arm64': {
     'beam-wallet':
-        '6319a8f862de232e24395680a0b0d0948a627f915e5b9abb510c067537b53bfb',
+        '7c982d03134a05435d237f85f762381303d99e0008721f59fbe8b806e489e1bc',
     'wallet-api':
-        '9d121e64066ec01e0626f2132f50da33bccf02adc9362c1c343af64db6c146f4',
+        'fd9b912eea5f59228ef8630725765ad7d50fedf69fca348bd80982d5cb4036cb',
     'beam-node':
         '8fb4dd9ac7c7bc95d7f0bf2ab067fe6f646b53b38cab96b22e3433b65de7ad6b',
   },
@@ -49,15 +49,15 @@ const Map<String, Map<String, String>> kBeamBinaryManifest = {
   // (scripts/beam/core/android/build_wallet_api.sh, the project notes).
   'android-arm64': {
     'beam-wallet':
-        '4b723937ce035ca2d1ad40b1d8548983ae0d87e1ff5ed077683ad98088b0ad82',
+        '735c63507df14069a374121f768cd0ecbbc63086055e6daaebd14aa887291e08',
     'wallet-api':
-        'c1da9ae7f18a7dbbe7fbf99d6c9dafc2ff6f0bb293e0344c8fb076eeb9251f3d',
+        '54696bbabae9abae8dc516648a8b74ddab8a5b472da93d8f3ba1695020c0c8c7',
   },
   'android-x86_64': {
     'beam-wallet':
-        '621edff399dcf1066a3a251264e88922c184fb966e8ab02fb76715bd3b4bbb79',
+        '4732cf6a282d9fc0c7525a533289ebabf8a5d5714ee190ddc461edead3ab60dd',
     'wallet-api':
-        '22d02e68c74fec724caf2c1c8445342d6006077c139a345aca68862df28c178d',
+        'da18f333c8871d7d55abfafb6ffc71e5ffc161ca408102bfdc8b30abc4018a06',
   },
 };
 

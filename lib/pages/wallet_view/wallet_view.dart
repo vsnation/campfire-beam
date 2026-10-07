@@ -180,7 +180,12 @@ class _WalletViewState extends ConsumerState<WalletView> {
 
     wallet.refresh();
 
-    if (wallet.refreshMutex.isLocked) {
+    if (wallet is BeamWallet) {
+      // Campfire for BEAM: the wallet says where it is (see statusNow).
+      final now = wallet.statusNow;
+      _currentSyncStatus = now.sync;
+      _currentNodeStatus = now.node;
+    } else if (wallet.refreshMutex.isLocked) {
       _currentSyncStatus = WalletSyncStatus.syncing;
       _currentNodeStatus = NodeConnectionStatus.connected;
     } else {

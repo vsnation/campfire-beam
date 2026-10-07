@@ -90,10 +90,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('A swap is still being confirmed'), findsOneWidget);
+    // macOS and Android pins carry patch 0006: an interrupted swap is
+    // cancelled at worst, never run twice; other platforms are warned.
     expect(
       find.text(
-        'This usually takes under a minute. Quitting now can make it run '
-        'again.',
+        kBeamCoreSwapRestartSafe
+            ? 'This usually takes under a minute. If you quit now, BEAM may '
+                  'cancel it instead. Nothing is lost if it does.'
+            : 'This usually takes under a minute. Quitting now can make it '
+                  'run again.',
       ),
       findsOneWidget,
     );

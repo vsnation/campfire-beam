@@ -90,7 +90,25 @@ void main() {
       expect(Beam.mainnetNodes.map((e) => e.toString()), [
         'eu-nodes.mainnet.beam.mw:8100',
         'us-nodes.mainnet.beam.mw:8100',
+        for (final r in ['eu', 'us'])
+          for (final i in [1, 2, 3, 4]) '$r-node0$i.mainnet.beam.mw:8100',
       ]);
+    });
+
+    // The owner: "Nodes should have list of all available nodes".
+    test('every public node after the default is offered in the node list',
+        () {
+      final alt = beam.alternateNodes;
+      expect(alt.map((n) => '${n.host}:${n.port}'), [
+        for (final n in Beam.mainnetNodes.skip(1)) n.toString(),
+      ]);
+      expect(alt.map((n) => n.name).first, 'us-nodes');
+      expect(alt.every((n) => !n.isPrimary && !n.useSSL), isTrue);
+      expect(alt.map((n) => n.id).toSet(), hasLength(alt.length));
+      expect(
+        alt.map((n) => n.id),
+        isNot(contains(beam.defaultNode(isPrimary: true).id)),
+      );
     });
 
     test('explorer link takes a kernel id', () {

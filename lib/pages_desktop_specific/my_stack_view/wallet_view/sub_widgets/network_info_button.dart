@@ -26,6 +26,7 @@ import '../../../../themes/stack_colors.dart';
 import '../../../../utilities/assets.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../utilities/util.dart';
+import '../../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../../../widgets/desktop/desktop_dialog.dart';
 import '../../../../widgets/desktop/desktop_dialog_close_button.dart';
 
@@ -57,7 +58,12 @@ class _NetworkInfoButtonState extends ConsumerState<NetworkInfoButton> {
     eventBus =
         widget.eventBus != null ? widget.eventBus! : GlobalEventBus.instance;
 
-    if (wallet.refreshMutex.isLocked) {
+    if (wallet is BeamWallet) {
+      // Campfire for BEAM: the wallet says where it is (see statusNow).
+      final now = wallet.statusNow;
+      _currentSyncStatus = now.sync;
+      _currentNodeStatus = now.node;
+    } else if (wallet.refreshMutex.isLocked) {
       _currentSyncStatus = WalletSyncStatus.syncing;
       _currentNodeStatus = NodeConnectionStatus.connected;
     } else {
