@@ -265,5 +265,8 @@ class BeamGatedSession implements BeamSession {
   Future<void> closeNow() => inner.close();
 
   @override
+  Future<void> get stopped => inner.stopped;
+
+  @override
   String toString() => 'BeamGatedSession($inner)';
 }

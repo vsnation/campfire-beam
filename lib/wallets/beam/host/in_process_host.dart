@@ -916,6 +916,9 @@ class InProcessSession implements BeamSession {
   /// database is closed by then).
   Future<int> get exitCode => _run.exit;
 
+  @override
+  Future<void> get stopped => _run.done;
+
   /// Stops this wallet-api and starts a new one on [node] with the same
   /// password and body-request setting. wallet-api has no runtime node
   /// switch. This session is closed even if the new one fails to open.

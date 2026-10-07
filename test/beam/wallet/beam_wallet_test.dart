@@ -217,6 +217,7 @@ void main() {
       eventDebounce: const Duration(milliseconds: 20),
       privateNodeStartDelay: Duration.zero,
       privateNodeReadyHold: Duration.zero,
+      coreStopWait: const Duration(milliseconds: 500),
       onPaymentReceived: received.add,
       swapsInFlight: swaps,
       log: envLog.add,
@@ -337,6 +338,89 @@ void main() {
       expect(await secure.read(key: keyOf(w)), isNot(firstPassword));
       expect(await secure.read(key: ownerOf(w)), 'fake-owner-key-2');
       await waitFor(() => w.isOpen, what: 'reopen after rescan');
+    });
+
+    test('rescan refuses while a transaction is not final; wallet.db is '
+        'kept', () async {
+      final w = await newWallet();
+      await w.open();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+      core.txs = [
+        ...core.txs,
+        txJson(
+          txId: '02' * 16,
+          status: 1,
+          income: false,
+          value: 1000000,
+          receiver: '22' * 33,
+        ),
+      ];
+      final password = await secure.read(key: keyOf(w));
+
+      await expectLater(
+        w.recover(isRescan: true),
+        throwsA(
+          isA<BeamWalletException>().having(
+            (e) => e.message,
+            'message',
+            BeamWalletMessages.rescanWithTxInFlight,
+          ),
+        ),
+      );
+      expect(host.calls.where((c) => c == 'initWallet'), hasLength(1));
+      expect(await secure.read(key: keyOf(w)), password);
+      expect(w.isOpen, isTrue);
+    });
+
+    test('rescan refuses while a money flow holds the wallet', () async {
+      final w = await newWallet();
+      await w.open();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+      final lease = w.holdNodeSwitch('swap confirmation');
+
+      await expectLater(
+        w.recover(isRescan: true),
+        throwsA(
+          isA<BeamWalletException>().having(
+            (e) => e.message,
+            'message',
+            BeamWalletMessages.rescanWhileBusy,
+          ),
+        ),
+      );
+      expect(host.calls.where((c) => c == 'initWallet'), hasLength(1));
+
+      lease.release();
+      await w.recover(isRescan: true);
+      expect(host.calls.where((c) => c == 'initWallet'), hasLength(2));
+    });
+
+    test('rescan leaves wallet.db alone while the core has not let go of '
+        'it', () async {
+      final w = await newWallet();
+      await w.open();
+      await w.whenLive.timeout(const Duration(seconds: 5));
+      final db = File(p.join(dirOf(w), 'wallet.db'));
+      final password = await secure.read(key: keyOf(w));
+      host.holdCores = true;
+
+      await expectLater(
+        w.recover(isRescan: true),
+        throwsA(
+          isA<BeamWalletException>().having(
+            (e) => e.message,
+            'message',
+            BeamWalletMessages.rescanCoreStillOpen,
+          ),
+        ),
+      );
+      expect(await db.exists(), isTrue);
+      expect(await secure.read(key: keyOf(w)), password);
+      expect(host.calls.where((c) => c == 'initWallet'), hasLength(1));
+
+      host.releaseCores();
+      await w.refresh();
+      await waitFor(() => w.isOpen, what: 'reopened once the core let go');
     });
 
     test('delete removes wallet.db and both secrets', () async {
