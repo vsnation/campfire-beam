@@ -32,9 +32,10 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 120
     env:
-      BEAM_CORE_BUILD_ROOT: ${{ runner.temp }}/core
       JOBS: 4
     steps:
+      - run: echo "BEAM_CORE_BUILD_ROOT=$RUNNER_TEMP/core" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v6
 
       - name: Build (Docker, ubuntu 22.04, pinned sources)
