@@ -549,18 +549,30 @@ class _BeamNamesHomeViewState extends State<BeamNamesHomeView> {
             style: STextStyles.titleBold12(context),
           ),
           const SizedBox(height: 6),
-          Text(
-            'Let people pay alice instead of a 67-character address.',
-            textAlign: TextAlign.center,
-            style: STextStyles.smallMed14(context),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'From \$10 a year, paid in BEAM.',
-            textAlign: TextAlign.center,
-            style: STextStyles.smallMed12(context)
-                .copyWith(color: colors.textSubtitle1),
-          ),
+          // On desktop the "Get a name" card beside it already says what a
+          // name is for and what it costs; here, what will be in this list.
+          if (deps.desktop)
+            Text(
+              'Names you get, or receive from another wallet, show here '
+              'with the date each one renews.',
+              textAlign: TextAlign.center,
+              style: STextStyles.smallMed14(context)
+                  .copyWith(color: colors.textSubtitle1),
+            )
+          else ...[
+            Text(
+              'Let people pay alice instead of a 67-character address.',
+              textAlign: TextAlign.center,
+              style: STextStyles.smallMed14(context),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'From \$10 a year, paid in BEAM.',
+              textAlign: TextAlign.center,
+              style: STextStyles.smallMed12(context)
+                  .copyWith(color: colors.textSubtitle1),
+            ),
+          ],
         ],
       ),
     );
