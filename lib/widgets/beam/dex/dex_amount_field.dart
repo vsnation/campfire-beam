@@ -69,37 +69,39 @@ class DexAmountField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              child: TextField(
-                key: fieldKey,
-                controller: controller,
-                focusNode: focusNode,
-                readOnly: readOnly,
-                onChanged: onChanged,
-                enableSuggestions: false,
-                autocorrect: false,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                inputFormatters: [
-                  // The DEX reads "." only; a phone set to a region that
-                  // writes 0,5 has no "." key.
-                  BeamDecimalKeyFormatter('.'),
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
-                ],
-                style: STextStyles.smallMed14(context).copyWith(
-                  color: error ? colors.textFieldErrorText : colors.textDark,
-                  fontSize: 18,
-                ),
-                decoration: InputDecoration(
-                  isDense: true,
-                  contentPadding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
-                  hintText: hint,
-                  hintStyle: STextStyles.fieldLabel(context)
-                      .copyWith(fontSize: 18),
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  filled: false,
+              child: BeamCloseKeyboardOnTapOutside(
+                child: TextField(
+                  key: fieldKey,
+                  controller: controller,
+                  focusNode: focusNode,
+                  readOnly: readOnly,
+                  onChanged: onChanged,
+                  enableSuggestions: false,
+                  autocorrect: false,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: [
+                    // The DEX reads "." only; a phone set to a region that
+                    // writes 0,5 has no "." key.
+                    BeamDecimalKeyFormatter('.'),
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                  ],
+                  style: STextStyles.smallMed14(context).copyWith(
+                    color: error ? colors.textFieldErrorText : colors.textDark,
+                    fontSize: 18,
+                  ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
+                    hintText: hint,
+                    hintStyle: STextStyles.fieldLabel(context)
+                        .copyWith(fontSize: 18),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    filled: false,
+                  ),
                 ),
               ),
             ),

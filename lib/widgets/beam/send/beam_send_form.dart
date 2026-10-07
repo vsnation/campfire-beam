@@ -189,67 +189,69 @@ class BeamSendFormState extends State<BeamSendForm> {
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: _m,
-      builder: (context, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (!_desktop) ...[
-            _balanceHeader(context),
-            const SizedBox(height: 16),
-          ],
-          if (_m.syncMessage != null) ...[
-            BeamNotice(
-              key: const Key('beamSendSyncNotice'),
-              kind: BeamNoticeKind.warning,
-              title: _m.syncMessage!.title,
-              message:
-                  _m.syncMessage!.detail ??
-                  "Sending is paused until it's done.",
-            ),
-            const SizedBox(height: 16),
-          ],
-          BeamFieldLabel('Send to', desktop: _desktop),
-          SizedBox(height: _desktop ? 10 : 8),
-          _recipientField(context),
-          ..._recipientBelow(context),
-          if (_m.assetChoices.length > 1 || _m.assetId != 0) ...[
-            SizedBox(height: _desktop ? 20 : 12),
-            BeamFieldLabel('Asset', desktop: _desktop),
-            SizedBox(height: _desktop ? 10 : 8),
-            _assetSelector(context),
-            ..._assetBelow(context),
-          ],
-          SizedBox(height: _desktop ? 20 : 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              BeamFieldLabel('Amount', desktop: _desktop),
-              CustomTextButton(
-                key: const Key('beamSendAllButton'),
-                text: 'Send all ${BeamSendFormat.symbol(_m.asset)}',
-                onTap: _useMax,
-              ),
+    return BeamCloseKeyboardOnTapOutside(
+      child: ListenableBuilder(
+        listenable: _m,
+        builder: (context, _) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!_desktop) ...[
+              _balanceHeader(context),
+              const SizedBox(height: 16),
             ],
-          ),
-          SizedBox(height: _desktop ? 10 : 8),
-          _amountField(context),
-          ..._amountBelow(context),
-          SizedBox(height: _desktop ? 20 : 12),
-          BeamFieldLabel('Network fee', desktop: _desktop),
-          SizedBox(height: _desktop ? 10 : 8),
-          _feeBox(context),
-          SizedBox(height: _desktop ? 20 : 12),
-          BeamFieldLabel('Comment (optional)', desktop: _desktop),
-          SizedBox(height: _desktop ? 10 : 8),
-          _commentField(context),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.only(left: 12),
-            child: Text(_m.commentHint, style: STextStyles.label(context)),
-          ),
-        ],
+            if (_m.syncMessage != null) ...[
+              BeamNotice(
+                key: const Key('beamSendSyncNotice'),
+                kind: BeamNoticeKind.warning,
+                title: _m.syncMessage!.title,
+                message:
+                    _m.syncMessage!.detail ??
+                    "Sending is paused until it's done.",
+              ),
+              const SizedBox(height: 16),
+            ],
+            BeamFieldLabel('Send to', desktop: _desktop),
+            SizedBox(height: _desktop ? 10 : 8),
+            _recipientField(context),
+            ..._recipientBelow(context),
+            if (_m.assetChoices.length > 1 || _m.assetId != 0) ...[
+              SizedBox(height: _desktop ? 20 : 12),
+              BeamFieldLabel('Asset', desktop: _desktop),
+              SizedBox(height: _desktop ? 10 : 8),
+              _assetSelector(context),
+              ..._assetBelow(context),
+            ],
+            SizedBox(height: _desktop ? 20 : 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                BeamFieldLabel('Amount', desktop: _desktop),
+                CustomTextButton(
+                  key: const Key('beamSendAllButton'),
+                  text: 'Send all ${BeamSendFormat.symbol(_m.asset)}',
+                  onTap: _useMax,
+                ),
+              ],
+            ),
+            SizedBox(height: _desktop ? 10 : 8),
+            _amountField(context),
+            ..._amountBelow(context),
+            SizedBox(height: _desktop ? 20 : 12),
+            BeamFieldLabel('Network fee', desktop: _desktop),
+            SizedBox(height: _desktop ? 10 : 8),
+            _feeBox(context),
+            SizedBox(height: _desktop ? 20 : 12),
+            BeamFieldLabel('Comment (optional)', desktop: _desktop),
+            SizedBox(height: _desktop ? 10 : 8),
+            _commentField(context),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 12),
+              child: Text(_m.commentHint, style: STextStyles.label(context)),
+            ),
+          ],
+        ),
       ),
     );
   }

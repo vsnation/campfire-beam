@@ -74,4 +74,42 @@ void main() {
     expect(controller.text, '0.5');
     expect(DexFormat.parse(controller.text).value, BigInt.from(50000000));
   });
+
+  // iOS's decimal pad has no Done key, and on phones Flutter keeps a field
+  // focused on a touch outside it: the keyboard could not be put away.
+  testWidgets('a tap outside puts the keyboard away; a tap into another '
+      'field moves to it', (tester) async {
+    final amount = FocusNode();
+    final comment = FocusNode();
+    addTearDown(amount.dispose);
+    addTearDown(comment.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(platform: TargetPlatform.iOS),
+        home: Material(
+          child: BeamCloseKeyboardOnTapOutside(
+            child: Column(
+              children: [
+                TextField(key: const Key('amount'), focusNode: amount),
+                TextField(key: const Key('comment'), focusNode: comment),
+                const SizedBox(height: 200, child: Text('elsewhere')),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const Key('amount')));
+    await tester.pump();
+    expect(amount.hasFocus, isTrue);
+    await tester.tap(find.text('elsewhere'));
+    await tester.pump();
+    expect(amount.hasFocus, isFalse);
+
+    await tester.tap(find.byKey(const Key('amount')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('comment')));
+    await tester.pump();
+    expect(comment.hasFocus, isTrue);
+  });
 }

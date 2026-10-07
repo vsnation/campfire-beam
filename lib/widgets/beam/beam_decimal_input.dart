@@ -7,6 +7,7 @@
  *
  */
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// Makes the decimal key of the phone's keyboard type the separator an
@@ -47,4 +48,33 @@ class BeamDecimalKeyFormatter extends TextInputFormatter {
     if (before + after != oldValue.text) return newValue;
     return newValue.copyWith(text: '$before$separator$after');
   }
+}
+
+/// Puts a phone keyboard away when the user taps elsewhere, for the fields
+/// in [child].
+///
+/// iOS's decimal pad has no Done key, and on phones Flutter does not
+/// unfocus a field on a touch outside it, so after typing an amount the
+/// keyboard could not be put away (iOS simulator, Send). This unfocuses the
+/// field that was tapped away from, and only that one (a tap into another
+/// field keeps its focus), on pointer up, so the tap still reaches what it
+/// hit.
+class BeamCloseKeyboardOnTapOutside extends StatelessWidget {
+  const BeamCloseKeyboardOnTapOutside({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Actions(
+    actions: <Type, Action<Intent>>{
+      EditableTextTapUpOutsideIntent:
+          CallbackAction<EditableTextTapUpOutsideIntent>(
+            onInvoke: (intent) {
+              intent.focusNode.unfocus();
+              return null;
+            },
+          ),
+    },
+    child: child,
+  );
 }

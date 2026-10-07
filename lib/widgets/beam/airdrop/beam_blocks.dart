@@ -364,46 +364,48 @@ class _BeamTextFieldState extends State<BeamTextField> {
           borderRadius: BorderRadius.circular(
             Constants.size.circularBorderRadius,
           ),
-          child: TextField(
-            key: widget.fieldKey,
-            controller: widget.controller,
-            focusNode: _focus,
-            enabled: widget.enabled,
-            maxLines: widget.maxLines,
-            minLines: 1,
-            autocorrect: false,
-            enableSuggestions: false,
-            keyboardType: widget.keyboardType,
-            // A decimal keyboard's key types "." whatever the phone's
-            // region (BeamUnits reads "." as the decimal point).
-            inputFormatters: [
-              if (widget.keyboardType?.decimal ?? false)
-                BeamDecimalKeyFormatter('.'),
-              ...?widget.inputFormatters,
-            ],
-            textCapitalization: widget.textCapitalization,
-            onChanged: widget.onChanged,
-            style:
-                widget.style ??
-                (desktop
-                    ? STextStyles.desktopTextExtraSmall(context)
-                          .copyWith(color: colors.textFieldActiveText)
-                    : STextStyles.field(context)),
-            decoration:
-                standardInputDecoration(
-                  null,
-                  _focus,
-                  context,
-                  desktopMed: true,
-                ).copyWith(
-                  hintText: widget.hint,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+          child: BeamCloseKeyboardOnTapOutside(
+            child: TextField(
+              key: widget.fieldKey,
+              controller: widget.controller,
+              focusNode: _focus,
+              enabled: widget.enabled,
+              maxLines: widget.maxLines,
+              minLines: 1,
+              autocorrect: false,
+              enableSuggestions: false,
+              keyboardType: widget.keyboardType,
+              // A decimal keyboard's key types "." whatever the phone's
+              // region (BeamUnits reads "." as the decimal point).
+              inputFormatters: [
+                if (widget.keyboardType?.decimal ?? false)
+                  BeamDecimalKeyFormatter('.'),
+                ...?widget.inputFormatters,
+              ],
+              textCapitalization: widget.textCapitalization,
+              onChanged: widget.onChanged,
+              style:
+                  widget.style ??
+                  (desktop
+                      ? STextStyles.desktopTextExtraSmall(context)
+                            .copyWith(color: colors.textFieldActiveText)
+                      : STextStyles.field(context)),
+              decoration:
+                  standardInputDecoration(
+                    null,
+                    _focus,
+                    context,
+                    desktopMed: true,
+                  ).copyWith(
+                    hintText: widget.hint,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    suffixIcon: widget.suffix,
+                    isDense: true,
                   ),
-                  suffixIcon: widget.suffix,
-                  isDense: true,
-                ),
+            ),
           ),
         ),
         if (under != null)
