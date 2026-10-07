@@ -22,6 +22,7 @@ import 'package:zxcvbn/zxcvbn.dart';
 import '../../../../app_config.dart';
 import '../../../../providers/global/prefs_provider.dart';
 import '../../../../providers/global/secure_store_provider.dart';
+import '../../../../providers/global/wallets_provider.dart';
 import '../../../../themes/stack_colors.dart';
 import '../../../../utilities/assets.dart';
 import '../../../../utilities/constants.dart';
@@ -33,6 +34,7 @@ import '../../../../utilities/logger.dart';
 import '../../../../utilities/show_loading.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../utilities/util.dart';
+import '../../../../wallets/beam/wallet/beam_backup_notice.dart';
 import '../../../../widgets/background.dart';
 import '../../../../widgets/conditional_parent.dart';
 import '../../../../widgets/custom_buttons/app_bar_icon_button.dart';
@@ -98,6 +100,10 @@ class _EditAutoBackupViewState extends ConsumerState<EditAutoBackupView> {
     if (validateFail(context, pathToSave, passphrase, repeatPassphrase)) return;
 
     if (mounted) {
+      // Wallets this backup cannot hold, said once it is saved.
+      final notice = beamBackupOmissionNotice(
+        beamWalletsNotInBackup(ref.read(pWallets).wallets),
+      );
       final now = DateTime.now();
       Exception? ex;
       final savedPath = await showLoading(
@@ -162,7 +168,7 @@ class _EditAutoBackupViewState extends ConsumerState<EditAutoBackupView> {
             barrierDismissible: false,
             builder: (_) => StackOkDialog(
               title: "${AppConfig.prefix} Auto Backup saved to:",
-              message: savedPath,
+              message: [savedPath, ?notice].join("\n\n"),
             ),
           );
           if (mounted) {

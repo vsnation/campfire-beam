@@ -19,6 +19,7 @@ import 'package:zxcvbn/zxcvbn.dart';
 
 import '../../../../app_config.dart';
 import '../../../../providers/global/secure_store_provider.dart';
+import '../../../../providers/global/wallets_provider.dart';
 import '../../../../themes/stack_colors.dart';
 import '../../../../utilities/assets.dart';
 import '../../../../utilities/constants.dart';
@@ -27,6 +28,7 @@ import '../../../../utilities/logger.dart';
 import '../../../../utilities/show_loading.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../utilities/util.dart';
+import '../../../../wallets/beam/wallet/beam_backup_notice.dart';
 import '../../../../widgets/background.dart';
 import '../../../../widgets/conditional_parent.dart';
 import '../../../../widgets/custom_buttons/app_bar_icon_button.dart';
@@ -81,6 +83,10 @@ class _RestoreFromFileViewState extends ConsumerState<CreateBackupView> {
     if (validateFail(context, pathToSave, passphrase, repeatPassphrase)) return;
 
     if (mounted) {
+      // Wallets this backup cannot hold, said once it is saved.
+      final notice = beamBackupOmissionNotice(
+        beamWalletsNotInBackup(ref.read(pWallets).wallets),
+      );
       Exception? ex;
       final savedPath = await showLoading(
         whileFuture: () async {
@@ -123,7 +129,10 @@ class _RestoreFromFileViewState extends ConsumerState<CreateBackupView> {
             context: context,
             barrierDismissible: false,
             builder: (_) => !Util.isDesktop
-                ? StackOkDialog(title: "Backup saved to:", message: savedPath)
+                ? StackOkDialog(
+                    title: "Backup saved to:",
+                    message: [savedPath, ?notice].join("\n\n"),
+                  )
                 : DesktopDialog(
                     maxHeight: double.infinity,
                     maxWidth: 500,
@@ -148,6 +157,15 @@ class _RestoreFromFileViewState extends ConsumerState<CreateBackupView> {
                               context,
                             ),
                           ),
+                          if (notice != null) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              notice,
+                              style: STextStyles.desktopTextExtraExtraSmall(
+                                context,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 40),
                           Row(
                             children: [

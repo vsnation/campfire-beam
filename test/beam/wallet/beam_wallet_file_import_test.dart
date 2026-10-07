@@ -20,6 +20,7 @@ import 'package:isar_community/isar.dart';
 import 'package:path/path.dart' as p;
 import 'package:stackwallet/db/isar/main_db.dart';
 import 'package:stackwallet/utilities/flutter_secure_storage_interface.dart';
+import 'package:stackwallet/wallets/beam/wallet/beam_backup_notice.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_secret_store.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_environment.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_errors.dart';
@@ -99,6 +100,8 @@ void main() {
 
     expect(wallet.info.name, 'alice');
     expect(wallet.isImportedFromFile, isTrue);
+    // A backup cannot hold it, and the backup screens say so.
+    expect(beamWalletsNotInBackup([wallet]), ['alice']);
     expect(wallet.info.beamData?.importedFromFile, isTrue);
     expect(
       await wallet.info.isMnemonicVerified(isar),
