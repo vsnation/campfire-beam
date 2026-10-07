@@ -105,6 +105,24 @@ class SecureVoucherCodeStore implements VoucherCodeStore {
     }
   });
 
+  /// Deletes every batch of this wallet and the index: the wallet itself is
+  /// being deleted. Unclaimed vouchers stay recoverable without their codes:
+  /// the batch's creator takes them back with `cancelBatch`, signed by the
+  /// wallet's keys. With an unreadable index the records cannot be found
+  /// (the storage is never listed); the index goes all the same.
+  Future<void> deleteAll() => _serial(() async {
+    List<String> ids;
+    try {
+      ids = await _readIndex();
+    } on FormatException {
+      ids = const [];
+    }
+    for (final id in ids) {
+      if (_id.hasMatch(id)) await _storage.delete(key: _recordKey(id));
+    }
+    await _storage.delete(key: _indexKey);
+  });
+
   Future<List<String>> _readIndex() async {
     final raw = await _storage.read(key: _indexKey);
     if (raw == null) return const [];

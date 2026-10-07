@@ -125,6 +125,29 @@ void main() {
     expect(await s.read(key: 'BEAM_AIRDROP_CODES:$_wallet:batch_1'), isNull);
   });
 
+  test('deleteAll removes every batch and the index, and only this '
+      "wallet's", () async {
+    final s = FakeSecureStorage();
+    final store = SecureVoucherCodeStore(s, _wallet);
+    final other = SecureVoucherCodeStore(s, 'other-wallet');
+    await store.put(_batch('batch_1', 1));
+    await store.put(_batch('batch_2', 2));
+    await other.put(_batch('batch_1', 3));
+    await store.deleteAll();
+    expect(await s.read(key: 'BEAM_AIRDROP_CODES:$_wallet:batch_1'), isNull);
+    expect(await s.read(key: 'BEAM_AIRDROP_CODES:$_wallet:batch_2'), isNull);
+    expect(await s.read(key: 'BEAM_AIRDROP_INDEX:$_wallet'), isNull);
+    expect(await store.all(), isEmpty);
+    expect((await other.all()).map((b) => b.localId), ['batch_1']);
+  });
+
+  test('deleteAll with an unreadable index still removes the index', () async {
+    final s = FakeSecureStorage();
+    await s.write(key: 'BEAM_AIRDROP_INDEX:$_wallet', value: 'garbage{');
+    await SecureVoucherCodeStore(s, _wallet).deleteAll();
+    expect(await s.read(key: 'BEAM_AIRDROP_INDEX:$_wallet'), isNull);
+  });
+
   test('ids that could escape the key layout are refused', () {
     expect(
       () => SecureVoucherCodeStore(FakeSecureStorage(), 'a:b'),

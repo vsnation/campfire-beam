@@ -11,6 +11,7 @@ import 'dart:async';
 import 'dart:io';
 
 import '../../../utilities/flutter_secure_storage_interface.dart';
+import '../contracts/airdrop/secure_voucher_code_store.dart';
 import '../host/in_process_host.dart';
 import '../host/process_host.dart';
 import '../node/beam_in_process_node.dart';
@@ -51,6 +52,13 @@ Future<void> deleteBeamWalletData({
   BeamWalletEnvironment? environment,
 }) async {
   await BeamSecretStore(secureStore, walletId).deleteAll();
+  // Airdrop voucher codes are bearer secrets: they must not outlive the
+  // wallet (a phone's keychain keeps them even across a reinstall).
+  try {
+    await SecureVoucherCodeStore(secureStore, walletId).deleteAll();
+  } on ArgumentError {
+    // Not an id the store could have written under.
+  }
   final env = environment ?? BeamWalletEnvironment.instance;
   final String dir;
   try {
