@@ -89,15 +89,36 @@ Future<Map<String, Object?>> _waitInSync(BeamSession s) async {
   }
 }
 
+/// BEAM programs started by this test: child processes of this process
+/// (`pgrep`), or on Windows, which has no `pgrep`, any wallet-api, beam-node
+/// or beam-wallet running at all. Empty when the core runs in-process.
+Future<String> _beamPrograms() async {
+  if (Platform.isWindows) {
+    final r = await Process.run('powershell', [
+      '-NoProfile',
+      '-Command',
+      'Get-Process -Name wallet-api,beam-node,beam-wallet '
+          r'-ErrorAction SilentlyContinue | ForEach-Object { $_.Id }',
+    ]);
+    return '${r.stdout}'.trim();
+  }
+  return (await Process.run('pgrep', ['-P', '$pid'])).stdout.toString().trim();
+}
+
+/// Deletes a test folder. On Windows the core's log file stays open for the
+/// life of the process and a folder holding it cannot be deleted until the
+/// process ends; the CI runner is discarded afterwards.
+Future<void> _deleteTestDir(Directory dir) async {
+  try {
+    await dir.delete(recursive: true);
+  } on FileSystemException {
+    if (!Platform.isWindows) rethrow;
+  }
+}
+
 /// The non-loopback TCP peers of this process (lsof), for the Tor check.
 Future<List<String>> _externalTcp() async {
-  final r = await Process.run('lsof', [
-    '-nP',
-    '-a',
-    '-p',
-    '$pid',
-    '-iTCP',
-  ]);
+  final r = await Process.run('lsof', ['-nP', '-a', '-p', '$pid', '-iTCP']);
   return '${r.stdout}'
       .split('\n')
       .where((l) => l.contains('->') && !l.contains('->127.0.0.1:'))
@@ -147,9 +168,7 @@ void main() {
           node: const BeamNodeEndpoint('eu-node01.mainnet.beam.mw', 8100),
         );
         final status = await _waitInSync(session);
-        final children = (await Process.run('pgrep', ['-P', '$pid'])).stdout
-            .toString()
-            .trim();
+        final children = await _beamPrograms();
         _evidence(
           'in sync at ${status['current_height']} after '
           '${sw.elapsedMilliseconds} ms (no child process: '
@@ -196,16 +215,14 @@ void main() {
         _evidence('node stopped in ${stopSw.elapsedMilliseconds} ms');
         await sub.cancel();
         expect(
-          (await Process.run('pgrep', ['-P', '$pid'])).stdout
-              .toString()
-              .trim(),
+          await _beamPrograms(),
           isEmpty,
-          reason: 'no child process at all',
+          reason: 'no wallet-api or beam-node program at all',
         );
       } finally {
         await BeamInProcessNode.stopAll();
         await InProcessHost.shutdownAll();
-        await root.delete(recursive: true);
+        await _deleteTestDir(root);
       }
     },
     skip: !enabled || lib == null || home == null
@@ -261,8 +278,8 @@ void main() {
         );
       } finally {
         await InProcessHost.shutdownAll();
-        await rootA.delete(recursive: true);
-        await rootB.delete(recursive: true);
+        await _deleteTestDir(rootA);
+        await _deleteTestDir(rootB);
       }
     },
     skip: !enabled || lib == null || home == null
@@ -331,7 +348,7 @@ void main() {
         await BeamInProcessNode.stopAll();
         await InProcessHost.shutdownAll();
         tor.kill();
-        await root.delete(recursive: true);
+        await _deleteTestDir(root);
         await torDir.delete(recursive: true);
       }
     },

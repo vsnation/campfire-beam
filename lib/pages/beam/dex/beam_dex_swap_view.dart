@@ -53,9 +53,10 @@ import 'beam_dex_create_pool_view.dart';
 import 'beam_dex_pool_detail_view.dart';
 import 'beam_dex_pools_view.dart';
 
-/// The asset a new swap receives when the caller names none: FOMO, the
-/// token LightWallet's DEX opened on.
-const kDexDefaultReceiveAsset = 174;
+/// The asset a new swap receives when the caller names none: bETH (asset
+/// 36, the Beam Bridge's wrapped ETH), so the DEX opens on BEAM → bETH
+/// (owner, 2026-10-07). BEAM's DEX has a funded BEAM/bETH pool.
+const kDexDefaultReceiveAsset = 36;
 
 /// Above this price change the swap is shown in warning colours.
 final kDexPriceImpactWarning = BeamRatio(BigInt.from(3), BigInt.from(100));
