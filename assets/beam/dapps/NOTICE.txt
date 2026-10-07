@@ -1,0 +1,11 @@
+# dApp store icons
+
+Each `<guid>.<ext>` is the dApp's own icon, extracted unchanged from the pinned mainnet package that
+the BEAM desktop wallet bundles, [BeamMW/beam-ui](https://github.com/BeamMW/beam-ui)
+(`ui/apps/mainnet/*.dapp`), licensed under the Apache License 2.0
+(<https://www.apache.org/licenses/LICENSE-2.0>), which is compatible with this project's GPLv3. The
+packages are pinned by SHA-256 in `lib/wallets/beam/dapps/dapp_catalogue.dart`; the path of each
+icon is the one its `manifest.json` names.
+
+They are bundled so the store can show an app before it is installed, without fetching anything:
+an icon URL would tell its server who is browsing which dApps.
