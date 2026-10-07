@@ -6,7 +6,7 @@
 # third-party source tarball. A mismatch stops the build.
 
 # ---- pins ------------------------------------------------------------------
-BEAM_REPO_URL="https://github.com/BeamMW/beam.git"
+BEAM_REPO_URL="${BEAM_REPO_URL:-https://github.com/BeamMW/beam.git}"   # a local clone of it works too
 BEAM_TAG="beam-7.5.14493"
 BEAM_COMMIT="9c4366aae08e7fbde7bc8d65f828a0deace68bfc"
 BEAM_EXPECTED_VERSION="7.5.14493"          # 7.5.<git rev-list --count HEAD>
