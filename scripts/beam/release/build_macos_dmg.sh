@@ -51,6 +51,13 @@ links_before="$(otool -L "$EXE" | tail -n +2)"
 # time; step 1 would re-sign that copy. It is staged afresh in step 2.
 rm -f "$LIB"
 
+# 0. Debug-map entries (stabs: build and pub-cache source paths, under the
+# account's home) out of the app's own Mach-O files. strip -S removes only
+# debugging symbols; the signatures it breaks are redone in step 1.
+while IFS= read -r -d '' f; do
+  if [[ "$(file -b "$f")" == Mach-O* ]]; then strip -S "$f" 2>/dev/null; fi
+done < <(find "$APP/Contents/MacOS" "$APP/Contents/Frameworks" -type f -print0)
+
 # 1. Everything Flutter built, re-signed ad hoc without the sandbox.
 log "re-signing $(basename "$APP") ad hoc, without the sandbox"
 codesign --force --deep --sign - --entitlements "$ENTITLEMENTS" "$APP"
@@ -77,15 +84,7 @@ found="$(find "$APP" -type f \( -name wallet-api -o -name beam-node -o -name bea
 [[ -z "$found" ]] || die "BEAM executables in the app: $found"
 
 # Nothing from this machine (account name, home path) may ship in the app.
-# (Counted, not `| grep -q`: under pipefail an early exit of grep -q fails
-# the pipeline, and a hit would read as none.)
-acct="$(basename "$HOME")"
-text_hits="$( (grep -rIl --exclude='*.png' -e "/Users/$acct" -e "$acct" "$APP" 2>/dev/null || true) | wc -l | tr -d ' ')"
-bin_hits="$(find "$APP" -type f \( -perm -u+x -o -name '*.dylib' \) -exec strings -a {} + 2>/dev/null \
-  | grep -c -e "/Users/$acct" || true)"
-if [[ "$text_hits" != 0 || "$bin_hits" != 0 ]]; then
-  die "the app contains this machine's account name or home path ($text_hits files, $bin_hits strings); not packaging it"
-fi
+check_no_account_name "$APP"
 
 mkdir -p "$OUT_DIR" dist && rm -rf dist/stage && mkdir dist/stage
 cp -R "$APP" dist/stage/ && ln -s /Applications dist/stage/Applications

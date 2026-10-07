@@ -76,6 +76,8 @@ for t in "${ABIS[@]}"; do
   cert="$("$BUILD_TOOLS/apksigner" verify --print-certs "$APK" \
     | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')"
   [[ "$cert" == "$RELEASE_CERT_SHA256" ]] || die "$APK is signed by $cert, not the release key"
+  # Nothing from this machine (account name, home path) may ship.
+  check_apk_no_account_name "$APK"
   OUT="$OUT_DIR/BEAM-Campfire-${VERSION}-${BUILD}-android-${abi}${SUFFIX}.apk"
   cp "$APK" "$OUT"
   log "APK: $OUT ($(du -h "$OUT" | cut -f1)), versionCode $((offset + BUILD)), sha256 $(sha256_of "$OUT")"

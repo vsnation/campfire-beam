@@ -3,8 +3,9 @@
 BEAM Campfire is [Campfire](https://github.com/firoorg/campfire) (a white-label build of
 [Stack Wallet](https://github.com/cypherstack/stack_wallet)) converted from Firo to
 [BEAM Privacy](https://beam.mw): Campfire's design, philosophy and security, with everything BEAM's
-wallets can do. It runs BEAM's own HF6-capable core (`wallet-api` 7.5.14493) as a local child process
-bound to 127.0.0.1, so keys never leave the device.
+wallets can do. BEAM's own HF6-capable core (7.5.14493) runs **inside the app**, as BEAM's desktop
+wallet runs it: the wallet and your private node are part of BEAM Campfire, not separate programs, and keys
+never leave the device.
 
 **Status: public beta.** Tested on BEAM mainnet with small amounts. Use it with funds you can afford to
 lose while it is in beta.
@@ -14,7 +15,7 @@ lose while it is in beta.
 ## Download
 
 Get the latest build from [Releases](https://github.com/vsnation/campfire-beam/releases): macOS (Apple
-Silicon) `.dmg`, Android (arm64) `.apk`, Linux (x86_64) `.tar.gz` and Windows (x64) `.zip`. Every file
+Silicon) `.dmg`, Android `.apk` (arm64 phones; x86_64 for emulators and some Chromebooks), Linux (x86_64) `.tar.gz` and Windows (x64) `.zip`. Every file
 is listed in `SHA256SUMS.txt`; check it before you install:
 
 ```bash
@@ -50,6 +51,10 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
 
 - Create and restore BEAM wallets (12-word phrase, checksum-checked), Campfire's password, backups and themes.
 - Several wallets side by side, each with its own BEAM core; switching is instant.
+- **Import a wallet from its `wallet.db` file** and its password (My Campfire › All wallets › Import
+  wallet.db) when you have the file but no recovery phrase. Your file is copied, never changed.
+- **Tor, if you switch it on:** every connection (BEAM nodes, your private node's peers, prices, the
+  explorer, images) goes through Tor or is not made at all; node names are looked up inside Tor too.
 - Opens instantly from cache; sync status is honest (never "synced" when behind or on a dead fork).
 - Send to an address or a **BEAM name** (BANS); receive with regular, offline, max-privacy and public addresses.
 - Transaction history in plain language, cancel, payment proofs, notifications for payments received.
@@ -61,8 +66,10 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
   with one-tap Claim.
 - **dApps**: store, browser and one approval sheet for every request.
 - **Airdrop vouchers**, **token minter** and **burn**.
-- **Private node** (desktop): the wallet starts on a public node at once, syncs your own node in the background
-  and switches to it seamlessly. Every public BEAM node (`eu-nodes`, `us-nodes`, `eu-node01`–`04`,
+- **Private node** (desktop), built into the app: the wallet starts on a public node at once, syncs your own
+  node in the background (fast sync, as BEAM's desktop wallet: about an hour; about 12 GB while it sets up, then
+  about 8 GB; it starts only with 14 GB free) and switches to it only once the node is ready and serving the
+  wallet. Every public BEAM node (`eu-nodes`, `us-nodes`, `eu-node01`–`04`,
   `us-node01`–`04`) is listed in Settings › Nodes.
 
 Proven live on BEAM mainnet with small amounts: send/receive between wallets, DEX swap, airdrop create and
@@ -79,6 +86,9 @@ claim, dApps.
 - [x] macOS DMG and Android APK
 - [x] Linux and Windows builds (their BEAM core is built and verified in CI)
 - [ ] iOS on the App Store (runs on the iOS Simulator today)
+- [x] The BEAM core and the private node inside the app (no wallet-api or beam-node programs)
+- [x] Tor for every connection when switched on; import from wallet.db
+- [ ] iOS web app (PWA) — built and tested in the iOS Simulator; needs its own domain to go online
 
 **Release 2**
 - [ ] Ethereum: ETH and ERC-20 tokens, with **WBEAM** as a default token
@@ -91,8 +101,9 @@ claim, dApps.
 cd scripts && ./build_app.sh -a campfire -p <linux|macos|android> -v <version> -b <build>
 ```
 
-Flutter 3.47.2. The BEAM core binaries are pinned by SHA-256 and built from tag `beam-7.5.14493`
-(`scripts/beam/core/`).
+Flutter 3.47.2. The BEAM core is built from tag `beam-7.5.14493` as one library inside the app
+(`scripts/beam/core/lib/`, with Campfire's patches) and pinned by SHA-256 per platform; the app checks it
+before loading it.
 
 ---
 
