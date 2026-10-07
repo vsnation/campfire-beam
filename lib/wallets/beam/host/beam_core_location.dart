@@ -29,6 +29,14 @@ const Map<String, String> kBeamCoreLibraryManifest = {
       '203499e0a65b7bd9141b2829d9f8540a19abd6a27d9988ec2df2911e7e3ac8fb',
   'android-x86_64':
       '0d632f9ceff93cd1e13cb431949c7b22568ac607c0f159bfa4df0be91a0c2b19',
+  // Built and checked by CI (.github/workflows/beam-lib.yml, pre-release
+  // beam-core-7.5.14493-cf2).
+  'linux-x86_64':
+      '56de364f96d1952a837eb9b0132d7d352c185e59f129508d2a8e5af401cf65b9',
+  'linux-arm64':
+      'd3e3b40b83e4faa0828a8c0c911ca0dcb9d7a9126ed2721192c101b356fbc814',
+  'windows-x86_64':
+      '1631543b8f7e480e8eea256c646a0c2eac76caa57504e6d9789c2c5d3dfd0fe2',
 };
 
 /// Whether this platform runs the core from `libbeam_core`: a library is

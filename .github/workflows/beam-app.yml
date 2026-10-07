@@ -1,11 +1,12 @@
 name: BEAM app
 
 # Builds BEAM Campfire for Linux x86_64 and Windows x64 with the BEAM core
-# from a "BEAM core" pre-release (beam-core.yml). Before packaging, each job runs
-# the app's own host (ProcessHost) against that core and BEAM mainnet with a
-# throwaway wallet. The core's SHA-256 must equal the pins in
-# scripts/beam/core/manifest.json, or staging refuses it. The packages and their
-# SHA-256 are added to an app release.
+# inside the app: libbeam_core from a "BEAM core library" pre-release
+# (beam-lib.yml) — no wallet-api or beam-node programs. Before packaging, each
+# job runs the app's own in-process host and node against that library and
+# BEAM mainnet with throwaway wallets (on Linux also through a local Tor). The
+# library's SHA-256 must equal the pin in scripts/beam/core/lib/manifest.json.
+# The packages and their SHA-256 are added to an app release.
 on:
   workflow_dispatch:
     inputs:
@@ -17,10 +18,10 @@ on:
         description: 'Build number'
         required: true
         default: '9'
-      core_tag:
-        description: 'Pre-release holding the BEAM core binaries'
+      lib_tag:
+        description: 'Pre-release holding the BEAM core library'
         required: true
-        default: 'beam-core-7.5.14493-cf1'
+        default: 'beam-core-7.5.14493-cf2'
       release_tag:
         description: 'App release to add the packages to (empty: artifacts only)'
         required: false
@@ -58,14 +59,14 @@ jobs:
             libgcrypt20-dev libgirepository1.0-dev libgit2-dev libglib2.0-dev libncurses-dev \
             libssl-dev libtss2-dev zlib1g-dev
 
-      - name: BEAM core from ${{ inputs.core_tag }}
+      - name: BEAM core library from ${{ inputs.lib_tag }}
         run: |
-          mkdir -p "$RUNNER_TEMP/core/linux-x86_64"
-          cd "$RUNNER_TEMP/core/linux-x86_64"
-          gh release download "${{ inputs.core_tag }}" -R "$GITHUB_REPOSITORY" -p 'linux-x86_64-*' -p SHA256SUMS.txt
-          # Lines read '<hash>  <file>' or, from Git Bash, '<hash> *<file>'.
-          grep -E '[ *]linux-x86_64-' SHA256SUMS.txt | sha256sum -c -
-          for b in wallet-api beam-node beam-wallet; do mv "linux-x86_64-$b" "$b"; chmod 0755 "$b"; done
+          mkdir -p "$RUNNER_TEMP/lib" && cd "$RUNNER_TEMP/lib"
+          gh release download "${{ inputs.lib_tag }}" -R "$GITHUB_REPOSITORY" -p 'linux-x86_64-libbeam_core.so' -p SHA256SUMS.txt
+          grep -E '[ *]linux-x86_64-libbeam_core.so$' SHA256SUMS.txt | sha256sum -c -
+          want=$(python3 -c "import json;print(json.load(open('$GITHUB_WORKSPACE/scripts/beam/core/lib/manifest.json'))['linux-x86_64']['sha256'])")
+          echo "$want  linux-x86_64-libbeam_core.so" | sha256sum -c -
+          mv linux-x86_64-libbeam_core.so libbeam_core.so
 
       - name: Configure BEAM Campfire
         run: |
@@ -73,16 +74,15 @@ jobs:
           echo "yes" | ./build_app.sh -v "${{ inputs.version }}" -b "${{ inputs.build_number }}" -p linux -a campfire -d -s
           ./prebuild.sh
 
-      - name: Stage the pinned core
+      - name: The core inside the app, live on mainnet (direct, two wallets, Tor)
         env:
-          BEAM_CORE_OUT: ${{ runner.temp }}/core
-        run: scripts/beam/core/stage_binaries.sh linux
-
-      - name: The app's host against the real core and mainnet
-        env:
-          BEAM_HOST_IT: '1'
-          BEAM_BIN_DIR: ${{ runner.temp }}/core/linux-x86_64
-        run: flutter test test/beam/host/process_host_integration_test.dart
+          BEAM_LIB_IT: '1'
+          BEAM_CORE_LIB: ${{ runner.temp }}/lib/libbeam_core.so
+          BEAM_TOR_BIN: /usr/bin/tor
+        run: |
+          sudo apt-get install -y tor >/dev/null
+          sudo systemctl stop tor || true
+          flutter test test/beam/host/in_process_lib_integration_test.dart
 
       - name: Build
         env:
@@ -94,6 +94,9 @@ jobs:
           name="BEAM-Campfire-${{ inputs.version }}-linux-x86_64"
           mkdir -p dist
           cp -r build/linux/x64/release/bundle "dist/$name"
+          # The core inside the app (lib/, next to the Flutter libraries).
+          install -m 0644 "$RUNNER_TEMP/lib/libbeam_core.so" "dist/$name/lib/libbeam_core.so"
+          ls "dist/$name/lib"
           tar -czf "dist/$name.tar.gz" -C dist "$name"
           rm -rf "dist/$name"
           (cd dist && sha256sum ./*.tar.gz | sed 's# \./# #')
@@ -121,13 +124,14 @@ jobs:
           flutter-version: 3.47.2
           channel: stable
 
-      - name: BEAM core from ${{ inputs.core_tag }}
+      - name: BEAM core library from ${{ inputs.lib_tag }}
         run: |
-          mkdir -p /c/core/windows-x86_64
-          cd /c/core/windows-x86_64
-          gh release download "${{ inputs.core_tag }}" -R "$GITHUB_REPOSITORY" -p 'windows-x86_64-*' -p SHA256SUMS.txt
-          grep -E '[ *]windows-x86_64-' SHA256SUMS.txt | sha256sum -c -
-          for b in wallet-api beam-node beam-wallet; do mv "windows-x86_64-$b.exe" "$b.exe"; done
+          mkdir -p /c/lib && cd /c/lib
+          gh release download "${{ inputs.lib_tag }}" -R "$GITHUB_REPOSITORY" -p 'windows-x86_64-beam_core.dll' -p SHA256SUMS.txt
+          grep -E '[ *]windows-x86_64-beam_core.dll$' SHA256SUMS.txt | sha256sum -c -
+          want=$(python -c "import json;print(json.load(open(r'$GITHUB_WORKSPACE/scripts/beam/core/lib/manifest.json'))['windows-x86_64']['sha256'])")
+          echo "$want *windows-x86_64-beam_core.dll" | sha256sum -c -
+          mv windows-x86_64-beam_core.dll beam_core.dll
 
       - name: Configure BEAM Campfire
         run: |
@@ -150,16 +154,11 @@ jobs:
             cp -r "${source}/." "$target/"
           done
 
-      - name: Stage the pinned core
+      - name: The core inside the app, live on mainnet (direct, two wallets)
         env:
-          BEAM_CORE_OUT: /c/core
-        run: scripts/beam/core/stage_binaries.sh windows
-
-      - name: The app's host against the real core and mainnet
-        env:
-          BEAM_HOST_IT: '1'
-          BEAM_BIN_DIR: C:\core\windows-x86_64
-        run: flutter test test/beam/host/process_host_integration_test.dart
+          BEAM_LIB_IT: '1'
+          BEAM_CORE_LIB: C:\lib\beam_core.dll
+        run: flutter test test/beam/host/in_process_lib_integration_test.dart
 
       - name: Build secp256k1.dll
         run: dart run coinlib:build_windows
@@ -178,6 +177,8 @@ jobs:
           foreach ($dll in 'msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll') {
             Copy-Item (Join-Path $crt.FullName $dll) "build/windows/x64/runner/Release/"
           }
+          # The core inside the app, next to the executable (static CRT).
+          Copy-Item C:\lib\beam_core.dll "build/windows/x64/runner/Release/"
           Get-ChildItem build/windows/x64/runner/Release/*.dll | Select-Object Name
 
       - name: Package
