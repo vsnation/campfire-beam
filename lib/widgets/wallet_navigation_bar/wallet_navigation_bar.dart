@@ -71,174 +71,178 @@ class _WalletNavigationBarState extends ConsumerState<WalletNavigationBar> {
             ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.only(
-            left: horizontalPadding,
-            right: horizontalPadding,
-            bottom: horizontalPadding,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  AnimatedScale(
-                    scale: ref.watch(walletNavBarMore.state).state ? 1 : 0,
-                    duration: _moreDuration,
-                    alignment: const Alignment(
-                      0.5,
-                      1.0,
-                    ),
-                    child: AnimatedOpacity(
-                      opacity: ref.watch(walletNavBarMore.state).state ? 1 : 0,
+        // Only the buttons keep clear of the notch and home indicator: the
+        // backdrop above fills the screen.
+        SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(
+              left: horizontalPadding,
+              right: horizontalPadding,
+              bottom: horizontalPadding,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedScale(
+                      scale: ref.watch(walletNavBarMore.state).state ? 1 : 0,
                       duration: _moreDuration,
-                      child: IntrinsicWidth(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ...widget.moreItems.map(
-                              (e) {
-                                return Column(
-                                  children: [
-                                    WalletNavigationBarMoreItem(data: e),
-                                    const SizedBox(
-                                      height: 8,
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ],
+                      alignment: const Alignment(
+                        0.5,
+                        1.0,
+                      ),
+                      child: AnimatedOpacity(
+                        opacity: ref.watch(walletNavBarMore.state).state ? 1 : 0,
+                        duration: _moreDuration,
+                        child: IntrinsicWidth(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ...widget.moreItems.map(
+                                (e) {
+                                  return Column(
+                                    children: [
+                                      WalletNavigationBarMoreItem(data: e),
+                                      const SizedBox(
+                                        height: 8,
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Material(
-                    color: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        1000,
-                      ),
-                    ),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context)
-                            .extension<StackColors>()!
-                            .bottomNavBack,
-                        boxShadow: [
-                          Theme.of(context)
-                              .extension<StackColors>()!
-                              .standardBoxShadow,
-                        ],
+                    Material(
+                      color: Colors.transparent,
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(
                           1000,
                         ),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 6,
-                          horizontal: 20,
-                        ),
-                        // child: IntrinsicWidth(
-                        child: ConditionalParent(
-                          condition: buttonCount > 4,
-                          builder: (child) => SizedBox(
-                            width: width * 0.9,
-                            child: child,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context)
+                              .extension<StackColors>()!
+                              .bottomNavBack,
+                          boxShadow: [
+                            Theme.of(context)
+                                .extension<StackColors>()!
+                                .standardBoxShadow,
+                          ],
+                          borderRadius: BorderRadius.circular(
+                            1000,
                           ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 6,
+                            horizontal: 20,
+                          ),
+                          // child: IntrinsicWidth(
                           child: ConditionalParent(
-                            condition: buttonCount <= 4,
+                            condition: buttonCount > 4,
                             builder: (child) => SizedBox(
-                              width: width * 0.2 * buttonCount,
+                              width: width * 0.9,
                               child: child,
                             ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                ...widget.items.map(
-                                  (e) => Expanded(
-                                    child: WalletNavigationBarItem(
-                                      data: e,
-                                      disableDuration: _moreDuration,
+                            child: ConditionalParent(
+                              condition: buttonCount <= 4,
+                              builder: (child) => SizedBox(
+                                width: width * 0.2 * buttonCount,
+                                child: child,
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  ...widget.items.map(
+                                    (e) => Expanded(
+                                      child: WalletNavigationBarItem(
+                                        data: e,
+                                        disableDuration: _moreDuration,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                if (hasMore)
-                                  Expanded(
-                                    child: WalletNavigationBarItem(
-                                      data: WalletNavigationBarItemData(
-                                        icon: AnimatedCrossFade(
-                                          firstChild: SvgPicture.asset(
-                                            Assets.svg.bars,
-                                            width: 20,
-                                            height: 20,
-                                            color: Theme.of(context)
-                                                .extension<StackColors>()!
-                                                .bottomNavIconIcon,
-                                          ),
-                                          secondChild: SvgPicture.asset(
-                                            Assets.svg.bars,
-                                            width: 20,
-                                            height: 20,
-                                            color: Theme.of(context)
-                                                .extension<StackColors>()!
-                                                .bottomNavIconIconHighlighted,
-                                          ),
-                                          crossFadeState: ref
-                                                  .watch(walletNavBarMore.state)
-                                                  .state
-                                              ? CrossFadeState.showSecond
-                                              : CrossFadeState.showFirst,
-                                          duration: _moreDuration,
-                                        ),
-                                        overrideText: AnimatedCrossFade(
-                                          firstChild: Text(
-                                            "More",
-                                            style:
-                                                STextStyles.buttonSmall(context)
-                                                    .copyWith(
+                                  if (hasMore)
+                                    Expanded(
+                                      child: WalletNavigationBarItem(
+                                        data: WalletNavigationBarItemData(
+                                          icon: AnimatedCrossFade(
+                                            firstChild: SvgPicture.asset(
+                                              Assets.svg.bars,
+                                              width: 20,
+                                              height: 20,
                                               color: Theme.of(context)
                                                   .extension<StackColors>()!
-                                                  .bottomNavText,
+                                                  .bottomNavIconIcon,
                                             ),
-                                          ),
-                                          secondChild: Text(
-                                            "More",
-                                            style:
-                                                STextStyles.buttonSmall(context)
-                                                    .copyWith(
+                                            secondChild: SvgPicture.asset(
+                                              Assets.svg.bars,
+                                              width: 20,
+                                              height: 20,
                                               color: Theme.of(context)
                                                   .extension<StackColors>()!
                                                   .bottomNavIconIconHighlighted,
                                             ),
+                                            crossFadeState: ref
+                                                    .watch(walletNavBarMore.state)
+                                                    .state
+                                                ? CrossFadeState.showSecond
+                                                : CrossFadeState.showFirst,
+                                            duration: _moreDuration,
                                           ),
-                                          crossFadeState: ref
-                                                  .watch(walletNavBarMore.state)
-                                                  .state
-                                              ? CrossFadeState.showSecond
-                                              : CrossFadeState.showFirst,
-                                          duration: _moreDuration,
+                                          overrideText: AnimatedCrossFade(
+                                            firstChild: Text(
+                                              "More",
+                                              style:
+                                                  STextStyles.buttonSmall(context)
+                                                      .copyWith(
+                                                color: Theme.of(context)
+                                                    .extension<StackColors>()!
+                                                    .bottomNavText,
+                                              ),
+                                            ),
+                                            secondChild: Text(
+                                              "More",
+                                              style:
+                                                  STextStyles.buttonSmall(context)
+                                                      .copyWith(
+                                                color: Theme.of(context)
+                                                    .extension<StackColors>()!
+                                                    .bottomNavIconIconHighlighted,
+                                              ),
+                                            ),
+                                            crossFadeState: ref
+                                                    .watch(walletNavBarMore.state)
+                                                    .state
+                                                ? CrossFadeState.showSecond
+                                                : CrossFadeState.showFirst,
+                                            duration: _moreDuration,
+                                          ),
+                                          label: null,
+                                          isMore: true,
+                                          onTap: _onMorePressed,
                                         ),
-                                        label: null,
-                                        isMore: true,
-                                        onTap: _onMorePressed,
+                                        disableDuration: _moreDuration,
                                       ),
-                                      disableDuration: _moreDuration,
                                     ),
-                                  ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ],

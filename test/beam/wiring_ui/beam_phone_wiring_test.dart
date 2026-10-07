@@ -137,6 +137,38 @@ void main() {
     await finish(tester);
   });
 
+  // Seen on the iOS simulator: the More backdrop stopped at the notch and
+  // the home indicator, leaving light bands above and below.
+  testWidgets('with a notch and a home indicator, the More backdrop covers '
+      'the whole screen', (tester) async {
+    final wallet = await openBeamWallet(tester, db);
+    await pumpWiring(
+      tester,
+      WalletView(walletId: wallet.walletId),
+      desktop: false,
+    );
+    final dpr = tester.view.devicePixelRatio;
+    tester.view.padding = FakeViewPadding(top: 59 * dpr, bottom: 34 * dpr);
+    tester.view.viewPadding = FakeViewPadding(top: 59 * dpr, bottom: 34 * dpr);
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+    await tester.pump();
+    await tester.tap(_barText('More'));
+    await settle(tester, rounds: 1);
+    final backdrop = find.byWidgetPredicate(
+      (w) => w is Container && w.color == Colors.black.withOpacity(0.7),
+    );
+    final r = tester.getRect(backdrop);
+    expect(r.top, 0);
+    expect(r.bottom, phone.height);
+    // The buttons stay clear of the home indicator.
+    expect(
+      tester.getRect(_barText('More')).bottom,
+      lessThanOrEqualTo(phone.height - 34),
+    );
+    await finish(tester);
+  });
+
   testWidgets('each entry opens its page', (tester) async {
     final wallet = await openBeamWallet(tester, db);
     await pumpWiring(
