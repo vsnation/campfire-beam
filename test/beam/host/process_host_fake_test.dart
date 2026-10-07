@@ -246,7 +246,9 @@ void main() {
           },
         },
       ),
-      startupTimeout: const Duration(seconds: 3),
+      // 8 s, not 3: under the full suite's load the fake core's shell
+      // script once took longer than 3 s to start (B-FLAKE-2).
+      startupTimeout: const Duration(seconds: 8),
       cliTimeout: const Duration(seconds: 15),
       rescanTimeout: const Duration(seconds: 15),
     );
@@ -390,7 +392,7 @@ void main() {
           },
           allowDevBuilds: true,
         ),
-        startupTimeout: const Duration(seconds: 3),
+        startupTimeout: const Duration(seconds: 8),
         cliTimeout: const Duration(seconds: 15),
       );
       await createWallet();
@@ -547,7 +549,7 @@ void main() {
       final swapHost = ProcessHost(
         rootDir: p.join(tmp.path, 'beam'),
         binaries: swapping,
-        startupTimeout: const Duration(seconds: 3),
+        startupTimeout: const Duration(seconds: 8),
       );
       await createWallet();
       await expectLater(
