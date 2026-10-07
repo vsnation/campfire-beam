@@ -309,6 +309,12 @@ class _BeamClaimVoucherViewState extends State<BeamClaimVoucherView>
               ),
             if (s != null && !_checking) ...[
               _summary(context, s),
+              const BeamGap(),
+              const BeamNotice(
+                key: ValueKey('claim-bearer-notice'),
+                kind: BeamNoticeKind.info,
+                message: AirdropBearerText.claimMessage,
+              ),
               if (s.claimCostsMoreThanItPays) ...[
                 const BeamGap(),
                 _lossWarning(s),

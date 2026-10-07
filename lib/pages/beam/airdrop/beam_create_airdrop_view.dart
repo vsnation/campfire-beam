@@ -253,6 +253,13 @@ class _BeamCreateAirdropViewState extends State<BeamCreateAirdropView> {
               style: STextStyles.itemSubtitle(context),
             ),
             const BeamGap(16),
+            const BeamNotice(
+              key: ValueKey('create-bearer-warning'),
+              kind: BeamNoticeKind.warning,
+              title: AirdropBearerText.createTitle,
+              message: AirdropBearerText.createMessage,
+            ),
+            const BeamGap(16),
             if (_loadProblem != null) ...[
               BeamNotice(
                 kind: BeamNoticeKind.danger,
