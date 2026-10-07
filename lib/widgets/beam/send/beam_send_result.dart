@@ -23,6 +23,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/svg.dart';
 
 import '../../../themes/stack_colors.dart';
@@ -36,6 +37,7 @@ import '../../desktop/primary_button.dart';
 import '../../rounded_white_container.dart';
 import '../../stack_dialog.dart';
 import '../stickers/beam_sticker.dart';
+import '../wiring/beam_desktop_wallet_tabs.dart';
 import 'beam_send_format.dart';
 import 'beam_send_model.dart';
 import 'beam_send_review.dart';
@@ -46,6 +48,7 @@ Future<void> showBeamSendSuccess(
   required BeamSendReview review,
   required String txId,
   required bool desktop,
+  String? walletId,
   ClipboardInterface clipboard = const ClipboardWrapper(),
 }) => showDialog<void>(
   context: context,
@@ -55,6 +58,7 @@ Future<void> showBeamSendSuccess(
     review: review,
     txId: txId,
     desktop: desktop,
+    walletId: walletId,
     clipboard: clipboard,
   ),
 );
@@ -81,12 +85,17 @@ class BeamSendSuccess extends StatelessWidget {
     required this.review,
     required this.txId,
     required this.desktop,
+    this.walletId,
     this.clipboard = const ClipboardWrapper(),
   });
 
   final BeamSendReview review;
   final String txId;
   final bool desktop;
+
+  /// The paying wallet: "View in history" brings its desktop tabs to
+  /// Transactions (on a phone the history is already on the home).
+  final String? walletId;
   final ClipboardInterface clipboard;
 
   @override
@@ -163,7 +172,15 @@ class BeamSendSuccess extends StatelessWidget {
           key: const Key('beamSendSuccessDone'),
           label: 'View in history',
           buttonHeight: desktop ? ButtonHeight.l : null,
-          onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+          onPressed: () {
+            final id = walletId;
+            if (id != null) {
+              ProviderScope.containerOf(context, listen: false)
+                  .read(pBeamShowHistoryRequest(id).state)
+                  .state++;
+            }
+            Navigator.of(context, rootNavigator: true).pop();
+          },
         ),
       ],
     );

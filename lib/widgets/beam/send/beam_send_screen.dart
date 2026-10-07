@@ -59,6 +59,7 @@ import '../../stack_dialog.dart';
 import 'beam_confirm_content.dart';
 import 'beam_send_backend.dart';
 import 'beam_send_form.dart';
+import 'beam_send_format.dart';
 import 'beam_send_model.dart';
 import 'beam_send_review.dart';
 import 'beam_send_widgets.dart';
@@ -430,11 +431,17 @@ class BeamSendPageState extends State<BeamSendPage> {
       listenable: model,
       builder: (context, _) {
         final enabled = model.canReview;
+        // The outcome, once there is one to name ("Send 0.5 BEAM"); the
+        // next screen still asks before anything leaves.
+        final amount = model.amount;
+        final label = enabled && amount != null && amount > BigInt.zero
+            ? 'Send ${BeamSendFormat.amount(amount, model.asset)}'
+            : 'Send';
         if (desktop) {
           return PrimaryButton(
             key: const Key('beamSendReviewButton'),
             buttonHeight: ButtonHeight.l,
-            label: 'Send',
+            label: label,
             enabled: enabled,
             onPressed: enabled ? _review : null,
           );
@@ -446,7 +453,7 @@ class BeamSendPageState extends State<BeamSendPage> {
           style: enabled
               ? colors.getPrimaryEnabledButtonStyle(context)
               : colors.getPrimaryDisabledButtonStyle(context),
-          child: Text('Send', style: STextStyles.button(context)),
+          child: Text(label, style: STextStyles.button(context)),
         );
       },
     );

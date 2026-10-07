@@ -742,6 +742,7 @@ class _ConfirmTransactionViewState
       review: review,
       txId: txId,
       desktop: desktop,
+      walletId: walletId,
     );
     if (context.mounted) _leaveAfterSend(context);
   }

@@ -10,6 +10,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/utilities/amount/amount.dart';
 import 'package:stackwallet/wallets/beam/assets/beam_asset_holdings.dart';
+import 'package:stackwallet/wallets/beam/assets/beam_asset_market_source.dart';
+import 'package:stackwallet/wallets/beam/assets/beam_asset_providers.dart';
 import 'package:stackwallet/wallets/beam/assets/beam_asset_registry.dart';
 import 'package:stackwallet/wallets/beam/assets/beam_market_cache.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/beam_pool.dart';
@@ -250,5 +252,55 @@ void main() {
     );
     final m = _build([h], market: market);
     expect(m.rows[1].valueNote, '≈ 3 BEAM if sold now');
+  });
+
+  // Seen in the DMG test: the first read failed while the restore scan ran,
+  // and the assets card said "Prices load once the wallet is connected"
+  // long after it was.
+  group('a failed first read is tried again', () {
+    final pools = [
+      BeamPool(
+        aid1: 0,
+        aid2: 174,
+        kind: BeamPoolKind.fromWire(2),
+        tok1: BigInt.parse('8120504552105'),
+        tok2: BigInt.parse('66136536898747'),
+        ctl: BigInt.parse('27125190867423'),
+        lpToken: 175,
+      ),
+    ];
+
+    test('nothing saved: retry is scheduled, and the retry gets prices',
+        () async {
+      var fail = true;
+      final source = BeamAssetMarketSource(() async {
+        if (fail) throw StateError('core not ready');
+        return pools;
+      });
+      var retries = 0;
+      expect(await readBeamMarket(source, () => retries++), isNull);
+      expect(retries, 1);
+      fail = false;
+      final market = await readBeamMarket(source, () => retries++);
+      expect(market!.pools.single.aid2, 174);
+      expect(retries, 1);
+    });
+
+    test('saved prices and a failed refresh: the saved ones, no retry',
+        () async {
+      var now = DateTime(2026, 10, 7, 1);
+      var calls = 0;
+      final source = BeamAssetMarketSource(() async {
+        if (calls++ > 0) throw StateError('node gone');
+        return pools;
+      }, now: () => now);
+      await source.read();
+      now = now.add(const Duration(minutes: 5));
+      var retries = 0;
+      final market = await readBeamMarket(source, () => retries++);
+      expect(calls, 2, reason: 'stale, so it tried to read');
+      expect(market!.pools.single.aid2, 174);
+      expect(retries, 0);
+    });
   });
 }

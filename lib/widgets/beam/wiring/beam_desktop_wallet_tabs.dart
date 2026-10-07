@@ -25,6 +25,12 @@ import '../wallet_home/beam_wallet_home.dart';
 
 /// [titles] and [children] as in CustomTabView; the tab titled "Send"
 /// follows the wallet's `sendPausedReason`.
+/// Bumped to bring a wallet's desktop tabs to "Transactions" (the sent
+/// sheet's "View in history"). A counter, so asking twice works.
+final pBeamShowHistoryRequest = StateProvider.family<int, String>(
+  (ref, walletId) => 0,
+);
+
 class BeamDesktopWalletTabs extends ConsumerStatefulWidget {
   const BeamDesktopWalletTabs({
     super.key,
@@ -65,6 +71,10 @@ class _BeamDesktopWalletTabsState extends ConsumerState<BeamDesktopWalletTabs> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(pBeamShowHistoryRequest(widget.walletId), (_, _) {
+      final i = widget.titles.indexOf('Transactions');
+      if (i >= 0 && i != _selected) setState(() => _selected = i);
+    });
     final colors = Theme.of(context).extension<StackColors>()!;
     final paused = ref.watch(pBeamHome(widget.walletId)).sendPausedReason;
     return LayoutBuilder(

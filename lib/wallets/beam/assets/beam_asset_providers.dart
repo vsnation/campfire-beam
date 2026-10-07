@@ -124,12 +124,35 @@ final pBeamAssetMarket = FutureProvider.family<BeamAssetMarket?, String>((
     );
     return saved;
   }
+  return readBeamMarket(source, () {
+    final retry = Timer(
+      beamMarketRetryDelay,
+      () => ref.read(_pBeamAssetMarketVersion(walletId).state).state++,
+    );
+    ref.onDispose(retry.cancel);
+  });
+});
+
+/// How soon prices are read again after a read failed with none saved.
+const beamMarketRetryDelay = Duration(seconds: 30);
+
+/// Reads [source]. A failed read shows the last prices; with none saved
+/// (the core could not answer yet, e.g. during a restore scan) it also
+/// calls [scheduleRetry], instead of saying "no prices" until something
+/// else happens to refresh them.
+@visibleForTesting
+Future<BeamAssetMarket?> readBeamMarket(
+  BeamAssetMarketSource source,
+  void Function() scheduleRetry,
+) async {
   try {
     return await source.read();
   } catch (_) {
-    return source.last;
+    final last = source.last;
+    if (last == null) scheduleRetry();
+    return last;
   }
-});
+}
 
 /// The assets [walletId] holds, valued and ordered, hidden ones flagged.
 final pBeamAssetHoldings = Provider.family<List<BeamAssetHolding>, String>((
