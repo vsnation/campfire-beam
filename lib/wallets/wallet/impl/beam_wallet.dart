@@ -1006,9 +1006,23 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
       Future<void>.delayed(const Duration(seconds: 2), () async {
         // A session attached meanwhile (a switch or the private node that
         // finished after all) is live: it is not torn down.
-        if (gen != _generation || _session != null) return;
-        await _disposeCoordinator();
-        _coordHost?.close();
+        final attached = _session != null;
+        if (gen == _generation && !attached) {
+          await _disposeCoordinator();
+          _coordHost?.close();
+        }
+        // Only the connection may have gone: wallet-api can still run with
+        // wallet.db open, and then the reopen finds the wallet in use. The
+        // lost session is no longer referenced anywhere else, so it is
+        // stopped here even when the wallet was closed meanwhile.
+        if (!identical(session, _session)) {
+          try {
+            await session.closeNow();
+          } catch (e) {
+            environment.log('Stopping the lost wallet core failed: $e');
+          }
+        }
+        if (gen != _generation || attached || _session != null) return;
         _ensureOpening();
       }),
     );
@@ -1368,11 +1382,14 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     if (refreshMutex.isLocked) return;
     if (_api == null) {
       final p = _problem;
+      // walletInUse: a core of this wallet that was still stopping (a lost
+      // connection, a failed start) lets go of it once it has stopped.
       final retryable =
           p == null ||
           p.problem == BeamWalletProblem.nodeUnreachable ||
           p.problem == BeamWalletProblem.waitingForTor ||
           p.problem == BeamWalletProblem.notOpen ||
+          p.problem == BeamWalletProblem.walletInUse ||
           p.problem == BeamWalletProblem.other;
       if (retryable) _ensureOpening();
       if (p != null) {
@@ -1659,8 +1676,8 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
       BeamSynced() when scanning => WalletSyncStatus.syncing,
       BeamSynced() => WalletSyncStatus.synced,
       BeamSyncCatchingUp() || BeamSyncConnecting() => WalletSyncStatus.syncing,
-      BeamSyncNotConnected() || BeamSyncStalled() =>
-        WalletSyncStatus.unableToSync,
+      BeamSyncNotConnected() ||
+      BeamSyncStalled() => WalletSyncStatus.unableToSync,
     };
     return (
       sync: _problem != null ? WalletSyncStatus.unableToSync : sync,
