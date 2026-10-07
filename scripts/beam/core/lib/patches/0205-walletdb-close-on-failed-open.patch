@@ -1,0 +1,73 @@
+Campfire for BEAM: a wallet database that fails to open is closed again.
+
+WalletDB's OpenAndMigrateIfNeeded() opens the sqlite connection, keys it and test-reads
+it; when the password is wrong (or the file is not a wallet) it throws and leaves the
+connection open. WalletDB::isValidPassword() never closes its check connection, even on
+success, and WalletDB::open() keeps the main connection when the private one fails.
+
+A wallet-api process exits after such a failure, so stock builds never notice. Inside
+the app (the in-process core: libbeam_core, the iOS library) every wrong password
+attempt kept its connection for the life of the process: measured with leaks(1) on
+macOS, 241 KB per attempt (sqlite lookaside 128 KB + page cache 96 KB + the rest).
+
+Found while verifying libbeam_core; library series for now, a core-series candidate
+(iOS's in-process core has the same leak). Behaviour is otherwise unchanged. Applied
+after 0204. patch -p1.
+
+--- a/wallet/core/wallet_db.cpp
++++ b/wallet/core/wallet_db.cpp
+@@ -1226,6 +1226,7 @@
+         {
+             sqlite3* db = nullptr;
+             OpenAndMigrateIfNeeded(path, &db, password);
++            sqlite3_close(db); // Campfire (patch 0205): only a check; do not keep it open
+             return true;
+         }
+         catch (...)
+@@ -1800,6 +1801,12 @@
+ 
+         void OpenAndMigrateIfNeeded(const string& path, sqlite3** db, const SecString& password)
+         {
++            // Campfire (patch 0205): a database that does not open (wrong password, ...) is
++            // closed before the exception leaves. In a process that keeps running (the
++            // in-process core) every failed attempt would otherwise keep its sqlite
++            // connection, about 240 KB, for good.
++            try
++            {
+             int ret = sqlite3_open_v2(path.c_str(), db, SQLITE_OPEN_READWRITE, nullptr);
+             throwIfError(ret, *db);
+             enterKey(*db, password);
+@@ -1819,6 +1826,16 @@
+                 ret = checkKey();
+                 throwIfError(ret, *db);
+             }
++            }
++            catch (...)
++            {
++                if (*db)
++                {
++                    sqlite3_close(*db);
++                    *db = nullptr;
++                }
++                throw;
++            }
+         }
+ 
+         bool MoveSeedToPrivateVariables(WalletDB& db)
+@@ -2234,7 +2251,15 @@
+         bool separateDBForPrivateData = isInitialized(privatePath);
+         if (separateDBForPrivateData)
+         {
+-            OpenAndMigrateIfNeeded(privatePath, &sdb, password);
++            try
++            {
++                OpenAndMigrateIfNeeded(privatePath, &sdb, password);
++            }
++            catch (...)
++            {
++                sqlite3_close(db); // Campfire (patch 0205): the main database too
++                throw;
++            }
+         }
+ 
+         auto walletDB = make_shared<WalletDB>(db, sdb);

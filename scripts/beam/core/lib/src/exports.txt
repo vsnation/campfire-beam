@@ -1,0 +1,16 @@
+beam_core_init
+beam_wallet_api_run
+beam_wallet_api_stop
+beam_wallet_api_is_running
+beam_wallet_api_version
+beam_wallet_api_rules_signature
+beam_wallet_api_init_wallet
+beam_wallet_api_check_wallet
+beam_wallet_api_export_owner_key
+beam_node_start
+beam_node_stop
+beam_node_get_status
+beam_wallet_api_start
+beam_wallet_api_stop_instance
+beam_wallet_api_instance_state
+beam_wallet_api_instance_count

@@ -1,0 +1,54 @@
+Campfire for BEAM (library only): a CMake option that builds wallet-api and the node
+as ONE shared library, beam_core (libbeam_core.dylib / .so, beam_core.dll).
+
+-DBEAM_CORE_LIBRARY=ON -DBEAM_CORE_LIBRARY_SOURCES=<files> adds the SHARED target
+beam_core, compiled from Campfire's scripts/beam/core/lib/src (which includes
+wallet/api/cli/api_cli.cpp with main() renamed, and runs beam::Node on a thread) and
+linked against wallet_api, http, cli, mnemonic and node. The platform build passes its
+export list through BEAM_CORE_LIBRARY_LINK_FLAGS. This patch touches one existing
+file and adds no source to the BEAM tree; without the option the file defines exactly
+the stock targets. patch -p1.
+
+--- a/wallet/api/CMakeLists.txt
++++ b/wallet/api/CMakeLists.txt
+@@ -115,4 +115,38 @@
+             COMMAND ${CMAKE_COMMAND} -E copy ${IPFS_DLL} ${CMAKE_CURRENT_BINARY_DIR}
+         )
+     endif()
+-endif()
+\ No newline at end of file
++endif()
++
++# Campfire for BEAM (library patch 0204): wallet-api and the node in ONE shared
++# library, libbeam_core (scripts/beam/core/lib). Its sources are Campfire's, passed
++# in as BEAM_CORE_LIBRARY_SOURCES: they compile cli/api_cli.cpp with main() renamed
++# and run beam::Node on a thread of its own, behind a C interface (beam_core.h).
++# Off by default: without the option this file defines exactly the stock targets.
++option(BEAM_CORE_LIBRARY "Build beam_core: wallet-api and the node as one shared library" OFF)
++if (BEAM_CORE_LIBRARY)
++    if (NOT BEAM_CORE_LIBRARY_SOURCES)
++        message(FATAL_ERROR "BEAM_CORE_LIBRARY=ON needs BEAM_CORE_LIBRARY_SOURCES=<Campfire's library sources>")
++    endif()
++    add_library(beam_core SHARED ${BEAM_CORE_LIBRARY_SOURCES})
++    if (BEAM_ATOMIC_SWAP_SUPPORT)
++        target_sources(beam_core PRIVATE cli/api_cli_swap.cpp)
++    endif()
++    target_link_libraries(beam_core
++        PRIVATE
++            wallet_api
++            http
++            cli
++            mnemonic
++            node
++    )
++    target_compile_definitions(beam_core PRIVATE BEAM_CORE_BUILDING)
++    # Only the C interface is exported; the platform build adds the export list
++    # (BEAM_CORE_LIBRARY_LINK_FLAGS) that enforces it for the static archives too.
++    set_target_properties(beam_core PROPERTIES
++        C_VISIBILITY_PRESET hidden
++        CXX_VISIBILITY_PRESET hidden
++        VISIBILITY_INLINES_HIDDEN ON)
++    if (BEAM_CORE_LIBRARY_LINK_FLAGS)
++        set_target_properties(beam_core PROPERTIES LINK_FLAGS "${BEAM_CORE_LIBRARY_LINK_FLAGS}")
++    endif()
++endif()

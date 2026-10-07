@@ -1,0 +1,79 @@
+Campfire for BEAM: beam::Node makes every outbound peer connection through a SOCKS5
+proxy (Tor) when Config::m_ProxyAddr is set, fail closed.
+
+core/proto.cpp NodeConnection::Connect(addr, proxyAddr) can already connect through a
+SOCKS5 proxy; the node never passed one. With m_ProxyAddr set:
+ * both places the node dials a peer (PeerMan::ActivatePeer, which serves configured
+   and learned peers, and the opposite-direction probe in Peer::OnMsg(Authentication))
+   connect through the proxy. There is no direct fallback; a peer the proxy cannot
+   reach stays unconnected and the node retries it later, through the proxy;
+ * the UDP LAN beacon is not started, whatever m_BeaconPeriod_ms says.
+Inbound listening is untouched (the core series' 0001 binds it to 127.0.0.1 for
+beam-node; the in-process node sets loopback itself). Peers learned from the network
+are IP addresses; configured peers must be IPs too (the caller resolves names through
+the proxy).
+
+Lines of node.cpp are edited in place, so no log line moves. Unset (the default),
+behaviour is unchanged. Written against tag beam-7.5.14493 + the core series; it can
+move into the core series as is (beam-node would then need a --proxy option to use
+it). patch -p1.
+
+--- a/node/node.h
++++ b/node/node.h
+@@ -58,6 +58,12 @@
+ 		std::vector<io::Address> m_Connect;
+ 		bool m_PeersPersistent = false; // keep connection to those peers, regardless to their rating
+ 
++		// Campfire (patch 0202): when set, EVERY outbound peer connection goes through this
++		// SOCKS5 proxy (e.g. Tor), and there is no direct fallback: a peer the proxy cannot
++		// reach stays unconnected. The UDP LAN beacon is off as well. m_Connect must then
++		// hold IP addresses only (nothing here resolves a host name).
++		io::Address m_ProxyAddr;
++
+ 		std::string m_sPathLocal;
+ 		NodeProcessor::Horizon m_Horizon;
+ 
+@@ -202,6 +208,14 @@
+ 	~Node();
+ 
+ 	void Initialize();
++
++	// Campfire (patch 0202): the proxy for outbound peer connections, if configured.
++	boost::optional<io::Address> get_OutboundProxy() const
++	{
++		if (m_Cfg.m_ProxyAddr.empty())
++			return boost::none;
++		return m_Cfg.m_ProxyAddr;
++	}
+ 
+ 	NodeProcessor& get_Processor() { return m_Processor; } // for tests only!
+ 
+--- a/node/node.cpp
++++ b/node/node.cpp
+@@ -1131,7 +1131,7 @@
+ 	if (m_Cfg.m_Listen.port())
+ 	{
+ 		m_Server.Listen(m_Cfg.m_Listen);
+-		if (m_Cfg.m_BeaconPeriod_ms)
++		if (m_Cfg.m_BeaconPeriod_ms && m_Cfg.m_ProxyAddr.empty()) // Campfire (patch 0202): no UDP beacon behind a proxy
+ 			m_Beacon.Start();
+ 	}
+ 
+@@ -1799,7 +1799,7 @@
+ 
+ 			Peer* p = m_This.AllocPeer(pPi->m_Addr.m_Value);
+ 			p->m_Flags |= Flags::Probe;
+-			p->Connect(pPi->m_Addr.m_Value);
++			p->Connect(pPi->m_Addr.m_Value, m_This.get_OutboundProxy()); // Campfire (patch 0202)
+ 			p->m_Port = pPi->m_Addr.m_Value.port();
+ 		}
+ 	}
+@@ -5354,7 +5354,7 @@
+ 	Peer* p = get_ParentObj().AllocPeer(pip.m_Addr.m_Value);
+ 	pip.Attach(*p);
+ 
+-	p->Connect(pip.m_Addr.m_Value);
++	p->Connect(pip.m_Addr.m_Value, get_ParentObj().get_OutboundProxy()); // Campfire (patch 0202)
+ 	p->m_Port = pip.m_Addr.m_Value.port();
+ }
+ 

@@ -1,0 +1,57 @@
+Campfire for BEAM (library only): Node::get_PeerStats(), a read-only summary of the
+connected peers (count, how many announced a tip, the best announced tip), for the
+status of the in-process node (scripts/beam/core/lib, beam_node_get_status). The
+peer list is private to beam::Node; beam-node only logs it.
+
+The function is appended at the end of node.cpp, so no log line moves. Applied after
+0202. patch -p1.
+
+--- a/node/node.h
++++ b/node/node.h
+@@ -235,6 +235,18 @@
+ 	} m_SyncStatus;
+ 
+ 	uint32_t get_AcessiblePeerCount() const; // all the peers with known addresses. Including temporarily banned
++
++	// Campfire (library patch 0203): what the connected peers report, for the in-process
++	// node's status. Read-only; call on the node's thread.
++	struct PeerStats
++	{
++		uint32_t m_Connected = 0;     // peers past the secure handshake
++		uint32_t m_WithTip = 0;       // of those, peers that announced a tip
++		Block::Number m_BestTip;      // the highest tip they announced (0: none)
++		Timestamp m_BestTipTime = 0;  // its block timestamp
++		PeerStats() { m_BestTip.v = 0; }
++	};
++	void get_PeerStats(PeerStats&) const;
+ 	const PeerManager::AddrSet& get_AcessiblePeerAddrs() const;
+ 
+ 	bool m_UpdatedFromPeers = false;
+--- a/node/node.cpp
++++ b/node/node.cpp
+@@ -7726,4 +7726,25 @@
+ //	}
+ //}
+ 
++// Campfire (library patch 0203): appended at the end so no log line moves.
++void Node::get_PeerStats(PeerStats& s) const
++{
++	s = PeerStats();
++	for (PeerList::const_iterator it = m_lstPeers.begin(); m_lstPeers.end() != it; ++it)
++	{
++		const Peer& peer = *it;
++		if (!(Peer::Flags::Connected & peer.m_Flags) || (Peer::Flags::Probe & peer.m_Flags))
++			continue;
++		s.m_Connected++;
++		if (!peer.m_Tip.m_Full.m_Number.v)
++			continue;
++		s.m_WithTip++;
++		if (peer.m_Tip.m_Full.m_Number.v > s.m_BestTip.v)
++		{
++			s.m_BestTip = peer.m_Tip.m_Full.m_Number;
++			s.m_BestTipTime = peer.m_Tip.m_Full.m_TimeStamp;
++		}
++	}
++}
++
+ } // namespace beam

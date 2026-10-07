@@ -1,0 +1,117 @@
+Campfire for BEAM: wallet-api connects to its node through a SOCKS5 proxy (Tor), fail closed.
+
+BEAM is a privacy chain: the user's IP address must never reach a BEAM node. Stock
+wallet-api has no proxy option at all; beam-wallet does (--proxy, --proxy_addr,
+wallet/cli/cli.cpp). This patch gives wallet-api the same two options and sets them
+on its FlyClient::NetworkStd exactly as beam-wallet does (m_Cfg.m_UseProxy,
+m_Cfg.m_ProxyAddr). core/fly_client.cpp then routes the first connection and every
+reconnect through the proxy; SBBS messages travel over that same node connection.
+
+Fail closed:
+ * no direct fallback: while the proxy is unreachable the wallet is offline;
+ * with --proxy=1, --node_addr must be an IPv4 literal ("a.b.c.d:port"). BEAM's SOCKS5
+   client only sends IPv4 (ATYP 1), so a host name would be resolved by the system
+   resolver, outside the proxy. wallet-api refuses to start instead and never calls
+   the resolver for it. The app resolves host names through Tor itself (SOCKS5
+   RESOLVE, 0xF0) and passes the address;
+ * --proxy_addr must be an IPv4 literal as well.
+wallet-api has no runtime node switch (NodeNetwork::setNodeAddress, which would
+resolve names and the default peer list, is never called by wallet-api), so the node
+address cannot change behind the proxy's back.
+
+Without --proxy (the default) behaviour is unchanged. Written against tag
+beam-7.5.14493 + the core series (../../patches 0001-0006, which already patch this
+file in 0002); it can move into the core series as is. patch -p1.
+
+--- a/wallet/api/cli/api_cli.cpp
++++ b/wallet/api/cli/api_cli.cpp
+@@ -74,6 +74,31 @@
+     const unsigned LOG_ROTATION_PERIOD = 3 * 60 * 60 * 1000; // 3 hours
+     const size_t PACKER_FRAGMENTS_SIZE = 4096;
+     constexpr size_t LINE_FRAGMENT_SIZE = 4096;
++
++    // Campfire (patch 0201): "a.b.c.d" or "a.b.c.d:port", nothing a resolver would look up.
++    bool IsIPv4Literal(const std::string& hostPort)
++    {
++        const std::string host = hostPort.substr(0, hostPort.find(':'));
++        int dots = 0, digits = 0, value = 0;
++        for (char c : host)
++        {
++            if (c == '.')
++            {
++                if (!digits || ++dots > 3)
++                    return false;
++                digits = value = 0;
++            }
++            else if (c >= '0' && c <= '9')
++            {
++                value = value * 10 + (c - '0');
++                if (++digits > 3 || value > 255)
++                    return false;
++            }
++            else
++                return false;
++        }
++        return dots == 3 && digits > 0;
++    }
+ 
+     struct TlsOptions
+     {
+@@ -834,6 +859,8 @@
+             (cli::API_TCP_MAX_LINE, po::value<size_t>(&connectionOptions.maxLineSize)->default_value(65536), "max line size in TCP mode")
+             (cli::REQUEST_BODIES,   po::value<bool>(&options.enableBodyRequests)->default_value(false), "request and parse block bodies on the wallet side")
+             ("privileged_shader_sha256", po::value<std::string>(&options.privilegedShaders)->default_value(""), "comma-separated SHA-256 (hex) of app shaders allowed to run at privilege 1; every other shader runs at privilege 0")
++            (cli::PROXY_USE,        po::value<bool>()->default_value(false), "connect to the node only through the SOCKS5 proxy at --proxy_addr (e.g. Tor), never directly; --node_addr must then be an IPv4 address")
++            (cli::PROXY_ADDRESS,    po::value<std::string>()->default_value("127.0.0.1:9150"), "SOCKS5 proxy address, ip:port")
+         ;
+ 
+         po::options_description authDesc("User authorization options");
+@@ -911,6 +938,7 @@
+         }
+ 
+         io::Address node_addr;
++        io::Address proxyAddr; // Campfire (patch 0201): empty unless --proxy
+         IWalletDB::Ptr walletDB;
+         ApiACL acl;
+         std::vector<uint32_t> whitelist;
+@@ -993,6 +1021,24 @@
+                 return -1;
+             }
+ 
++            // Campfire (patch 0201): with --proxy, refuse anything that would reach the
++            // network outside the proxy. A host name would be looked up by the system
++            // resolver, which tells the network which node this wallet talks to.
++            if (vm[cli::PROXY_USE].as<bool>())
++            {
++                if (!IsIPv4Literal(options.nodeURI))
++                {
++                    BEAM_LOG_ERROR() << "with --proxy, --node_addr must be an IPv4 address and port, not a host name: it would be looked up outside the proxy";
++                    return -1;
++                }
++                const auto proxyURI = vm[cli::PROXY_ADDRESS].as<std::string>();
++                if (!IsIPv4Literal(proxyURI) || !proxyAddr.resolve(proxyURI.c_str()) || !proxyAddr.port())
++                {
++                    BEAM_LOG_ERROR() << "invalid --proxy_addr (ip:port expected): " << proxyURI;
++                    return -1;
++                }
++            }
++
+             if (!node_addr.resolve(options.nodeURI.c_str()))
+             {
+                 BEAM_LOG_ERROR() << "unable to resolve node address: " << options.nodeURI;
+@@ -1057,6 +1103,15 @@
+             nnet->m_Cfg.m_PreferOnlineMining = vm[cli::MINE_ONLINE].as<bool>();
+ 
+         nnet->m_Cfg.m_vNodes.push_back(node_addr);
++        // Campfire (patch 0201), as beam-wallet does (wallet/cli/cli.cpp): FlyClient::NetworkStd
++        // sends the first connection and every reconnect through the proxy. There is no
++        // direct fallback: while the proxy is down the wallet is simply offline.
++        if (!proxyAddr.empty())
++        {
++            nnet->m_Cfg.m_UseProxy = true;
++            nnet->m_Cfg.m_ProxyAddr = proxyAddr;
++            BEAM_LOG_INFO() << "Node connections go through the SOCKS5 proxy at " << proxyAddr;
++        }
+         nnet->Connect();
+ 
+         auto wnet = std::make_shared<WalletNetworkViaBbs>(*wallet, nnet, walletDB);
