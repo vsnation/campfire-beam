@@ -228,7 +228,8 @@ void main() {
       );
       expect(
         WalletInfoMarketCache.decode(
-          '{"readAt":${at.millisecondsSinceEpoch},"pools":[[0,174,2,"-5","1","1",175]]}',
+          '{"readAt":${at.millisecondsSinceEpoch},'
+          '"pools":[[0,174,2,"-5","1","1",175]]}',
           now: at,
         ),
         isNull,

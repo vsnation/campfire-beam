@@ -596,11 +596,16 @@ void main() {
   group('asset picker values', () {
     final one = BigInt.from(100000000);
 
-    test('BEAM in fiat; an asset in BEAM and fiat; nothing without a price', () {
-      String? fiat(BigInt groth) => groth * BigInt.from(100) ~/ one < BigInt.one
-          ? 'under 0.01 USD'
-          : '≈ ${(groth * BigInt.from(100) ~/ one) ~/ BigInt.from(100)}.'
-                '${((groth * BigInt.from(100) ~/ one) % BigInt.from(100)).toString().padLeft(2, '0')} USD';
+    test('BEAM in fiat; an asset in BEAM and fiat; nothing without a '
+        'price', () {
+      // 1 USD per BEAM.
+      String? fiat(BigInt groth) {
+        final cents = groth * BigInt.from(100) ~/ one;
+        if (cents < BigInt.one) return 'under 0.01 USD';
+        final c = (cents % BigInt.from(100)).toString().padLeft(2, '0');
+        return '≈ ${cents ~/ BigInt.from(100)}.$c USD';
+      }
+
       BigInt? inBeam(int id, BigInt amount) =>
           id == 174 ? amount * BigInt.from(1232) ~/ BigInt.from(10000) : null;
 

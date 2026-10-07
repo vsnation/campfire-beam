@@ -90,7 +90,10 @@ void main() {
     // down to the Send button), the content still on screen.
     await tester.drag(find.byType(ListView), const Offset(0, -950));
     await tester.pumpAndSettle();
-    expect(tester.getTopLeft(find.byType(BeamDesktopWalletTabs)).dy, lessThan(0));
+    expect(
+      tester.getTopLeft(find.byType(BeamDesktopWalletTabs)).dy,
+      lessThan(0),
+    );
     final container = ProviderScope.containerOf(
       tester.element(find.byType(Scaffold)),
     );

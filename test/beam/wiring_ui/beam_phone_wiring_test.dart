@@ -156,7 +156,11 @@ void main() {
     await tester.tap(_barText('More'));
     await settle(tester, rounds: 1);
     final backdrop = find.byWidgetPredicate(
-      (w) => w is Container && w.color == Colors.black.withOpacity(0.7),
+      (w) =>
+          w is Container &&
+          w.color != null &&
+          w.color!.r == 0 &&
+          (w.color!.a - 0.7).abs() < 0.01,
     );
     final r = tester.getRect(backdrop);
     expect(r.top, 0);

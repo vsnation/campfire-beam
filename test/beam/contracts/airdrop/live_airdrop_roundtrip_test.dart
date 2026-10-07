@@ -126,7 +126,8 @@ void main() {
       await Process.run('chmod', ['600', keep.path]);
       final c = create.summary;
       print(
-        '[evidence] create built: pays ${c.pays.map((k, v) => MapEntry(k, _b(v)))}'
+        '[evidence] create built: pays '
+        '${c.pays.map((k, v) => MapEntry(k, _b(v)))}'
         ', creation fee ${_b(c.creationFee!)}, network fee '
         '${_b(c.networkFee)} BEAM, vouchers ${c.voucherCount}',
       );
