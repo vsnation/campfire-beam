@@ -67,6 +67,8 @@ for arch in "${ARCHES[@]}"; do
         "$image" bash /campfire/build_lib_in_container.sh
     t1=$(date +%s)
     out="${OUT_ROOT}/lib-linux-${mach}"
+    # The container writes /out as root; take it back before writing beside it.
+    if [[ ! -w "$out" ]]; then sudo chown -R "$(id -u):$(id -g)" "$out"; fi
     install -m 0644 "${LIB_SCRIPTS_DIR}/src/beam_core.h" "$out/include/beam_core.h" 2>/dev/null || { mkdir -p "$out/include"; install -m 0644 "${LIB_SCRIPTS_DIR}/src/beam_core.h" "$out/include/beam_core.h"; }
     echo "$((t1 - t0))" > "$out/.build_seconds"
     lib_fingerprint "$(docker image inspect -f '{{.Id}}' "$image") ${base}" > "$out/.source"
