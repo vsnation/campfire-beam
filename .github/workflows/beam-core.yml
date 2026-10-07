@@ -1,0 +1,127 @@
+name: BEAM core
+
+# Builds Campfire's BEAM core — tag beam-7.5.14493 plus scripts/beam/core/patches
+# (loopback-only listening, privileged-shader allowlist, a swap interrupted by a
+# restart never runs twice, ...) — for Linux x86_64, Linux arm64 and Windows x64,
+# verifies each build against a public mainnet node with a throwaway wallet, and
+# publishes the binaries with their SHA-256 to a pre-release. The app pins those
+# hashes in a reviewed commit (scripts/beam/core/manifest.json and
+# lib/wallets/beam/host/beam_binaries_manifest.dart); nothing is fetched at runtime.
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Pre-release to publish the binaries to'
+        required: true
+        default: 'beam-core-7.5.14493-cf1'
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+            out: linux-x86_64
+            key: linux-x86_64
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            out: linux-aarch64
+            key: linux-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build (Docker, ubuntu 22.04, pinned sources)
+        env:
+          BEAM_CORE_BUILD_ROOT: ${{ runner.temp }}/core
+          JOBS: 4
+        run: scripts/beam/core/build_linux.sh ${{ matrix.arch }}
+
+      - name: Verify against a public node
+        run: |
+          sudo apt-get install -y lsof >/dev/null
+          scripts/beam/core/verify_binaries.sh "$RUNNER_TEMP/core/out/${{ matrix.out }}" 60
+
+      - name: Package
+        run: |
+          mkdir dist
+          for b in wallet-api beam-node beam-wallet; do
+            cp "$RUNNER_TEMP/core/out/${{ matrix.out }}/$b" "dist/${{ matrix.key }}-$b"
+          done
+          (cd dist && sha256sum * | tee "../SHA256SUMS-${{ matrix.key }}.txt")
+          mv "SHA256SUMS-${{ matrix.key }}.txt" dist/
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: core-${{ matrix.key }}
+          path: dist/
+
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 150
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # Patches must apply to LF sources; Git for Windows would check out CRLF.
+      - run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v6
+
+      - name: Build (Visual Studio 2022, pinned sources)
+        env:
+          BEAM_CORE_BUILD_ROOT: /c/bc
+          JOBS: 4
+        run: scripts/beam/core/build_windows.sh
+
+      - name: Verify against a public node
+        run: python scripts/beam/core/verify_windows.py "C:\\bc\\out\\windows-x86_64"
+
+      - name: Package
+        run: |
+          mkdir dist
+          for b in wallet-api beam-node beam-wallet; do
+            cp "/c/bc/out/windows-x86_64/$b.exe" "dist/windows-x86_64-$b.exe"
+          done
+          (cd dist && sha256sum * | tee ../SHA256SUMS-windows-x86_64.txt)
+          mv SHA256SUMS-windows-x86_64.txt dist/
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: core-windows-x86_64
+          path: dist/
+
+  publish:
+    needs: [linux, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: cores
+          merge-multiple: true
+
+      - name: Pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag }}
+        run: |
+          cd cores
+          cat SHA256SUMS-*.txt | sort -k2 > SHA256SUMS.txt
+          rm SHA256SUMS-*.txt
+          sha256sum -c SHA256SUMS.txt
+          notes="Campfire's BEAM core, tag beam-7.5.14493 + scripts/beam/core/patches, built and verified by run ${GITHUB_RUN_ID} (commit ${GITHUB_SHA}). Not an app: the Campfire builds pin these SHA-256."
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber ./*
+          else
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --prerelease \
+              --target "$GITHUB_SHA" --title "BEAM core 7.5.14493 for Campfire ($TAG)" \
+              --notes "$notes" ./*
+          fi
