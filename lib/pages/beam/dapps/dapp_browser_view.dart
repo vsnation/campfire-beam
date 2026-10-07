@@ -49,6 +49,7 @@ import '../../../wallets/beam/dapps/dapp_session.dart';
 import '../../../wallets/beam/dapps/host/dapp_approval_model.dart';
 import '../../../wallets/beam/dapps/host/dapp_host.dart';
 import '../../../wallets/beam/dapps/host/dapp_host_session.dart';
+import '../../../wallets/beam/price/beam_fiat_price.dart';
 import '../../../widgets/background.dart';
 import '../../../widgets/beam/dapps/dapp_approval_banner.dart';
 import '../../../widgets/beam/dapps/dapp_approval_sheet.dart';
@@ -148,7 +149,7 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
     _walletNotReady = widget.host.wallet.spendBlockedReason;
     _readyPoll = Timer.periodic(_readyPollInterval, (_) => _readWalletReady());
     if (_available) {
-      widget.host.presenter.attach(_showApproval);
+      widget.host.presenter.attach(_showApproval, fiat: _fiatPrice);
       unawaited(_start());
     }
   }
@@ -166,6 +167,13 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
     // Pending approvals of this dApp answer -32021.
     unawaited(_session?.close());
     super.dispose();
+  }
+
+  /// BEAM's price in the user's currency, for the approval's fiat values.
+  BeamFiatPrice? _fiatPrice() {
+    final id = widget.host.walletId;
+    if (id == null || !mounted) return null;
+    return ref.read(pBeamFiatPrice(id));
   }
 
   bool get _torOn {

@@ -11,6 +11,10 @@ import '../../models/beam_asset_info.dart';
 import '../../rpc/beam_transport.dart';
 import '../dapp_identity.dart';
 
+/// What an amount of an asset is worth in BEAM groth, rounded down, by the
+/// DEX's prices; null when no pool prices the asset (`BeamAssetPricer`).
+typedef DappAssetValuer = BigInt? Function(int assetId, BigInt amount);
+
 /// What the dApp host needs from one open BEAM wallet.
 ///
 /// `BeamWalletDappLink` implements it over a `BeamWallet` and its
@@ -33,6 +37,10 @@ abstract class DappWalletLink {
   /// The on-chain metadata of [assetId], or null when unknown. Only used to
   /// name assets Campfire does not vouch for.
   Future<BeamAssetMetadata?> assetMetadata(int assetId);
+
+  /// Values amounts of any asset in BEAM, for the approval's fiat values;
+  /// null when the prices are not available.
+  Future<DappAssetValuer?> assetValuer();
 
   /// Null when the wallet may spend now; otherwise why not, in plain words
   /// (the wallet is behind the network, or not connected). An approval is

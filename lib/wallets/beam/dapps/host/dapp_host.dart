@@ -19,7 +19,7 @@ import 'dapp_wallet_link.dart';
 /// only one approval is ever on screen, whichever dApp asks), the
 /// installer, and the package fetcher.
 class DappHost {
-  DappHost({required this.wallet, required this.fetcher});
+  DappHost({required this.wallet, required this.fetcher, this.walletId});
 
   static final Map<String, DappHost> _byWallet = {};
 
@@ -28,10 +28,15 @@ class DappHost {
       _byWallet[beamWallet.walletId] ??= DappHost(
         wallet: BeamWalletDappLink(beamWallet),
         fetcher: DappPackageFetcher.campfire(),
+        walletId: beamWallet.walletId,
       );
 
   final DappWalletLink wallet;
   final DappPackageFetcher fetcher;
+
+  /// The Campfire wallet these dApps belong to, for its settings (the fiat
+  /// currency); null in tests.
+  final String? walletId;
 
   late final DappApprovalPresenter presenter = DappApprovalPresenter(wallet);
 

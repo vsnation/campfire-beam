@@ -19,6 +19,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:decimal/decimal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_api_version.dart';
@@ -30,6 +31,7 @@ import 'package:stackwallet/wallets/beam/dapps/host/dapp_approval_presenter.dart
 import 'package:stackwallet/wallets/beam/dapps/host/dapp_shared_transport.dart';
 import 'package:stackwallet/wallets/beam/dapps/host/dapp_watched_consent_queue.dart';
 import 'package:stackwallet/wallets/beam/models/beam_asset_info.dart';
+import 'package:stackwallet/wallets/beam/price/beam_fiat_price.dart';
 import 'package:stackwallet/wallets/beam/rpc/fake_transport.dart';
 import 'package:stackwallet/widgets/beam/dapps/dapp_approval_sheet.dart';
 import 'package:stackwallet/widgets/desktop/primary_button.dart';
@@ -66,6 +68,34 @@ final _recipient = [
   for (var i = 0; i < 33; i++) (i * 7 + 3).toRadixString(16).padLeft(2, '0'),
 ].join();
 
+/// A made-up BEAM price, so fiat lines show; not a real quote.
+final _usd = BeamFiatPrice(
+  lookupsOn: true,
+  currency: 'USD',
+  price: Decimal.parse('1.25'),
+);
+
+/// FOMO valued at the pinned trade's own price: 0.1 BEAM for 0.80368764.
+BigInt? _fomoValuer(int assetId, BigInt amount) => assetId == 174
+    ? amount * BigInt.from(10000000) ~/ BigInt.from(80368764)
+    : null;
+
+/// FOMO at the pool's price when the dApp swap below was built: 376 FOMO
+/// for 0.00999281 BEAM before the pool's fee.
+BigInt? _fomoAtSwapPrice(int assetId, BigInt amount) => assetId == 174
+    ? amount * BigInt.from(999281) ~/ BigInt.from(37600000000)
+    : null;
+
+/// The Beam DEX dApp's own swap request, approved and mined in block
+/// 4069717 (test/beam/dapps/fixtures/dex_dapp_swap_raw_data.json).
+List<int> _dappSwap() {
+  final f = jsonDecode(
+    File('test/beam/dapps/fixtures/dex_dapp_swap_raw_data.json')
+        .readAsStringSync(),
+  ) as Map;
+  return base64.decode((f['result']! as Map)['raw_data_base64']! as String);
+}
+
 List<int> _realTrade() {
   final f = jsonDecode(
     File('$dexFixtureDir/trade_built_raw_data.json').readAsStringSync(),
@@ -98,6 +128,8 @@ class _Rig {
     Map<int, BigInt>? balances,
     Map<int, BeamAssetMetadata> metadata = const {},
     String? blocked,
+    BeamFiatPrice? fiat,
+    DappAssetValuer? valuer,
   }) async {
     core = FakeTransport({
       'process_invoke_data': (Map<String, Object?> p) => {'txid': txId(++sent)},
@@ -115,6 +147,7 @@ class _Rig {
       balances: balances,
       metadata: metadata,
       blocked: blocked,
+      valuer: valuer,
     );
     presenter = DappApprovalPresenter(link);
     queue = DappWatchedConsentQueue(presenter);
@@ -148,6 +181,7 @@ class _Rig {
           return auth;
         },
       ),
+      fiat: () => fiat,
     );
   }
 
@@ -229,24 +263,145 @@ void main() {
       expect(rig.link.releases, 1);
     });
 
-    testWidgets('a real mainnet-built DEX trade from a dApp is refused '
-        'before any sheet: it is HFT data the core could rebuild', (
-      tester,
-    ) async {
+    testWidgets("the Beam DEX dApp's own swap (HFT data the core can "
+        "rebuild): the worst case, BEAM's DEX verified code, fiat values; "
+        'approve sends exactly that data', (tester) async {
+      await loadCampfireFonts(tester);
+      setSurface(tester, const Size(375, 812));
+      final rig = _Rig(tester, desktop: false);
+      await rig.pump(
+        balances: {0: g(500000000)},
+        fiat: _usd,
+        valuer: _fomoAtSwapPrice,
+      );
+
+      final answer = rig.ask('process_invoke_data', {'data': _dappSwap()});
+      await rig.settle();
+
+      expect(find.text('Asks you to approve a swap.'), findsOneWidget);
+      expect(find.text('−0.01009274 BEAM'), findsOneWidget);
+      expect(find.text('+376 FOMO'), findsOneWidget);
+      expect(find.text('0.011 BEAM'), findsOneWidget, reason: 'decoded fee');
+      expect(find.text('≈ 0.01 USD'), findsWidgets);
+      expect(find.byKey(DappApprovalSheet.rebuildKey), findsOneWidget);
+      expect(find.text('If the price moves before it lands'), findsOneWidget);
+      expect(find.text('−0.01019366 BEAM'), findsOneWidget, reason: 'at most');
+      expect(find.text('+372.27722773 FOMO'), findsOneWidget, reason: 'least');
+      expect(
+        find.textContaining("BEAM's DEX (verified app code)"),
+        findsWidgets,
+      );
+      expect(find.byKey(DappApprovalSheet.acknowledgeKey), findsNothing);
+      expect(rig.approveEnabled, isTrue, reason: 'no tick for verified code');
+
+      await expectLater(
+        find.byKey(const ValueKey('golden')),
+        matchesGoldenFile('goldens/approval_dex_dapp_rebuild_mobile.png'),
+      );
+
+      await tester.tap(find.byKey(DappApprovalSheet.approveKey));
+      final res = await answer();
+      expect(rig.authAsked, 1, reason: 'Campfire PIN/password asked first');
+      expect(resultOf(res), {'txid': txId(1)});
+      expect(rig.core.lastParams('process_invoke_data')['data'], _dappSwap());
+    });
+
+    testWidgets('a real mainnet-built DEX trade by the pinned shader: 0.1 '
+        'BEAM, the 1% bounds in fiat', (tester) async {
+      await loadCampfireFonts(tester);
+      setSurface(tester, const Size(375, 812));
+      final rig = _Rig(tester, desktop: false);
+      await rig.pump(
+        balances: {0: g(500000000)},
+        fiat: _usd,
+        valuer: _fomoValuer,
+      );
+      final answer = rig.ask('process_invoke_data', {'data': _realTrade()});
+      await rig.settle();
+      expect(find.text('−0.1 BEAM'), findsOneWidget);
+      expect(find.text('+0.80368764 FOMO'), findsOneWidget);
+      expect(find.text('≈ 0.12 USD'), findsWidgets, reason: '0.1 BEAM');
+      expect(find.text('−0.101 BEAM'), findsOneWidget, reason: 'at most');
+      expect(find.text('+0.79573034 FOMO'), findsOneWidget, reason: 'least');
+      await tester.tap(find.byKey(DappApprovalSheet.rejectKey));
+      expect(errorCode(await answer()), -32021);
+    });
+
+    testWidgets('the same dApp swap on desktop', (tester) async {
       await loadCampfireFonts(tester);
       setSurface(tester, const Size(1280, 900));
       final rig = _Rig(tester, desktop: true);
+      await rig.pump(
+        balances: {0: g(500000000)},
+        fiat: _usd,
+        valuer: _fomoAtSwapPrice,
+      );
+
+      final answer = rig.ask('process_invoke_data', {'data': _dappSwap()});
+      await rig.settle();
+      expect(find.byKey(DappApprovalSheet.rebuildKey), findsOneWidget);
+      await expectLater(
+        find.byKey(const ValueKey('golden')),
+        matchesGoldenFile('goldens/approval_dex_dapp_rebuild_desktop.png'),
+      );
+      await tester.tap(find.byKey(DappApprovalSheet.rejectKey));
+      final res = await answer();
+      expect(errorCode(res), -32021, reason: "BEAM's UserRejected");
+      expect(rig.core.callsTo('process_invoke_data'), isEmpty);
+    });
+
+    testWidgets('rebuildable data from unverified app code: warning colour, '
+        '"the dApp may change the amounts after you approve", and Approve '
+        'waits for the explicit tick', (tester) async {
+      await loadCampfireFonts(tester);
+      setSurface(tester, const Size(375, 812));
+      final rig = _Rig(tester, desktop: false, identity: _sideloaded);
       await rig.pump(balances: {0: g(500000000)});
 
-      final answer = rig.ask('process_invoke_data', {'data': _realTrade()});
-      await rig.justOpened();
-      expect(find.byType(DappApprovalSheet), findsNothing);
+      final answer = rig.ask('process_invoke_data', {
+        'data': invokeData([
+          invokeEntry(
+            contractId: dexCid,
+            method: 7,
+            flags: flagDependent | flagSaveAppInvoke,
+            comment: 'Amm trade',
+            spend: {0: 10000000, 174: -80368764},
+          ),
+        ], firstFlags: flagSaveAppInvoke),
+      });
+      await rig.settle();
+
+      expect(
+        find.text('Yield Farm may change this after you approve'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(
+          'the dApp may change the amounts after you approve',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Unverified app code'), findsOneWidget);
+      expect(rig.approveEnabled, isFalse, reason: 'tick first');
+
+      await expectLater(
+        find.byKey(const ValueKey('golden')),
+        matchesGoldenFile('goldens/approval_unverified_rebuild_mobile.png'),
+      );
+
+      // Approve without the tick does nothing.
+      await tester.tap(find.byKey(DappApprovalSheet.approveKey));
+      await tester.pumpAndSettle();
+      expect(rig.authAsked, 0);
+
+      await tester.ensureVisible(find.byKey(DappApprovalSheet.acknowledgeKey));
+      await tester.tap(find.byKey(DappApprovalSheet.acknowledgeKey));
+      await tester.pumpAndSettle();
+      expect(rig.approveEnabled, isTrue);
+      await tester.tap(find.byKey(DappApprovalSheet.approveKey));
       final res = await answer();
-      expect(errorCode(res), -32020);
-      expect(errorData(res), contains("can't show you what would be signed"));
-      expect(errorData(res), contains('use Swap in Campfire'));
-      expect(rig.core.callsTo('process_invoke_data'), isEmpty);
-      expect(rig.link.holds, 0, reason: 'nothing was put to the user');
+      expect(rig.authAsked, 1);
+      expect(resultOf(res), {'txid': txId(1)});
     });
 
     testWidgets('a DEX trade on desktop', (tester) async {
@@ -592,8 +747,10 @@ void main() {
       expect(find.textContaining('No funds move'), findsNothing);
       expect(find.textContaining('Nothing you hold moves'), findsNothing);
       expect(
-        find.text('Asks you to approve 2 contract calls. Check what each '
-            'one moves.'),
+        find.text(
+          'Asks you to approve 2 contract calls. Check what each '
+          'one moves.',
+        ),
         findsOneWidget,
       );
       expect(
@@ -605,14 +762,13 @@ void main() {
       expect(find.text('−10 BEAM'), findsOneWidget);
       expect(find.text("Signs with your wallet's key"), findsOneWidget);
       expect(
-        find.textContaining('Call 1 signs with your wallet\'s key for '
-            'Contract a1a1a1a1…a1a1a1'),
+        find.textContaining(
+          'Call 1 signs with your wallet\'s key for '
+          'Contract a1a1a1a1…a1a1a1',
+        ),
         findsOneWidget,
       );
-      expect(
-        find.textContaining('paid into another contract'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('paid into another contract'), findsOneWidget);
       expect(
         find.text('Installed from a file · not checked by Campfire'),
         findsOneWidget,
@@ -648,10 +804,7 @@ void main() {
         find.text('Asks you to sign a message with a key from this wallet.'),
         findsOneWidget,
       );
-      expect(
-        find.text('Message to sign, from Yield Farm'),
-        findsOneWidget,
-      );
+      expect(find.text('Message to sign, from Yield Farm'), findsOneWidget);
       expect(find.text('“Log in to Yield Farm\nNonce 81f3”'), findsOneWidget);
       expect(
         find.text('Key id 6b3f1a20…c09e11, chosen by Yield Farm'),
@@ -751,6 +904,54 @@ void main() {
       expect(feeOnly.cta, 'Approve request');
       expect(feeOnly.isFeeOnly, isTrue);
       expect(feeOnly.message, isNull, reason: 'blank dApp text is not shown');
+    });
+
+    test('fiat values: estimates, rounded down, never "0.00", in the '
+        "user's locale; none without a price or a pool", () {
+      final m = DappApprovalModel.build(
+        req(
+          pays: [DappAssetAmount(0, g(100000000))],
+          receives: [
+            DappAssetAmount(174, g(80368764)),
+            DappAssetAmount(9999, g(5)),
+          ],
+        ),
+        valueInGroth: _fomoValuer,
+        fiat: _usd,
+      );
+      expect(m.pays.single.fiat, '≈ 1.25 USD');
+      expect(m.receives.first.fiat, '≈ 0.12 USD', reason: '0.1 BEAM worth');
+      expect(m.receives.last.fiat, isNull, reason: 'no pool prices it');
+      expect(m.fee.fiat, '≈ 0.01 USD');
+      expect(m.totalOut.single.fiat, '≈ 1.26 USD');
+      expect(
+        dappFiatText(
+          g(1000),
+          BeamFiatPrice(
+            lookupsOn: true,
+            currency: 'usd',
+            price: Decimal.parse('1.25'),
+          ),
+        ),
+        'under 0.01 USD',
+      );
+      expect(
+        dappFiatText(
+          g(123456700000000),
+          BeamFiatPrice(
+            lookupsOn: true,
+            currency: 'EUR',
+            price: Decimal.parse('2'),
+            locale: 'de_DE',
+          ),
+        ),
+        '≈ 2.469.134,00 EUR',
+      );
+      final off = DappApprovalModel.build(
+        req(pays: [DappAssetAmount(0, g(100000000))]),
+        fiat: const BeamFiatPrice(lookupsOn: false, currency: 'USD'),
+      );
+      expect(off.pays.single.fiat, isNull, reason: 'lookups off');
     });
 
     test('amounts are exact, grouped, never rounded', () {

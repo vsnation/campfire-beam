@@ -22,8 +22,13 @@
 // * A popup they did not expect. The dApp page shows a banner instead of
 //   this sheet unless the user touched the page in the last seconds.
 // * Not understanding what they sign: amounts are signed and coloured per
-//   asset, the fee is its own row, the total is one line, and the dApp's
-//   own text is quoted and labelled as the dApp's.
+//   asset with their fiat value, the fee is its own row, the total is one
+//   line, and the dApp's own text is quoted and labelled as the dApp's.
+// * Finding out later that a swap was redone at another price: when the
+//   core may rebuild what is approved, the sheet says so first, with the
+//   worst it may sign; when the code that would rebuild it is not BEAM's
+//   own DEX, the warning is in the warning colour and Approve needs an
+//   explicit "I understand" tick (USER_PSYCHOLOGY §5: never surprise-sign).
 // * A dead end when funds are short: the sheet says what is missing and
 //   what to do, and Reject stays available.
 // * Not knowing whether more prompts are coming: "2 more requests waiting".
@@ -171,6 +176,11 @@ class DappApprovalSheet extends StatefulWidget {
   static const approveKey = Key('dappApprovalApprove');
   static const rejectKey = Key('dappApprovalReject');
 
+  /// The "worst case after approval" box of a request the core can
+  /// rebuild, and its "I understand" tick.
+  static const rebuildKey = Key('dappApprovalRebuild');
+  static const acknowledgeKey = Key('dappApprovalRebuildAck');
+
   /// How long Approve ignores taps after the sheet appears, and again after
   /// its layout changes (another request joins the queue): a tap meant for
   /// the dApp page must not become an approval.
@@ -183,6 +193,14 @@ class DappApprovalSheet extends StatefulWidget {
 class _DappApprovalSheetState extends State<DappApprovalSheet> {
   bool _busy = false;
   bool _armed = false;
+
+  /// The user ticked "I understand" (only asked for when
+  /// [DappApprovalModel.needsAcknowledgement]).
+  bool _acknowledged = false;
+
+  bool get _approvable =>
+      widget.model.canApprove &&
+      (!widget.model.needsAcknowledgement || _acknowledged);
   Timer? _armTimer;
   int? _pendingSeen;
   ModalRoute<Object?>? _route;
@@ -221,7 +239,10 @@ class _DappApprovalSheetState extends State<DappApprovalSheet> {
       old.pending?.removeListener(_pendingChanged);
       widget.pending?.addListener(_pendingChanged);
     }
-    if (!identical(old.model, widget.model)) _arm(rebuild: false);
+    if (!identical(old.model, widget.model)) {
+      _acknowledged = false;
+      _arm(rebuild: false);
+    }
   }
 
   @override
@@ -259,7 +280,7 @@ class _DappApprovalSheetState extends State<DappApprovalSheet> {
   }
 
   Future<void> _approve() async {
-    if (_busy || !_armed || !widget.model.canApprove) return;
+    if (_busy || !_armed || !_approvable) return;
     setState(() => _busy = true);
     try {
       final ok = await widget.authenticate(context);
@@ -289,11 +310,20 @@ class _DappApprovalSheetState extends State<DappApprovalSheet> {
     final desktop = widget.isDesktop;
 
     final body = _SheetBody(model: m, isDesktop: desktop);
+    // Next to Approve, so a disabled Approve never needs a scroll to
+    // explain itself.
+    final acknowledge = m.needsAcknowledgement
+        ? _Acknowledge(
+            text: m.rebuild!.acknowledgement,
+            value: _acknowledged,
+            onChanged: (v) => setState(() => _acknowledged = v),
+          )
+        : const SizedBox.shrink();
 
     final approve = PrimaryButton(
       key: DappApprovalSheet.approveKey,
       label: m.cta,
-      enabled: m.canApprove && !_busy && _armed,
+      enabled: _approvable && !_busy && _armed,
       buttonHeight: desktop ? ButtonHeight.l : null,
       height: desktop ? null : 46,
       onPressed: _approve,
@@ -343,6 +373,7 @@ class _DappApprovalSheetState extends State<DappApprovalSheet> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 waiting,
+                acknowledge,
                 Row(
                   children: [
                     Expanded(child: reject),
@@ -394,7 +425,13 @@ class _DappApprovalSheetState extends State<DappApprovalSheet> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [waiting, approve, const SizedBox(height: 8), reject],
+                children: [
+                  waiting,
+                  acknowledge,
+                  approve,
+                  const SizedBox(height: 8),
+                  reject,
+                ],
               ),
             ),
           ],
@@ -440,6 +477,10 @@ class _SheetBody extends StatelessWidget {
         m.showsCalls
             ? _CallsCard(model: m, isDesktop: isDesktop)
             : _MoneyCard(model: m, isDesktop: isDesktop),
+        if (m.rebuild != null) ...[
+          const SizedBox(height: 8),
+          _RebuildCard(view: m.rebuild!),
+        ],
         for (final w in warnings) ...[
           const SizedBox(height: 8),
           _Warning(text: w),
@@ -569,19 +610,179 @@ class _MoneyCard extends StatelessWidget {
               ),
             ),
           divider(),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
+          _FeeRow(fee: model.fee),
+        ],
+      ),
+    );
+  }
+}
+
+/// The worst the core may sign after approval, for data it can rebuild:
+/// whose code would rebuild it, for how long, and the bounds the wallet
+/// enforces. Neutral for BEAM's DEX; in the warning colour for any other
+/// code (whose "I understand" tick sits next to Approve, [_Acknowledge]).
+class _RebuildCard extends StatelessWidget {
+  const _RebuildCard({required this.view});
+
+  final DappRebuildView view;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<StackColors>()!;
+    final warn = !view.verified;
+    final fg = warn ? colors.warningForeground : colors.textDark;
+    final sub = warn ? colors.warningForeground : colors.textDark3;
+    Widget bound(String label, DappAssetLine l, {required bool pay}) {
+      final none = !pay && l.amount == BigInt.zero;
+      return Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                none ? "You may get no ${l.unit}" : label,
+                style: STextStyles.smallMed12(context).copyWith(color: fg),
+              ),
+            ),
+            if (!none)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  SelectableText(
+                    "${pay ? "−" : "+"}${l.text}",
+                    textAlign: TextAlign.right,
+                    style: STextStyles.w600_14(context).copyWith(color: fg),
+                  ),
+                  if (l.fiat != null)
+                    Text(
+                      l.fiat!,
+                      style: STextStyles.w500_12(context).copyWith(color: sub),
+                    ),
+                ],
+              ),
+          ],
+        ),
+      );
+    }
+
+    return RoundedContainer(
+      key: DappApprovalSheet.rebuildKey,
+      color: warn ? colors.warningBackground : colors.textFieldDefaultBG,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                warn ? Icons.warning_amber_rounded : Icons.swap_vert_rounded,
+                color: fg,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  view.title,
+                  style: STextStyles.w600_14(context).copyWith(color: fg),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            view.explanation,
+            style: STextStyles.smallMed12(context).copyWith(color: sub),
+          ),
+          for (final l in view.maxPays) bound("You pay at most", l, pay: true),
+          for (final l in view.minReceives)
+            bound("You get at least", l, pay: false),
+        ],
+      ),
+    );
+  }
+}
+
+/// The "I understand" tick Approve waits for when unverified app code may
+/// rebuild what is approved.
+class _Acknowledge extends StatelessWidget {
+  const _Acknowledge({
+    required this.text,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String text;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<StackColors>()!;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        key: DappApprovalSheet.acknowledgeKey,
+        onTap: () => onChanged(!value),
+        child: Row(
+          children: [
+            Checkbox(
+              value: value,
+              onChanged: (v) => onChanged(v ?? false),
+              activeColor: colors.checkboxBGChecked,
+              checkColor: colors.checkboxIconChecked,
+            ),
+            Expanded(
+              child: Text(
+                text,
+                style: STextStyles.smallMed12(context)
+                    .copyWith(color: colors.warningForeground),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Network fee · 0.011 BEAM", its fiat value under it when known.
+class _FeeRow extends StatelessWidget {
+  const _FeeRow({required this.fee});
+
+  final DappAssetLine fee;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<StackColors>()!;
+    final amount = SelectableText(
+      fee.text,
+      key: const Key('dappApprovalFee'),
+      style: STextStyles.itemSubtitle12(context),
+    );
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        crossAxisAlignment: fee.fiat == null
+            ? CrossAxisAlignment.center
+            : CrossAxisAlignment.start,
+        children: [
+          Text("Network fee", style: STextStyles.smallMed12(context)),
+          const Spacer(),
+          if (fee.fiat == null)
+            amount
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text("Network fee", style: STextStyles.smallMed12(context)),
-                const Spacer(),
-                SelectableText(
-                  model.fee.text,
-                  style: STextStyles.itemSubtitle12(context),
+                amount,
+                Text(
+                  fee.fiat!,
+                  style: STextStyles.w500_12(context)
+                      .copyWith(color: colors.textSubtitle1),
                 ),
               ],
             ),
-          ),
         ],
       ),
     );
@@ -639,10 +840,24 @@ class _AssetRow extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             flex: 3,
-            child: SelectableText(
-              "${outgoing ? "−" : "+"}${line.text}",
-              textAlign: TextAlign.right,
-              style: STextStyles.w600_14(context).copyWith(color: color),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                SelectableText(
+                  "${outgoing ? "−" : "+"}${line.text}",
+                  textAlign: TextAlign.right,
+                  style: STextStyles.w600_14(context).copyWith(color: color),
+                ),
+                if (line.fiat != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    line.fiat!,
+                    textAlign: TextAlign.right,
+                    style: STextStyles.w500_12(context)
+                        .copyWith(color: colors.textSubtitle1),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
@@ -728,7 +943,7 @@ class _TotalBox extends StatelessWidget {
               children: [
                 for (final l in model.totalOut)
                   SelectableText(
-                    l.text,
+                    l.fiat == null ? l.text : "${l.text} (${l.fiat})",
                     textAlign: TextAlign.right,
                     style: STextStyles.itemSubtitle12(context)
                         .copyWith(color: colors.textConfirmTotalAmount),
@@ -844,6 +1059,18 @@ class _ContractsState extends State<_Contracts> {
             "Creates a new contract",
             style: STextStyles.itemSubtitle12(context),
           ),
+        if (m.rebuild != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              "App code: ${m.rebuild!.appCodeLabel} · "
+              "${m.rebuild!.appCodeFingerprint}",
+              key: const Key('dappApprovalAppCode'),
+              style: STextStyles.itemSubtitle12(context).copyWith(
+                color: m.rebuild!.verified ? null : colors.warningForeground,
+              ),
+            ),
+          ),
         GestureDetector(
           onTap: () => setState(() => _details = !_details),
           child: Padding(
@@ -859,6 +1086,8 @@ class _ContractsState extends State<_Contracts> {
             [
               for (final c in m.request.calls)
                 "${c.contractId ?? "new contract"} · method ${c.method}",
+              if (m.rebuild != null)
+                "App code SHA-256 ${m.rebuild!.terms.appCodeSha256}",
               "Approval fingerprint ${m.request.digest}",
             ].join("\n"),
             style: STextStyles.w500_10(context)
@@ -909,19 +1138,7 @@ class _CallsCard extends StatelessWidget {
             if (c.signs) note("Signs with your wallet's key"),
           ],
           divider(),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Text("Network fee", style: STextStyles.smallMed12(context)),
-                const Spacer(),
-                SelectableText(
-                  model.fee.text,
-                  style: STextStyles.itemSubtitle12(context),
-                ),
-              ],
-            ),
-          ),
+          _FeeRow(fee: model.fee),
         ],
       ),
     );

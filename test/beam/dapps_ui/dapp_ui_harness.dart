@@ -160,6 +160,7 @@ class FakeWalletLink implements DappWalletLink {
     this.balances,
     this.metadata = const {},
     this.blocked,
+    this.valuer,
   });
 
   final String root;
@@ -167,6 +168,7 @@ class FakeWalletLink implements DappWalletLink {
   Map<int, BigInt>? balances;
   Map<int, BeamAssetMetadata> metadata;
   String? blocked;
+  DappAssetValuer? valuer;
   int holds = 0;
   int releases = 0;
 
@@ -182,6 +184,9 @@ class FakeWalletLink implements DappWalletLink {
   @override
   Future<BeamAssetMetadata?> assetMetadata(int assetId) async =>
       metadata[assetId];
+
+  @override
+  Future<DappAssetValuer?> assetValuer() async => valuer;
 
   @override
   String? get spendBlockedReason => blocked;

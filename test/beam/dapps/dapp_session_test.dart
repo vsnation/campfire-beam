@@ -8,6 +8,7 @@
  */
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/wallets/beam/contracts/airdrop/airdrop_constants.dart';
@@ -59,43 +60,45 @@ void main() {
   // Seen in the DMG test: the Asset Minter waited on a contract read for
   // tens of seconds on a blank page. The screen shows a line while a call
   // to the wallet is outstanding; the session reports it.
-  test('calls to the wallet are counted while they run, also on error',
-      () async {
-    final busy = <int>[];
-    var inFlight = 0;
-    final gate = Completer<void>();
-    t = FakeTransport({
-      'get_version': (Map<String, Object?> _) async {
-        await gate.future;
-        return {'api_version': '7.4'};
-      },
-    });
-    final s = DappSession(
-      identity: testIdentity(),
-      apiVersion: DappApiVersion.v7_4,
-      transport: t,
-      consent: DappConsentQueue(policy),
-      onCallBusy: (d) => busy.add(inFlight += d),
-    );
-    final res = s.handle(rq(1, 'get_version'));
-    await Future<void>.delayed(Duration.zero);
-    expect(inFlight, 1);
-    gate.complete();
-    await res;
-    expect(inFlight, 0);
+  test(
+    'calls to the wallet are counted while they run, also on error',
+    () async {
+      final busy = <int>[];
+      var inFlight = 0;
+      final gate = Completer<void>();
+      t = FakeTransport({
+        'get_version': (Map<String, Object?> _) async {
+          await gate.future;
+          return {'api_version': '7.4'};
+        },
+      });
+      final s = DappSession(
+        identity: testIdentity(),
+        apiVersion: DappApiVersion.v7_4,
+        transport: t,
+        consent: DappConsentQueue(policy),
+        onCallBusy: (d) => busy.add(inFlight += d),
+      );
+      final res = s.handle(rq(1, 'get_version'));
+      await Future<void>.delayed(Duration.zero);
+      expect(inFlight, 1);
+      gate.complete();
+      await res;
+      expect(inFlight, 0);
 
-    // A call the wallet refuses still ends the count.
-    final failing = DappSession(
-      identity: testIdentity(),
-      apiVersion: DappApiVersion.v7_4,
-      transport: FakeTransport({}),
-      consent: DappConsentQueue(policy),
-      onCallBusy: (d) => inFlight += d,
-    );
-    await failing.handle(rq(2, 'get_version'));
-    expect(inFlight, 0);
-    expect(busy, [1, 0]);
-  });
+      // A call the wallet refuses still ends the count.
+      final failing = DappSession(
+        identity: testIdentity(),
+        apiVersion: DappApiVersion.v7_4,
+        transport: FakeTransport({}),
+        consent: DappConsentQueue(policy),
+        onCallBusy: (d) => inFlight += d,
+      );
+      await failing.handle(rq(2, 'get_version'));
+      expect(inFlight, 0);
+      expect(busy, [1, 0]);
+    },
+  );
 
   group('envelope and gate', () {
     test('errors use the core envelope and echo the id', () async {
@@ -168,6 +171,47 @@ void main() {
       expect(t.callsTo('invoke_contract'), hasLength(2));
       gates[1].complete({'output': '2'});
       expect(resultOf(await b), {'output': '2'});
+    });
+
+    test('a contract read waits for the core to be in sync, then runs '
+        '(the core would hold it, and everything queued behind it)', () async {
+      var inSync = false;
+      t.reply('wallet_status', (Map<String, Object?> p) {
+        return {'is_in_sync': inSync, 'current_height': 1};
+      });
+      final s = testSession(t, policy);
+      final res = s.handle(
+        rq(1, 'invoke_contract', {
+          'contract': [7, 7],
+          'args': 'a=1',
+        }),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(t.callsTo('invoke_contract'), isEmpty, reason: 'held');
+      inSync = true;
+      expect(resultOf(await res), isNotNull);
+      expect(t.callsTo('invoke_contract'), hasLength(1));
+    });
+
+    test('a contract read on a core that stays behind is answered with a '
+        'plain error, never sent', () async {
+      t.reply('wallet_status', {'is_in_sync': false, 'current_height': 1});
+      final s = DappSession(
+        identity: testIdentity(),
+        apiVersion: DappApiVersion.v7_4,
+        transport: t,
+        consent: DappConsentQueue(policy),
+        syncWait: const Duration(milliseconds: 1),
+      );
+      final res = await s.handle(
+        rq(1, 'invoke_contract', {
+          'contract': [7, 7],
+          'args': 'a=1',
+        }),
+      );
+      expect(errorCode(res), -32603);
+      expect('${errorData(res)}', contains('still catching up'));
+      expect(t.callsTo('invoke_contract'), isEmpty);
     });
 
     test('a call without a shader reuses only this dApp\'s shader', () async {
@@ -521,6 +565,24 @@ void main() {
       expect(s.apiVersion, DappApiVersion.v7_4, reason: 'empty = current');
       expect(s.handshake(apiver: '9.0', apivermin: '8.0'), isFalse);
       expect(s.apiVersion, DappApiVersion.v7_4);
+    });
+
+    test('params that are not an object are no params, as in the core: '
+        'the BANS dApp asks get_version with "params": false', () async {
+      t.reply('get_version', {'api_version': '7.4'});
+      final s = testSession(t, policy);
+      for (final (i, params) in [false, null, <Object?>[], 0].indexed) {
+        final res = await s.handle(
+          jsonEncode({
+            'jsonrpc': '2.0',
+            'id': i,
+            'method': 'get_version',
+            'params': params,
+          }),
+        );
+        expect(resultOf(res), {'api_version': '7.4'}, reason: '$params');
+        expect(t.lastParams('get_version'), isEmpty);
+      }
     });
 
     test('the negotiated version decides what exists', () async {

@@ -133,7 +133,17 @@ void main() {
                   f.bytes.length,
             };
             final calls = t.callsTo('invoke_contract');
-            if (expectConnect) {
+            // Measured 2026-10-07: since its version check (`get_version`
+            // with `"params": false`) is answered as the core answers it,
+            // bans in the web shape reaches the wallet but makes no contract
+            // read in this window (it tries to load a wasm client its
+            // package lacks). Campfire never gives bans that shape (Qt on
+            // desktop, mobile on phones), and in both of those it reads.
+            final versionOnly =
+                entry.fileName == 'bans.dapp' && shape == DappBridgeShape.web;
+            if (versionOnly) {
+              expect(t.callsTo('get_version'), isNotEmpty);
+            } else if (expectConnect) {
               expect(calls, isNotEmpty);
               for (final c in calls) {
                 expect(c.params['create_tx'], isFalse);

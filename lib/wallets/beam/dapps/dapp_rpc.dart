@@ -25,7 +25,8 @@ class DappRpcRequest {
   final Object id;
   final String method;
 
-  /// Never null: an absent `params` is an empty object.
+  /// Never null: absent `params`, or `params` that are not an object, are
+  /// an empty object.
   final Map<String, Object?> params;
 
   /// Parses [text]. Throws [DappRpcFailure] carrying the id when one could
@@ -87,20 +88,17 @@ class DappRpcRequest {
         DappRpcErrors.error(DappRpcErrors.invalidJsonRpc, 'Missing method'),
       );
     }
+    // The core hands `params` to the method as it is, and reads named
+    // parameters with `params.find(name)`, which finds nothing in anything
+    // but an object (`api_base.cpp:151`, `getOptionalParam`). So params
+    // that are not an object are no parameters at all, as there: the BANS
+    // dApp asks for `get_version` with `"params": false` and gives up on
+    // the wallet when that is refused.
     final params = json['params'];
-    if (params != null && params is! Map<String, Object?>) {
-      throw DappRpcFailure(
-        id,
-        DappRpcErrors.error(
-          DappRpcErrors.invalidParams,
-          'params must be an object',
-        ),
-      );
-    }
     return DappRpcRequest(
       id as Object,
       method,
-      (params as Map<String, Object?>?) ?? const {},
+      params is Map<String, Object?> ? params : const {},
     );
   }
 }

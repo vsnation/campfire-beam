@@ -234,7 +234,6 @@ void main() {
         '{"jsonrpc":"2.0","id":null,"method":"x"}',
         '{"jsonrpc":"1.0","id":1,"method":"x"}',
         '{"jsonrpc":"2.0","id":1}',
-        '{"jsonrpc":"2.0","id":1,"method":"x","params":[1]}',
         '{"jsonrpc":"2.0","id":1,"method":"${'x' * 100}"}',
       ]) {
         expect(
@@ -242,6 +241,15 @@ void main() {
           throwsA(isA<DappRpcFailure>()),
           reason: bad,
         );
+      }
+      // The core looks named params up with `find`, which finds nothing in
+      // anything but an object: such params are no params, never forwarded.
+      for (final odd in ['[1]', 'false', '"a=1"', '7']) {
+        final r = DappRpcRequest.parse(
+          '{"jsonrpc":"2.0","id":1,"method":"x","params":$odd}',
+          maxLength: 100,
+        );
+        expect(r.params, isEmpty, reason: odd);
       }
     });
 

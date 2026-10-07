@@ -7,10 +7,13 @@
  *
  */
 
+import 'package:decimal/decimal.dart';
 import 'package:meta/meta.dart';
 
+import '../../../../utilities/amount/amount.dart';
 import '../../assets/beam_asset_catalog.dart';
 import '../../models/beam_asset_info.dart';
+import '../../price/beam_fiat_price.dart';
 import '../dapp_consent.dart';
 import '../dapp_text.dart';
 import '../dapp_wallet_keys.dart';
@@ -44,12 +47,17 @@ enum DappApprovalKind {
 /// An amount of one asset, as the sheet shows it.
 @immutable
 class DappAssetLine {
-  const DappAssetLine(this.asset, this.amount);
+  const DappAssetLine(this.asset, this.amount, {this.fiat});
 
   final BeamAssetDisplay asset;
 
   /// Smallest units, always positive.
   final BigInt amount;
+
+  /// What [amount] is worth in the user's currency, "≈ 1.19 USD" or
+  /// "under 0.01 USD"; null when there is no price (lookups off, no price
+  /// yet, or no DEX pool that prices the asset).
+  final String? fiat;
 
   /// "0.80368764", "1,000".
   String get amountText => dappFormatAmount(amount);
@@ -129,21 +137,35 @@ class DappApprovalModel {
     required this.blockedReason,
     required this.available,
     required this.calls,
+    this.rebuild,
   });
 
   /// [metadata]: on-chain metadata of the assets Campfire does not vouch
   /// for (missing entries are shown as "Asset #id"). [available]: spendable
   /// balances, null when unknown (then no shortfall is computed).
   /// [spendBlockedReason]: why the wallet cannot spend right now, or null.
+  ///
+  /// [valueInGroth]: what an amount of an asset is worth in BEAM groth (the
+  /// DEX's prices), and [fiat]: BEAM's price in the user's currency. With
+  /// both, every amount also shows its fiat value.
   factory DappApprovalModel.build(
     DappConsentRequest request, {
     Map<int, BeamAssetMetadata?> metadata = const {},
     Map<int, BigInt>? available,
     String? spendBlockedReason,
+    BigInt? Function(int assetId, BigInt amount)? valueInGroth,
+    BeamFiatPrice? fiat,
   }) {
     BeamAssetDisplay show(int id) => BeamAssetCatalog.display(id, metadata[id]);
-    DappAssetLine line(DappAssetAmount a) =>
-        DappAssetLine(show(a.assetId), a.amount);
+    String? fiatOf(int assetId, BigInt amount) {
+      if (fiat == null || !fiat.known || amount <= BigInt.zero) return null;
+      final groth = assetId == 0 ? amount : valueInGroth?.call(assetId, amount);
+      return groth == null ? null : dappFiatText(groth, fiat);
+    }
+
+    DappAssetLine lineOf(int assetId, BigInt amount) =>
+        DappAssetLine(show(assetId), amount, fiat: fiatOf(assetId, amount));
+    DappAssetLine line(DappAssetAmount a) => lineOf(a.assetId, a.amount);
 
     final pays = [for (final a in request.pays) line(a)];
     final receives = [for (final a in request.receives) line(a)];
@@ -183,9 +205,7 @@ class DappApprovalModel {
 
     final required = request.required;
     final ids = required.keys.toList()..sort();
-    final totalOut = [
-      for (final id in ids) DappAssetLine(show(id), required[id]!),
-    ];
+    final totalOut = [for (final id in ids) lineOf(id, required[id]!)];
     final missing = available == null
         ? const <int, BigInt>{}
         : request.shortfall(available);
@@ -193,6 +213,18 @@ class DappApprovalModel {
       for (final id in ids)
         if (missing[id] != null) DappAssetLine(show(id), missing[id]!),
     ];
+    final terms = request.rebuild;
+    List<DappAssetLine> bounds(Map<int, BigInt> m) => [
+      for (final id in m.keys.toList()..sort()) lineOf(id, m[id]!),
+    ];
+    final rebuild = terms == null
+        ? null
+        : DappRebuildView(
+            terms: terms,
+            dappName: dappDisplayText(request.dapp.name, maxLength: 64),
+            maxPays: bounds(terms.maxPays),
+            minReceives: bounds(terms.minReceives),
+          );
     final seen = <int>{};
     final lookalikes = [
       for (final l in [
@@ -208,7 +240,7 @@ class DappApprovalModel {
       kind: kind,
       pays: List.unmodifiable(pays),
       receives: List.unmodifiable(receives),
-      fee: DappAssetLine(show(0), request.fee),
+      fee: lineOf(0, request.fee),
       totalOut: List.unmodifiable(totalOut),
       shortfall: List.unmodifiable(shortfall),
       lookalikes: List.unmodifiable(lookalikes),
@@ -219,6 +251,7 @@ class DappApprovalModel {
           : spendBlockedReason,
       available: available == null ? null : Map.unmodifiable(available),
       calls: List.unmodifiable(calls),
+      rebuild: rebuild,
     );
   }
 
@@ -252,6 +285,15 @@ class DappApprovalModel {
 
   /// Each contract call with its own flows, in order.
   final List<DappCallLine> calls;
+
+  /// Set when the core may rebuild what is approved and sign the new
+  /// version without asking again: whose app code would build it, and the
+  /// worst it may then do.
+  final DappRebuildView? rebuild;
+
+  /// The user must tick "I understand" before approving: the app code that
+  /// would rebuild this is not code Campfire vouches for.
+  bool get needsAcknowledgement => rebuild?.needsAcknowledgement ?? false;
 
   /// Show each call on its own: there is more than one, so a net total
   /// would hide which contract gets what.
@@ -427,4 +469,77 @@ String dappFormatAmount(BigInt amount, {int decimals = 8}) {
   }
   final text = frac.isEmpty ? '$grouped' : '$grouped.$frac';
   return negative ? '-$text' : text;
+}
+
+/// The worst the core may sign after approval, for a request it can
+/// rebuild ([DappRebuildTerms]), in the words the sheet uses.
+@immutable
+class DappRebuildView {
+  const DappRebuildView({
+    required this.terms,
+    required this.dappName,
+    required this.maxPays,
+    required this.minReceives,
+  });
+
+  final DappRebuildTerms terms;
+  final String dappName;
+
+  /// The most each asset may cost, without the network fee.
+  final List<DappAssetLine> maxPays;
+
+  /// The least of each asset that must arrive; a zero amount means the
+  /// asset may not arrive at all.
+  final List<DappAssetLine> minReceives;
+
+  bool get verified => terms.isVerifiedDex;
+
+  /// Unverified code also needs the user's explicit "I understand".
+  bool get needsAcknowledgement => !verified;
+
+  /// Whose code would build the new version.
+  String get appCodeLabel =>
+      verified ? "BEAM's DEX (verified app code)" : 'Unverified app code';
+
+  /// The stored app code's fingerprint, "8b4a0616…12c3fa".
+  String get appCodeFingerprint => dappShortHex(terms.appCodeSha256);
+
+  /// The heading of the worst-case box.
+  String get title => verified
+      ? 'If the price moves before it lands'
+      : '$dappName may change this after you approve';
+
+  /// What happens, before the worst-case amounts.
+  String get explanation => verified
+      ? "If it misses the next block, BEAM's DEX (verified app code) redoes "
+            'it at the new price, for up to ${DappRebuildTerms.windowBlocks} '
+            'blocks (about 5 minutes), and your wallet signs that without '
+            'asking again. The network fee stays the same. At worst:'
+      : "If it misses the next block, $dappName's own app code builds it "
+            'again, for up to ${DappRebuildTerms.windowBlocks} blocks (about 5 '
+            'minutes), and your wallet signs that without asking again. '
+            "Campfire can't check that code: the dApp may change the amounts "
+            'after you approve, call other contracts and pay a higher network '
+            'fee. Your wallet still stops it at:';
+
+  /// The tick the user must give for unverified code.
+  String get acknowledgement =>
+      'I understand $dappName may change the amounts after I approve';
+}
+
+/// [groth] of BEAM in [fiat]'s currency, rounded down, as Campfire writes
+/// money: "≈ 1.19 USD", "≈ 1.234,56 EUR" in a German locale, and
+/// "under 0.01 USD" below a cent (never "0.00 USD"). Null without a price.
+String? dappFiatText(BigInt groth, BeamFiatPrice fiat) {
+  final price = fiat.price;
+  if (!fiat.known || price == null) return null;
+  final value = (Decimal.fromBigInt(groth) * price).shift(-8);
+  final code = fiat.currency.toUpperCase();
+  final cent = Decimal.parse('0.01');
+  String money(Decimal d) => d
+      .floor(scale: 2)
+      .toAmount(fractionDigits: 2)
+      .fiatString(locale: fiat.locale);
+  if (value < cent) return 'under ${money(cent)} $code';
+  return '≈ ${money(value)} $code';
 }

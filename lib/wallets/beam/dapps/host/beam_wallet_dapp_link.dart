@@ -66,6 +66,16 @@ class BeamWalletDappLink implements DappWalletLink {
   }
 
   @override
+  Future<DappAssetValuer?> assetValuer() async {
+    try {
+      final pricer = await services.pricer();
+      return pricer.valueInGroth;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
   String? get spendBlockedReason {
     if (wallet.canSpend) return null;
     final m = BeamSyncMessages.describe(wallet.syncAssessment);

@@ -16,9 +16,11 @@ import '../contracts/common/invoke_data.dart';
 import 'dapp_contract_policy.dart';
 import 'dapp_errors.dart';
 import 'dapp_identity.dart';
+import 'dapp_rebuild_terms.dart';
 
 export 'dapp_contract_policy.dart'
     show DappContractRefusal, DappContractRefused;
+export 'dapp_rebuild_terms.dart' show DappAppCode, DappRebuildTerms;
 
 /// What a dApp asks the user to approve.
 enum DappConsentKind {
@@ -203,6 +205,7 @@ class DappConsentRequest {
     List<DappContractCall> calls = const [],
     this.send,
     this.sign,
+    this.rebuild,
   }) : pays = List.unmodifiable(pays),
        receives = List.unmodifiable(receives),
        calls = List.unmodifiable(calls);
@@ -237,6 +240,11 @@ class DappConsentRequest {
 
   /// The message and key, for [DappConsentKind.signMessage].
   final DappSignDetails? sign;
+
+  /// For a contract transaction the core can rebuild after approval: whose
+  /// app code would rebuild it, and the worst it may then sign. Null when
+  /// what is approved is exactly what is signed.
+  final DappRebuildTerms? rebuild;
 
   /// SHA-256 of the canonical request that will execute.
   final String digest;
@@ -423,6 +431,7 @@ class DappContractSummary {
     required this.fee,
     required this.calls,
     required this.fullComment,
+    this.rebuild,
   });
 
   /// Throws [FormatException] for invoke data it cannot fully read, and
@@ -451,6 +460,7 @@ class DappContractSummary {
       ],
       // ContractInvokeDataBase::get_FullComment (bvm/invoke_data.cpp:299).
       fullComment: d.entries.map((e) => e.comment).join('; '),
+      rebuild: DappRebuildTerms.of(d),
     );
   }
 
@@ -460,15 +470,20 @@ class DappContractSummary {
   final List<DappContractCall> calls;
   final String fullComment;
 
+  /// See [DappConsentRequest.rebuild].
+  final DappRebuildTerms? rebuild;
+
   static List<DappAssetAmount> _sorted(Map<int, BigInt> m) => [
     for (final k in m.keys.toList()..sort()) DappAssetAmount(k, m[k]!),
   ];
 
   /// True when [request] shows exactly these amounts, fee and calls
-  /// (including each call's own flows and signing keys).
+  /// (including each call's own flows and signing keys), and the same
+  /// rebuild terms.
   bool matches(DappConsentRequest request) =>
       _sameList(pays, request.pays) &&
       _sameList(receives, request.receives) &&
       fee == request.fee &&
-      _sameList(calls, request.calls);
+      _sameList(calls, request.calls) &&
+      rebuild == request.rebuild;
 }

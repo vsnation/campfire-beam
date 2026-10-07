@@ -78,40 +78,59 @@ void main() {
 
   final plain = invokeEntry(contractId: cid(0xa1), spend: {0: 50000000});
 
-  group('C-1: data the core could rebuild after approval is refused', () {
-    test('control: the same call without the flags is shown', () async {
-      final r = await shown(invokeData([plain]));
-      expect(r.pays.single.amount, BigInt.from(50000000));
-    });
+  group('C-1: data the core can rebuild after approval is shown with the '
+      'worst it may then sign', () {
+    test(
+      'control: the same call without the flags has no worst case',
+      () async {
+        final r = await shown(invokeData([plain]));
+        expect(r.pays.single.amount, BigInt.from(50000000));
+        expect(r.rebuild, isNull);
+      },
+    );
 
-    test('a dependent entry (HFT) with a made-up parent context', () async {
-      final why = await refused(
-        invokeData([
-          invokeEntry(
-            contractId: cid(0xa1),
-            flags: flagDependent,
-            spend: {0: 50000000},
-          ),
-        ]),
-      );
-      expect(why, contains("can't show you what would be signed"));
-      expect(why, endsWith('Nothing was sent.'), reason: 'not the DEX');
-    });
+    test(
+      'a dependent entry with no app body to re-run cannot be rebuilt',
+      () async {
+        final r = await shown(
+          invokeData([
+            invokeEntry(
+              contractId: cid(0xa1),
+              flags: flagDependent,
+              spend: {0: 50000000},
+            ),
+          ]),
+        );
+        expect(r.rebuild, isNull, reason: 'CanRebuildHft needs an app body');
+      },
+    );
 
-    test('a stored app body to re-run (SaveAppInvoke)', () async {
-      await refused(
-        invokeData([
-          invokeEntry(
-            contractId: cid(0xa1),
-            flags: flagSaveAppInvoke,
-            spend: {0: 50000000},
-          ),
-        ], firstFlags: flagSaveAppInvoke),
-      );
-    });
+    test(
+      'a stored app body to re-run, by code Campfire does not know',
+      () async {
+        final r = await shown(
+          invokeData([
+            invokeEntry(
+              contractId: cid(0xa1),
+              flags: flagDependent | flagSaveAppInvoke,
+              spend: {0: 50000000},
+            ),
+          ], firstFlags: flagSaveAppInvoke),
+        );
+        expect(r.rebuild!.appCode, DappAppCode.unverified);
+        expect(r.rebuild!.maxPays, {0: BigInt.from(50500000)});
+        final m = DappApprovalModel.build(r);
+        expect(m.needsAcknowledgement, isTrue);
+        expect(m.rebuild!.appCodeLabel, 'Unverified app code');
+        expect(
+          m.rebuild!.explanation,
+          contains('the dApp may change the amounts after you approve'),
+        );
+      },
+    );
 
-    test('a stored spend ceiling: "pay 0.5 BEAM, up to the whole balance" '
-        '(SaveSpendMax)', () async {
+    test('a stored spend ceiling: "pay 0.5 BEAM, up to 1,000 BEAM" '
+        '(SaveSpendMax) shows the 1,000 BEAM', () async {
       final data = invokeData([
         invokeEntry(
           contractId: cid(0xa1),
@@ -119,62 +138,87 @@ void main() {
           spend: {0: 50000000},
         ),
       ], firstFlags: flagSaveAppInvoke | flagSaveSpendMax);
-      // What the old sheet would have shown: 0.5 BEAM. The ceiling the
-      // core would then honour on a rebuild: 1,000 BEAM.
-      final d = BeamInvokeData.decode(data);
-      expect(d.pays, {0: BigInt.from(50000000)});
-      expect(d.spendMax, {0: BigInt.from(100000000000)});
-      await refused(data);
-    });
-
-    test('SaveSpendMax alone', () async {
-      await refused(
-        invokeData([
-          invokeEntry(
-            contractId: cid(0xa1),
-            flags: flagSaveSpendMax,
-            spend: {0: 50000000},
-          ),
-        ], firstFlags: flagSaveSpendMax),
-      );
-    });
-
-    test('a dependent second entry behind a plain first one', () async {
-      await refused(
-        invokeData([
-          plain,
-          invokeEntry(contractId: cid(0xa2), flags: flagDependent),
-        ]),
-      );
+      final r = await shown(data);
+      expect(r.pays.single.amount, BigInt.from(50000000));
+      expect(r.rebuild!.maxPays, {0: BigInt.from(100000000000)});
+      final m = DappApprovalModel.build(r);
+      expect(m.rebuild!.maxPays.single.text, '1,000 BEAM');
+      expect(m.needsAcknowledgement, isTrue);
     });
 
     test('a stored privilege above 0 is refused for what it is', () async {
       final why = await refused(
-        invokeData([
-          invokeEntry(
-            contractId: cid(0xa1),
-            flags: flagSaveAppInvoke,
-            spend: {0: 50000000},
-          ),
-        ], firstFlags: flagSaveAppInvoke, privilege: 1),
+        invokeData(
+          [
+            invokeEntry(
+              contractId: cid(0xa1),
+              flags: flagDependent | flagSaveAppInvoke,
+              spend: {0: 50000000},
+            ),
+          ],
+          firstFlags: flagSaveAppInvoke,
+          privilege: 1,
+        ),
       );
       expect(why, contains('extra privileges'));
     });
 
-    test('real DEX data built in HFT mode is refused from a dApp', () async {
-      // Built by the pinned amm_app.wasm on mainnet (Dependent +
-      // SaveAppInvoke): Campfire's own Swap screen checks the stored body
-      // against its pin; a dApp's data has no such check.
+    test("real DEX data built by Campfire's pinned shader: BEAM's DEX, "
+        'verified, the worst case from the 1% rule', () async {
       final f = jsonDecode(
         File('$dexFixtureDir/trade_built_raw_data.json').readAsStringSync(),
       ) as Map;
       final raw = base64.decode(
         (f['result']! as Map)['raw_data_base64']! as String,
       );
-      expect(BeamInvokeData.decode(raw).isRebuildable, isTrue);
-      expect(await refused(raw), endsWith('use Swap in Campfire.'));
-      activity.clear();
-      await refused(rawDataVector('add_dependent'));
+      final r = await shown(raw);
+      expect(r.pays, [DappAssetAmount(0, BigInt.from(10000000))]);
+      expect(r.receives, [DappAssetAmount(174, BigInt.from(80368764))]);
+      expect(r.fee, BigInt.from(1100000));
+      expect(r.rebuild!.appCode, DappAppCode.beamDex);
+      expect(r.rebuild!.maxPays, {0: BigInt.from(10100000)});
+      expect(r.rebuild!.minReceives, {174: BigInt.from(79573034)});
+      final m = DappApprovalModel.build(r);
+      expect(m.kind, DappApprovalKind.swap);
+      expect(m.cta, 'Approve swap');
+      expect(m.needsAcknowledgement, isFalse);
+      expect(m.rebuild!.appCodeLabel, "BEAM's DEX (verified app code)");
+      expect(m.rebuild!.maxPays.single.text, '0.101 BEAM');
+      expect(m.rebuild!.minReceives.single.text, '0.79573034 FOMO');
+      expect(activity, isEmpty, reason: 'nothing refused');
+    });
+
+    test("the Beam DEX dApp's own swap: BEAM's DEX, verified", () async {
+      final f = jsonDecode(
+        File('test/beam/dapps/fixtures/dex_dapp_swap_raw_data.json')
+            .readAsStringSync(),
+      ) as Map;
+      final raw = base64.decode(
+        (f['result']! as Map)['raw_data_base64']! as String,
+      );
+      final r = await shown(raw);
+      expect(r.rebuild!.appCode, DappAppCode.beamDex);
+      expect(
+        DappApprovalModel.build(r).rebuild!.title,
+        'If the price moves before it lands',
+      );
+    });
+
+    test('approved rebuildable data reaches the core unchanged, and its '
+        'result reaches the dApp', () async {
+      final f = jsonDecode(
+        File('test/beam/dapps/fixtures/dex_dapp_swap_raw_data.json')
+            .readAsStringSync(),
+      ) as Map;
+      final raw = base64.decode(
+        (f['result']! as Map)['raw_data_base64']! as String,
+      );
+      policy.autoAnswer = true;
+      final res = await session.handle(
+        rq(9, 'process_invoke_data', {'data': raw}),
+      );
+      expect(resultOf(res), {'txid': txId(1)});
+      expect(t.lastParams('process_invoke_data')['data'], raw);
     });
   });
 
@@ -319,9 +363,8 @@ void main() {
     test('the airdrop key hash is the one the airdrop shader signs with', () {
       // Recorded from mainnet: Campfire's create_batch raw_data.
       final f = jsonDecode(
-        File(
-          'test/beam/contracts/airdrop/fixtures/create_batch_2x0.001.json',
-        ).readAsStringSync(),
+        File('test/beam/contracts/airdrop/fixtures/create_batch_2x0.001.json')
+            .readAsStringSync(),
       );
       List<int>? raw;
       void find(Object? o) {
@@ -352,9 +395,8 @@ void main() {
 
     test('the Anon-Vault id is the one BANS reports', () {
       final f = jsonDecode(
-        File(
-          'test/beam/contracts/bans/fixtures/view_params.json',
-        ).readAsStringSync(),
+        File('test/beam/contracts/bans/fixtures/view_params.json')
+            .readAsStringSync(),
       ) as Map;
       final out = jsonDecode((f['result']! as Map)['output']! as String) as Map;
       expect((out['res']! as Map)['vault'], kVaultAnonCid);

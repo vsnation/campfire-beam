@@ -87,6 +87,7 @@ class DappSession {
     this.limits = const DappRequestLimits(),
     this.onActivity,
     this.onCallBusy,
+    this.syncWait = const Duration(seconds: 30),
   }) : _version = apiVersion,
        _gate = DappMethodGate(apiVersion),
        _sanitizer = DappRequestSanitizer(limits),
@@ -107,6 +108,19 @@ class DappSession {
   /// of seconds, with the dApp's own page blank meanwhile).
   final void Function(int delta)? onCallBusy;
 
+  /// How long a contract read waits for the core to be in sync before it
+  /// is answered with an error instead of being sent.
+  ///
+  /// The core holds every app shader call until it is in sync with its
+  /// node (`ManagerStd::SelectContext` asks for `RequestEnsureSync`):
+  /// measured on mainnet, a read sent during a restore scan did not answer
+  /// in 2 minutes. Sent anyway, it would sit in the wallet's one shader
+  /// queue, ahead of Campfire's own DEX and Names screens and every other
+  /// dApp, until the connection's timeout, and the next poll would join
+  /// it. Waiting here keeps that queue free; a short catch-up (a new block)
+  /// passes within it.
+  final Duration syncWait;
+
   DappApiVersion _version;
   DappMethodGate _gate;
   final DappRequestSanitizer _sanitizer;
@@ -117,6 +131,7 @@ class DappSession {
   final _subscribed = <String>{};
   final _notifications = StreamController<String>.broadcast();
   Future<void> _shaderTail = Future.value();
+  DateTime? _inSyncAt;
 
   /// The app shader this dApp sent last. wallet-api keeps one compiled
   /// shader per process and reuses it for any call that omits `contract`,
@@ -245,6 +260,7 @@ class DappSession {
         return _contract(req, params);
       case 'invoke_contract':
         final call = _withOwnShader(params);
+        await _untilInSync();
         return _oneShaderAtATime(() => _call(req.method, call));
       case 'ev_subunsub':
         final r = await _call(req.method, params);
@@ -399,7 +415,13 @@ class DappSession {
     try {
       summary = DappContractSummary.decode(params['data']! as List<int>);
     } on FormatException catch (e) {
-      // A sheet must not summarise what it cannot fully read.
+      // A sheet must not summarise what it cannot fully read. The user
+      // hears about it too: a dApp that simply stops would look like a
+      // wallet that ignored them.
+      _refused(
+        "Campfire refused this request: it can't read all of it, so it "
+        "can't show you what would be signed. Nothing was sent.",
+      );
       throw DappRpcErrors.error(
         DappRpcErrors.notAllowed,
         'Campfire cannot show this contract call: ${e.message}',
@@ -431,6 +453,7 @@ class DappSession {
       dappMessage:
           confirm ?? (summary.fullComment.isEmpty ? null : summary.fullComment),
       calls: summary.calls,
+      rebuild: summary.rebuild,
     );
     final exec = await _approved(request, canonical, (p) {
       final data = p['data'];
@@ -625,6 +648,50 @@ class DappSession {
       onCallBusy?.call(-1);
     }
   }
+
+  /// Returns once the core says it is in sync (`wallet_status.is_in_sync`),
+  /// or throws after [syncWait]. A core that does not say is not waited
+  /// for. A positive answer is trusted for a few seconds.
+  Future<void> _untilInSync() async {
+    final at = _inSyncAt;
+    if (at != null && DateTime.now().difference(at) < _inSyncFresh) return;
+    final sw = Stopwatch()..start();
+    var busy = false;
+    try {
+      while (!_closed) {
+        Object? status;
+        try {
+          status = await transport.call('wallet_status', const {});
+        } catch (_) {
+          return;
+        }
+        if (status is! Map || status['is_in_sync'] != false) {
+          _inSyncAt = DateTime.now();
+          return;
+        }
+        _inSyncAt = null;
+        if (sw.elapsed >= syncWait) {
+          throw DappRpcErrors.error(
+            DappRpcErrors.internalError,
+            'The wallet is still catching up with the network, so it '
+            'cannot read contracts yet. Nothing was run; try again once it '
+            'has caught up.',
+          );
+        }
+        // The screen says the dApp is waiting on the wallet meanwhile.
+        if (!busy) {
+          busy = true;
+          onCallBusy?.call(1);
+        }
+        await Future<void>.delayed(_syncPoll);
+      }
+    } finally {
+      if (busy) onCallBusy?.call(-1);
+    }
+  }
+
+  static const _inSyncFresh = Duration(seconds: 5);
+  static const _syncPoll = Duration(seconds: 2);
 
   Future<T> _oneShaderAtATime<T>(Future<T> Function() op) {
     final result = _shaderTail.then((_) => op());
