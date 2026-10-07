@@ -228,10 +228,43 @@ void main() {
           .data,
       'Catching up',
     );
+    // One wallet: nothing to tell apart.
+    expect(
+      tester
+          .widget<Tooltip>(
+            find.ancestor(
+              of: find.byKey(const Key('beamSidebarNodeChip')),
+              matching: find.byType(Tooltip),
+            ),
+          )
+          .message,
+      'Node & sync',
+    );
     await tester.tap(find.byKey(const Key('beamSidebarNodeChip')));
     await settle(tester, rounds: 2);
     expect(find.byType(DesktopBeamNodeSyncDialog), findsOneWidget);
     await closeRouteOf(tester, find.byType(DesktopBeamNodeSyncDialog));
+    await finishSidebar(tester);
+  });
+
+  // On the wallet list nothing said whose node the chip describes.
+  testWidgets('several wallets: the chip names the wallet it describes', (
+    tester,
+  ) async {
+    final a = await openBeamWallet(tester, db, core: SidebarCore(), name: 'A');
+    final b = await openBeamWallet(tester, db, core: SidebarCore(), name: 'B');
+    final container = await pumpSidebar(tester, wallets: [a, b]);
+    container.read(pBeamSidebarWalletChoice.notifier).choose(b.walletId);
+    await tester.pump();
+    final described = container.read(pBeamSidebarWallet).wallet;
+    expect(described?.info.name, 'B');
+    final tip = tester.widget<Tooltip>(
+      find.ancestor(
+        of: find.byKey(const Key('beamSidebarNodeChip')),
+        matching: find.byType(Tooltip),
+      ),
+    );
+    expect(tip.message, 'B · Node & sync');
     await finishSidebar(tester);
   });
 

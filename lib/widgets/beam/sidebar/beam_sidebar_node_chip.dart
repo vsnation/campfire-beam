@@ -168,6 +168,12 @@ class BeamSidebarNodeChip extends ConsumerWidget {
     final colors = Theme.of(context).extension<StackColors>()!;
     final state = ref.watch(pBeamSidebarNodeState);
     final tint = beamSidebarNodeColor(colors, state);
+    // With several BEAM wallets, say whose node this is (on the wallet
+    // list nothing else does).
+    final ctx = ref.watch(pBeamSidebarWallet);
+    final whose = ctx.canSwitch && ctx.wallet != null
+        ? '${ctx.wallet!.info.name} · '
+        : '';
     final icon = SvgPicture.asset(
       Assets.svg.node,
       width: 16,
@@ -203,10 +209,12 @@ class BeamSidebarNodeChip extends ConsumerWidget {
     );
     return Semantics(
       button: true,
-      label: '${state.label}. Opens node and sync.',
+      label: '$whose${state.label}. Opens node and sync.',
       excludeSemantics: true,
       child: Tooltip(
-        message: iconOnly ? '${state.label} · Node & sync' : 'Node & sync',
+        message: iconOnly
+            ? '$whose${state.label} · Node & sync'
+            : '${whose}Node & sync',
         waitDuration: const Duration(milliseconds: 400),
         child: SizedBox.expand(child: button),
       ),
