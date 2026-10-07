@@ -429,9 +429,9 @@ void main() {
       // Icons as the BEAM desktop wallet draws them: bundled for verified
       // assets, the generic one for the id otherwise (never the creator's).
       expect(rows[174]!.iconAsset, 'assets/beam/icons/174.png');
-      expect(rows[pepeId]!.iconAsset, BeamAssetCatalog.genericIcon(pepeId));
+      expect(rows[pepeId]!.iconAsset, BeamAssetCatalog.unverifiedIcon(pepeId));
       expect(rows[pepeId]!.color, BeamAssetCatalog.genericColor(pepeId));
-      expect(rows[175]!.iconAsset, BeamAssetCatalog.genericIcon(175));
+      expect(rows[175]!.iconAsset, BeamAssetCatalog.unverifiedIcon(175));
 
       final cached = {
         for (final c in await isar.beamAssetContracts.where().findAll())

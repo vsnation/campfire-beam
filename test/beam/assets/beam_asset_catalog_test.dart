@@ -47,7 +47,7 @@ void main() {
 
   test('an unverified asset takes its on-chain name, with a generic icon', () {
     final d = BeamAssetCatalog.display(
-      777,
+      773,
       _meta('N=Moon Rocket;SN=MOON;UN=MOON;NTHUN=m'),
     );
     expect(d.verified, isFalse);
@@ -55,9 +55,14 @@ void main() {
     expect(d.symbol, 'MOON');
     // The desktop wallet's generic icon for its id, never one of its own.
     expect(d.icon, 'assets/beam/icons/generic/asset-${d.assetId % 20}.svg');
-    expect(d.color, BeamAssetCatalog.genericColor(777));
-    expect(d.idLabel, '#777');
+    expect(d.color, BeamAssetCatalog.genericColor(773));
+    expect(d.idLabel, '#773');
     expect(d.impersonates, isNull);
+    // #777's generic icon (17) is bUSDT's (#37), so it gets the next one.
+    expect(
+      BeamAssetCatalog.display(777, null).icon,
+      isNot(BeamAssetCatalog.display(37, null).icon),
+    );
   });
 
   test('an unverified copy of a verified ticker is flagged', () {
@@ -68,6 +73,29 @@ void main() {
     expect(
       BeamAssetCatalog.display(998, _meta('N=b.e.a.m;UN=B')).impersonates,
       0,
+    );
+  });
+
+  // The DMG test showed the bridge pools as "BEAM / #36" and "#37 / NPH".
+  test('the Beam Bridge assets are verified, and a copy of one is flagged',
+      () {
+    final names = {
+      for (final id in [36, 37, 38, 39])
+        id: BeamAssetCatalog.display(
+          id,
+          _meta('N=anything;UN=ANY'),
+        ),
+    };
+    expect(names.values.every((d) => d.verified), isTrue);
+    expect(names.map((id, d) => MapEntry(id, d.symbol)), {
+      36: 'bETH',
+      37: 'bUSDT',
+      38: 'bWBTC',
+      39: 'bDAI',
+    });
+    expect(
+      BeamAssetCatalog.display(997, _meta('N=bUSDT;UN=bUSDT')).impersonates,
+      37,
     );
   });
 

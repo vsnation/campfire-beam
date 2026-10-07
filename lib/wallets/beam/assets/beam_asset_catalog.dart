@@ -157,6 +157,35 @@ abstract final class BeamAssetCatalog {
       color: 0xFFE91E63,
       icon: '$_icons/9.png',
     ),
+    // The Beam Bridge's wrapped Ethereum assets. Each is owned on chain by
+    // its bridge asset contract (acefc4bed7… ETH, d455975164… USDT,
+    // 8a09b19c37… WBTC, 041710c647… DAI), as in the owner's bridge route
+    // registry; names from their metadata (explorer `/assets`,
+    // 2026-10-07). No bundled icons yet: the generic icon for the id.
+    36: BeamKnownAsset(
+      id: 36,
+      name: 'Wrapped ETH',
+      symbol: 'bETH',
+      color: 0xFF627EEA,
+    ),
+    37: BeamKnownAsset(
+      id: 37,
+      name: 'Wrapped USDT',
+      symbol: 'bUSDT',
+      color: 0xFF26A17B,
+    ),
+    38: BeamKnownAsset(
+      id: 38,
+      name: 'Wrapped WBTC',
+      symbol: 'bWBTC',
+      color: 0xFFF09242,
+    ),
+    39: BeamKnownAsset(
+      id: 39,
+      name: 'Wrapped DAI',
+      symbol: 'bDAI',
+      color: 0xFFF5AC37,
+    ),
     47: BeamKnownAsset(
       id: 47,
       name: 'Nephrite',
