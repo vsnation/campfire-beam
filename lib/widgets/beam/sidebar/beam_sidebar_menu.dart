@@ -40,6 +40,7 @@ import '../../../pages_desktop_specific/desktop_menu_item.dart';
 import '../../../providers/desktop/current_desktop_menu_item.dart';
 import '../../../themes/stack_colors.dart';
 import '../../../utilities/assets.dart';
+import '../../../utilities/beam_app_identity.dart';
 import '../../../utilities/text_styles.dart';
 import '../../desktop/living_stack_icon.dart';
 import '../quit/beam_quit_guard.dart';
@@ -206,7 +207,7 @@ class _BeamSidebarMenuState extends ConsumerState<BeamSidebarMenu> {
               child: SizedBox(
                 height: 24,
                 child: Text(
-                  AppConfig.appName,
+                  BeamAppIdentity.displayName,
                   maxLines: 1,
                   softWrap: false,
                   overflow: TextOverflow.fade,
