@@ -114,7 +114,12 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
   /// library is loaded. Null on iOS and before the first operation.
   BeamCoreIntegrated? get integratedCore {
     final lib = _library;
-    return lib is BeamCoreIntegratedSource ? lib.integrated : null;
+    // BeamCoreIntegratedSource is not a BeamCoreLibrary subtype, so an `is`
+    // test does not promote: match it explicitly.
+    return switch (lib) {
+      final BeamCoreIntegratedSource source => source.integrated,
+      _ => null,
+    };
   }
 
   /// How long wallet-api may take to listen and answer `get_version`.
@@ -194,9 +199,10 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
       // One logger for wallet-api and the node: warnings and errors, in the
       // BEAM folder's run/logs (0700, files 0600).
       final core = _core();
-      final integrated = core is BeamCoreIntegratedSource
-          ? core.integrated
-          : null;
+      final integrated = switch (core) {
+        final BeamCoreIntegratedSource source => source.integrated,
+        _ => null,
+      };
       integrated?.initLogging(logDir: logsDir, consoleLevel: 4, fileLevel: 4);
     }
     final removed = await InProcessFiles.sweep(runDir);
@@ -828,10 +834,7 @@ class InProcessHost implements BeamHost, BeamWalletFileImporter {
 
   /// Completes with an instance's exit status once it has ended (polled:
   /// the library keeps its state for the life of the process).
-  static Future<int> _instanceExit(
-    BeamCoreIntegrated core,
-    int handle,
-  ) async {
+  static Future<int> _instanceExit(BeamCoreIntegrated core, int handle) async {
     while (true) {
       final s = core.instanceState(handle);
       if (BeamCoreInstance.hasEnded(s.state)) return s.exitStatus;
