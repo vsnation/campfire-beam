@@ -430,7 +430,9 @@ flutter:
     - assets/svg/buy/
 
     # gif
-    - assets/gif/
+    # assets/gif/ (stacy_onion.gif, monero-chan-dance.gif, 13 MB) is not
+    # bundled: its only users, the one-time Tor popup and Monero churning,
+    # never show in this build, and the APK must stay under 50 MB.
 
     # lottie animations
     # basic
