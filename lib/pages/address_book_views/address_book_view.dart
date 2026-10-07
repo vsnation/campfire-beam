@@ -20,6 +20,7 @@ import '../../providers/providers.dart';
 import '../../providers/ui/address_book_providers/address_book_filter_provider.dart';
 import '../../themes/stack_colors.dart';
 import '../../utilities/assets.dart';
+import '../../utilities/beam_app_identity.dart';
 import '../../utilities/constants.dart';
 import '../../utilities/text_styles.dart';
 import '../../utilities/util.dart';
@@ -119,6 +120,12 @@ class _AddressBookViewState extends ConsumerState<AddressBookView> {
     _searchFocusNode.dispose();
     super.dispose();
   }
+
+  /// Campfire for BEAM: the only entry is the one for your own wallets,
+  /// which is listed under Favorites alone.
+  static bool _onlySelf(List<ContactEntry> contacts) =>
+      BeamAppIdentity.isActive &&
+      contacts.every((e) => e.customId == "default");
 
   @override
   Widget build(BuildContext context) {
@@ -355,7 +362,7 @@ class _AddressBookViewState extends ConsumerState<AddressBookView> {
           const SizedBox(height: 16),
           Text("All contacts", style: STextStyles.smallMed12(context)),
           const SizedBox(height: 12),
-          if (contacts.isNotEmpty)
+          if (contacts.isNotEmpty && !_onlySelf(contacts))
             Column(
               children: [
                 RoundedWhiteContainer(
@@ -381,6 +388,14 @@ class _AddressBookViewState extends ConsumerState<AddressBookView> {
                                   .read(addressBookServiceProvider)
                                   .matches(widget.filterTerm ?? _searchTerm, e),
                             )
+                            // Campfire for BEAM: your own wallets' entry
+                            // is always a favorite; listed here too it read
+                            // as a duplicate.
+                            .where(
+                              (e) =>
+                                  !(BeamAppIdentity.isActive &&
+                                      e.customId == "default"),
+                            )
                             .map(
                               (e) => AddressBookCard(
                                 key: Key(
@@ -395,7 +410,7 @@ class _AddressBookViewState extends ConsumerState<AddressBookView> {
                 ),
               ],
             ),
-          if (contacts.isEmpty)
+          if (contacts.isEmpty || _onlySelf(contacts))
             RoundedWhiteContainer(
               child: Center(
                 child: Text(

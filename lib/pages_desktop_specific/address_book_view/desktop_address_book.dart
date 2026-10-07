@@ -154,6 +154,12 @@ class _DesktopAddressBook extends ConsumerState<DesktopAddressBook> {
     super.initState();
   }
 
+  /// Campfire for BEAM: the only entry is the one for your own wallets,
+  /// which is listed under Favorites alone.
+  static bool _onlySelf(List<ContactEntry> contacts) =>
+      BeamAppIdentity.isActive &&
+      contacts.every((e) => e.customId == "default");
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -397,7 +403,7 @@ class _DesktopAddressBook extends ConsumerState<DesktopAddressBook> {
                   ),
                 ),
           all: allContacts.isEmpty
-              ? contacts.isNotEmpty
+              ? contacts.isNotEmpty && !_onlySelf(contacts)
                     ? null
                     : RoundedWhiteContainer(
                         child: Center(
