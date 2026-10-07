@@ -54,6 +54,10 @@ class PriceAPI {
     Salvium: "salvium",
   };
 
+  /// The CoinGecko id prices of [coin] are fetched under, if any.
+  static String? coinGeckoIdOf(CryptoCurrency coin) =>
+      _coinToIdMap[coin.runtimeType];
+
   static const refreshInterval = 60;
 
   // initialize to older than current time minus at least refreshInterval

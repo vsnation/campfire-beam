@@ -26,9 +26,6 @@ import '../../../pages/pinpad_views/lock_screen_view.dart';
 import '../../../pages/settings_views/wallet_settings_view/wallet_network_settings_view/wallet_network_settings_view.dart';
 import '../../../pages/wallet_view/sub_widgets/wallet_refresh_button.dart';
 import '../../../pages_desktop_specific/my_stack_view/wallet_view/sub_widgets/desktop_auth_send.dart';
-import '../../../providers/global/locale_provider.dart';
-import '../../../providers/global/prefs_provider.dart';
-import '../../../providers/global/price_provider.dart';
 import '../../../providers/global/wallets_provider.dart';
 import '../../../route_generator.dart';
 import '../../../services/event_bus/events/global/node_connection_status_changed_event.dart';
@@ -38,6 +35,7 @@ import '../../../themes/stack_colors.dart';
 import '../../../utilities/amount/amount.dart';
 import '../../../utilities/amount/amount_formatter.dart';
 import '../../../utilities/text_styles.dart';
+import '../../../wallets/beam/price/beam_fiat_price.dart';
 import '../../../wallets/beam/sync/beam_sync_state.dart';
 import '../../../wallets/beam/wallet/beam_balance_mapper.dart';
 import '../../../wallets/crypto_currency/crypto_currency.dart';
@@ -114,22 +112,14 @@ final pBeamAssetTotals =
 final pBeamHomeFormat = Provider.family<BeamHomeFormat, String>((ref, id) {
   final coin = ref.watch(pWalletCoin(id));
   final formatter = ref.watch(pAmountFormatter(coin));
-  final pricesOn = ref.watch(
-    prefsChangeNotifierProvider.select((p) => p.externalCalls),
-  );
-  final price = pricesOn
-      ? ref.watch(
-          priceAnd24hChangeNotifierProvider.select((p) => p.getPrice(coin)),
-        )
-      : null;
+  // A missing or zero price is null here: never "0.00 USD".
+  final fiat = ref.watch(pBeamFiatPrice(id));
   return BeamHomeFormat(
     formatBeam: formatter.format,
-    pricesOn: pricesOn,
-    price: price?.value,
-    currency: ref.watch(prefsChangeNotifierProvider.select((p) => p.currency)),
-    locale: ref.watch(
-      localeServiceChangeNotifierProvider.select((l) => l.locale),
-    ),
+    pricesOn: fiat.lookupsOn,
+    price: fiat.price,
+    currency: fiat.currency,
+    locale: fiat.locale,
     fractionDigits: coin.fractionDigits,
   );
 });

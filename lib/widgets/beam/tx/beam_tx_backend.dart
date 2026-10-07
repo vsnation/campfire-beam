@@ -15,14 +15,13 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../models/isar/models/blockchain_data/v2/transaction_v2.dart';
 import '../../../providers/db/main_db_provider.dart';
-import '../../../providers/global/locale_provider.dart';
 import '../../../providers/global/prefs_provider.dart';
-import '../../../providers/global/price_provider.dart';
 import '../../../providers/global/wallets_provider.dart';
 import '../../../utilities/block_explorers.dart';
 import '../../../utilities/util.dart';
 import '../../../wallets/beam/api/beam_api.dart';
 import '../../../wallets/beam/models/beam_transaction.dart';
+import '../../../wallets/beam/price/beam_fiat_price.dart';
 import '../../../wallets/beam/wallet/beam_wallet_services.dart';
 import '../../../wallets/wallet/impl/beam_wallet.dart';
 
@@ -121,21 +120,12 @@ final pBeamTxIsDesktop = Provider<bool>((_) => Util.isDesktop);
 /// BEAM's fiat price for the history, when the user allows price lookups.
 typedef BeamTxFiat = ({Decimal price, String currency, String locale});
 
+/// Null when lookups are off or there is no price (never a zero price).
 final pBeamTxFiat = Provider.family<BeamTxFiat?, String>((ref, walletId) {
-  final prefs = ref.watch(prefsChangeNotifierProvider);
-  if (!prefs.externalCalls) return null;
-  final coin = ref.watch(pWallets).getWallet(walletId).cryptoCurrency;
-  final price = ref.watch(
-    priceAnd24hChangeNotifierProvider.select((p) => p.getPrice(coin)?.value),
-  );
-  if (price == null) return null;
-  return (
-    price: price,
-    currency: prefs.currency,
-    locale: ref.watch(
-      localeServiceChangeNotifierProvider.select((l) => l.locale),
-    ),
-  );
+  final fiat = ref.watch(pBeamFiatPrice(walletId));
+  final price = fiat.price;
+  if (!fiat.lookupsOn || price == null) return null;
+  return (price: price, currency: fiat.currency, locale: fiat.locale);
 });
 
 /// Key of [pBeamContractFunds].

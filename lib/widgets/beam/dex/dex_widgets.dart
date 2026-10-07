@@ -178,6 +178,35 @@ class DexSyncBanner extends StatelessWidget {
   }
 }
 
+/// What an amount is worth, under its field: "≈ 1.20 USD", "under 0.01
+/// USD", "≈ 0.5 BEAM", "No price" ([BeamDexDeps.worth]). Nothing when
+/// [text] is null.
+class DexWorth extends StatelessWidget {
+  const DexWorth(this.text, {super.key, this.textKey});
+
+  final String? text;
+
+  /// On the text itself, so tests read it like any other value.
+  final Key? textKey;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = text;
+    if (t == null) return const SizedBox.shrink();
+    final colors = Theme.of(context).extension<StackColors>()!;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, left: 2),
+      child: Text(
+        t,
+        key: textKey,
+        style: STextStyles.label(context).copyWith(color: colors.textSubtitle1),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
 /// One "label · value" line of a details card.
 class DexDetailRow extends StatelessWidget {
   const DexDetailRow({
@@ -186,6 +215,8 @@ class DexDetailRow extends StatelessWidget {
     required this.value,
     this.valueKey,
     this.valueColor,
+    this.note,
+    this.noteKey,
     this.trailing,
     this.onTap,
   });
@@ -194,12 +225,23 @@ class DexDetailRow extends StatelessWidget {
   final String value;
   final Key? valueKey;
   final Color? valueColor;
+
+  /// A quieter line under the value, e.g. what it is worth.
+  final String? note;
+  final Key? noteKey;
   final Widget? trailing;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<StackColors>()!;
+    final valueText = Text(
+      value,
+      key: valueKey,
+      textAlign: TextAlign.right,
+      style: STextStyles.itemSubtitle12(context)
+          .copyWith(color: valueColor ?? colors.textDark),
+    );
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -212,13 +254,21 @@ class DexDetailRow extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             flex: 5,
-            child: Text(
-              value,
-              key: valueKey,
-              textAlign: TextAlign.right,
-              style: STextStyles.itemSubtitle12(context)
-                  .copyWith(color: valueColor ?? colors.textDark),
-            ),
+            child: note == null
+                ? valueText
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      valueText,
+                      Text(
+                        note!,
+                        key: noteKey,
+                        textAlign: TextAlign.right,
+                        style: STextStyles.label(context)
+                            .copyWith(color: colors.textSubtitle1),
+                      ),
+                    ],
+                  ),
           ),
           if (trailing != null) ...[const SizedBox(width: 4), trailing!],
         ],

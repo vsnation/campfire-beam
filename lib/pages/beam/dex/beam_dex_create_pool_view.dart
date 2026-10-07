@@ -22,6 +22,9 @@
 // * Creating a pool that exists — the screen says so and offers to open it.
 // * Three fee tiers with no idea which to pick — 1% is pre-selected and
 //   each tier says who it is for.
+// * "#2", "#3" in the asset list — every asset is named from its on-chain
+//   metadata (unverified ones keep their #id and "Not verified"), and the
+//   deposit says what it is worth in the user's currency.
 
 import 'dart:async';
 
@@ -72,17 +75,13 @@ class _BeamDexCreatePoolViewState extends State<BeamDexCreatePoolView> {
   @override
   void initState() {
     super.initState();
-    deps.pools.addListener(_rebuild);
-    deps.balances.addListener(_rebuild);
-    deps.sync.addListener(_rebuild);
+    deps.changes.addListener(_rebuild);
     unawaited(deps.pools.ensureLoaded());
   }
 
   @override
   void dispose() {
-    deps.pools.removeListener(_rebuild);
-    deps.balances.removeListener(_rebuild);
-    deps.sync.removeListener(_rebuild);
+    deps.changes.removeListener(_rebuild);
     super.dispose();
   }
 
@@ -228,6 +227,8 @@ class _BeamDexCreatePoolViewState extends State<BeamDexCreatePoolView> {
     final labelStyle = STextStyles.itemSubtitle(context)
         .copyWith(color: colors.textDark3);
     final existing = _existing;
+    // Only a real price: "(No USD price)" would add nothing here.
+    final depositWorth = deps.fiat?.value?.approx(kDexPoolCreateDeposit);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -237,7 +238,8 @@ class _BeamDexCreatePoolViewState extends State<BeamDexCreatePoolView> {
           kind: DexNoticeKind.warning,
           title:
               'Creating a pool locks a '
-              '${DexFormat.exact(kDexPoolCreateDeposit)} BEAM deposit',
+              '${DexFormat.exact(kDexPoolCreateDeposit)} BEAM deposit'
+              '${depositWorth == null ? '' : ' ($depositWorth)'}',
           detail:
               'You get it back only when the pool is empty and '
               'destroyed. The pool starts empty: you add the first coins '

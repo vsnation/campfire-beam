@@ -23,6 +23,7 @@ import 'package:stackwallet/wallets/beam/contracts/dex/dex_args.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_constants.dart';
 import 'package:stackwallet/wallets/beam/rpc/beam_transport.dart';
 import 'package:stackwallet/wallets/beam/sync/beam_sync_state.dart';
+import 'package:stackwallet/widgets/beam/dex/dex_deps.dart';
 import 'package:stackwallet/widgets/beam/dex/dex_format.dart';
 import 'package:stackwallet/widgets/beam/stickers/beam_sticker.dart';
 import 'package:stackwallet/widgets/desktop/desktop_dialog.dart';
@@ -74,6 +75,7 @@ void main() {
     int receive = 174,
     bool desktop = false,
     BeamSyncAssessment sync = synced,
+    BeamDexFiat? fiat,
   }) async {
     final fake = DexUiFake({...routes(), ...?extra});
     final deps = makeDeps(
@@ -82,6 +84,7 @@ void main() {
       gate: gate,
       desktop: desktop,
       sync: sync,
+      fiat: fiat,
     );
     await pumpDex(
       tester,
@@ -105,7 +108,7 @@ void main() {
   }
 
   testWidgets('live quote after the debounce, in plain words', (tester) async {
-    final fake = await openSwap(tester);
+    final fake = await openSwap(tester, fiat: roundUsd);
     expect(fake.seenArgs, [DexArgs.poolsView()]);
 
     // Typing quickly asks for one price, for the final amount only.
@@ -131,10 +134,18 @@ void main() {
     );
     expect(cta.enabled, isTrue);
 
+    // What each side is worth (2 USD per BEAM here): FOMO by the pool
+    // price the dashboard uses, the fee in fiat too.
+    expect(textOf(tester, const Key('dex-pay-worth')), '≈ 0.20 USD');
+    expect(textOf(tester, const Key('dex-receive-worth')), '≈ 0.19 USD');
+    expect(textOf(tester, const Key('dex-network-fee-worth')), '≈ 0.02 USD');
+    // 11% of the swap: no fee warning.
+    expect(find.byKey(const Key('dex-fee-warning')), findsNothing);
+
     // USER_PSYCHOLOGY §1.3: the primary CTA is on a 375 px phone screen
-    // without scrolling.
+    // without scrolling, and names the outcome.
     expectOnScreen(tester, const Key('dex-swap-cta'), phone);
-    expect(find.text('Swap now'), findsOneWidget);
+    expect(find.text('Swap 0.1 BEAM'), findsOneWidget);
 
     await settleImages(tester);
     await expectLater(
@@ -147,7 +158,7 @@ void main() {
     'confirm shows the decoded kernel; execute only after the PIN gate',
     (tester) async {
       final gate = FakeGate(false);
-      final fake = await openSwap(tester, gate: gate);
+      final fake = await openSwap(tester, gate: gate, fiat: roundUsd);
       await typeAmount(tester, const Key('dex-pay-amount'), '0.1');
       await tester.tap(find.byKey(const Key('dex-swap-cta')));
       await tester.pumpAndSettle();
@@ -193,6 +204,27 @@ void main() {
         textOf(tester, const Key('dex-confirm-destination')),
         'BEAM DEX contract 729fe0…ef9cbf',
       );
+      // Every amount says what it is worth.
+      expect(
+        textOf(tester, const Key('dex-confirm-pays-0-worth')),
+        '≈ 0.20 USD',
+      );
+      expect(
+        textOf(tester, const Key('dex-confirm-receives-174-worth')),
+        '≈ 0.19 USD',
+      );
+      expect(textOf(tester, const Key('dex-confirm-fee-worth')), '≈ 0.02 USD');
+      expect(
+        textOf(tester, const Key('dex-confirm-total-worth')),
+        '≈ 0.22 USD',
+      );
+      // The button names the outcome.
+      expect(
+        tester
+            .widget<PrimaryButton>(find.byKey(const Key('dex-confirm-cta')))
+            .label,
+        'Swap 0.1 BEAM',
+      );
       expect(decoded.entries.single.contractId, kDexContractId);
       expectOnScreen(tester, const Key('dex-confirm-cta'), phone);
       // No character on the confirmation: nothing distracts from the money.
@@ -227,7 +259,8 @@ void main() {
       expect(fake.executed, hasLength(1));
       expect(fake.executed.single, real.raw);
       expect(textOf(tester, const Key('dex-success-txid')), fake.txId);
-      expect(find.text('Swap sent'), findsWidgets);
+      // Said once, under the sticker; not again in the title.
+      expect(find.text('Swap sent'), findsOneWidget);
       expect(find.byKey(const Key('dex-swap-done-sticker')), findsOneWidget);
 
       await settleImages(tester);
@@ -500,7 +533,12 @@ void main() {
     tester,
   ) async {
     final gate = FakeGate(true);
-    final fake = await openSwap(tester, desktop: true, gate: gate);
+    final fake = await openSwap(
+      tester,
+      desktop: true,
+      gate: gate,
+      fiat: roundUsd,
+    );
     await typeAmount(tester, const Key('dex-pay-amount'), '0.1');
     expect(find.text('All pools · 75'), findsOneWidget);
     expectOnScreen(tester, const Key('dex-swap-cta'), desktopWindow);
@@ -523,5 +561,195 @@ void main() {
     await tester.pumpAndSettle();
     expect(gate.reasons, hasLength(1));
     expect(fake.executed.single, real.raw);
+  });
+
+  group('the network fee on a small swap (DMG test #25)', () {
+    /// A prediction for [pay] groth of BEAM in the 1% BEAM/FOMO pool, with
+    /// the pool's own fee split, as the AMM shader answers.
+    Map<String, Object?> prediction(int pay, int payRaw, int buy) {
+      final fee = BeamPoolKind.high.tradeFee(BigInt.from(payRaw));
+      expect(BigInt.from(payRaw) + fee.pool + fee.dao, BigInt.from(pay));
+      return {
+        'output': jsonEncode({
+          'res': {
+            'buy': buy,
+            'pay': pay,
+            'pay_raw': payRaw,
+            'fee_pool': fee.pool.toInt(),
+            'fee_dao': fee.dao.toInt(),
+          },
+        }),
+        'txid': '00000000000000000000000000000000',
+      };
+    }
+
+    testWidgets('0.02 BEAM: "more than half", with the numbers', (
+      tester,
+    ) async {
+      // The owner's live swap: 0.02 BEAM for 0.1607 FOMO, 0.011 BEAM fee.
+      await openSwap(
+        tester,
+        fiat: realUsd,
+        extra: {
+          predict(0, 174, '0.02'): () => prediction(2000000, 1980198, 16073951),
+        },
+      );
+      await typeAmount(tester, const Key('dex-pay-amount'), '0.02');
+      expect(
+        find.text('The network fee is more than half of what you swap'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Every swap costs 0.011 BEAM in network fees, whatever the amount. '
+          'Here that is 55% of the 0.02 BEAM you swap. A larger swap pays '
+          'the same fee.',
+        ),
+        findsOneWidget,
+      );
+      // At 0.0086 USD per BEAM, nothing here reaches a cent, and nothing
+      // says "0.00".
+      expect(textOf(tester, const Key('dex-pay-worth')), 'under 0.01 USD');
+      expect(textOf(tester, const Key('dex-receive-worth')), 'under 0.01 USD');
+      expect(
+        textOf(tester, const Key('dex-network-fee-worth')),
+        'under 0.01 USD',
+      );
+      expect(find.textContaining('0.00 USD'), findsNothing);
+      // A warning, not a block: the user may still swap.
+      final cta = tester.widget<PrimaryButton>(
+        find.byKey(const Key('dex-swap-cta')),
+      );
+      expect(cta.enabled, isTrue);
+      expect(cta.label, 'Swap 0.02 BEAM');
+      expectOnScreen(tester, const Key('dex-swap-cta'), phone);
+      // The whole warning is in view above the button, without scrolling.
+      expectOnScreen(tester, const Key('dex-fee-warning'), phone);
+      expect(
+        tester.getRect(find.byKey(const Key('dex-fee-warning'))).bottom,
+        lessThan(tester.getRect(find.byKey(const Key('dex-swap-cta'))).top),
+      );
+      await settleImages(tester);
+      await expectLater(
+        find.byKey(goldenKey),
+        matchesGoldenFile('goldens/swap_mobile_fee_warning.png'),
+      );
+    });
+
+    testWidgets('0.005 BEAM: the fee is more than the swap', (tester) async {
+      await openSwap(
+        tester,
+        extra: {
+          predict(0, 174, '0.005'): () => prediction(500000, 495049, 4018493),
+        },
+      );
+      await typeAmount(tester, const Key('dex-pay-amount'), '0.005');
+      expect(
+        find.text('The network fee is more than what you swap'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Here that is 220% of'), findsOneWidget);
+    });
+
+    testWidgets('0.04 BEAM: a quarter or more says the share', (tester) async {
+      await openSwap(
+        tester,
+        extra: {
+          predict(0, 174, '0.04'): () => prediction(4000000, 3960396, 32147802),
+        },
+      );
+      await typeAmount(tester, const Key('dex-pay-amount'), '0.04');
+      expect(
+        find.text('The network fee is 27.5% of what you swap'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('FOMO paid: valued through its pool', (tester) async {
+      // 0.1 FOMO is worth about 0.0122 BEAM: 0.011 BEAM is 89% of it.
+      await openSwap(
+        tester,
+        pay: 174,
+        receive: 0,
+        extra: {
+          predict(174, 0, '0.1'): () => recorded('trade_pay_fomo_get_beam'),
+        },
+      );
+      await typeAmount(tester, const Key('dex-pay-amount'), '0.1');
+      expect(
+        find.text('The network fee is more than half of what you swap'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('of what you swap (worth about 0.01231'),
+        findsOneWidget,
+      );
+    });
+  });
+
+  group('the button names the outcome (DMG test #26)', () {
+    testWidgets('"Swap" until an amount is typed, then "Swap 0.1 FOMO"', (
+      tester,
+    ) async {
+      await openSwap(
+        tester,
+        pay: 174,
+        receive: 0,
+        extra: {
+          predict(174, 0, '0.1'): () => recorded('trade_pay_fomo_get_beam'),
+        },
+      );
+      String label() => tester
+          .widget<PrimaryButton>(find.byKey(const Key('dex-swap-cta')))
+          .label!;
+      expect(label(), 'Swap');
+      await typeAmount(tester, const Key('dex-pay-amount'), '0.1');
+      expect(label(), 'Swap 0.1 FOMO');
+    });
+  });
+
+  group('what amounts are worth', () {
+    testWidgets('no fiat price yet: BEAM says so, FOMO in BEAM', (
+      tester,
+    ) async {
+      await openSwap(
+        tester,
+        fiat: const BeamDexFiat(perBeam: null, currency: 'USD'),
+      );
+      await typeAmount(tester, const Key('dex-pay-amount'), '0.1');
+      expect(textOf(tester, const Key('dex-pay-worth')), 'No USD price');
+      expect(textOf(tester, const Key('dex-receive-worth')), '≈ 0.099 BEAM');
+      expect(
+        textOf(tester, const Key('dex-network-fee-worth')),
+        'No USD price',
+      );
+      expect(find.textContaining('0.00 USD'), findsNothing);
+    });
+
+    testWidgets('price lookups off: nothing under BEAM, FOMO in BEAM', (
+      tester,
+    ) async {
+      await openSwap(tester);
+      await typeAmount(tester, const Key('dex-pay-amount'), '0.1');
+      expect(find.byKey(const Key('dex-pay-worth')), findsNothing);
+      expect(textOf(tester, const Key('dex-receive-worth')), '≈ 0.099 BEAM');
+      expect(find.byKey(const Key('dex-network-fee-worth')), findsNothing);
+    });
+
+    testWidgets('an asset no pool prices: "No price", never a number', (
+      tester,
+    ) async {
+      // #26 trades only in a pool holding 1 groth of BEAM: far below the
+      // 1,000 BEAM an unverified asset needs before it is priced.
+      await openSwap(
+        tester,
+        receive: 26,
+        fiat: roundUsd,
+        extra: {predict(0, 26, '0.1'): () => predictionBuying(3)},
+      );
+      await typeAmount(tester, const Key('dex-pay-amount'), '0.1');
+      expect(textOf(tester, const Key('dex-pay-worth')), '≈ 0.20 USD');
+      expect(textOf(tester, const Key('dex-receive-worth')), 'No price');
+    });
   });
 }

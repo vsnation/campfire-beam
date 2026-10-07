@@ -23,5 +23,11 @@ final priceAnd24hChangeNotifierProvider =
 
   final currency =
       ref.watch(prefsChangeNotifierProvider.select((value) => value.currency));
-  return PriceService(currency);
+  final service = PriceService(currency);
+  // A currency change rebuilds this provider and disposes the old service
+  // with its timer: without this, prices in the new currency were fetched
+  // once (by the settings screen) and never refreshed again until restart.
+  // The settings screen does the first fetch, so no request right away.
+  if (PriceService.anyStarted) service.start(false);
+  return service;
 });

@@ -13,6 +13,7 @@ import 'package:stackwallet/pages/beam/dex/beam_dex_pool_detail_view.dart';
 import 'package:stackwallet/pages/beam/dex/beam_dex_pools_view.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_args.dart';
 import 'package:stackwallet/wallets/beam/rpc/beam_transport.dart';
+import 'package:stackwallet/widgets/beam/dex/dex_deps.dart';
 
 import 'dex_ui_harness.dart';
 
@@ -21,6 +22,7 @@ void main() {
     WidgetTester tester, {
     Map<int, BigInt>? balances,
     Object? Function()? pools,
+    BeamDexFiat? fiat,
   }) async {
     final fake = DexUiFake({
       DexArgs.poolsView(): pools ?? () => recorded('pools_view'),
@@ -28,6 +30,7 @@ void main() {
     final deps = makeDeps(
       fake,
       balances: balances ?? {0: beam('12.5'), 175: beam('1')},
+      fiat: fiat,
     );
     await pumpDex(tester, BeamDexPoolsView(deps: deps));
     await tester.pump();
@@ -38,7 +41,7 @@ void main() {
   testWidgets('my pools first with my share; then the deepest pools', (
     tester,
   ) async {
-    await openPools(tester);
+    await openPools(tester, fiat: roundUsd);
     expect(find.text('Your pools'), findsOneWidget);
     // 1 of 21,252.57813880 LP tokens.
     expect(
@@ -54,6 +57,17 @@ void main() {
       ),
       findsOneWidget,
     );
+    // Each pool's size, both sides valued by the dashboard's pricer: the
+    // BEAM/FOMO pool holds 6,373.04 BEAM and the same worth of FOMO.
+    expect(
+      textOf(tester, const Key('dex-pool-size-175')),
+      'Pool size ≈ 25,492.16 USD',
+    );
+    // #26 trades only against 1 groth of BEAM: no price, no number.
+    expect(
+      textOf(tester, const Key('dex-pool-size-85')),
+      'Pool size: no price',
+    );
     final mine = tester.getRect(find.byKey(const Key('dex-pool-0-174-2')));
     final deepest = tester.getRect(find.byKey(const Key('dex-pool-0-7-2')));
     expect(mine.top, lessThan(deepest.top));
@@ -61,6 +75,14 @@ void main() {
     await expectLater(
       find.byKey(goldenKey),
       matchesGoldenFile('goldens/pools_mobile.png'),
+    );
+  });
+
+  testWidgets('without a fiat price the size is in BEAM', (tester) async {
+    await openPools(tester);
+    expect(
+      textOf(tester, const Key('dex-pool-size-175')),
+      'Pool size ≈ 12,746.08 BEAM',
     );
   });
 

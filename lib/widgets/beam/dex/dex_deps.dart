@@ -21,6 +21,7 @@ import '../../../wallets/beam/models/beam_asset_info.dart';
 import '../../../wallets/beam/models/beam_wallet_status.dart';
 import '../../../wallets/beam/price/beam_asset_pricer.dart';
 import '../../../wallets/beam/sync/beam_sync_state.dart';
+import 'dex_format.dart';
 
 /// Asks the user to prove it is them before money moves (Campfire's PIN on
 /// mobile, the wallet password on desktop).
@@ -32,16 +33,44 @@ typedef BeamDexAuthGate = Future<bool?> Function(
   required String reason,
 });
 
-/// The user's fiat price of BEAM, for "≈ $1.20" hints.
+/// The user's fiat price of BEAM, for "≈ 1.20 USD" lines. The listenable
+/// in [BeamDexDeps.fiat] holds null while price lookups are off in
+/// Settings (values are then shown in BEAM).
 @immutable
 class BeamDexFiat {
-  const BeamDexFiat({required this.perBeam, required this.currency});
+  const BeamDexFiat({
+    required this.perBeam,
+    required this.currency,
+    this.locale = 'en_US',
+  });
 
-  /// Fiat units per whole BEAM.
-  final BeamRatio perBeam;
+  /// Fiat units per whole BEAM; null while there is no price (the screens
+  /// say "No USD price", never "0.00 USD").
+  final BeamRatio? perBeam;
 
   /// ISO code, e.g. "USD".
   final String currency;
+
+  /// For the digits: "1,234.56" or "1.234,56".
+  final String locale;
+
+  /// [groth] of BEAM in this currency: "≈ 1.20 USD", or "under 0.01 USD";
+  /// null without a price.
+  String? approx(BigInt groth) {
+    final p = perBeam;
+    if (p == null) return null;
+    return DexFormat.fiatApprox(groth, p, currency, locale: locale);
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is BeamDexFiat &&
+      other.perBeam == perBeam &&
+      other.currency == currency &&
+      other.locale == locale;
+
+  @override
+  int get hashCode => Object.hash(perBeam, currency, locale);
 }
 
 /// Everything the DEX screens need, handed in by whoever opens them.
@@ -56,6 +85,7 @@ class BeamDexDeps {
     required this.balances,
     required this.authenticate,
     this.metadataOf = _noMetadata,
+    this.assetNames,
     this.hiddenAssetIds = _noneHidden,
     this.fiat,
     this.onSyncAction,
@@ -78,8 +108,14 @@ class BeamDexDeps {
   /// Per asset id, the wallet's totals from `wallet_status`.
   final ValueListenable<Map<int, BeamAssetTotals>> balances;
 
-  /// On-chain metadata of an asset the wallet knows, for unverified names.
+  /// On-chain metadata of any asset, for unverified names: every asset the
+  /// DEX lists, not only the ones the wallet holds (`BeamAssetDirectory`).
   final BeamAssetMetadata? Function(int assetId) metadataOf;
+
+  /// Fires when [metadataOf] knows more names (the explorer's list of every
+  /// asset arrived), so open screens show them; null when names never
+  /// change (tests).
+  final Listenable? assetNames;
 
   /// Campfire's PIN / password gate. In the app this is
   /// `campfireDexAuthGate` (`dex_auth_gate.dart`), kept out of this file so
@@ -87,7 +123,8 @@ class BeamDexDeps {
   /// with it.
   final BeamDexAuthGate authenticate;
 
-  /// The BEAM price in the user's currency, when known.
+  /// The BEAM price in the user's currency; null inside while price
+  /// lookups are off. Null itself: no fiat at all (values in BEAM).
   final ValueListenable<BeamDexFiat?>? fiat;
 
   /// Runs the sync banner's action ("Try another node", …).
@@ -100,6 +137,16 @@ class BeamDexDeps {
   final BeamDexPoolStore pools;
 
   static BeamAssetMetadata? _noMetadata(int assetId) => null;
+
+  /// Everything a DEX screen shows that can change while it is open: pools,
+  /// balances, sync, asset names and the fiat price.
+  late final Listenable changes = Listenable.merge([
+    pools,
+    balances,
+    sync,
+    assetNames,
+    fiat,
+  ]);
 
   bool get desktop => isDesktop ?? Util.isDesktop;
 
@@ -139,6 +186,52 @@ class BeamDexDeps {
     final pool = poolOfLpToken(assetId);
     if (pool != null) return '${pairLabel(pool)} pool tokens';
     return assetLabel(assetId);
+  }
+
+  // ---------------------------------------------------------------- value
+
+  /// What [amount] of [assetId] is worth in groth, from the DEX pools by
+  /// the same pricer the dashboard and Assets page use
+  /// ([BeamAssetPricer]: a verified asset at its deepest pool's price, any
+  /// other only from a pool holding 1,000 BEAM, at what that pool would
+  /// pay). Null when no pool prices it, or the pools are not loaded.
+  BigInt? valueInBeam(int assetId, BigInt amount) =>
+      assetId == 0 ? amount : pools.pricer?.valueInGroth(assetId, amount);
+
+  /// The line under an amount of [assetId]: "≈ 1.20 USD" or "under 0.01
+  /// USD"; "≈ 0.5 BEAM" for another asset while there is no fiat price;
+  /// "No price" when no pool prices the asset. Null when there is nothing
+  /// to add: no amount, pools still loading, or BEAM itself with price
+  /// lookups off.
+  String? worth(int assetId, BigInt amount) {
+    if (amount <= BigInt.zero) return null;
+    if (assetId != 0 && pools.pricer == null) return null;
+    final inBeam = valueInBeam(assetId, amount);
+    if (inBeam == null) return 'No price';
+    return worthOfBeam(inBeam, inBeam: assetId != 0);
+  }
+
+  /// [groth] of BEAM as a value line: "≈ 1.20 USD", "under 0.01 USD".
+  /// Without a fiat price: "≈ 0.5 BEAM" when [inBeam] (the amount was in
+  /// another asset, so its BEAM value says something), "No USD price" when
+  /// lookups are on but CoinGecko gave none, null when lookups are off.
+  String? worthOfBeam(BigInt groth, {bool inBeam = false}) {
+    final f = fiat?.value;
+    final money = f?.approx(groth);
+    if (money != null) return money;
+    if (inBeam) {
+      return groth > BigInt.zero
+          ? '≈ ${DexFormat.compact(groth)} BEAM'
+          : 'under 0.00000001 BEAM';
+    }
+    return f == null ? null : 'No ${f.currency} price';
+  }
+
+  /// Both sides of [pool] valued in groth; null when a side has no price.
+  BigInt? poolSize(BeamPool pool) {
+    final v1 = valueInBeam(pool.aid1, pool.tok1);
+    final v2 = valueInBeam(pool.aid2, pool.tok2);
+    return v1 == null || v2 == null ? null : v1 + v2;
   }
 }
 

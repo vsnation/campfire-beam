@@ -16,10 +16,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/pages/beam/dex/beam_dex_confirm_view.dart';
 import 'package:stackwallet/pages/beam/dex/beam_dex_pool_detail_view.dart';
 import 'package:stackwallet/wallets/beam/contracts/common/invoke_data.dart';
-import 'package:stackwallet/wallets/beam/contracts/dex/beam_ratio.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_args.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_constants.dart';
-import 'package:stackwallet/widgets/beam/dex/dex_deps.dart';
 import 'package:stackwallet/widgets/beam/dex/dex_format.dart';
 import 'package:stackwallet/widgets/desktop/primary_button.dart';
 
@@ -64,7 +62,7 @@ void main() {
       gate: gate,
       balances: balances ?? {0: beam('12.5'), 174: beam('3'), 175: beam('1')},
       // A round fiat price, so the golden shows the format.
-      fiat: BeamDexFiat(perBeam: BeamRatio(g(2), g(1)), currency: 'USD'),
+      fiat: roundUsd,
     );
     await pumpDex(tester, BeamDexPoolDetailView(deps: deps, pool: beamFomo));
     await tester.pump();
@@ -84,9 +82,11 @@ void main() {
     expect(textOf(tester, const Key('dex-position-share')), '< 0.01%');
     expect(
       textOf(tester, const Key('dex-position-value')),
-      '0.5997 BEAM · \$1.19',
+      '0.5997 BEAM · 1.19 USD',
     );
     expect(textOf(tester, const Key('dex-pool-price')), '1 BEAM = 8.1173 FOMO');
+    // The pool's size: 6,373.04 BEAM and as much again in FOMO, at 2 USD.
+    expect(textOf(tester, const Key('dex-pool-size')), '≈ 25,492.16 USD');
 
     await typeAmount(tester, const Key('dex-add-amount-1'), '0.1');
     // Only BEAM was given: the shader filled in FOMO (val2=0).
@@ -100,6 +100,9 @@ void main() {
       '0.81173706',
     );
     expect(textOf(tester, const Key('dex-add-share')), '< 0.01%');
+    // Each side says what it is worth.
+    expect(textOf(tester, const Key('dex-add-worth-1')), '≈ 0.20 USD');
+    expect(textOf(tester, const Key('dex-add-worth-2')), '≈ 0.19 USD');
     expect(
       tester
           .widget<PrimaryButton>(find.byKey(const Key('dex-liquidity-cta')))
@@ -169,6 +172,8 @@ void main() {
       textOf(tester, const Key('dex-withdraw-back')),
       '0.29987143 BEAM + 2.43416758 FOMO',
     );
+    // Both sides together: 0.59974286 BEAM at 2 USD.
+    expect(textOf(tester, const Key('dex-withdraw-worth')), '≈ 1.19 USD');
     expect(find.text('Withdraw'), findsWidgets);
     expectOnScreen(tester, const Key('dex-liquidity-cta'), phone);
     await settleImages(tester);
@@ -198,6 +203,12 @@ void main() {
       textOf(tester, const Key('dex-confirm-total')),
       '0.011 BEAM + 1 BEAM/FOMO pool tokens',
     );
+    // Pool tokens are valued as their share of both sides.
+    expect(
+      textOf(tester, const Key('dex-confirm-pays-175-worth')),
+      '≈ 1.19 USD',
+    );
+    expect(textOf(tester, const Key('dex-confirm-total-worth')), '≈ 1.22 USD');
     await settleImages(tester);
     await expectLater(
       find.byKey(goldenKey),

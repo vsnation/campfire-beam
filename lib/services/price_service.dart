@@ -102,7 +102,17 @@ class PriceService extends ChangeNotifier {
     _timer = null;
   }
 
+  /// Prices refresh every [updateInterval].
+  bool get isRunning => _timer?.isActive ?? false;
+
+  /// True once any [PriceService] was started (main.dart starts the
+  /// first). A currency change builds a new service, which then has to keep
+  /// refreshing too (`price_provider.dart`).
+  static bool get anyStarted => _anyStarted;
+  static bool _anyStarted = false;
+
   void start(bool rightAway) {
+    _anyStarted = true;
     if (rightAway) {
       updatePrice();
     }

@@ -31,6 +31,7 @@ import 'package:stackwallet/wallets/beam/contracts/common/pinned_shader.dart';
 import 'package:stackwallet/wallets/beam/contracts/common/shader_output.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/beam_dex_service.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/beam_pool.dart';
+import 'package:stackwallet/wallets/beam/contracts/dex/beam_ratio.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_constants.dart';
 import 'package:stackwallet/wallets/beam/models/beam_asset_info.dart';
 import 'package:stackwallet/wallets/beam/models/beam_wallet_status.dart';
@@ -195,12 +196,14 @@ BeamDexDeps makeDeps(
   FakeGate? gate,
   BeamDexFiat? fiat,
   BeamAssetMetadata? Function(int assetId)? metadataOf,
+  Listenable? assetNames,
   Set<int> hidden = const {},
 }) {
   final g = gate ?? FakeGate();
   return BeamDexDeps(
     dex: fake.service,
     metadataOf: metadataOf ?? (_) => null,
+    assetNames: assetNames,
     hiddenAssetIds: () => hidden,
     sync: ValueNotifier<BeamSyncAssessment>(sync),
     balances: ValueNotifier<Map<int, BeamAssetTotals>>({
@@ -211,6 +214,15 @@ BeamDexDeps makeDeps(
     isDesktop: desktop,
   );
 }
+
+/// BEAM's CoinGecko price on 2026-10-07 (id `beam`): 0.00856196 USD.
+final realUsd = BeamDexFiat(
+  perBeam: BeamRatio.parseDecimal('0.00856196'),
+  currency: 'USD',
+);
+
+/// A round price, so goldens show the "≈ 0.20 USD" format.
+final roundUsd = BeamDexFiat(perBeam: BeamRatio.fromInt(2), currency: 'USD');
 
 BigInt beam(String s) {
   final parts = s.split('.');

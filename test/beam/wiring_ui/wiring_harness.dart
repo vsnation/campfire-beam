@@ -159,6 +159,7 @@ Future<BeamWallet> openBeamWallet(
   int explorerHeight = kTip,
   String name = 'Everyday BEAM',
   FakeBeamHost? host,
+  Future<Map<int, String>> Function()? readAssetTable,
 }) async {
   final c = core ?? WiringCore();
   late BeamWallet wallet;
@@ -176,6 +177,7 @@ Future<BeamWallet> openBeamWallet(
       statusPollInterval: const Duration(hours: 1),
       eventDebounce: const Duration(milliseconds: 20),
       privateNodeStartDelay: Duration.zero,
+      readAssetTable: readAssetTable,
       log: (_) {},
     );
     wallet = await Wallet.create(

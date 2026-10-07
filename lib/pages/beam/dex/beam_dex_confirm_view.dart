@@ -11,8 +11,8 @@
 // 1. ONE job: show exactly what this DEX transaction does — what leaves the
 //    wallet, what arrives, the network fee and where it goes — and send it
 //    only after Campfire's PIN / password.
-// 2. Primary CTA: the outcome — "Swap now", "Add liquidity", "Withdraw",
-//    "Create pool".
+// 2. Primary CTA: the outcome — "Swap 0.02 BEAM", "Add liquidity",
+//    "Withdraw", "Create pool".
 // 3. Taps from app open: swap = wallet → Swap → amount → "Swap now" (3),
 //    this screen's button is the 4th tap, then the PIN.
 //
@@ -28,6 +28,8 @@
 //   warning above the amounts says it is not verified, or which verified
 //   asset it copies, as the swap form does.
 // * A surprise fee — the network fee is its own line, from the built tx.
+// * "How much is that?" — every amount, the fee and the total say what
+//   they are worth in the user's currency (or "No price").
 // * Pool creation's 10 BEAM deposit — a warning and a tick box before the
 //   button works.
 
@@ -114,12 +116,12 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
   @override
   void initState() {
     super.initState();
-    deps.sync.addListener(_rebuild);
+    deps.changes.addListener(_rebuild);
   }
 
   @override
   void dispose() {
-    deps.sync.removeListener(_rebuild);
+    deps.changes.removeListener(_rebuild);
     super.dispose();
   }
 
@@ -187,7 +189,7 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
   }
 
   String get _cta => switch (p.action) {
-    BeamDexAction.swap => 'Swap now',
+    BeamDexAction.swap => _swapLabel,
     BeamDexAction.addLiquidity => 'Add liquidity',
     BeamDexAction.withdraw => 'Withdraw',
     BeamDexAction.createPool => 'Create pool',
@@ -202,6 +204,26 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
 
   String _amount(int assetId, BigInt v) =>
       '${DexFormat.exact(v)} ${deps.assetName(assetId)}';
+
+  /// "Swap 0.02 BEAM": what the swap spends, from the built transaction.
+  String get _swapLabel {
+    if (p.pays.length != 1) return 'Swap';
+    final paid = p.pays.entries.single;
+    return 'Swap ${_amount(paid.key, paid.value)}';
+  }
+
+  /// What everything leaving the wallet is worth, when every part of it
+  /// has a price.
+  String? get _totalWorth {
+    var groth = BigInt.zero;
+    for (final e in _totalOut.entries) {
+      final v = deps.valueInBeam(e.key, e.value);
+      if (v == null) return null;
+      groth += v;
+    }
+    // In BEAM too, without a fiat price, when other assets are part of it.
+    return deps.worthOfBeam(groth, inBeam: _totalOut.keys.any((a) => a != 0));
+  }
 
   /// Assets in a stable order: BEAM first, then by id.
   static List<int> _order(Iterable<int> ids) =>
@@ -271,7 +293,9 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
       canPop: _phase != _Phase.sending,
       child: DexPage(
         deps: deps,
-        title: _phase == _Phase.sent ? _done : _title,
+        // Once sent, the page itself says "Swap sent" under the sticker; a
+        // title saying it too read twice.
+        title: _phase == _Phase.sent ? '' : _title,
         onClose: _phase == _Phase.sending ? () {} : _close,
         body: switch (_phase) {
           _Phase.sent => _sentBody(context),
@@ -350,15 +374,28 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
           Text('Total leaving your wallet', style: style),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              [
-                for (final a in _order(_totalOut.keys))
-                  _amount(a, _totalOut[a]!),
-              ].join(' + '),
-              key: const Key('dex-confirm-total'),
-              textAlign: TextAlign.right,
-              style: STextStyles.itemSubtitle12(context)
-                  .copyWith(color: colors.textConfirmTotalAmount),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  [
+                    for (final a in _order(_totalOut.keys))
+                      _amount(a, _totalOut[a]!),
+                  ].join(' + '),
+                  key: const Key('dex-confirm-total'),
+                  textAlign: TextAlign.right,
+                  style: STextStyles.itemSubtitle12(context)
+                      .copyWith(color: colors.textConfirmTotalAmount),
+                ),
+                if (_totalWorth case final worth?)
+                  Text(
+                    worth,
+                    key: const Key('dex-confirm-total-worth'),
+                    textAlign: TextAlign.right,
+                    style: STextStyles.label(context)
+                        .copyWith(color: colors.textConfirmTotalAmount),
+                  ),
+              ],
             ),
           ),
         ],
@@ -400,15 +437,17 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
               _line(
                 context,
                 label: i == 0 ? payLabel : '',
-                key: Key('dex-confirm-pays-${pays[i]}'),
+                id: 'pays-${pays[i]}',
                 text: _amount(pays[i], p.pays[pays[i]]!),
+                worth: deps.worth(pays[i], p.pays[pays[i]]!),
               ),
             for (var i = 0; i < receives.length; i++)
               _line(
                 context,
                 label: i == 0 ? 'You receive' : '',
-                key: Key('dex-confirm-receives-${receives[i]}'),
+                id: 'receives-${receives[i]}',
                 text: _amount(receives[i], p.receives[receives[i]]!),
+                worth: deps.worth(receives[i], p.receives[receives[i]]!),
               ),
             if (receivesNote)
               Padding(
@@ -431,19 +470,20 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
               _line(
                 context,
                 label: 'Pool fee (${quote.kind.feePercent}), included',
-                key: const Key('dex-confirm-pool-fee'),
+                id: 'pool-fee',
                 text: _amount(quote.payAsset, quote.fee),
               ),
             _line(
               context,
               label: 'Network fee',
-              key: const Key('dex-confirm-fee'),
+              id: 'fee',
               text: _amount(0, p.fee),
+              worth: deps.worthOfBeam(p.fee),
             ),
             _line(
               context,
               label: 'Sent to',
-              key: const Key('dex-confirm-destination'),
+              id: 'destination',
               text: p.contractId == kDexContractId
                   ? 'BEAM DEX contract ${DexFormat.shortId(p.contractId)}'
                   : 'Contract ${DexFormat.shortId(p.contractId)}',
@@ -542,14 +582,24 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
     );
   }
 
-  /// "label · exact value", the value selectable so it can be checked.
+  /// "label · exact value", the value selectable so it can be checked,
+  /// with what it is worth under it ([worth]: "≈ 1.20 USD", "No price").
+  /// Keys: `dex-confirm-<id>` and `dex-confirm-<id>-worth`.
   Widget _line(
     BuildContext context, {
     required String label,
-    required Key key,
+    required String id,
     required String text,
+    String? worth,
   }) {
     final colors = Theme.of(context).extension<StackColors>()!;
+    final value = SelectableText(
+      text,
+      key: Key('dex-confirm-$id'),
+      textAlign: TextAlign.right,
+      style: STextStyles.itemSubtitle12(context)
+          .copyWith(color: colors.textDark),
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -562,13 +612,21 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
           const SizedBox(width: 8),
           Expanded(
             flex: 6,
-            child: SelectableText(
-              text,
-              key: key,
-              textAlign: TextAlign.right,
-              style: STextStyles.itemSubtitle12(context)
-                  .copyWith(color: colors.textDark),
-            ),
+            child: worth == null
+                ? value
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      value,
+                      Text(
+                        worth,
+                        key: Key('dex-confirm-$id-worth'),
+                        textAlign: TextAlign.right,
+                        style: STextStyles.label(context)
+                            .copyWith(color: colors.textSubtitle1),
+                      ),
+                    ],
+                  ),
           ),
         ],
       ),

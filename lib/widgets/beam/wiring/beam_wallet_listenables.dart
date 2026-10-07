@@ -17,18 +17,21 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../pages/beam/node/beam_node_sync_view.dart';
 import '../../../pages/receive_view/receive_view.dart';
 import '../../../pages_desktop_specific/beam/node/desktop_beam_node_sync_dialog.dart';
 import '../../../utilities/text_styles.dart';
-import '../../../wallets/beam/assets/beam_asset_catalog.dart';
+import '../../../wallets/beam/assets/beam_asset_directory.dart';
 import '../../../wallets/beam/contracts/airdrop/beam_airdrop_service.dart';
 import '../../../wallets/beam/contracts/airdrop/secure_voucher_code_store.dart';
 import '../../../wallets/beam/contracts/burn/beam_burn_service.dart';
+import '../../../wallets/beam/contracts/dex/beam_ratio.dart';
 import '../../../wallets/beam/contracts/minter/beam_minter_service.dart';
 import '../../../wallets/beam/models/beam_asset_info.dart';
 import '../../../wallets/beam/models/beam_wallet_status.dart';
+import '../../../wallets/beam/price/beam_fiat_price.dart';
 import '../../../wallets/beam/sync/beam_sync_state.dart';
 import '../../../wallets/beam/wallet/beam_balance_mapper.dart';
 import '../../../wallets/beam/wallet/beam_wallet_services.dart';
@@ -67,6 +70,7 @@ class BeamWalletWiring {
     _infoSub = wallet.mainDB.isar.walletInfo
         .watchObject(wallet.info.id)
         .listen(_onInfo);
+    assetDirectory.addListener(_onNames);
     unawaited(wallet.whenLive.then((_) => _loadMetadata()));
     unawaited(_loadMetadata());
   }
@@ -111,38 +115,55 @@ class BeamWalletWiring {
 
   // ------------------------------------------------------------- metadata
 
-  final Map<int, BeamAssetMetadata?> _metadata = {};
-  final Set<int> _metadataTried = {};
+  /// On-chain names of every asset: the explorer's list of all of them in
+  /// one read (cached in the wallet's info, refreshed daily), the core's
+  /// `get_asset_info` for what it lacks. Assets the wallet does not hold,
+  /// which the DEX lists, are named too.
+  late final BeamAssetDirectory assetDirectory = BeamAssetDirectory(
+    readTable: wallet.environment.readAssetTable,
+    readOne: (id) async => (await services.api.getAssetInfo(id)).metadata,
+    cache: WalletInfoAssetDirectoryCache(
+      info: () => wallet.info,
+      isar: () => wallet.mainDB.isar,
+    ),
+  );
 
-  /// On-chain metadata of an unverified asset the wallet holds, once read
-  /// from the core; null before that (the asset shows by its id).
-  BeamAssetMetadata? metadataOf(int assetId) => _metadata[assetId];
+  /// On-chain metadata of an unverified asset, once known; null before that
+  /// (the asset shows by its id).
+  BeamAssetMetadata? metadataOf(int assetId) =>
+      assetDirectory.metadataOf(assetId);
 
   /// Names and tickers for the airdrop and minter screens.
   late final BeamAssetNames assetNames = BeamAssetNames(
     loadMetadata: (id) async =>
-        _metadata[id] ?? (await services.api.getAssetInfo(id)).metadata,
+        assetDirectory.metadataOf(id) ??
+        (await services.api.getAssetInfo(id)).metadata,
   );
 
+  /// Names for what the wallet holds, and (once the DEX has loaded them)
+  /// for every asset in a pool.
   Future<void> _loadMetadata() async {
-    if (_disposed || !wallet.isOpen) return;
-    var changed = false;
-    for (final id in _balances.value.keys) {
-      if (id == 0 ||
-          BeamAssetCatalog.verified.containsKey(id) ||
-          !_metadataTried.add(id)) {
-        continue;
-      }
-      try {
-        _metadata[id] = (await services.api.getAssetInfo(id)).metadata;
-        changed = true;
-      } catch (_) {
-        // Not reachable now: shown by its id, tried again next time.
-        _metadataTried.remove(id);
-      }
+    if (_disposed) return;
+    await assetDirectory.ensure(_namedIds());
+  }
+
+  Iterable<int> _namedIds() sync* {
+    yield* _balances.value.keys;
+    final pools = _dexBuilt ? dex.pools.all : null;
+    if (pools == null) return;
+    final lp = {for (final p in pools) p.lpToken};
+    for (final p in pools) {
+      // LP tokens are named after their pool, not their metadata.
+      if (!lp.contains(p.aid1)) yield p.aid1;
+      if (!lp.contains(p.aid2)) yield p.aid2;
     }
-    // Screens rebuild on balances; a new map makes them re-read names.
-    if (changed && !_disposed) _balances.value = Map.of(_balances.value);
+  }
+
+  void _onNames() {
+    if (_disposed) return;
+    // The Names screens rebuild on balances: a new map makes them re-read
+    // names. The DEX screens follow the directory itself.
+    _balances.value = Map.of(_balances.value);
   }
 
   void _onInfo(WalletInfo? info) {
@@ -169,19 +190,69 @@ class BeamWalletWiring {
   /// opened the last BEAM feature (it stays under the feature's page).
   BuildContext? _host;
 
-  /// Remembers [context] as the place sync and funding actions open from.
-  void attach(BuildContext context) => _host = context;
+  /// Remembers [context] as the place sync and funding actions open from,
+  /// and follows the user's fiat price from the app's providers above it.
+  void attach(BuildContext context) {
+    _host = context;
+    _followFiat(context);
+  }
+
+  bool _dexBuilt = false;
 
   /// The DEX screens' deps, one per wallet: the pool list is loaded once.
-  late final BeamDexDeps dex = BeamDexDeps(
-    dex: services.dex,
-    sync: sync,
-    balances: balances,
-    authenticate: campfireDexAuthGate,
-    metadataOf: metadataOf,
-    onSyncAction: onSyncAction,
-    isDesktop: debugDesktopLayout,
-  );
+  /// Every asset in a pool gets its name once the pools are in.
+  late final BeamDexDeps dex = () {
+    final deps = BeamDexDeps(
+      dex: services.dex,
+      sync: sync,
+      balances: balances,
+      authenticate: campfireDexAuthGate,
+      metadataOf: metadataOf,
+      assetNames: assetDirectory,
+      fiat: _fiat,
+      onSyncAction: onSyncAction,
+      isDesktop: debugDesktopLayout,
+    );
+    _dexBuilt = true;
+    deps.pools.addListener(() => unawaited(_loadMetadata()));
+    return deps;
+  }();
+
+  // ----------------------------------------------------------------- fiat
+
+  final ValueNotifier<BeamDexFiat?> _fiat = ValueNotifier<BeamDexFiat?>(null);
+  ProviderContainer? _fiatContainer;
+  ProviderSubscription<BeamFiatPrice>? _fiatSub;
+
+  /// The BEAM price in the user's currency, as the DEX shows it; null
+  /// inside while price lookups are off.
+  ValueListenable<BeamDexFiat?> get fiat => _fiat;
+
+  /// Follows Campfire's price for this wallet in the app's provider
+  /// container (the one [context] is under). Once per container.
+  void _followFiat(BuildContext context) {
+    final ProviderContainer container;
+    try {
+      container = ProviderScope.containerOf(context, listen: false);
+    } catch (_) {
+      return; // Not under a ProviderScope: values stay in BEAM.
+    }
+    if (identical(container, _fiatContainer)) return;
+    _fiatSub?.close();
+    _fiatSub = null;
+    _fiatContainer = container;
+    try {
+      _fiatSub = container.listen<BeamFiatPrice>(
+        pBeamFiatPrice(wallet.walletId),
+        (_, next) => _fiat.value = beamDexFiatOf(next),
+        fireImmediately: true,
+        onError: (_, __) => _fiat.value = null,
+      );
+    } catch (_) {
+      // Prices not readable here (no settings yet): values stay in BEAM.
+      _fiat.value = null;
+    }
+  }
 
   /// The Names screens' deps, one per wallet: they remember the last list
   /// of names and the names on their way.
@@ -245,7 +316,23 @@ class BeamWalletWiring {
     _syncSub = null;
     _infoSub = null;
     _host = null;
+    _fiatSub?.close();
+    _fiatSub = null;
+    _fiatContainer = null;
+    assetDirectory.removeListener(_onNames);
   }
+}
+
+/// [price] as the DEX screens take it: null while lookups are off, a null
+/// [BeamDexFiat.perBeam] while there is no price.
+BeamDexFiat? beamDexFiatOf(BeamFiatPrice price) {
+  if (!price.lookupsOn) return null;
+  final p = price.price;
+  return BeamDexFiat(
+    perBeam: p == null ? null : BeamRatio.parseDecimal(p.toString()),
+    currency: price.currency,
+    locale: price.locale,
+  );
 }
 
 /// [info]'s cached per-asset totals in the shape the DEX and Names screens

@@ -9,9 +9,10 @@
 
 // Spec (USER_PSYCHOLOGY §6):
 // 1. ONE job: swap one asset for another.
-// 2. Primary CTA: "Swap now".
-// 3. Taps from app open: wallet → Swap (2), type an amount, "Swap now" (3);
-//    then the confirmation screen and Campfire's PIN.
+// 2. Primary CTA: the outcome, "Swap 0.02 BEAM" ("Swap" until an amount is
+//    typed).
+// 3. Taps from app open: wallet → Swap (2), type an amount, "Swap 0.02
+//    BEAM" (3); then the confirmation screen and Campfire's PIN.
 //
 // Exit-intent (§1.7) — what could make an impatient person leave:
 // * A greyed-out button with no reason — every disabled state says why
@@ -20,8 +21,11 @@
 // * Waiting for a price — the quote starts 500 ms after typing stops and
 //   says "Getting the best price…" meanwhile.
 // * Fear of a bad price — the rate is in plain words ("1 BEAM ≈ 8.04
-//   FOMO"), the price change from the swap turns amber at 3%, and price
+//   FOMO"), both amounts say what they are worth in the user's currency,
+//   the price change from the swap turns amber at 3%, and price
 //   protection is on by default.
+// * A fee that eats a small swap — when the 0.011 BEAM network fee is a
+//   quarter or more of what is swapped, a warning says so with the numbers.
 // * Unknown assets that copy a real one — unverified assets carry their
 //   #id and a "Not the verified …" warning.
 
@@ -55,6 +59,10 @@ const kDexDefaultReceiveAsset = 174;
 
 /// Above this price change the swap is shown in warning colours.
 final kDexPriceImpactWarning = BeamRatio(BigInt.from(3), BigInt.from(100));
+
+/// From this share of the swapped value, the network fee gets a warning:
+/// 0.011 BEAM on a 0.02 BEAM swap is 55%.
+final kDexFeeShareWarning = BeamRatio(BigInt.one, BigInt.from(4));
 
 /// The protections offered. 1% is BEAM's own limit: the wallet core
 /// rebuilds a swap whose pool changed before it was mined and refuses the
@@ -130,18 +138,14 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
         widget.initialReceiveAsset ??
         (_pay == kDexDefaultReceiveAsset ? 0 : kDexDefaultReceiveAsset);
     if (_receive == _pay) _receive = _pay == 0 ? kDexDefaultReceiveAsset : 0;
-    deps.pools.addListener(_rebuild);
-    deps.balances.addListener(_rebuild);
-    deps.sync.addListener(_rebuild);
+    deps.changes.addListener(_rebuild);
     unawaited(deps.pools.ensureLoaded());
   }
 
   @override
   void dispose() {
     _debounce?.cancel();
-    deps.pools.removeListener(_rebuild);
-    deps.balances.removeListener(_rebuild);
-    deps.sync.removeListener(_rebuild);
+    deps.changes.removeListener(_rebuild);
     _amount.dispose();
     _receiveText.dispose();
     super.dispose();
@@ -363,13 +367,21 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
 
   // ------------------------------------------------------------------ build
 
+  /// The outcome ("Swap 0.02 BEAM") once an amount is typed, as the send
+  /// form does; the confirmation still comes before anything leaves.
+  String get _ctaLabel {
+    final amount = _input.value;
+    if (amount == null || amount <= BigInt.zero) return 'Swap';
+    return 'Swap ${DexFormat.exact(amount)} ${deps.assetLabel(_pay)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final cta = _cta();
     final bottom = DexPrimaryAction(
       deps: deps,
       buttonKey: const Key('dex-swap-cta'),
-      label: 'Swap now',
+      label: _ctaLabel,
       reason: cta.reason,
       onPressed: cta.onPressed,
     );
@@ -446,6 +458,10 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
           onChanged: _onAmountChanged,
           onAssetTap: () => _pickAsset(paySide: true),
         ),
+        DexWorth(
+          deps.worth(_pay, _input.value ?? BigInt.zero),
+          textKey: const Key('dex-pay-worth'),
+        ),
         if (deps.display(_pay).impersonates != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -469,6 +485,10 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
           hint: _quoting ? '…' : '0',
           onAssetTap: () => _pickAsset(paySide: false),
         ),
+        DexWorth(
+          q == null ? null : deps.worth(_receive, q.receive),
+          textKey: const Key('dex-receive-worth'),
+        ),
         if (deps.display(_receive).impersonates != null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -479,6 +499,12 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
           _problemNotice(context),
         ],
         if (q != null) ...[
+          // Above the details, so it is on a phone screen without
+          // scrolling: the user should see it before the button.
+          if (_feeWarning(q) case final warning?) ...[
+            const SizedBox(height: 12),
+            warning,
+          ],
           const SizedBox(height: 12),
           _details(context, q),
           if (q.priceImpact >= kDexPriceImpactWarning) ...[
@@ -530,6 +556,8 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
             label: 'Network fee',
             valueKey: const Key('dex-network-fee'),
             value: '≈ ${DexFormat.exact(q.networkFee)} BEAM',
+            note: deps.worthOfBeam(q.networkFee),
+            noteKey: const Key('dex-network-fee-worth'),
           ),
           DexDetailRow(
             key: const Key('dex-protection'),
@@ -545,6 +573,40 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
           ),
         ],
       ),
+    );
+  }
+
+  /// A warning when the network fee is [kDexFeeShareWarning] or more of
+  /// what is swapped, both valued in BEAM (the paid side, or the received
+  /// side when only that has a price). Null below that, or when neither
+  /// side can be valued.
+  Widget? _feeWarning(BeamSwapQuote q) {
+    final value =
+        deps.valueInBeam(q.payAsset, q.pay) ??
+        deps.valueInBeam(q.receiveAsset, q.receive);
+    if (value == null || value <= BigInt.zero) return null;
+    final share = BeamRatio(q.networkFee, value);
+    if (share < kDexFeeShareWarning) return null;
+    final percent = DexFormat.percent(share);
+    final String title;
+    if (share > BeamRatio.one) {
+      title = 'The network fee is more than what you swap';
+    } else if (share > BeamRatio(BigInt.one, BigInt.two)) {
+      title = 'The network fee is more than half of what you swap';
+    } else {
+      title = 'The network fee is $percent of what you swap';
+    }
+    final swapped = q.payAsset == 0
+        ? 'the ${DexFormat.exact(q.pay)} BEAM you swap'
+        : 'what you swap (worth about ${DexFormat.compact(value)} BEAM)';
+    return DexNotice(
+      key: const Key('dex-fee-warning'),
+      kind: DexNoticeKind.warning,
+      title: title,
+      detail:
+          'Every swap costs ${DexFormat.exact(q.networkFee)} BEAM in network '
+          'fees, whatever the amount. Here that is $percent of $swapped. '
+          'A larger swap pays the same fee.',
     );
   }
 

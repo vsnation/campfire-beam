@@ -14,6 +14,7 @@ import 'package:stackwallet/pages/beam/dex/beam_dex_create_pool_view.dart';
 import 'package:stackwallet/wallets/beam/contracts/common/invoke_data.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_args.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_constants.dart';
+import 'package:stackwallet/widgets/beam/dex/dex_deps.dart';
 import 'package:stackwallet/widgets/beam/dex/dex_format.dart';
 import 'package:stackwallet/widgets/desktop/primary_button.dart';
 
@@ -32,6 +33,7 @@ void main() {
     int aidB = 9,
     Map<int, BigInt>? balances,
     FakeGate? gate,
+    BeamDexFiat? fiat,
   }) async {
     final fake = DexUiFake({
       DexArgs.poolsView(): () => recorded('pools_view'),
@@ -41,6 +43,7 @@ void main() {
       fake,
       gate: gate,
       balances: balances ?? {0: beam('12.5'), 174: beam('3')},
+      fiat: fiat,
     );
     await pumpDex(
       tester,
@@ -133,6 +136,27 @@ void main() {
       textOf(tester, const Key('dex-cta-reason')),
       'Not enough BEAM. A new pool needs 10 BEAM for the deposit plus about '
       '0.01471 BEAM network fee. You have 5 BEAM.',
+    );
+  });
+
+  testWidgets('the deposit says what it is worth', (tester) async {
+    await openCreate(tester, fiat: realUsd);
+    expect(
+      find.text('Creating a pool locks a 10 BEAM deposit (≈ 0.08 USD)'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('no fiat price: the deposit in BEAM only, no "(No price)"', (
+    tester,
+  ) async {
+    await openCreate(
+      tester,
+      fiat: const BeamDexFiat(perBeam: null, currency: 'USD'),
+    );
+    expect(
+      find.text('Creating a pool locks a 10 BEAM deposit'),
+      findsOneWidget,
     );
   });
 }

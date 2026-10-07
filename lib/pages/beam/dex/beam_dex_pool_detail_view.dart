@@ -18,7 +18,9 @@
 // * Having to work out the second amount — type one side, the pool's
 //   shader computes the other (it is never guessed in the app).
 // * Not knowing what the position is worth — "Your share of the pool" and
-//   its value in BEAM (and the user's currency) are at the top.
+//   its value in BEAM (and the user's currency) are at the top; the pool's
+//   size, every amount typed and what a withdrawal returns say what they
+//   are worth too.
 // * A first deposit into an empty pool silently setting a bad price — the
 //   screen says so before anything is typed.
 
@@ -91,8 +93,7 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
   void initState() {
     super.initState();
     deps.pools.addListener(_onPools);
-    deps.balances.addListener(_rebuild);
-    deps.sync.addListener(_rebuild);
+    deps.changes.addListener(_rebuild);
     // For the position's value and LP-token names; usually already here.
     unawaited(deps.pools.ensureLoaded());
     if (_mode == BeamDexLiquidityMode.withdraw) _requoteWithdraw();
@@ -102,8 +103,7 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
   void dispose() {
     _debounce?.cancel();
     deps.pools.removeListener(_onPools);
-    deps.balances.removeListener(_rebuild);
-    deps.sync.removeListener(_rebuild);
+    deps.changes.removeListener(_rebuild);
     _c1.dispose();
     _c2.dispose();
     super.dispose();
@@ -493,6 +493,11 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
               value:
                   '${DexFormat.compact(_pool.tok1)} ${a1.symbol} · '
                   '${DexFormat.compact(_pool.tok2)} ${a2.symbol}',
+              note: switch (deps.poolSize(_pool)) {
+                null => 'No price',
+                final size => deps.worthOfBeam(size, inBeam: true),
+              },
+              noteKey: const Key('dex-pool-size'),
             ),
           ],
         ],
@@ -503,16 +508,16 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
   Widget _position(BuildContext context, BigInt held) {
     final colors = Theme.of(context).extension<StackColors>()!;
     final pos = _pool.position(held);
-    final value = deps.pools.pricer?.valueInGroth(_pool.lpToken, held);
-    final fiat = deps.fiat?.value;
+    final value = deps.valueInBeam(_pool.lpToken, held);
     final String worth;
     if (value == null) {
       worth = 'Not priced: no BEAM pool values these assets yet';
     } else {
-      final inFiat = fiat == null
-          ? ''
-          : ' · ${DexFormat.fiat(value, fiat.perBeam, fiat.currency)}';
-      worth = '${DexFormat.compact(value)} BEAM$inFiat';
+      // "12.34 BEAM · 0.11 USD": the label already says "about".
+      final money = deps.fiat?.value?.approx(value)?.replaceFirst('≈ ', '');
+      worth =
+          '${DexFormat.compact(value)} BEAM'
+          '${money == null ? '' : ' · $money'}';
     }
     return DexCard(
       child: Column(
@@ -575,6 +580,13 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
             error: (n == 1 ? _in1 : _in2).error != null,
             onChanged: (t) => _onChanged(n, t),
           ),
+          DexWorth(
+            deps.worth(
+              aid,
+              DexFormat.parse((n == 1 ? _c1 : _c2).text).value ?? BigInt.zero,
+            ),
+            textKey: Key('dex-add-worth-$n'),
+          ),
         ],
       );
     }
@@ -598,6 +610,7 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
                 DexDetailRow(
                   label: 'Network fee',
                   value: '≈ ${DexFormat.exact(q.networkFee)} BEAM',
+                  note: deps.worthOfBeam(q.networkFee),
                 ),
               ],
             ),
@@ -605,6 +618,15 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
         ],
       ],
     );
+  }
+
+  /// What a withdrawal returns, both sides together: "≈ 4.10 USD", or
+  /// "No price" when a side has none.
+  String? _backWorth(BeamWithdrawQuote q) {
+    final v1 = deps.valueInBeam(_pool.aid1, q.amount1);
+    final v2 = deps.valueInBeam(_pool.aid2, q.amount2);
+    if (v1 == null || v2 == null) return 'No price';
+    return deps.worthOfBeam(v1 + v2, inBeam: true);
   }
 
   void _addMax(int n) {
@@ -647,10 +669,13 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
                     ? (_quoting ? '…' : '—')
                     : '${DexFormat.exact(q.amount1)} ${_sym(_pool.aid1)} + '
                           '${DexFormat.exact(q.amount2)} ${_sym(_pool.aid2)}',
+                note: q == null ? null : _backWorth(q),
+                noteKey: const Key('dex-withdraw-worth'),
               ),
               DexDetailRow(
                 label: 'Network fee',
                 value: '≈ ${DexFormat.exact(kDexCallFee)} BEAM',
+                note: deps.worthOfBeam(kDexCallFee),
               ),
             ],
           ),

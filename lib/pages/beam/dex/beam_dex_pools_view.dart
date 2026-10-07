@@ -20,6 +20,8 @@
 // * Fake look-alike tokens — unverified assets show their #id and a red
 //   "Not the verified …" line.
 // * "What is a pool?" — one plain sentence under the title.
+// * "Is this pool worth my time?" — each pool says its size in the user's
+//   currency (or "no price" when its assets have none).
 
 import 'dart:async';
 
@@ -67,15 +69,13 @@ class _BeamDexPoolsViewState extends State<BeamDexPoolsView> {
   @override
   void initState() {
     super.initState();
-    deps.pools.addListener(_rebuild);
-    deps.balances.addListener(_rebuild);
+    deps.changes.addListener(_rebuild);
     unawaited(deps.pools.ensureLoaded());
   }
 
   @override
   void dispose() {
-    deps.pools.removeListener(_rebuild);
-    deps.balances.removeListener(_rebuild);
+    deps.changes.removeListener(_rebuild);
     _search.dispose();
     _searchFocus.dispose();
     super.dispose();
@@ -101,11 +101,19 @@ class _BeamDexPoolsViewState extends State<BeamDexPoolsView> {
 
   /// What the pool holds, both sides valued in BEAM (a BEAM pool counts
   /// its BEAM twice: the other side is worth the same at the pool price).
+  /// A side without a price counts as nothing, for ordering only.
   BigInt _depth(BeamPool p) {
-    final pricer = deps.pools.pricer;
-    final v1 = pricer?.valueInGroth(p.aid1, p.tok1);
-    final v2 = pricer?.valueInGroth(p.aid2, p.tok2);
+    final v1 = deps.valueInBeam(p.aid1, p.tok1);
+    final v2 = deps.valueInBeam(p.aid2, p.tok2);
     return (v1 ?? BigInt.zero) + (v2 ?? BigInt.zero);
+  }
+
+  /// "Pool size ≈ 21.10 USD" ("≈ 2,469.1 BEAM" without a fiat price), or
+  /// "Pool size: no price" when a side has none.
+  String _size(BeamPool p) {
+    final size = deps.poolSize(p);
+    if (size == null) return 'Pool size: no price';
+    return 'Pool size ${deps.worthOfBeam(size, inBeam: true)}';
   }
 
   Future<void> _open(BeamPool pool) => showDexPage<void>(
@@ -380,6 +388,14 @@ class _BeamDexPoolsViewState extends State<BeamDexPoolsView> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
+                if (!p.isEmpty)
+                  Text(
+                    _size(p),
+                    key: Key('dex-pool-size-${p.lpToken}'),
+                    style: STextStyles.label(context),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 if (a1.impersonates != null) DexImpersonationWarning(asset: a1),
                 if (a2.impersonates != null) DexImpersonationWarning(asset: a2),
                 if (held > BigInt.zero)

@@ -339,6 +339,62 @@ void main() {
     });
   });
 
+  group('assetMetadata()', () {
+    // The real /assets table's shape (2026-10-07), trimmed to a few rows,
+    // owners replaced and long descriptions dropped, plus a copy of FOMO
+    // (#999) and a row with no metadata (#1000).
+    final assetsJson = _fixture('explorer_assets.json');
+
+    test('one request names every asset, by id', () async {
+      http.handler = (_) async => _ok(assetsJson);
+      final names = await client().assetMetadata();
+      expect(
+        http.calls.single.toString(),
+        'https://explorer.0xmx.net/api/assets',
+      );
+      expect(names.keys, [1, 2, 3, 8, 174, 175, 200, 201, 999, 1000]);
+      expect(names[2], 'STD:SCH_VER=1;N=RAYS;SN=RAYS;UN=RAYS;NTHUN=Flicker');
+      expect(names[8], startsWith('STD:SCH_VER=1;N=POUND;SN=GBP;UN=POUND'));
+      expect(names[999], contains('N=FOMO'));
+      expect(names[1000], '');
+    });
+
+    test('a node answering with something else fails over', () async {
+      http.handler = (url) async =>
+          url.host == 'explorer.0xmx.net' ? _ok(_statusJson) : _ok(assetsJson);
+      final names = await client().assetMetadata();
+      expect(names[3], contains('N=BeamBots Token'));
+      expect(http.calls.map((u) => u.host), [
+        'explorer.0xmx.net',
+        'explorer-api.beamprivacy.com',
+      ]);
+    });
+
+    test('a table without the Aid and Metadata columns is refused', () {
+      expect(
+        () => BeamExplorerClient.decodeAssetTable({
+          'type': 'table',
+          'value': [
+            [
+              {'type': 'th', 'value': 'Height'},
+            ],
+            [5],
+          ],
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('Tor on but down: nothing is sent', () async {
+      final c = client(proxyInfo: () => throw Exception('Tor is down'));
+      await expectLater(
+        c.assetMetadata(),
+        throwsA(isA<BeamExplorerException>()),
+      );
+      expect(http.calls, isEmpty);
+    });
+  });
+
   test('endpointUri keeps base paths and drops trailing slashes', () {
     expect(
       BeamExplorerClient.endpointUri(

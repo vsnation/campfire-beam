@@ -85,10 +85,41 @@ void main() {
       expect(DexFormat.feeTier(BeamPoolKind.high), '1% fee');
     });
 
-    test('fiat', () {
-      expect(DexFormat.fiat(g(59974286), r(2, 1), 'USD'), r'$1.19');
-      expect(DexFormat.fiat(g(100000000), r(89, 10000), 'USD'), r'< $0.01');
+    test('fiat, the way the rest of Campfire writes money', () {
+      expect(DexFormat.fiat(g(59974286), r(2, 1), 'USD'), '1.19 USD');
       expect(DexFormat.fiat(g(250000000000), r(1, 1), 'CHF'), '2,500.00 CHF');
+      expect(
+        DexFormat.fiat(g(250000000000), r(1, 1), 'EUR', locale: 'de_DE'),
+        '2.500,00 EUR',
+      );
+      // Rounded down, like every estimate on these screens.
+      expect(DexFormat.fiat(g(99999999), r(1, 1), 'usd'), '0.99 USD');
+    });
+
+    test('fiat under a cent is never "0.00"', () {
+      // 0.02 BEAM at the October 2026 price (0.00856 USD).
+      expect(
+        DexFormat.fiat(g(2000000), r(856196, 100000000), 'USD'),
+        'under 0.01 USD',
+      );
+      expect(
+        DexFormat.fiat(g(100000000), r(89, 10000), 'USD'),
+        'under 0.01 USD',
+      );
+      // A value that rounds to no groth at all is still something.
+      expect(DexFormat.fiat(BigInt.zero, r(1, 1), 'USD'), 'under 0.01 USD');
+      expect(
+        DexFormat.fiat(g(100000000), r(89, 10000), 'EUR', locale: 'de_DE'),
+        'under 0,01 EUR',
+      );
+    });
+
+    test('fiat as an estimate', () {
+      expect(DexFormat.fiatApprox(g(59974286), r(2, 1), 'USD'), '≈ 1.19 USD');
+      expect(
+        DexFormat.fiatApprox(g(2000000), r(856196, 100000000), 'USD'),
+        'under 0.01 USD',
+      );
     });
 
     test('short contract id', () {

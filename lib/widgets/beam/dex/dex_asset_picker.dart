@@ -106,10 +106,23 @@ class _DexAssetPickerState extends State<_DexAssetPicker> {
   final _focus = FocusNode();
 
   @override
+  void initState() {
+    super.initState();
+    // Names (the explorer's list of every asset) and prices can arrive
+    // while the list is open.
+    widget.deps.changes.addListener(_rebuild);
+  }
+
+  @override
   void dispose() {
+    widget.deps.changes.removeListener(_rebuild);
     _search.dispose();
     _focus.dispose();
     super.dispose();
+  }
+
+  void _rebuild() {
+    if (mounted) setState(() {});
   }
 
   bool _matches(BeamAssetDisplay a, String q) {
@@ -171,9 +184,29 @@ class _DexAssetPickerState extends State<_DexAssetPicker> {
                         ),
                       ),
                       if (bal > BigInt.zero)
-                        Text(
-                          DexFormat.compact(bal),
-                          style: STextStyles.itemSubtitle12(context),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              DexFormat.compact(bal),
+                              style: STextStyles.itemSubtitle12(context),
+                            ),
+                            if (deps.worth(id, bal) case final worth?)
+                              Text(
+                                worth,
+                                key: Key('dex-asset-worth-$id'),
+                                style: STextStyles.label(context),
+                              ),
+                            // An unverified asset is valued at what its pool
+                            // would pay, as on the dashboard. Its own line,
+                            // so the asset's name is not cut for it.
+                            if (deps.pools.pricer?.isSaleValue(id) ?? false)
+                              Text(
+                                'if sold now',
+                                key: Key('dex-asset-sold-$id'),
+                                style: STextStyles.label(context),
+                              ),
+                          ],
                         ),
                       if (id == widget.selected) ...[
                         const SizedBox(width: 8),

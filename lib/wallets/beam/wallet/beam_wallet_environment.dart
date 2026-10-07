@@ -51,6 +51,7 @@ class BeamWalletEnvironment {
     this.eventDebounce = const Duration(milliseconds: 250),
     this.privateNodeStartDelay = const Duration(seconds: 20),
     this.onPaymentReceived,
+    this.readAssetTable,
     BeamSwapsInFlight? swapsInFlight,
     void Function(String message)? log,
   }) : privateNodeSetting =
@@ -71,23 +72,29 @@ class BeamWalletEnvironment {
   /// * Private node: [BeamNodeProcess] under the same root, on by default on
   ///   desktop (ARCHITECTURE.md §4), started only once the wallet is synced
   ///   on a public node.
-  factory BeamWalletEnvironment.app() => BeamWalletEnvironment(
-    beamRoot: () async =>
-        (await StackFileSystem.applicationBeamDirectory()).path,
-    createHost: (root) => libBeam.createHost(rootDir: root),
-    createExplorer: () => BeamExplorerClient(proxyInfo: campfireProxyInfo),
-    createPrivateNode: (root, host) => BeamNodeProcess(
-      rootDir: root,
-      binaries: host is ProcessHost
-          ? host.binaries
-          : BeamBinaries.locate(beamRoot: root),
-      log: _defaultLog,
-    ),
-    // The user's choice from the node panel, kept across launches
-    // (on by default on desktop, off on phones).
-    privateNodeSetting: BeamPrivateNodePreference.app(),
-    onPaymentReceived: announceBeamPayment,
-  );
+  /// * Every asset's name: the same explorer's `/assets` table, one read
+  ///   for all assets (`BeamAssetDirectory`).
+  factory BeamWalletEnvironment.app() {
+    final explorer = BeamExplorerClient(proxyInfo: campfireProxyInfo);
+    return BeamWalletEnvironment(
+      beamRoot: () async =>
+          (await StackFileSystem.applicationBeamDirectory()).path,
+      createHost: (root) => libBeam.createHost(rootDir: root),
+      createExplorer: () => explorer,
+      readAssetTable: explorer.assetMetadata,
+      createPrivateNode: (root, host) => BeamNodeProcess(
+        rootDir: root,
+        binaries: host is ProcessHost
+            ? host.binaries
+            : BeamBinaries.locate(beamRoot: root),
+        log: _defaultLog,
+      ),
+      // The user's choice from the node panel, kept across launches
+      // (on by default on desktop, off on phones).
+      privateNodeSetting: BeamPrivateNodePreference.app(),
+      onPaymentReceived: announceBeamPayment,
+    );
+  }
 
   static BeamWalletEnvironment? _instance;
 
@@ -127,6 +134,11 @@ class BeamWalletEnvironment {
   /// is open; never for what a restore scan finds. The app posts it to
   /// Campfire's notifications.
   final void Function(BeamPaymentReceived payment)? onPaymentReceived;
+
+  /// Every asset's on-chain metadata in one read (asset id → metadata
+  /// text), for naming assets the wallet does not hold. Null: names come
+  /// from the core alone, one `get_asset_info` at a time (tests).
+  final Future<Map<int, String>> Function()? readAssetTable;
 
   /// Where open wallets report unsettled DEX transactions; the desktop quit
   /// guard reads it. Defaults to [BeamSwapsInFlight.instance].

@@ -40,7 +40,11 @@ Future<bool?> campfireDexAuthGate(
             ),
             Padding(
               padding: const EdgeInsets.only(left: 32, right: 32, bottom: 32),
-              child: DesktopAuthSend(coin: Beam(CryptoCurrencyNetwork.main)),
+              child: DesktopAuthSend(
+                coin: Beam(CryptoCurrencyNetwork.main),
+                // "Enter your wallet password to swap", not "to send BEAM".
+                action: dexAuthAction(reason),
+              ),
             ),
           ],
         ),
@@ -63,4 +67,11 @@ Future<bool?> campfireDexAuthGate(
       settings: const RouteSettings(name: "/beamDexConfirmLockscreen"),
     ),
   );
+}
+
+/// What a DEX [reason] ("Authenticate to swap") asks the password for:
+/// "swap". Null for any other wording, which keeps Campfire's own prompt.
+String? dexAuthAction(String reason) {
+  const lead = 'Authenticate to ';
+  return reason.startsWith(lead) ? reason.substring(lead.length) : null;
 }

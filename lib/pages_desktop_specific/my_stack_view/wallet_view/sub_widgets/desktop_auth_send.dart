@@ -26,10 +26,19 @@ import '../../../../widgets/loading_indicator.dart';
 import '../../../../widgets/stack_text_field.dart';
 
 class DesktopAuthSend extends ConsumerStatefulWidget {
-  const DesktopAuthSend({super.key, required this.coin, this.tokenTicker});
+  const DesktopAuthSend({
+    super.key,
+    required this.coin,
+    this.tokenTicker,
+    this.action,
+  });
 
   final CryptoCurrency coin;
   final String? tokenTicker;
+
+  /// What the password is for, finishing "Enter your wallet password to
+  /// ...": "swap", "add liquidity". Null: "send" and the ticker.
+  final String? action;
 
   @override
   ConsumerState<DesktopAuthSend> createState() => _DesktopAuthSendState();
@@ -94,6 +103,11 @@ class _DesktopAuthSendState extends ConsumerState<DesktopAuthSend> {
     super.dispose();
   }
 
+  String get _purpose {
+    final ticker = widget.tokenTicker ?? widget.coin.ticker;
+    return widget.action ?? "send ${ticker.toUpperCase()}";
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -104,7 +118,7 @@ class _DesktopAuthSendState extends ConsumerState<DesktopAuthSend> {
         Text("Confirm transaction", style: STextStyles.desktopH3(context)),
         const SizedBox(height: 16),
         Text(
-          "Enter your wallet password to send ${widget.tokenTicker?.toUpperCase() ?? widget.coin.ticker.toUpperCase()}",
+          "Enter your wallet password to $_purpose",
           style: STextStyles.desktopTextMedium(context).copyWith(
             color: Theme.of(context).extension<StackColors>()!.textDark3,
           ),

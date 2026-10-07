@@ -7,6 +7,9 @@
  *
  */
 
+import 'package:decimal/decimal.dart';
+
+import '../../../utilities/amount/amount.dart';
 import '../../../wallets/beam/contracts/dex/beam_ratio.dart';
 import '../../../wallets/beam/contracts/dex/dex_constants.dart';
 import '../../../wallets/beam/models/beam_asset_info.dart';
@@ -160,22 +163,38 @@ abstract final class DexFormat {
     return out.toString();
   }
 
-  /// [groth] of BEAM in the fiat currency, e.g. "$0.42". Values below one
-  /// cent say "< $0.01" rather than "$0.00".
-  static String fiat(BigInt groth, BeamRatio perBeam, String currency) {
+  /// [groth] of BEAM in the fiat currency, written the way the rest of
+  /// Campfire writes money ("1.19 USD", "1.234,56 EUR" in a German locale,
+  /// [locale]'s digits), rounded down. Anything below one cent says
+  /// "under 0.01 USD", never "0.00 USD": callers only value amounts that
+  /// are something (a value that rounds to no groth at all included).
+  static String fiat(
+    BigInt groth,
+    BeamRatio perBeam,
+    String currency, {
+    String locale = 'en_US',
+  }) {
     final v = BeamRatio(groth, _unit) * perBeam;
-    final symbol = switch (currency.toUpperCase()) {
-      'USD' => r'$',
-      'EUR' => '€',
-      'GBP' => '£',
-      _ => '',
-    };
-    final suffix = symbol.isEmpty ? ' ${currency.toUpperCase()}' : '';
-    if (!v.isZero && v < BeamRatio(BigInt.one, BigInt.from(100))) {
-      return '< ${symbol}0.01$suffix';
-    }
-    final s = v.toDecimalString(2);
-    final dot = s.indexOf('.');
-    return '$symbol${_group(s.substring(0, dot))}${s.substring(dot)}$suffix';
+    final code = currency.toUpperCase();
+    final cent = BeamRatio(BigInt.one, BigInt.from(100));
+    String money(BeamRatio r) =>
+        Decimal.parse(r.toDecimalString(2))
+            .toAmount(fractionDigits: 2)
+            .fiatString(locale: locale);
+    if (v < cent) return 'under ${money(cent)} $code';
+    return '${money(v)} $code';
+  }
+
+  /// [fiat] as an estimate: "≈ 1.19 USD"; "under 0.01 USD" already says
+  /// it is not exact.
+  static String fiatApprox(
+    BigInt groth,
+    BeamRatio perBeam,
+    String currency, {
+    String locale = 'en_US',
+  }) {
+    final text = fiat(groth, perBeam, currency, locale: locale);
+    final v = BeamRatio(groth, _unit) * perBeam;
+    return v < BeamRatio(BigInt.one, BigInt.from(100)) ? text : '≈ $text';
   }
 }

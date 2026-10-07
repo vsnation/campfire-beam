@@ -293,6 +293,35 @@ class BeamExplorerClient implements BeamNetworkTipSource {
     );
   }
 
+  /// `GET /assets`: the raw on-chain metadata of every Confidential Asset,
+  /// by asset id, in one request (203 assets, 66 KB, in October 2026).
+  ///
+  /// It says nothing about the user (everyone fetches the same table), so
+  /// it is the private way to name assets the wallet does not hold. The
+  /// text is the asset creator's and untrusted: it must go through
+  /// `BeamAssetCatalog` before anything shows it.
+  Future<Map<int, String>> assetMetadata() =>
+      _firstAnswer('assets', null, queryTimeout, decodeAssetTable);
+
+  /// The `/assets` table as asset id → metadata text. Rows without a
+  /// positive id are skipped; a missing metadata cell is `""`. Throws
+  /// [FormatException] when [json] is not that table, so the next node is
+  /// tried.
+  static Map<int, String> decodeAssetTable(Object? json) {
+    final table = ExplorerTable.parse(json);
+    if (!table.headers.contains('Aid') || !table.headers.contains('Metadata')) {
+      throw const FormatException('not the assets table');
+    }
+    final out = <int, String>{};
+    for (final row in table.rows) {
+      final id = row.intOf('Aid');
+      if (id == null || id <= 0) continue;
+      final metadata = row['Metadata'];
+      out[id] = metadata is String ? metadata : '';
+    }
+    return out;
+  }
+
   /// `GET /<endpoint>?<query>` from the first node that answers with JSON.
   /// For endpoints without a typed method yet (`hdrs`, `block`, `assets`,
   /// `contracts`, ...). [endpoint] is a bare name such as `hdrs`.
