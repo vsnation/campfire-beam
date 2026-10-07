@@ -131,6 +131,10 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   Timer? _coordinatorTimer;
   bool _coordinatorReplacing = false;
 
+  /// Moves to another node in progress ([_switchTo]). The old connection
+  /// closing under a read is then the switch, not a lost core.
+  int _switching = 0;
+
   Future<void>? _opening;
   int _generation = 0;
   BeamWalletException? _problem;
@@ -989,7 +993,9 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   }
 
   void _onConnectionLost(Object e) {
-    if (_coordinatorReplacing) return; // the private node is moving us
+    // The private node or a node switch is moving us: the connection that
+    // closed is the one being replaced.
+    if (_coordinatorReplacing || _switching > 0) return;
     final session = _session;
     if (session == null || session.transport.isConnected) return;
     environment.log('Lost the wallet core ($e); reopening');
@@ -998,7 +1004,9 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     _api = null;
     unawaited(
       Future<void>.delayed(const Duration(seconds: 2), () async {
-        if (gen != _generation) return;
+        // A session attached meanwhile (a switch or the private node that
+        // finished after all) is live: it is not torn down.
+        if (gen != _generation || _session != null) return;
         await _disposeCoordinator();
         _coordHost?.close();
         _ensureOpening();
@@ -1248,9 +1256,20 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
     final session = _session;
     if (session == null) return;
     final gen = _generation;
-    await _disposeCoordinator();
+    // Only while the old connection goes: a read that fails on the new
+    // session after it is attached is a real loss again.
+    var switching = true;
+    _switching++;
+    void switched() {
+      if (!switching) return;
+      switching = false;
+      _switching--;
+    }
+
     try {
+      await _disposeCoordinator();
       final next = await session.switchNode(node);
+      switched();
       if (gen != _generation) {
         await next.close();
         return;
@@ -1263,6 +1282,8 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
       _session = null;
       _api = null;
       _ensureOpening();
+    } finally {
+      switched();
     }
   }
 
