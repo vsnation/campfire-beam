@@ -188,7 +188,14 @@ class NodeFixture {
         .toList();
     final out = StringBuffer();
     for (final f in files) {
-      out.writeln(await f.readAsString());
+      // The node may rotate a file away between the listing and the read
+      // (the rollover test polls while it writes): a vanished file is
+      // simply not there any more.
+      try {
+        out.writeln(await f.readAsString());
+      } on PathNotFoundException {
+        continue;
+      }
     }
     return out.toString();
   }
