@@ -151,6 +151,7 @@ class BeamExplorerClient implements BeamNetworkTipSource {
     this.queryTimeout = const Duration(seconds: 30),
     this.statusCacheTtl = const Duration(seconds: 20),
     this.maxTipAge = const Duration(minutes: 10),
+    this.hedgeAfter = const Duration(seconds: 2),
     DateTime Function()? now,
   }) : _nodes = List<String>.unmodifiable(nodes.map(_trimSlash)),
        _now = now ?? DateTime.now {
@@ -184,6 +185,12 @@ class BeamExplorerClient implements BeamNetworkTipSource {
 
   final Duration statusCacheTtl;
   final Duration maxTipAge;
+
+  /// A query whose node has not answered by then is also sent to the next
+  /// node, and the first good answer wins: explorer.0xmx.net sometimes holds
+  /// a request for the whole [queryTimeout] (seen: 30 s for `/assets`, which
+  /// BeamSmart answers in 0.3 s), and nothing should wait on that.
+  final Duration hedgeAfter;
 
   List<String> get nodes => _nodes;
 
@@ -344,18 +351,50 @@ class BeamExplorerClient implements BeamNetworkTipSource {
   ) async {
     final proxy = _proxyOrThrow();
     final failures = <String, String>{};
-    for (final i in _nodeOrder()) {
+    final order = _nodeOrder().toList();
+    final answer = Completer<T>();
+    var launched = 0;
+    var settled = 0;
+    Timer? hedge;
+
+    // The next node is asked when the last one failed, or has been silent
+    // for [hedgeAfter]; the first good answer is used.
+    void launchNext() {
+      hedge?.cancel();
+      if (answer.isCompleted || launched >= order.length) return;
+      final i = order[launched++];
       final node = _nodes[i];
-      try {
-        final r = await _get(node, endpoint, query, timeout, proxy);
-        final decoded = decode(r.json);
-        _preferred = i;
-        return decoded;
-      } catch (e) {
-        failures[node] = _describe(e);
-      }
+      hedge = Timer(hedgeAfter, launchNext);
+      () async {
+        try {
+          final r = await _get(node, endpoint, query, timeout, proxy);
+          final decoded = decode(r.json);
+          if (!answer.isCompleted) {
+            _preferred = i;
+            answer.complete(decoded);
+          }
+        } catch (e) {
+          failures[node] = _describe(e);
+          launchNext();
+        } finally {
+          settled++;
+          if (!answer.isCompleted &&
+              settled == launched &&
+              launched == order.length) {
+            answer.completeError(
+              BeamExplorerException('no explorer node answered', failures),
+            );
+          }
+        }
+      }();
     }
-    throw BeamExplorerException('no explorer node answered', failures);
+
+    launchNext();
+    try {
+      return await answer.future;
+    } finally {
+      hedge?.cancel();
+    }
   }
 
   static Map<String, Object?> _requireObject(Object? json) {

@@ -370,6 +370,61 @@ void main() {
       ]);
     });
 
+    // Seen live: explorer.0xmx.net held /assets for its full 30 s timeout
+    // while BeamSmart answered in 0.3 s, so names arrived late.
+    test('a node that stays silent is overtaken: the next one is asked '
+        'after hedgeAfter and its answer used', () async {
+      final hang = Completer<Response>();
+      http.handler = (url) => url.host == 'explorer.0xmx.net'
+          ? hang.future
+          : Future.value(_ok(assetsJson));
+      final c = BeamExplorerClient(
+        proxyInfo: () => null,
+        http: http,
+        nodes: const [
+          'https://explorer.0xmx.net/api',
+          'https://BeamSmart.net:8000',
+        ],
+        hedgeAfter: const Duration(milliseconds: 50),
+        now: () => now,
+      );
+      final sw = Stopwatch()..start();
+      final names = await c.assetMetadata();
+      expect(sw.elapsed, lessThan(const Duration(seconds: 2)));
+      expect(names[2], contains('N=RAYS'));
+      expect(http.calls.map((u) => u.host), [
+        'explorer.0xmx.net',
+        'beamsmart.net',
+      ]);
+      hang.complete(_code(503));
+    });
+
+    test('a fast first node is the only one asked', () async {
+      http.handler = (_) async => _ok(assetsJson);
+      final c = BeamExplorerClient(
+        proxyInfo: () => null,
+        http: http,
+        hedgeAfter: const Duration(seconds: 5),
+        now: () => now,
+      );
+      await c.assetMetadata();
+      expect(http.calls, hasLength(1));
+    });
+
+    test('every node failing is one error naming each', () async {
+      http.handler = (_) async => _code(503);
+      await expectLater(
+        client().assetMetadata(),
+        throwsA(
+          isA<BeamExplorerException>().having(
+            (e) => e.toString(),
+            'text',
+            allOf(contains('0xmx'), contains('BeamSmart')),
+          ),
+        ),
+      );
+    });
+
     test('a table without the Aid and Metadata columns is refused', () {
       expect(
         () => BeamExplorerClient.decodeAssetTable({
