@@ -366,7 +366,74 @@ class DappInstaller {
     if (port <= 1024 || port >= 65536) throw ArgumentError.value(port);
     final dir = Directory(dataDirectory(guid));
     if (!await dir.exists()) return;
+    await _serial(() => _claimOrigin(guid, port));
     await File(p.join(dir.path, _portFileName)).writeAsString('$port');
+  }
+
+  /// Every loopback port a dApp other than [guid] has been served on: its
+  /// origin, and with it that dApp's browser storage, which the webview
+  /// keeps. A dApp must never be served on one of these (it would read and
+  /// write the other dApp's storage), even after that dApp moved to another
+  /// port or was uninstalled.
+  Future<Set<int>> portsOfOtherDapps(String guid) => _serial(() async {
+    _checkedGuid(guid);
+    final out = <int>{
+      for (final e in (await _readOrigins()).entries)
+        if (e.value != guid) e.key,
+    };
+    // Installs from before the record: their current port.
+    final dir = Directory(dappsDirectory);
+    if (await dir.exists()) {
+      await for (final e in dir.list(followLinks: false)) {
+        final other = p.basename(e.path);
+        if (e is! Directory ||
+            other == guid ||
+            !DappManifest.isCanonicalGuid(other)) {
+          continue;
+        }
+        final port = await savedPort(other);
+        if (port != null) out.add(port);
+      }
+    }
+    return out;
+  });
+
+  /// Which dApp each port was first given to: `<root>/dapp_origins.json`.
+  /// Never shrinks; uninstalling a dApp leaves its browser storage behind.
+  String get _originsPath => p.join(root, _originsFileName);
+  static const _originsFileName = 'dapp_origins.json';
+
+  Future<Map<int, String>> _readOrigins() async {
+    try {
+      final json = jsonDecode(await File(_originsPath).readAsString());
+      if (json is! Map) return {};
+      return {
+        for (final e in json.entries)
+          if (int.tryParse('${e.key}') != null && e.value is String)
+            int.parse('${e.key}'): e.value as String,
+      };
+    } on FileSystemException {
+      return {};
+    } on FormatException {
+      return {};
+    }
+  }
+
+  Future<void> _claimOrigin(String guid, int port) async {
+    final origins = await _readOrigins();
+    final owner = origins[port];
+    if (owner == guid) return;
+    if (owner != null) {
+      throw StateError('port $port was already the origin of another dApp');
+    }
+    origins[port] = guid;
+    await Directory(root).create(recursive: true);
+    final tmp = File('$_originsPath.part');
+    await tmp.writeAsString(
+      jsonEncode({for (final e in origins.entries) '${e.key}': e.value}),
+      flush: true,
+    );
+    await tmp.rename(_originsPath);
   }
 
   static Future<List<Directory>> _versionDirs(Directory guidDir) async {

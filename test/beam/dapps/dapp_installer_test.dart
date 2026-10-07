@@ -197,6 +197,39 @@ void main() {
     );
   });
 
+  test("other dApps' origins are avoided, also after they move or are "
+      'uninstalled', () async {
+    const other = 'fedcba9876543210fedcba9876543210';
+    await installer.install(DappPackage.read(testPackage()));
+    await Directory(installer.dataDirectory(other)).create(recursive: true);
+    await installer.savePort(testGuid, 40123);
+    await installer.savePort(other, 40200);
+    expect(await installer.portsOfOtherDapps(testGuid), {40200});
+    expect(await installer.portsOfOtherDapps(other), {40123});
+
+    // The other dApp moves: both of its origins stay its own.
+    await installer.savePort(other, 40300);
+    expect(await installer.portsOfOtherDapps(testGuid), {40200, 40300});
+
+    // Uninstalled: the webview keeps its storage, so its origins stay
+    // taken.
+    await Directory(installer.dataDirectory(other)).delete(recursive: true);
+    expect(await installer.portsOfOtherDapps(testGuid), {40200, 40300});
+  });
+
+  test('a port that was another dApp\'s origin is not recorded for this '
+      'one', () async {
+    const other = 'fedcba9876543210fedcba9876543210';
+    await installer.install(DappPackage.read(testPackage()));
+    await Directory(installer.dataDirectory(other)).create(recursive: true);
+    await installer.savePort(other, 40200);
+    await expectLater(
+      installer.savePort(testGuid, 40200),
+      throwsA(isA<StateError>()),
+    );
+    expect(await installer.savedPort(testGuid), isNull);
+  });
+
   test('savedPort ignores junk', () async {
     await installer.install(DappPackage.read(testPackage()));
     File(p.join(installer.dataDirectory(testGuid), 'port'))
