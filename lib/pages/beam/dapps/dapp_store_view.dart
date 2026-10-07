@@ -26,6 +26,7 @@
 //   of failing on Open.
 
 import 'dart:async';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -58,6 +59,17 @@ import 'dapp_browser_view.dart';
 
 /// Picks a `.dapp` file; null when the user cancelled.
 typedef DappFilePicker = Future<String?> Function();
+
+/// The file picker's filter for a .dapp file. Phones get every file: iOS
+/// has no type for ".dapp" (nothing declares one), so a ".dapp" filter
+/// greys out every file there, and Android cannot map it to a MIME type
+/// either. Whatever is picked is checked as a package when it is read
+/// (DappStoreController.readFile).
+({FileType type, List<String>? allowedExtensions}) dappFilePickerFilter({
+  required bool phone,
+}) => phone
+    ? (type: FileType.any, allowedExtensions: null)
+    : (type: FileType.custom, allowedExtensions: const ['dapp']);
 
 class DappStoreView extends ConsumerStatefulWidget {
   const DappStoreView({
@@ -172,10 +184,13 @@ class _DappStoreViewState extends ConsumerState<DappStoreView> {
   Future<String?> _pickFile() async {
     final picker = widget.pickFile;
     if (picker != null) return picker();
+    final filter = dappFilePickerFilter(
+      phone: Platform.isAndroid || Platform.isIOS,
+    );
     final result = await FilePicker.platform.pickFiles(
       dialogTitle: "Choose a .dapp file",
-      type: FileType.custom,
-      allowedExtensions: ["dapp"],
+      type: filter.type,
+      allowedExtensions: filter.allowedExtensions,
       lockParentWindow: true,
     );
     return result?.paths.firstOrNull;

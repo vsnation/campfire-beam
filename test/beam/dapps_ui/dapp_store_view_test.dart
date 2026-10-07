@@ -13,6 +13,7 @@
 import 'dart:io';
 
 import 'package:crypto/crypto.dart' as crypto;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_api_version.dart';
@@ -79,6 +80,16 @@ DappHost hostFor(FakeWalletLink l) => DappHost(
 );
 
 void main() {
+  test('the .dapp picker filters on desktops and lets phones pick any file '
+      '(iOS has no type for .dapp)', () {
+    final desktop = dappFilePickerFilter(phone: false);
+    expect(desktop.type, FileType.custom);
+    expect(desktop.allowedExtensions, ['dapp']);
+    final phone = dappFilePickerFilter(phone: true);
+    expect(phone.type, FileType.any);
+    expect(phone.allowedExtensions, isNull);
+  });
+
   late Directory root;
 
   setUp(() async {
