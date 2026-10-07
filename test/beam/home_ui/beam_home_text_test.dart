@@ -48,6 +48,15 @@ void main() {
     });
   });
 
+  // Seen in the DMG test: 0.01 BEAM headlined "0.00 USD".
+  test('a fiat value under a cent says so, never "0.00"', () {
+    final f = beamFormat(usdPerBeam: '0.0089');
+    expect(f.fiatOfGroth(g(0.01)), 'under 0.01 USD');
+    expect(f.fiatOfGroth(g(2.5)), '0.02 USD');
+    expect(f.fiatOfGroth(BigInt.zero), '0.00 USD');
+    expect(beamFormat(usdPerBeam: null).fiatOfGroth(g(2.5)), isNull);
+  });
+
   group('name payments line', () {
     test('one name, one asset', () {
       final t = BeamHomeText.namePayments(

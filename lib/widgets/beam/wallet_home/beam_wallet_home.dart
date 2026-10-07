@@ -146,11 +146,18 @@ class BeamHomeFormat {
   final String locale;
   final int fractionDigits;
 
-  /// Campfire's own fiat display: "0.11 USD".
+  /// Campfire's own fiat display: "0.11 USD". Something worth less than a
+  /// cent says so ("under 0.01 USD"), never "0.00 USD".
   String? fiat(Amount amount) {
     final p = price;
     if (p == null) return null;
-    final value = (p * amount.decimal).toAmount(fractionDigits: 2);
+    final exact = p * amount.decimal;
+    final cent = Decimal.parse('0.01');
+    if (exact > Decimal.zero && exact < cent) {
+      final c = cent.toAmount(fractionDigits: 2).fiatString(locale: locale);
+      return 'under $c $currency';
+    }
+    final value = exact.toAmount(fractionDigits: 2);
     return '${value.fiatString(locale: locale)} $currency';
   }
 
