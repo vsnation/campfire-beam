@@ -1,0 +1,7 @@
+_beam_wallet_api_run
+_beam_wallet_api_stop
+_beam_wallet_api_is_running
+_beam_wallet_api_version
+_beam_wallet_api_rules_signature
+_beam_wallet_api_init_wallet
+_beam_wallet_api_check_wallet

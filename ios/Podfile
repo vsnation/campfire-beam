@@ -32,6 +32,13 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+
+  # Campfire for BEAM: the in-process BEAM core (the project notes), present once
+  # scripts/beam/core/ios/stage_ios.sh has put the pinned XCFramework in place.
+  # Without it the app builds and says the BEAM core is not part of this build.
+  if File.exist?(File.join(File.dirname(File.realpath(__FILE__)), 'BeamCore', 'BeamWalletApi.xcframework'))
+    pod 'BeamCore', :path => 'BeamCore'
+  end
 end
 
 post_install do |installer|

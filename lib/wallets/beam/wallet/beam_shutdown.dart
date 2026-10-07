@@ -11,6 +11,7 @@ import 'dart:async';
 import 'dart:io';
 
 import '../../../utilities/flutter_secure_storage_interface.dart';
+import '../host/in_process_host.dart';
 import '../host/process_host.dart';
 import '../node/beam_node_process.dart';
 import 'beam_secret_store.dart';
@@ -25,8 +26,12 @@ Future<void> shutdownBeamChildren({
   Duration timeout = const Duration(seconds: 8),
 }) async {
   try {
-    await Future.wait([ProcessHost.shutdownAll(), BeamNodeProcess.stopAll()])
-        .timeout(timeout);
+    await Future.wait([
+      ProcessHost.shutdownAll(),
+      // iOS: the in-process wallet-api (closes wallet.db before a wipe).
+      InProcessHost.shutdownAll(),
+      BeamNodeProcess.stopAll(),
+    ]).timeout(timeout);
   } catch (_) {
     // Quitting anyway; a child that survives is found and stopped through
     // its lock file on the next start.

@@ -82,13 +82,17 @@ class BeamWalletEnvironment {
       createHost: (root) => libBeam.createHost(rootDir: root),
       createExplorer: () => explorer,
       readAssetTable: explorer.assetMetadata,
-      createPrivateNode: (root, host) => BeamNodeProcess(
-        rootDir: root,
-        binaries: host is ProcessHost
-            ? host.binaries
-            : BeamBinaries.locate(beamRoot: root),
-        log: _defaultLog,
-      ),
+      // No beam-node on iOS: an app may not start child processes there, and
+      // phones use public nodes (the project notes).
+      createPrivateNode: Platform.isIOS
+          ? null
+          : (root, host) => BeamNodeProcess(
+              rootDir: root,
+              binaries: host is ProcessHost
+                  ? host.binaries
+                  : BeamBinaries.locate(beamRoot: root),
+              log: _defaultLog,
+            ),
       // The user's choice from the node panel, kept across launches
       // (on by default on desktop, off on phones).
       privateNodeSetting: BeamPrivateNodePreference.app(),

@@ -8,7 +8,10 @@
  */
 
 //ON
+import 'dart:io';
+
 import '../../wallets/beam/host/bundled_binaries.dart';
+import '../../wallets/beam/host/in_process_host.dart';
 import '../../wallets/beam/host/process_host.dart';
 //END_ON
 import '../../wallets/beam/host/beam_host.dart';
@@ -40,11 +43,15 @@ final class _LibBeamInterfaceImpl extends LibBeamInterface {
   @override
   bool get isAvailable => true;
 
+  /// iOS may not start child processes: the core runs in-process there
+  /// (the project notes). Everywhere else wallet-api is a child process.
   @override
-  BeamHost createHost({required String rootDir}) => ProcessHost(
-    rootDir: rootDir,
-    ensureBinaries: () => installBundledBeamBinaries(beamRoot: rootDir),
-  );
+  BeamHost createHost({required String rootDir}) => Platform.isIOS
+      ? InProcessHost(rootDir: rootDir)
+      : ProcessHost(
+          rootDir: rootDir,
+          ensureBinaries: () => installBundledBeamBinaries(beamRoot: rootDir),
+        );
 }
 
 //END_ON

@@ -1,0 +1,52 @@
+Campfire for BEAM (iOS only): a CMake option that builds wallet-api as an
+in-process static library.
+
+iOS does not let an app start child processes, so the BEAM core cannot run there as
+the wallet-api executable Campfire uses on the desktop and Android. With
+-DBEAM_WALLET_API_LIBRARY=ON -DBEAM_WALLET_API_LIBRARY_SOURCE=<file> this adds the
+static library target beam_wallet_api_lib, compiled from Campfire's
+scripts/beam/core/ios/src/api_cli_library.cpp. That file includes
+wallet/api/cli/api_cli.cpp with main() renamed and exports the C interface in
+scripts/beam/core/ios/src/beam_wallet_api.h (beam_wallet_api_run/stop/...).
+
+This patch touches one existing file and adds no source to the BEAM tree.
+scripts/beam/core/ios applies it after the core series (../patches); the desktop
+and Android builds never see it. It is also inert on its own: the option defaults
+to OFF, and without it wallet/api/CMakeLists.txt defines exactly the stock targets.
+api_cli.cpp is not edited (its log macros embed __LINE__).
+
+For tag beam-7.5.14493 + the core series, patch -p1.
+
+--- a/wallet/api/CMakeLists.txt
++++ b/wallet/api/CMakeLists.txt
+@@ -115,4 +115,28 @@
+             COMMAND ${CMAKE_COMMAND} -E copy ${IPFS_DLL} ${CMAKE_CURRENT_BINARY_DIR}
+         )
+     endif()
+-endif()
+\ No newline at end of file
++endif()
++
++# Campfire for BEAM (iOS patch 0101): wallet-api as a static library with a C
++# entry point, for platforms where the app may not start a child process (iOS).
++# Its one source file is Campfire's (scripts/beam/core/ios/src/api_cli_library.cpp),
++# passed in as BEAM_WALLET_API_LIBRARY_SOURCE; it compiles cli/api_cli.cpp with
++# main() renamed. Off by default: without the option this file defines exactly
++# the stock targets.
++option(BEAM_WALLET_API_LIBRARY "Build beam_wallet_api_lib: wallet-api's main() as beam_wallet_api_run()" OFF)
++if (BEAM_WALLET_API_LIBRARY)
++    if (NOT BEAM_WALLET_API_LIBRARY_SOURCE OR NOT EXISTS "${BEAM_WALLET_API_LIBRARY_SOURCE}")
++        message(FATAL_ERROR "BEAM_WALLET_API_LIBRARY=ON needs BEAM_WALLET_API_LIBRARY_SOURCE=<path of api_cli_library.cpp>")
++    endif()
++    add_library(beam_wallet_api_lib STATIC "${BEAM_WALLET_API_LIBRARY_SOURCE}")
++    if (BEAM_ATOMIC_SWAP_SUPPORT)
++        target_sources(beam_wallet_api_lib PRIVATE cli/api_cli_swap.cpp)
++    endif()
++    target_link_libraries(beam_wallet_api_lib
++        PUBLIC
++            wallet_api
++            http
++            cli
++            mnemonic
++    )
++endif()
