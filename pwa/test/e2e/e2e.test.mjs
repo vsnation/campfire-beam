@@ -19,6 +19,12 @@ import { PWA, startServer, launch, recordedPage, addVirtualAuthenticator, shot, 
 import { createWallet, restoreWallet, waitHome, waitSynced, unlockWithPassword } from './flows.mjs';
 
 const PORT = 8791;
+// The release under test is package.json's version; the update tests build the next ones.
+const V0 = JSON.parse(readFileSync(join(PWA, 'package.json'), 'utf8')).version;
+const nextVersion = (n) => V0.replace(/\d+$/, (p) => String(Number(p) + n));
+const V1 = nextVersion(1);
+const V2 = nextVersion(2);
+const V3 = nextVersion(3);
 const PASSWORD = `e2e-${Math.random().toString(36).slice(2, 10)}`;
 const NODE = 'eu-nodes.mainnet.beam.mw:8200';
 const tid = (id) => `[data-testid="${id}"]`;
@@ -291,12 +297,12 @@ test('(g1) the verified copy works without the server (cache only)', { timeout: 
   assert.equal(resp.fromServiceWorker(), true);
   await waitScreen(page, 'unlock', 60000);
   await shot(page, 'e2e-26-offline-cache-unlock');
-  assert.equal(await servedVersion(), '0.1.0');
+  assert.equal(await servedVersion(), V0);
   pointLive(join(PWA, 'dist'));
 });
 
 test('(g2) a signed update is staged, but applied only after "Update"', { timeout: 300000 }, async () => {
-  const v2 = build('0.1.1', join(tmp, 'v2'));
+  const v2 = build(V1, join(tmp, 'v2'));
   pointLive(v2);
   await page.reload();
   await unlockWithPassword(page, PASSWORD);
@@ -304,23 +310,23 @@ test('(g2) a signed update is staged, but applied only after "Update"', { timeou
   await openSettingsAndCheckUpdates();
   await page.waitForSelector(tid('update-apply-sheet'), { timeout: 120000 });
   await shot(page, 'e2e-27-update-ready');
-  // Staged and verified, still not in use: a reload keeps serving 0.1.0.
-  assert.equal(await servedVersion(), '0.1.0');
+  // Staged and verified, still not in use: a reload keeps serving V0.
+  assert.equal(await servedVersion(), V0);
   await page.reload();
   await waitScreen(page, 'unlock', 60000);
-  assert.equal(await servedVersion(), '0.1.0');
+  assert.equal(await servedVersion(), V0);
   await unlockWithPassword(page, PASSWORD);
   await waitScreen(page, 'home', 60000);
   await openSettingsAndCheckUpdates();
   await page.waitForSelector(tid('update-apply-sheet'), { timeout: 120000 });
   await Promise.all([page.waitForEvent('load', { timeout: 60000 }), page.click(tid('update-apply-sheet'))]);
   await waitScreen(page, 'unlock', 60000);
-  assert.equal(await servedVersion(), '0.1.1');
+  assert.equal(await servedVersion(), V1);
 });
 
-test('(g3) a tampered update and a wrongly signed update are refused; the app stays on 0.1.1', { timeout: 300000 }, async () => {
+test('(g3) a tampered update and a wrongly signed update are refused; the app stays on the first update', { timeout: 300000 }, async () => {
   // Tampered file: app.js changed after signing.
-  const v3 = build('0.1.2', join(tmp, 'v3'));
+  const v3 = build(V2, join(tmp, 'v3'));
   appendFileSync(join(v3, 'app.js'), '\n/* tampered */\n');
   pointLive(v3);
   await unlockWithPassword(page, PASSWORD);
@@ -330,12 +336,12 @@ test('(g3) a tampered update and a wrongly signed update are refused; the app st
   const why = await page.textContent('.sheet .notice');
   assert.match(why, /app\.js/);
   await shot(page, 'e2e-28-update-refused-tampered');
-  assert.equal(await servedVersion(), '0.1.1');
+  assert.equal(await servedVersion(), V1);
   assert.ok(!(await page.evaluate(() => fetch('app.js').then((r) => r.text()))).includes('tampered'));
   await page.click('.sheet .btn-primary');
 
   // Wrong key: release.json re-signed by a key that is not BEAM Campfire's.
-  const v4 = build('0.1.3', join(tmp, 'v4'));
+  const v4 = build(V3, join(tmp, 'v4'));
   const k = await webcrypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
   const sig = new Uint8Array(await webcrypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, k.privateKey, readFileSync(join(v4, 'release.json'))));
   writeFileSync(join(v4, 'release.sig'), Buffer.from(sig).toString('base64') + '\n');
@@ -344,12 +350,12 @@ test('(g3) a tampered update and a wrongly signed update are refused; the app st
   await page.waitForSelector('text=Update refused', { timeout: 120000 });
   assert.match(await page.textContent('.sheet .notice'), /not signed with the BEAM Campfire release key/);
   await shot(page, 'e2e-29-update-refused-signature');
-  assert.equal(await servedVersion(), '0.1.1');
+  assert.equal(await servedVersion(), V1);
   pointLive(join(PWA, 'dist'));
 });
 
 test('password change, Face ID off, and delete from this device', { timeout: 240000 }, async () => {
-  // We are on 0.1.1 at the unlock screen after (g3).
+  // We are on V1 at the unlock screen after (g3).
   await page.reload();
   await unlockWithPassword(page, PASSWORD);
   await waitScreen(page, 'home', 60000);

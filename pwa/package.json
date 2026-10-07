@@ -1,6 +1,6 @@
 {
   "name": "beam-campfire-pwa",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "BEAM Campfire: an iOS-first web wallet for BEAM Privacy built on BEAM's own WebAssembly wallet engine.",
   "license": "GPL-3.0-only",
@@ -13,7 +13,8 @@
     "build": "node tools/build.mjs",
     "serve": "node tools/serve.mjs",
     "test": "node --test test/unit/*.test.mjs",
-    "e2e": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/e2e.test.mjs",
+    "e2e": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/e2e.test.mjs test/e2e/import.test.mjs",
+    "e2e:import": "node tools/stage_engine.mjs && node --test --test-concurrency=1 test/e2e/import.test.mjs",
     "e2e:live": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live.mjs"
   },
   "devDependencies": {

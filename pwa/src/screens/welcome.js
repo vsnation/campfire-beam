@@ -1,10 +1,15 @@
 /* Welcome
- * Spec: ONE job: start a wallet on this device.
- *       Primary CTA: "Create a new wallet" (secondary: "Restore with 12 words").
- *       Taps from app open: 0 (first screen for a new device).
+ * Spec: ONE job: start a wallet on this device - a new one, one from its 12 words, or one from
+ *       its wallet.db file.
+ *       Primary CTA: "Create a new wallet" (secondary: "Restore with 12 words",
+ *       "Import a wallet.db file").
+ *       Taps from app open: 0 (first screen for a new device); each choice is 1 tap.
  * Exit-intent reasons and answers:
- *   - "Is this a scam / who holds my money?" -> the line under the buttons: no account, the
- *     12 words never leave this device.
+ *   - "Is this a scam / who holds my money?" -> the line under the buttons: no account, your keys
+ *     stay on this device.
+ *   - "Three buttons, which one is me?" -> the new wallet is the obvious (primary) one; the other two
+ *     are named after what you bring: your 12 words, or your wallet.db file.
+ *   - "I have a wallet.db but no words" -> its own button.
  *   - "Will I lose it if Safari clears data?" -> the Home Screen guide says when that happens.
  *   - "What does it cost?" -> nothing to install or sign up; network fees are shown before paying.
  */
@@ -24,6 +29,7 @@ export default function welcome(app) {
   const el = screen(
     {
       topbar: false,
+      cls: 'welcome',
       actions: [
         primary('Create a new wallet', () => {
           app.setup = { mode: 'create' };
@@ -33,12 +39,16 @@ export default function welcome(app) {
           app.setup = { mode: 'restore' };
           app.go('restore');
         }, { 'data-testid': 'restore' }),
-        h('p', { class: 'small center', text: 'No account, no sign-up. Your 12 words and keys stay on this device.' }),
+        secondary('Import a wallet.db file', () => {
+          app.setup = null;
+          app.go('importWallet');
+        }, { 'data-testid': 'import' }),
+        h('p', { class: 'small center', text: 'No sign-up. Your keys stay on this device.' }),
       ],
     },
     h(
       'div',
-      { class: 'hero' },
+      { class: `hero${guide ? ' compact' : ''}` },
       h('img', { src: 'img/logo.svg', alt: '' }),
       h('h1', { text: 'BEAM Campfire' }),
       h('p', { text: 'Your privacy. Your wallet. Your BEAM.' }),
@@ -51,7 +61,7 @@ export default function welcome(app) {
 function a2hsGuide(app) {
   const card = h(
     'div',
-    { class: 'card', 'data-testid': 'a2hs' },
+    { class: 'card a2hs', 'data-testid': 'a2hs' },
     h(
       'div',
       { class: 'banner' },
@@ -65,7 +75,7 @@ function a2hsGuide(app) {
         },
       }, icon('close')),
     ),
-    h('ol', { class: 'steps-list' }, h('li', {}, 'Tap Share ', icon('share', 'inline-icon'), ' in Safari.'), h('li', { text: 'Choose "Add to Home Screen".' }), h('li', { text: 'Open BEAM Campfire from the Home Screen.' })),
+    h('p', {}, 'Tap Share ', icon('share', 'inline-icon'), ' in Safari, choose "Add to Home Screen", then open BEAM Campfire from there.'),
     h('p', { class: 'small', text: 'Home Screen apps keep their data. Safari tabs may lose it after 7 days without use, and a wallet made in a Safari tab does not move to the Home Screen app.' }),
   );
   return card;

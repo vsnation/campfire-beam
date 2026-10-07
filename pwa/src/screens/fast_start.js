@@ -1,6 +1,7 @@
 /* Getting ready (after setup) / Find coins from other wallets (Settings)
  * Spec: ONE job: get the wallet in step with the BEAM network.
- *       New wallet: no choice to make - it connects and opens (no download, ~5 s).
+ *       New wallet, or one imported from its wallet.db: no choice to make - it connects and opens
+ *       (no download, ~5 s). An imported wallet is never offered the snapshot scan.
  *       Restore / "Find coins": primary CTA "Download <size> and start"
  *       (secondary on restore: "Skip and scan instead").
  *       Taps from app open: the last setup screen (once per device); Settings -> 2.
@@ -14,7 +15,7 @@ import { h, put } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { primary, secondary, textButton, notice, progressBar } from '../lib/ui.js';
 import { downloadRecovery, recoverySize, RECOVERY_APPROX_MB } from '../lib/recovery.js';
-import { markSetupDone, scanEnabled, setScan } from '../lib/session.js';
+import { markSetupDone, scanEnabled, setScan, isImported } from '../lib/session.js';
 import { wallet } from '../lib/wallet.js';
 
 const MB = (n) => Math.round(n / 1e6);
@@ -22,6 +23,11 @@ const MB = (n) => Math.round(n / 1e6);
 export default function fastStart(app, params = {}) {
   if (!app.dbPass) {
     queueMicrotask(() => app.go(app.record ? 'unlock' : 'welcome'));
+    return { el: h('div') };
+  }
+  const imported = isImported(app);
+  if (params.rescan && imported) {
+    queueMicrotask(() => app.go('settings'));
     return { el: h('div') };
   }
   const rescan = Boolean(params.rescan);
@@ -124,7 +130,14 @@ export default function fastStart(app, params = {}) {
       buf = null;
       await wallet.stop().catch(() => {});
       if (newWallet) {
-        view([notice('error', `The wallet did not open: ${e.message}`)], [primary('Try again', () => runWallet(null, false))]);
+        view(
+          [notice('error', `The wallet did not open: ${e.message}`)],
+          [
+            primary('Try again', () => runWallet(null, false)),
+            // An imported file that will not run: the way out is removing it and importing again.
+            imported ? textButton('Remove it from this device', () => app.go('deleteWallet'), { 'data-testid': 'fast-remove' }) : null,
+          ],
+        );
       } else choose(e.message || 'The wallet did not start.');
     }
   }

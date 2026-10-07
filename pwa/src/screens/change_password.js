@@ -8,7 +8,7 @@
  */
 import { h, put } from '../lib/dom.js';
 import { screen, primary, notice, toast } from '../lib/ui.js';
-import { changePassword, passwordProblem } from '../lib/session.js';
+import { changePassword, passwordProblem, isImported } from '../lib/session.js';
 
 export default function changePasswordScreen(app) {
   const cur = h('input', { class: 'input', type: 'password', autocomplete: 'current-password', 'aria-label': 'Current password', 'data-testid': 'cp-current' });
@@ -36,7 +36,12 @@ export default function changePasswordScreen(app) {
 
   const el = screen(
     { title: 'Change password', back: () => app.go('settings'), actions: [cta] },
-    h('p', { class: 'lead', text: 'This changes how you unlock BEAM Campfire on this device. Your coins and your 12 words stay the same.' }),
+    h('p', {
+      class: 'lead',
+      text: isImported(app)
+        ? 'This changes how you unlock BEAM Campfire on this device. Your coins stay the same, and the original wallet.db file keeps the password it had.'
+        : 'This changes how you unlock BEAM Campfire on this device. Your coins and your 12 words stay the same.',
+    }),
     h('label', { class: 'field' }, 'Current password', cur),
     h('label', { class: 'field' }, 'New password (8+ characters)', n1),
     h('label', { class: 'field' }, 'Repeat new password', n2),

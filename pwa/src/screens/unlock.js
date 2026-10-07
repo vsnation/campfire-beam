@@ -5,7 +5,8 @@
  * Exit-intent reasons and answers:
  *   - "Face ID failed" -> says it was cancelled; the password is one tap away.
  *   - "Wrong password?" -> says so without blaming, and keeps the field.
- *   - "I forgot my password" -> the way back with the 12 words, stated plainly.
+ *   - "I forgot my password" -> the way back with the 12 words (or, for an imported wallet, its
+ *     wallet.db file and password), stated plainly.
  */
 import { h, put } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';

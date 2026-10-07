@@ -11,10 +11,19 @@
 // survived, then imports the recovery snapshot (the restore / "find coins"
 // path) and waits for Synced again. The result is POSTed to /__dev/result,
 // which the dev server prints; the throwaway wallet is deleted at the end.
+//
+// ?selftest=import (dev server started with --import-test <dir>): the
+// wallet.db import path, for Safari where no file picker can be driven. It
+// fetches a THROWAWAY wallet.db made by BEAM's native 7.5.14493 CLI from the
+// dev server, stages it in the engine, checks a wrong password (refused,
+// nothing saved) and the right one, adds it, starts it without the block
+// scan, waits for Synced, checks the CLI's address is in the wallet, reloads,
+// unlocks with the file's password and checks again, then deletes it.
 
 import { h, put } from './dom.js';
-import { generatePhrase, deleteWalletDb, engineLog, loadEngine, nodeGuard } from './engine.js';
-import { createWallet, openWithPasswordFor, markSetupDone, setScan } from './session.js';
+import { generatePhrase, deleteWalletDb, engineLog, loadEngine, nodeGuard, stageImport, checkImportPassword, walletFiles } from './engine.js';
+import { createWallet, openWithPasswordFor, markSetupDone, setScan, prepareImport, importWallet } from './session.js';
+import { checkWalletFile } from './wallet_file.js';
 import { store, getPrefs, getWalletRecord } from './store.js';
 import { downloadRecovery } from './recovery.js';
 import { wallet } from './wallet.js';
@@ -195,6 +204,110 @@ export async function runSelfTest(app) {
     result.steps.scanningAfterImport = wallet.state.scanning;
     log(`synced after import in ${result.steps.syncAfterImportMs} ms`);
     await finish(Boolean(result.steps.addressPersisted && result.steps.wrongPasswordRefused && result.steps.synced && result.steps.importMs));
+  } catch (e) {
+    await finish(false, e);
+  }
+}
+
+const IMPORT_KEY = 'campfire-selftest-import';
+
+export async function runImportSelfTest(app) {
+  const root = document.getElementById('app');
+  const lines = h('pre', { class: 'mono selftest-log', 'data-testid': 'selftest-log' });
+  put(root, h('main', { class: 'screen' }, h('h1', { text: 'BEAM Campfire self-test: import wallet.db' }), lines));
+  const log = (m) => {
+    lines.textContent += `${new Date().toISOString().slice(11, 19)} ${m}\n`;
+    console.log('[selftest]', m);
+  };
+  let st = null;
+  try {
+    st = JSON.parse(sessionStorage.getItem(IMPORT_KEY) || 'null');
+  } catch {
+    st = null;
+  }
+  const result = st && st.result ? st.result : { ok: false, mode: 'import', steps: {} };
+  const finish = async (ok, error) => {
+    result.ok = ok;
+    if (error) result.error = String(error && error.message ? error.message : error);
+    result.finishedAt = new Date().toISOString();
+    log(ok ? 'PASS' : `FAIL: ${result.error}`);
+    try {
+      await fetch('__dev/result', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(result) });
+    } catch (e) {
+      log(`could not report: ${e.message}`);
+    }
+    sessionStorage.removeItem(IMPORT_KEY);
+    await wallet.stop().catch(() => {});
+    await deleteWalletDb().catch(() => {});
+    await store.clear().catch(() => {});
+    log('throwaway wallet removed');
+  };
+  const syncedSnapshot = () => ({ height: wallet.state.status.current_height, inSync: wallet.state.status.is_in_sync === true, explorerHeight: wallet.state.explorer && wallet.state.explorer.height, verified: wallet.state.sync.verified });
+
+  try {
+    if (!st) {
+      result.env = { userAgent: navigator.userAgent, crossOriginIsolated: self.crossOriginIsolated, standalone: navigator.standalone === true || matchMedia('(display-mode: standalone)').matches };
+      await loadEngine();
+      await wallet.stop().catch(() => {});
+      await deleteWalletDb();
+      await store.clear();
+      app.prefs = await getPrefs();
+      app.record = null;
+      const info = await (await fetch('__dev/import.json', { cache: 'no-store' })).json();
+      const bytes = new Uint8Array(await (await fetch('__dev/import.db', { cache: 'no-store' })).arrayBuffer());
+      result.steps.fileBytes = bytes.length;
+      result.steps.fileCheck = checkWalletFile({ size: bytes.length, head: bytes.subarray(0, 16) });
+      log(`wallet.db: ${bytes.length} bytes, check ${JSON.stringify(result.steps.fileCheck)}`);
+      await prepareImport(app);
+      await stageImport(bytes);
+      let t = performance.now();
+      const wrong = await checkImportPassword(`${info.password}-wrong`);
+      result.steps.wrongPasswordMs = Math.round(performance.now() - t);
+      result.steps.wrongPasswordRefused = wrong === false;
+      result.steps.nothingSavedAfterWrong = !(await getWalletRecord()) && !(await walletFiles()).includes('wallet.db');
+      log(`wrong password refused: ${result.steps.wrongPasswordRefused} (${result.steps.wrongPasswordMs} ms), nothing saved: ${result.steps.nothingSavedAfterWrong}`);
+      t = performance.now();
+      result.steps.rightPasswordOpens = (await checkImportPassword(info.password)) === true;
+      result.steps.rightPasswordMs = Math.round(performance.now() - t);
+      log(`right password opens it: ${result.steps.rightPasswordOpens} (${result.steps.rightPasswordMs} ms)`);
+      if (!result.steps.rightPasswordOpens) throw new Error('the right password did not open the file');
+      await importWallet(app, info.password);
+      await app.setPrefs({ ipAck: true });
+      result.steps.filesAfterImport = await walletFiles();
+      const ts = performance.now();
+      await wallet.start({ dbPass: app.dbPass, node: app.prefs.node, bodyRequests: false });
+      await markSetupDone(app);
+      await waitFor(() => wallet.state.sync.state === 'synced', 5 * 60000, 'Synced');
+      result.steps.startToSyncedMs = Math.round(performance.now() - ts);
+      result.steps.synced = syncedSnapshot();
+      log(`imported wallet synced: ${JSON.stringify(result.steps.synced)} after ${result.steps.startToSyncedMs} ms`);
+      const list = ((await wallet.session.call('addr_list', { own: true })) || []).map((a) => a.address);
+      result.steps.sameWallet = info.addresses.length > 0 && info.addresses.every((a) => list.includes(a));
+      log(`the CLI's address is in this wallet: ${result.steps.sameWallet}`);
+      await wallet.persistNow();
+      await wallet.stop();
+      sessionStorage.setItem(IMPORT_KEY, JSON.stringify({ phase: 'reload', password: info.password, addresses: info.addresses, result }));
+      log('reloading to check persistence…');
+      setTimeout(() => location.reload(), 500);
+      return;
+    }
+    log('after reload: unlocking with the file\'s password');
+    app.prefs = await getPrefs();
+    app.record = await getWalletRecord();
+    if (!app.record) throw new Error('wallet record missing after reload');
+    result.steps.recordAfterReload = { imported: app.record.imported === true, scan: app.record.scan };
+    const dbPass = await openWithPasswordFor(app, st.password);
+    app.dbPass = dbPass;
+    const tr = performance.now();
+    await wallet.start({ dbPass, node: app.prefs.node, bodyRequests: false });
+    const list = ((await wallet.session.call('addr_list', { own: true })) || []).map((a) => a.address);
+    result.steps.addressAfterReload = st.addresses.every((a) => list.includes(a));
+    await waitFor(() => wallet.state.sync.state === 'synced', 5 * 60000, 'Synced after reload');
+    result.steps.resyncAfterReloadMs = Math.round(performance.now() - tr);
+    result.steps.syncedAfterReload = syncedSnapshot();
+    log(`after reload: address ${result.steps.addressAfterReload}, synced ${JSON.stringify(result.steps.syncedAfterReload)}`);
+    const s1 = result.steps;
+    await finish(Boolean(s1.fileCheck && s1.fileCheck.ok && s1.wrongPasswordRefused && s1.nothingSavedAfterWrong && s1.rightPasswordOpens && s1.synced && s1.synced.inSync && s1.sameWallet && s1.recordAfterReload.imported && s1.addressAfterReload && s1.syncedAfterReload.inSync));
   } catch (e) {
     await finish(false, e);
   }

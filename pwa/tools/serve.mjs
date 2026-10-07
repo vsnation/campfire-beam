@@ -15,10 +15,13 @@
 // - --selftest enables /__dev/flags and POST /__dev/result, which the in-page
 //   self-test (?selftest=1 on localhost) uses to report back. Without the flag
 //   both answer 404, which is what any production host does.
+// - --import-test <dir> (with --selftest): serves <dir>/wallet.db at /__dev/import.db and
+//   <dir>/import.json ({password, addresses}) at /__dev/import.json for the wallet.db import
+//   self-test (?selftest=import). Throwaway test wallets only; 404 otherwise.
 import http from 'node:http';
 import https from 'node:https';
 import { createReadStream } from 'node:fs';
-import { stat, realpath, writeFile } from 'node:fs/promises';
+import { stat, realpath, writeFile, readFile } from 'node:fs/promises';
 import { join, normalize, sep, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SECURITY_HEADERS, mimeFor, RECOVERY_UPSTREAM, EXPLORER_UPSTREAMS } from './headers.mjs';
@@ -38,6 +41,7 @@ const rootArg = arg('root', 'dist');
 const rootDir = rootArg === 'dist' || rootArg === 'src' ? join(pwaRoot, rootArg) : resolve(String(rootArg));
 const selftest = Boolean(arg('selftest', false));
 const resultFile = arg('result-file', null);
+const importTestDir = arg('import-test', null);
 const quiet = Boolean(arg('quiet', false));
 const verbose = Boolean(arg('verbose', false));
 // Dev only: serve a local copy of the recovery file instead of proxying BEAM's (saves a 330 MB download per test run).
@@ -157,7 +161,13 @@ const server = (host) =>
       if (verbose) res.on('finish', () => log(req.method, p, res.statusCode, String(req.headers['user-agent'] || '').slice(0, 40)));
       if (p === '/__dev/flags') {
         if (!selftest || req.method !== 'GET') return send(res, 404, 'not found');
-        return send(res, 200, JSON.stringify({ selftest: true }), 'application/json');
+        return send(res, 200, JSON.stringify({ selftest: true, importTest: Boolean(importTestDir) }), 'application/json');
+      }
+      if (p === '/__dev/import.db' || p === '/__dev/import.json') {
+        if (!selftest || !importTestDir || req.method !== 'GET') return send(res, 404, 'not found');
+        const name = p === '/__dev/import.db' ? 'wallet.db' : 'import.json';
+        const body = await readFile(join(String(importTestDir), name));
+        return send(res, 200, body, name === 'wallet.db' ? 'application/octet-stream' : 'application/json', { 'Cache-Control': 'no-store' });
       }
       if (p === '/__dev/result') {
         if (!selftest || req.method !== 'POST') return send(res, 404, 'not found');

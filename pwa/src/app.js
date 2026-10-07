@@ -1,6 +1,6 @@
 // BEAM Campfire - app controller: boot, screen routing, lock and auto-lock.
 import { h, clear } from './lib/dom.js';
-import { engineSupport, loadEngine, nodeGuard } from './lib/engine.js';
+import { engineSupport, loadEngine, nodeGuard, walletFiles } from './lib/engine.js';
 import { getPrefs, setPrefs, getWalletRecord } from './lib/store.js';
 import { wallet } from './lib/wallet.js';
 import { ensureVerifiedCopy, updates } from './lib/update.js';
@@ -10,6 +10,7 @@ import welcome from './screens/welcome.js';
 import backup from './screens/backup.js';
 import confirmWords from './screens/confirm_words.js';
 import restore from './screens/restore.js';
+import importWallet from './screens/import_wallet.js';
 import setPassword from './screens/set_password.js';
 import passkeySetup from './screens/passkey_setup.js';
 import ipNotice from './screens/ip_notice.js';
@@ -28,7 +29,7 @@ import deleteWallet from './screens/delete_wallet.js';
 import problem from './screens/problem.js';
 
 const SCREENS = {
-  welcome, backup, confirmWords, restore, setPassword, passkeySetup, ipNotice, fastStart, unlock,
+  welcome, backup, confirmWords, restore, importWallet, setPassword, passkeySetup, ipNotice, fastStart, unlock,
   home, send, review, txStatus, receive, activity, settings, changePassword, about, deleteWallet, problem,
 };
 // Screens that need an unlocked, running wallet.
@@ -135,13 +136,15 @@ async function boot() {
   }
 
   const qs = new URLSearchParams(location.search);
-  if (qs.get('selftest') === '1' && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+  const selftestMode = qs.get('selftest');
+  if ((selftestMode === '1' || selftestMode === 'import') && (location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     try {
       const r = await fetch('__dev/flags', { cache: 'no-store' });
       const flags = r.ok ? await r.json() : null;
       if (flags && flags.selftest === true) {
-        const { runSelfTest } = await import('./lib/selftest.js');
-        return runSelfTest(app);
+        const { runSelfTest, runImportSelfTest } = await import('./lib/selftest.js');
+        if (selftestMode === 'import' && flags.importTest === true) return runImportSelfTest(app);
+        if (selftestMode === '1') return runSelfTest(app);
       }
     } catch {
       /* not the dev server: no self-test */
@@ -162,6 +165,7 @@ window.__campfire = Object.freeze({
   screen: () => app.currentName,
   sync: () => wallet.state.sync,
   height: () => (wallet.state.status ? wallet.state.status.current_height : null),
+  inSync: () => (wallet.state.status ? wallet.state.status.is_in_sync === true : null),
   totals: () => Object.fromEntries([...wallet.state.totals].map(([k, v]) => [k, { available: String(v.available), receiving: String(v.receiving), sending: String(v.sending) }])),
   txs: () => wallet.state.txs.map((t) => ({ txId: t.txId, status: t.status, income: t.income, value: t.value, fee: t.fee, kernel: t.kernel })),
   node: () => wallet.state.node,
@@ -174,4 +178,7 @@ window.__campfire = Object.freeze({
   go: (name, params) => app.go(name, params),
   validate: (address) => wallet.validateAddress(address),
   addresses: async () => ((await wallet.session.call('addr_list', { own: true })) || []).map((a) => a.address).sort(),
+  // Names and flags only: which files the engine holds, and what kind of wallet this is.
+  walletFiles: () => walletFiles(),
+  record: () => (app.record ? { imported: Boolean(app.record.imported), restored: Boolean(app.record.restored), scan: app.record.scan !== false, setupDone: Boolean(app.record.setupDone), passkey: Boolean(app.record.envelopes && app.record.envelopes.passkey) } : null),
 });

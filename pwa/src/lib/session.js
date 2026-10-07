@@ -5,8 +5,9 @@
 
 import { newDbPassword, sealWithPassword, openWithPassword, sealWithPrf, openWithPrf, toHex, randomBytes, unb64, EnvelopeError } from './envelope.js';
 import { createPasskey, evaluatePrf } from './passkey.js';
-import { createWalletDb, deleteWalletDb, walletExists } from './engine.js';
+import { createWalletDb, deleteWalletDb, walletExists, adoptImport, discardImport } from './engine.js';
 import { store, getWalletRecord, setWalletRecord } from './store.js';
+import { importedRecord } from './wallet_file.js';
 
 export const MIN_PASSWORD = 8;
 
@@ -29,6 +30,9 @@ export async function createWallet(app, password) {
   // A wallet.db without a record is a leftover from an interrupted setup: it
   // cannot be opened (its database password is gone), so it is replaced.
   if (!(await getWalletRecord()) && (await walletExists())) await deleteWalletDb();
+  // An import.db left by a wallet.db import that was abandoned midway must not
+  // be flushed to IndexedDB along with the new wallet.
+  await discardImport().catch(() => {});
   await createWalletDb(setup.words, dbPass);
   setup.words.fill('');
   setup.words = null;
@@ -39,6 +43,58 @@ export async function createWallet(app, password) {
   await setWalletRecord(record);
   app.record = record;
   app.dbPass = dbPass;
+  try {
+    if (navigator.storage && navigator.storage.persist) app.persisted = await navigator.storage.persist();
+  } catch {
+    /* best effort */
+  }
+  return record;
+}
+
+/** Imported from a wallet.db and its password: no recovery phrase in BEAM Campfire. */
+export function isImported(app) {
+  return Boolean(app && app.record && app.record.imported);
+}
+
+/**
+ * Before a picked wallet.db is staged: refuses when this device already has a
+ * wallet, and removes a wallet.db left without a record by an interrupted
+ * setup (it cannot be opened: its database password is gone).
+ */
+export async function prepareImport(app) {
+  if (app.record || (await getWalletRecord())) {
+    const e = new Error('A wallet already exists on this device.');
+    e.code = 'exists';
+    throw e;
+  }
+  if (await walletExists()) await deleteWalletDb();
+}
+
+/**
+ * Makes the staged, password-checked wallet.db this device's wallet. Its own
+ * password stays the database password (BEAM's engine has no way to change
+ * it, and the original file keeps it anyway); it is sealed under the same
+ * password, so one password unlocks it here until the person changes the
+ * unlock password in Settings.
+ */
+export async function importWallet(app, password) {
+  if (app.record || (await getWalletRecord())) {
+    const e = new Error('A wallet already exists on this device.');
+    e.code = 'exists';
+    throw e;
+  }
+  const id = toHex(randomBytes(8));
+  const envelope = await sealWithPassword(password, password, id);
+  await adoptImport();
+  const record = importedRecord(id, envelope);
+  try {
+    await setWalletRecord(record);
+  } catch (e) {
+    await deleteWalletDb().catch(() => {});
+    throw e;
+  }
+  app.record = record;
+  app.dbPass = password;
   try {
     if (navigator.storage && navigator.storage.persist) app.persisted = await navigator.storage.persist();
   } catch {

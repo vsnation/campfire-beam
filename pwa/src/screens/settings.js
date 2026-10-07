@@ -6,12 +6,14 @@
  *   - "Which node should I pick?" -> the default is preselected and works; others say what they are.
  *   - "Who can see my IP?" -> IP privacy row, same words as before the first connection.
  *   - "How do I remove it?" -> Delete is here, with what it means before anything happens.
+ *   - "What is my backup?" -> Backup row: the 12 words, or for an imported wallet its wallet.db
+ *     file and password (it has no words here, and nothing offers to rebuild it from words).
  */
 import { h, put } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { screen, toast, notice, openSheet } from '../lib/ui.js';
 import { NODES } from '../lib/nodes.js';
-import { hasPasskey, removePasskey, scanEnabled } from '../lib/session.js';
+import { hasPasskey, removePasskey, scanEnabled, isImported } from '../lib/session.js';
 import { passkeyAvailable } from '../lib/passkey.js';
 import { confirmIdentity } from '../lib/auth_ui.js';
 import { wallet } from '../lib/wallet.js';
@@ -91,6 +93,7 @@ export default function settings(app) {
       h('div', { class: 'row' }, h('span', { class: 'ico' }, icon('clock')), h('span', { class: 'main' }, h('div', { class: 't', text: 'Auto-lock' }), h('div', { class: 's', text: 'Also in the background' })), lockSel),
       faceRowBox,
       row('key', 'Change password', null, () => app.go('changePassword'), { 'data-testid': 'change-password' }),
+      row('file', 'Backup', isImported(app) ? 'The wallet.db file and its password' : 'Your 12 words', () => app.go('backup'), { 'data-testid': 'backup-row' }),
     ),
     h('p', { class: 'section-title', text: 'Network' }),
     h(
@@ -103,7 +106,8 @@ export default function settings(app) {
     h(
       'div',
       { class: 'card list' },
-      scanEnabled(app) ? null : row('download', 'Find coins from other wallets', 'If these 12 words were used in another app (one-time 330 MB scan)', () => app.go('fastStart', { rescan: true }), { 'data-testid': 'find-coins' }),
+      // Imported wallets have no words and nothing here rebuilds or rescans them (as in the desktop app).
+      scanEnabled(app) || isImported(app) ? null : row('download', 'Find coins from other wallets', 'If these 12 words were used in another app (one-time 330 MB scan)', () => app.go('fastStart', { rescan: true }), { 'data-testid': 'find-coins' }),
       updRow,
       row('info', 'About', null, () => app.go('about'), { 'data-testid': 'about' }),
       row('trash', 'Delete wallet from this device', null, () => app.go('deleteWallet'), { 'data-testid': 'delete-wallet' }),

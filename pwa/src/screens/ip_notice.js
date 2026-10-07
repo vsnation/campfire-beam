@@ -12,6 +12,7 @@
 import { h } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { screen, primary, secondary } from '../lib/ui.js';
+import { isImported } from '../lib/session.js';
 
 export const IP_NOTICE_TEXT =
   'The BEAM node you connect to can see your IP address. To hide it, turn on iCloud Private Relay (Settings → [your name] → iCloud → Private Relay) or use a VPN.';
@@ -29,7 +30,7 @@ export default function ipNotice(app, params = {}) {
       h('li', { text: 'A VPN you trust covers every app on the phone, including BEAM Campfire on the Home Screen. Turn it on before you open the wallet.' }),
     ),
     h('p', { class: 'small', text: 'BEAM Campfire itself talks only to two places: the site it was loaded from, and the one BEAM node you pick in Settings. No analytics, no other servers.' }),
-    h('p', { class: 'small', text: 'The node can see your IP address, when your wallet is online, and the transactions it sends. It cannot see your amounts, your balance or your 12 words.' }),
+    h('p', { class: 'small', text: `The node can see your IP address, when your wallet is online, and the transactions it sends. It cannot see your amounts, your balance or your ${isImported(app) ? 'keys' : '12 words'}.` }),
   );
   const toggle = secondary('How to hide my IP', () => {
     details.classList.toggle('hidden');

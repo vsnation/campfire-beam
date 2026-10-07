@@ -63,6 +63,7 @@ export async function setPrefs(patch) {
   return p;
 }
 
-/** The wallet record: {id, createdAt, restored, envelopes:{password, passkey|null}, setupDone} */
+/** The wallet record: {id, createdAt, restored, imported?, scan, envelopes:{password, passkey|null}, setupDone}.
+ *  imported: from a wallet.db and its password (no recovery phrase; see lib/wallet_file.js). */
 export const getWalletRecord = () => store.get('wallet');
 export const setWalletRecord = (w) => store.set('wallet', w);

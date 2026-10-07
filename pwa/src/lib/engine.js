@@ -199,6 +199,16 @@ export async function walletExists() {
   return Boolean(M.WasmWalletClient.IsInitialized(DB_PATH));
 }
 
+/** File names in the wallet directory (names only: for the e2e and the self-test). */
+export async function walletFiles() {
+  const M = await loadEngine();
+  try {
+    return M.FS.readdir(DB_DIR).filter((n) => n !== '.' && n !== '..').sort();
+  } catch {
+    return [];
+  }
+}
+
 export async function generatePhrase() {
   const M = await loadEngine();
   return M.WasmWalletClient.GeneratePhrase().trim().split(/\s+/);
@@ -247,6 +257,98 @@ export async function deleteWalletDb() {
     /* empty */
   }
   await syncFS(M);
+}
+
+// ---------------------------------------------------------------- import a wallet.db
+// The picked file's bytes are written next to wallet.db as import.db (same
+// IDBFS mount, so adopting it is a rename, not a second copy of a file that
+// may be large). Nothing is flushed to IndexedDB until BEAM's own code has
+// opened the file with its password: a wrong password, or a file that is not
+// a wallet, is discarded and leaves nothing behind. The original file is
+// only read (the browser hands over a copy of its bytes).
+export const IMPORT_PATH = `${DB_DIR}/import.db`;
+const IMPORT_NAME = 'import.db';
+
+function removeImportFiles(M, { sideFilesOnly = false } = {}) {
+  let names = [];
+  try {
+    names = M.FS.readdir(DB_DIR);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    // SQLCipher's format migration works through "<db>-migrated"; SQLite's journal is "<db>-journal".
+    const side = name.startsWith(`${IMPORT_NAME}-`);
+    if (!side && (sideFilesOnly || name !== IMPORT_NAME)) continue;
+    try {
+      M.FS.unlink(`${DB_DIR}/${name}`);
+    } catch {
+      /* already gone */
+    }
+  }
+}
+
+/** Puts the picked file's bytes where the engine can open them. The engine owns `bytes` afterwards. */
+export async function stageImport(bytes) {
+  const M = await loadEngine();
+  removeImportFiles(M);
+  M.FS.writeFile(IMPORT_PATH, bytes, { canOwn: true });
+}
+
+/**
+ * Opens the staged file with the password through BEAM's own code
+ * (WasmWalletClient.CheckPassword -> WalletDB::isValidPassword: sqlite open,
+ * SQLCipher key, read the schema; older SQLCipher formats are migrated in
+ * the copy). Runs on an engine thread; the password goes nowhere else.
+ * @returns {Promise<boolean>} true when the password opens it.
+ */
+export async function checkImportPassword(password, { timeoutMs = 180000 } = {}) {
+  const M = await loadEngine();
+  if (!M.WasmWalletClient.IsInitialized(IMPORT_PATH)) throw new EngineError('missing', 'No file to check.');
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      reject(new EngineError('timeout', 'Checking the file took too long.'));
+    }, timeoutMs);
+    try {
+      M.WasmWalletClient.CheckPassword(IMPORT_PATH, password, (ok) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        resolve(ok === true);
+      });
+    } catch {
+      done = true;
+      clearTimeout(timer);
+      reject(new EngineError('check', 'The file could not be checked.'));
+    }
+  });
+}
+
+/** The checked file becomes this device's wallet.db, and is saved to IndexedDB. */
+export async function adoptImport() {
+  const M = await loadEngine();
+  if (M.WasmWalletClient.IsInitialized(DB_PATH)) throw new EngineError('exists', 'A wallet already exists on this device.');
+  if (!M.WasmWalletClient.IsInitialized(IMPORT_PATH)) throw new EngineError('missing', 'No file to import.');
+  removeImportFiles(M, { sideFilesOnly: true });
+  M.FS.rename(IMPORT_PATH, DB_PATH);
+  if (!(await syncFS(M))) {
+    try {
+      M.FS.unlink(DB_PATH);
+    } catch {
+      /* not there */
+    }
+    await syncFS(M);
+    throw new EngineError('save', 'The wallet could not be saved on this device.');
+  }
+}
+
+/** Forgets a staged file (wrong password, another file picked, screen left). Never touches wallet.db. */
+export async function discardImport() {
+  const M = await loadEngine();
+  removeImportFiles(M);
 }
 
 /**

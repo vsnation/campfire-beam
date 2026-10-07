@@ -26,6 +26,7 @@ const P = {
   eye: ['M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z', 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'],
   refresh: ['M20 11a8 8 0 1 0-2.3 5.7', 'M20 5v6h-6'],
   paste: ['M9 4h6v3H9z', 'M8 5H5v15h14V5h-3'],
+  file: ['M14 3H6v18h12V7z', 'M14 3v4h4', 'M9 13h6', 'M9 17h4'],
 };
 
 export function icon(name, cls) {

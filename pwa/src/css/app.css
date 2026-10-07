@@ -285,3 +285,25 @@ details.more[open] summary { margin-bottom: 6px; }
 .asset-row { cursor: default; }
 .asset-row .end { white-space: normal; max-width: 55%; word-break: break-all; }
 .kv button.v { background: none; border: 0; padding: 0; color: var(--on-secondary); cursor: pointer; text-align: right; min-height: 0; }
+
+/* Welcome: three choices fit a 375 x 667 screen; a smaller hero when the Home Screen guide shows. */
+.welcome .hero { padding-top: 12px; }
+.hero.compact { gap: 4px; padding: 4px 0 0; }
+.hero.compact img { width: 40px; height: 47px; }
+.hero.compact h1 { font-size: 24px; margin-top: 2px; }
+.hero.compact p { font-size: 15px; }
+.a2hs { padding: 12px 14px; }
+.a2hs h3 { font-size: 15px; }
+.a2hs p { font-size: 14px; color: var(--text-2); }
+
+/* Import wallet.db: the real file input stays in the page (iOS opens the picker from its label). */
+.file-input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+label.btn { user-select: none; -webkit-user-select: none; }
+label.btn.disabled { pointer-events: none; opacity: 0.5; }
+.file-card { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.file-card .ico { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--secondary); color: var(--on-secondary); flex: none; }
+.file-card .ico svg { width: 22px; height: 22px; }
+.file-card .main { flex: 1; min-width: 0; }
+.file-card .main .t { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-card .main .s { font-size: 13px; color: var(--muted); }
+.file-card .btn-text { flex: none; padding: 6px 8px; }
