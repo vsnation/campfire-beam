@@ -674,7 +674,12 @@ class _DappRow extends StatelessWidget {
         onPressed: busy ? null : onTap,
         child: Row(
           children: [
-            DappAvatar(name: item.name, iconFile: item.iconFile, size: 40),
+            DappAvatar(
+              name: item.name,
+              iconFile: item.iconFile,
+              iconAsset: item.iconAsset,
+              size: 40,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

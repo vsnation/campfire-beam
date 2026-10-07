@@ -34,7 +34,13 @@ const String dappWindowPlatformsSentence =
 ///   a main-frame link elsewhere is handed to [onExternalLink] (the page
 ///   asks before opening the system browser);
 /// * camera, microphone and other permission requests denied;
-/// * every main-frame load starting a fresh session ([onPageStarted]).
+/// * every main-frame load starting a fresh session ([onPageStarted]);
+/// * the webview's own background before the page paints: `background`,
+///   the dApp's page colour (`dappBackgroundColour`). macOS WKWebView does
+///   not take it (webview_flutter_wkwebview leaves it unimplemented and
+///   draws white), so the browser view keeps the webview covered until the
+///   page has loaded; the page itself is painted by the server's host
+///   stylesheet.
 class DappWebviewGlue {
   DappWebviewGlue._(this.controller, this.session);
 

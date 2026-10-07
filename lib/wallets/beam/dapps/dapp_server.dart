@@ -101,9 +101,12 @@ class DappCsp {
 ///   inside the folder.
 /// * Every HTML page gets `<script src="/__campfire/<token>/bridge.js">`
 ///   as the first element of `<head>`, so the bridge exists before the
-///   page's scripts even where the webview cannot inject at document start;
-///   static `qrc:///qtwebchannel/qwebchannel.js` references are pointed at
-///   an empty same-origin file.
+///   page's scripts even where the webview cannot inject at document start,
+///   followed by `<link rel="stylesheet" href="/__campfire/<token>/host.css">`
+///   ([dappHostStylesheet]: the background the Qt wallet shows dApps on,
+///   before the page's own styles so those win); static
+///   `qrc:///qtwebchannel/qwebchannel.js` references are pointed at an
+///   empty same-origin file. Both are same-origin, so the CSP is unchanged.
 /// * Every response carries [DappCsp] and `nosniff`, `no-referrer`,
 ///   same-origin resource and opener policies, `DENY` framing, a
 ///   Permissions-Policy denying camera, microphone and location, and
@@ -139,6 +142,9 @@ class DappServer {
 
   String get bridgePath => '/__campfire/$_token/bridge.js';
 
+  /// The host stylesheet ([dappHostStylesheet]) every page links.
+  String get stylesheetPath => '/__campfire/$_token/host.css';
+
   static Future<DappServer> start(
     DappInstallation installation, {
     required String bridgeToken,
@@ -148,6 +154,7 @@ class DappServer {
   }) async {
     final header = csp.header; // validates the origins
     dappBridgeScript(token: bridgeToken, style: style); // validates both
+    dappHostStylesheet(style); // and the colours it paints
     final root = await Directory(installation.filesDirectory)
         .resolveSymbolicLinks();
     HttpServer? server;
@@ -241,7 +248,11 @@ class DappServer {
       final type = contentTypeFor(segments.last);
       res.headers.set(HttpHeaders.contentTypeHeader, type);
       if (type.startsWith('text/html')) {
-        final body = injectBridge(await File(real).readAsBytes(), bridgePath);
+        final body = injectBridge(
+          await File(real).readAsBytes(),
+          bridgePath,
+          stylesheetPath: stylesheetPath,
+        );
         res.contentLength = body.length;
         if (req.method == 'GET') res.add(body);
         return await res.close();
@@ -267,10 +278,16 @@ class DappServer {
     List<String> segments,
   ) async {
     final String? body;
+    var type = 'text/javascript; charset=utf-8';
     if (segments.length == 3 &&
         segments[1] == _token &&
         segments[2] == 'bridge.js') {
       body = dappBridgeScript(token: _token, style: _style);
+    } else if (segments.length == 3 &&
+        segments[1] == _token &&
+        segments[2] == 'host.css') {
+      body = dappHostStylesheet(_style);
+      type = 'text/css; charset=utf-8';
     } else if ('/${segments.join('/')}' == dappQwebchannelShimPath) {
       body = '// QWebChannel is provided by the Campfire bridge.\n';
     } else {
@@ -278,10 +295,7 @@ class DappServer {
     }
     if (body == null) return _status(res, HttpStatus.notFound);
     final bytes = utf8.encode(body);
-    res.headers.set(
-      HttpHeaders.contentTypeHeader,
-      'text/javascript; charset=utf-8',
-    );
+    res.headers.set(HttpHeaders.contentTypeHeader, type);
     res.contentLength = bytes.length;
     if (req.method == 'GET') res.add(bytes);
     await res.close();
@@ -297,20 +311,28 @@ class DappServer {
   static String _encodePath(String path) =>
       path.split('/').map(Uri.encodeComponent).join('/');
 
-  /// Inserts the bridge `<script>` as the first element of `<head>` (else
-  /// after `<html>`, else after the doctype, else at the start) and points
-  /// static `qrc:///qtwebchannel/qwebchannel.js` references at the empty
-  /// shim. Works on bytes (as Latin-1), so the page's own encoding is
+  /// Inserts the bridge `<script>` (and, given [stylesheetPath], the host
+  /// stylesheet `<link>` right after it) as the first elements of `<head>`
+  /// (else after `<html>`, else after the doctype, else at the start) and
+  /// points static `qrc:///qtwebchannel/qwebchannel.js` references at the
+  /// empty shim. Works on bytes (as Latin-1), so the page's own encoding is
   /// untouched.
   @visibleForTesting
-  static List<int> injectBridge(List<int> html, String bridgePath) {
+  static List<int> injectBridge(
+    List<int> html,
+    String bridgePath, {
+    String? stylesheetPath,
+  }) {
     var text = latin1
         .decode(html)
         .replaceAll(
           'qrc:///qtwebchannel/qwebchannel.js',
           dappQwebchannelShimPath,
         );
-    final tag = '<script src="$bridgePath"></script>';
+    final css = stylesheetPath == null
+        ? ''
+        : '<link rel="stylesheet" href="$stylesheetPath">';
+    final tag = '<script src="$bridgePath"></script>$css';
     final at = [
       RegExp(r'<head(\s[^>]*)?>', caseSensitive: false),
       RegExp(r'<html(\s[^>]*)?>', caseSensitive: false),

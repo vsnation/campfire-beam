@@ -31,6 +31,7 @@ class DappCatalogueEntry {
     this.needsEval = true,
     this.remoteOrigins = const [],
     this.connectsInWebShape = true,
+    this.iconExtension = 'svg',
   });
 
   final String fileName;
@@ -55,6 +56,15 @@ class DappCatalogueEntry {
   /// the top-level page. All 9 connect through the Qt and mobile shapes
   /// (see `DappBridgeShape`).
   final bool connectsInWebShape;
+
+  /// The format of the package's own icon (the file its manifest names),
+  /// bundled unchanged as [iconAsset].
+  final String iconExtension;
+
+  /// The dApp's own icon, bundled in the app (`assets/beam/dapps/`, see the
+  /// NOTICE.txt there) so the store can show it before the dApp is
+  /// installed without fetching anything.
+  String get iconAsset => 'assets/beam/dapps/$guid.$iconExtension';
 
   /// beam-ui tag `beam-7.5.14493.5867` (the release matching core
   /// 7.5.14493); the files are unchanged on master `1cc4d1a`.
@@ -106,6 +116,7 @@ const List<DappCatalogueEntry> dappBundledCatalogue = [
     sha256: '7d11c4ad243ec7a82ab092aba0124556b2ba768a5d66c218f343befeac891dbe',
     size: 2498315,
     remoteOrigins: [_coingecko, _beamExplorerApi],
+    iconExtension: 'png',
   ),
   DappCatalogueEntry(
     fileName: 'beam-bridge-app.dapp',

@@ -55,6 +55,11 @@ class DappStoreItem {
     return p.joinAll([i.filesDirectory, ...icon.split('/')]);
   }
 
+  /// The bundled copy of the dApp's own icon, for a bundled dApp that is
+  /// not installed yet (an installed one shows [iconFile], its package's
+  /// own file).
+  String? get iconAsset => installed == null ? bundled?.iconAsset : null;
+
   /// "5.3 MB download".
   String? get downloadLabel {
     final b = bundled;

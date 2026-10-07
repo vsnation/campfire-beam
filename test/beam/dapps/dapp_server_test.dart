@@ -101,7 +101,8 @@ void main() {
     expect(server.startUri.toString(), '${server.origin}/app/index.html');
   });
 
-  test('serves the page with the bridge first in <head>', () async {
+  test('serves the page with the bridge first in <head>, then the host '
+      'stylesheet', () async {
     final r = await raw(server.port, '/app/index.html');
     expect(r.status, 200);
     expect(r.headers['content-type'], 'text/html; charset=utf-8');
@@ -109,10 +110,12 @@ void main() {
     expect(
       r.text,
       contains(
-        '<head><script src="/__campfire/$token/bridge.js"></script>\n'
+        '<head><script src="/__campfire/$token/bridge.js"></script>'
+        '<link rel="stylesheet" href="/__campfire/$token/host.css">\n'
         '    <meta charset="utf-8" />',
       ),
     );
+    expect(server.stylesheetPath, '/__campfire/$token/host.css');
     expect(r.text, isNot(contains('qrc:///')));
     expect(r.text, contains('<script src="$dappQwebchannelShimPath">'));
   });
@@ -131,6 +134,40 @@ void main() {
     );
     expect((await raw(server.port, '/__campfire/bridge.js')).status, 404);
     expect((await raw(server.port, dappQwebchannelShimPath)).status, 200);
+  });
+
+  // The background the Qt wallet shows dApps on (dappHostStylesheet):
+  // same-origin, so the CSP needs nothing new, and per token like the
+  // bridge.
+  test('serves the host stylesheet for this token only', () async {
+    final r = await raw(server.port, '/__campfire/$token/host.css');
+    expect(r.status, 200);
+    expect(r.headers['content-type'], 'text/css; charset=utf-8');
+    expectHardened(r);
+    expect(r.headers['content-security-policy'], const DappCsp().header);
+    expect(r.text, dappHostStylesheet());
+    expect(r.text, contains('background-color: #042548;'));
+    final other = DappBridge.newToken();
+    expect((await raw(server.port, '/__campfire/$other/host.css')).status, 404);
+    expect((await raw(server.port, '/__campfire/host.css')).status, 404);
+    final head = await raw(
+      server.port,
+      '/__campfire/$token/host.css',
+      method: 'HEAD',
+    );
+    expect(head.status, 200);
+    expect(head.body, isEmpty);
+  });
+
+  test('a style the stylesheet cannot carry does not start', () async {
+    await expectLater(
+      DappServer.start(
+        inst,
+        bridgeToken: DappBridge.newToken(),
+        style: {...dappDefaultStyle, 'background_main': 'red}html{x:y'},
+      ),
+      throwsArgumentError,
+    );
   });
 
   test('serves files with their types, byte for byte', () async {
@@ -270,6 +307,21 @@ void main() {
   });
 
   group('pieces', () {
+    test('the stylesheet link goes right after the bridge', () {
+      final out = latin1.decode(
+        DappServer.injectBridge(
+          latin1.encode('<!doctype html><head><link href="own.css">'),
+          '/b.js',
+          stylesheetPath: '/h.css',
+        ),
+      );
+      expect(
+        out,
+        '<!doctype html><head><script src="/b.js"></script>'
+        '<link rel="stylesheet" href="/h.css"><link href="own.css">',
+      );
+    });
+
     test('bridge insertion falls back to <html>, the doctype, the start', () {
       String inject(String html) =>
           latin1.decode(DappServer.injectBridge(latin1.encode(html), '/b.js'));

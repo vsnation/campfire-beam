@@ -75,6 +75,9 @@ void main() {
         expect(m.startPath, 'app/index.html');
         expect(pkg.apiVersion, DappApiVersion.v7_0);
         expect(pkg.files.where((f) => f.path.contains('__MACOSX')), isEmpty);
+        // The store's bundled icon is this package's own, byte for byte.
+        final icon = pkg.files.firstWhere((f) => f.path == m.iconPath);
+        expect(File(entry.iconAsset).readAsBytesSync(), icon.bytes);
 
         final tmp = await Directory.systemTemp.createTemp('cfb-bundled-');
         DappServer? server;
@@ -98,7 +101,9 @@ void main() {
           expect(headers['content-security-policy'], entry.csp.header);
           expect(headers['content-type'], 'text/html; charset=utf-8');
           final html = utf8.decode(body);
-          final tag = '<script src="/__campfire/$token/bridge.js"></script>';
+          final tag =
+              '<script src="/__campfire/$token/bridge.js"></script>'
+              '<link rel="stylesheet" href="/__campfire/$token/host.css">';
           final headAt = RegExp(
             r'<head[^>]*>',
             caseSensitive: false,

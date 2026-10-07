@@ -456,6 +456,9 @@ flutter:
 #    - assets/beam/icons/
 ## The BEAM desktop wallet's generic asset icons (Apache-2.0, NOTICE.txt there).
 #    - assets/beam/icons/generic/
+## The pinned dApps' own icons, for the store before install (Apache-2.0,
+## NOTICE.txt there). Bundled, never fetched.
+#    - assets/beam/dapps/
 ## The Beam girl (Campfire for BEAM's character, in place of Firo's Sparky):
 ## static WebP stickers and animated .tgs (gzipped Lottie).
 #    - assets/beam/stickers/static/

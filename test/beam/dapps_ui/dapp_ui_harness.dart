@@ -137,6 +137,21 @@ Future<void> precacheImages(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// Lets asset SVGs and images load for real (asset reads and decoding run
+/// outside flutter_test's fake clock), then pumps: goldens of the store show
+/// the bundled dApp icons.
+Future<void> settleIcons(WidgetTester tester) async {
+  await tester.pump();
+  await tester.runAsync(() async {
+    for (final e in find.byType(Image).evaluate()) {
+      // A missing image is the widget's errorBuilder's business.
+      await precacheImage((e.widget as Image).image, e, onError: (_, _) {});
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  });
+  await tester.pumpAndSettle();
+}
+
 /// A wallet link with fixed answers.
 class FakeWalletLink implements DappWalletLink {
   FakeWalletLink({

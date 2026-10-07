@@ -25,6 +25,7 @@ import 'package:stackwallet/wallets/beam/dapps/host/dapp_package_fetcher.dart';
 import 'package:stackwallet/wallets/beam/dapps/host/dapp_store_controller.dart';
 import 'package:stackwallet/pages/beam/dapps/dapp_browser_view.dart';
 import 'package:stackwallet/pages/beam/dapps/dapp_store_view.dart';
+import 'package:stackwallet/widgets/beam/dapps/dapp_avatar.dart';
 
 import '../dapps/dapp_test_zip.dart';
 import 'dapp_ui_harness.dart';
@@ -137,6 +138,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await settleIcons(tester);
   }
 
   testWidgets('store: installed and bundled dApps (phone)', (tester) async {
@@ -175,6 +177,24 @@ void main() {
     await pumpStore(tester, c, desktop: true);
 
     expect(find.text('Available'), findsOneWidget);
+    // Not installed yet: each shows its own icon, bundled in the app.
+    for (final e in dappBundledCatalogue.where((e) => e.guid != dexGuid)) {
+      expect(
+        find.byWidgetPredicate(
+          (w) => w is DappAvatar && w.iconAsset == e.iconAsset,
+          skipOffstage: false,
+        ),
+        findsOneWidget,
+        reason: e.name,
+      );
+    }
+    // Installed: the icon from its own package (none in these test ones).
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is DappAvatar && w.name == 'Beam DEX' && w.iconAsset != null,
+      ),
+      findsNothing,
+    );
     for (final e in dappBundledCatalogue.where((e) => e.guid != dexGuid)) {
       expect(
         find.text(e.name, skipOffstage: false),

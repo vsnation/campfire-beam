@@ -22,6 +22,10 @@
 //   for "Review". The page never decides when the sheet appears.
 // * A request Campfire refuses: says so, and that nothing was sent.
 // * A blank page while it loads: "Opening <dApp>…" with progress.
+// * A white or pink page behind the dApp: dApps are drawn for the BEAM
+//   wallet's dark-blue page (white text on it), so the whole dApp area —
+//   while it loads, behind the page, and the page itself (the server's host
+//   stylesheet) — is that background, never Campfire's.
 // * A platform without the dApp window: says so, and offers the way back.
 // * A link that silently leaves the wallet: links to other sites ask first,
 //   then open in the system browser.
@@ -47,6 +51,7 @@ import '../../../wallets/beam/dapps/host/dapp_host_session.dart';
 import '../../../widgets/background.dart';
 import '../../../widgets/beam/dapps/dapp_approval_banner.dart';
 import '../../../widgets/beam/dapps/dapp_approval_sheet.dart';
+import '../../../widgets/beam/dapps/dapp_surface.dart';
 import '../../../widgets/beam/dapps/dapp_tap_tracker.dart';
 import '../../../widgets/beam/dapps/dapp_webview.dart';
 import '../../../widgets/conditional_parent.dart';
@@ -119,6 +124,12 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
   /// How often [_walletNotReady] is read again.
   static const _readyPollInterval = Duration(seconds: 3);
 
+  /// The "Opening…" cover goes after this long even if the page never
+  /// reports it has finished loading (a stalled image, say): by then it has
+  /// painted, and hiding a working page would be worse.
+  static const _coverAtMost = Duration(seconds: 12);
+  Timer? _coverTimer;
+
   bool get _desktop => widget.desktop ?? Util.isDesktop;
   bool get _available => widget.webviewAvailable ?? dappWebviewAvailable();
   String get _name => widget.installation.manifest.name;
@@ -144,6 +155,7 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
   @override
   void dispose() {
     _readyPoll?.cancel();
+    _coverTimer?.cancel();
     _disposed = true;
     widget.host.presenter.detach(_showApproval);
     final banner = _banner;
@@ -186,7 +198,9 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
       if (!mounted) return;
       final glue = await DappWebviewGlue.create(
         session: session,
-        background: Theme.of(context).extension<StackColors>()!.background,
+        // What the page is drawn on, for platforms that honour it until
+        // the page paints (Android, iOS); the cover below hides the rest.
+        background: dappBackgroundColour(),
         onExternalLink: (uri) => unawaited(_offerExternal(uri)),
         onLoaded: () {
           if (mounted) setState(() => _loading = false);
@@ -201,6 +215,10 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
         },
       );
       if (mounted) setState(() => _glue = glue);
+      _coverTimer?.cancel();
+      _coverTimer = Timer(_coverAtMost, () {
+        if (mounted && _loading) setState(() => _loading = false);
+      });
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -462,13 +480,20 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            body: SafeArea(child: child),
+            // The dApp's background reaches into the safe-area margins.
+            body: ColoredBox(
+              color: _showsDapp ? dappBackgroundColour() : colors.background,
+              child: SafeArea(child: child),
+            ),
           ),
         ),
         child: _body(context, desktop),
       ),
     );
   }
+
+  /// True while the dApp area (not a Campfire message) fills the page.
+  bool get _showsDapp => _available && _failure == null;
 
   Widget _body(BuildContext context, bool desktop) {
     final colors = Theme.of(context).extension<StackColors>()!;
@@ -521,33 +546,29 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
                   .copyWith(color: colors.warningForeground),
             ),
           ),
-        if (_loading)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: Column(
+        Expanded(
+          child: DappSurface(
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                const LinearProgressIndicator(),
-                const SizedBox(height: 8),
-                Text(
-                  "Opening $_name…",
-                  style: STextStyles.smallMed12(context)
-                      .copyWith(color: colors.textDark3),
-                ),
+                if (glue != null)
+                  Listener(
+                    behavior: HitTestBehavior.translucent,
+                    onPointerDown: (e) =>
+                        _taps.down(e.pointer, e.position, DateTime.now()),
+                    onPointerUp: (e) =>
+                        _taps.up(e.pointer, e.position, DateTime.now()),
+                    onPointerCancel: (e) => _taps.cancel(e.pointer),
+                    child: glue.widget(),
+                  ),
+                // Over the webview until the page has loaded: a webview
+                // that has not painted yet is white on macOS whatever
+                // colour it is given.
+                if (_loading)
+                  DappOpening(key: const Key('dappOpening'), name: _name),
               ],
             ),
           ),
-        Expanded(
-          child: glue == null
-              ? const SizedBox.shrink()
-              : Listener(
-                  behavior: HitTestBehavior.translucent,
-                  onPointerDown: (e) =>
-                      _taps.down(e.pointer, e.position, DateTime.now()),
-                  onPointerUp: (e) =>
-                      _taps.up(e.pointer, e.position, DateTime.now()),
-                  onPointerCancel: (e) => _taps.cancel(e.pointer),
-                  child: glue.widget(),
-                ),
         ),
       ],
     );

@@ -234,8 +234,14 @@ String dappBridgeScript({
 }
 
 /// The Qt wallet's mainnet palette (`ui/view/color_themes/Mainnet.qml:6-49`)
-/// under the keys dApps read. The UI should pass Campfire's theme colours
-/// with the same keys.
+/// under the keys dApps read.
+///
+/// Every dApp gets these, not Campfire's theme: the packages are drawn for
+/// them (white text, controls tinted for a dark-blue page), so Campfire's
+/// light colours would make them unreadable. The 9 bundled packages read
+/// `background_main`, `background_main_top`, `background_popup`,
+/// `content_main`, `validator_error`, `appsGradientOffset` and
+/// `appsGradientTop`, nothing else (checked by reading each, 2026-10-07).
 const Map<String, Object> dappDefaultStyle = {
   'content_main': '#ffffff',
   'background_main': '#042548',
@@ -246,6 +252,60 @@ const Map<String, Object> dappDefaultStyle = {
   'appsGradientOffset': -95,
   'appsGradientTop': 135,
 };
+
+/// The background of the page a dApp is shown on, as the Qt wallet shows
+/// it, from a [dappDefaultStyle]-shaped [style].
+///
+/// The Qt wallet shows a dApp in a web view with a transparent background
+/// over its own window (beam-ui `ui/view/applications/AppView.qml`,
+/// `backgroundColor: "transparent"`), and that window is `background_main`
+/// with a 230 px `background_main_top` gradient from its top
+/// (`ui/view/main.qml`). The dApp view starts 95 px down, so the part it
+/// sees runs from `appsGradientOffset` (-95 px) to `appsGradientTop`
+/// (135 px): the same pair dApps use when they paint it themselves.
+///
+/// The bundled packages rely on it (read 2026-10-07): their CSS sets
+/// `html, body { … color: white }` and no background. `nft-marketplace`
+/// paints this gradient on `<body>` itself, but only when it is *not* in the
+/// Qt wallet (`if (!Utils.isDesktop())`), and `dao-core-app` paints it on
+/// `<body>` only once its shader has loaded. A host that lets the page's
+/// own default show through (white in WebKit; macOS WKWebView ignores
+/// `setBackgroundColor`) shows white text on white.
+///
+/// Served as a same-origin stylesheet linked before the page's own, on
+/// `html` only, so a page that paints its own background still wins.
+/// Throws [ArgumentError] when a colour is not `#rrggbb` / `#rrggbbaa` or an
+/// offset is not an int, so nothing else can reach the stylesheet.
+String dappHostStylesheet([Map<String, Object> style = dappDefaultStyle]) {
+  final main = _cssColour(style, 'background_main');
+  final top = _cssColour(style, 'background_main_top');
+  final offset = _cssInt(style, 'appsGradientOffset');
+  final end = _cssInt(style, 'appsGradientTop');
+  return '/* Campfire: the BEAM wallet background behind this dApp. */\n'
+      'html {\n'
+      '  background-color: $main;\n'
+      '  background-image: linear-gradient(to bottom, '
+      '$top ${offset}px, $main ${end}px, $main);\n'
+      '  background-repeat: no-repeat;\n'
+      '  background-attachment: fixed;\n'
+      '}\n';
+}
+
+final _hexColour = RegExp(r'^#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$');
+
+String _cssColour(Map<String, Object> style, String key) {
+  final v = style[key];
+  if (v is! String || !_hexColour.hasMatch(v)) {
+    throw ArgumentError.value(v, key, '#rrggbb colour expected');
+  }
+  return v.toLowerCase();
+}
+
+int _cssInt(Map<String, Object> style, String key) {
+  final v = style[key];
+  if (v is! int) throw ArgumentError.value(v, key, 'int expected');
+  return v;
+}
 
 /// JSON is valid JavaScript except for U+2028/U+2029 in strings on engines
 /// older than ES2019; escape them anyway.
