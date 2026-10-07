@@ -22,6 +22,7 @@ import '../../providers/providers.dart';
 import '../../providers/ui/address_book_providers/address_book_filter_provider.dart';
 import '../../themes/stack_colors.dart';
 import '../../utilities/assets.dart';
+import '../../utilities/beam_app_identity.dart';
 import '../../utilities/constants.dart';
 import '../../utilities/text_styles.dart';
 import '../../utilities/util.dart';
@@ -185,6 +186,9 @@ class _DesktopAddressBook extends ConsumerState<DesktopAddressBook> {
         .where(
           (e) => ref.read(addressBookServiceProvider).matches(_searchTerm, e),
         )
+        // Campfire for BEAM: your own wallets' entry is always a favorite;
+        // listed under Favorites and again here it read as a duplicate.
+        .where((e) => !(BeamAppIdentity.isActive && e.customId == "default"))
         .toList();
 
     final favorites = contacts
