@@ -48,8 +48,84 @@ String _randomAlnum(int length) {
 }
 
 Future<bool> _running(int pid) async {
+  if (Platform.isWindows) {
+    final r = await Process.run('tasklist', [
+      '/FI',
+      'PID eq $pid',
+      '/NH',
+      '/FO',
+      'CSV',
+    ]);
+    return '${r.stdout}'.contains('"$pid"');
+  }
   final r = await Process.run('ps', ['-p', '$pid', '-o', 'comm=']);
   return r.exitCode == 0 && '${r.stdout}'.trim().isNotEmpty;
+}
+
+/// Every process as "<pid> <command line>", one per line: `ps` on macOS and
+/// Linux, the process table (Win32_Process) on Windows.
+Future<String> _processes() async {
+  if (Platform.isWindows) {
+    final r = await Process.run('powershell', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      r'Get-CimInstance Win32_Process | '
+          r'ForEach-Object { "$($_.ProcessId) $($_.CommandLine)" }',
+    ]);
+    expect(r.exitCode, 0, reason: '${r.stderr}');
+    return '${r.stdout}'.replaceAll('\r', '');
+  }
+  final r = await Process.run('ps', ['-axo', 'pid,args']);
+  expect(r.exitCode, 0);
+  return '${r.stdout}';
+}
+
+/// The TCP addresses [pid] listens on ("127.0.0.1:64397"): lsof on macOS
+/// and Linux, netstat on Windows.
+Future<List<String>> _listening(int pid) async {
+  if (Platform.isWindows) {
+    final r = await Process.run('netstat', ['-ano', '-p', 'TCP']);
+    return [
+      for (final l in '${r.stdout}'.split('\n'))
+        if (l.trim().startsWith('TCP') &&
+            l.contains('LISTENING') &&
+            l.trim().split(RegExp(r'\s+')).last == '$pid')
+          l.trim().split(RegExp(r'\s+'))[1],
+    ];
+  }
+  final r = await Process.run('lsof', [
+    '-nP',
+    '-a',
+    '-p',
+    '$pid',
+    '-iTCP',
+    '-sTCP:LISTEN',
+  ]);
+  return [
+    for (final l in '${r.stdout}'.split('\n').skip(1))
+      for (final t in l.trim().split(RegExp(r'\s+')))
+        if (RegExp(r':\d+$').hasMatch(t)) t,
+  ];
+}
+
+/// Only this user can read [path]: mode [posix] on macOS and Linux; on
+/// Windows, no access entry for Everyone, Users or Authenticated Users
+/// (icacls), as for anything in the user's profile.
+Future<void> _expectPrivate(String path, int posix) async {
+  if (Platform.isWindows) {
+    final r = await Process.run('icacls', [path]);
+    expect(r.exitCode, 0, reason: '${r.stdout}${r.stderr}');
+    for (final broad in const [
+      'Everyone:',
+      r'BUILTIN\Users:',
+      r'NT AUTHORITY\Authenticated Users:',
+    ]) {
+      expect('${r.stdout}', isNot(contains(broad)), reason: path);
+    }
+    return;
+  }
+  expect(await posixMode(path), posix);
 }
 
 const _nodes = [
@@ -144,7 +220,7 @@ void main() {
         );
         _evidence('initWallet took ${sw.elapsedMilliseconds} ms');
         expect(await File(p.join(walletDir, 'wallet.db')).exists(), isTrue);
-        expect(await posixMode(p.join(walletDir, 'wallet.db')), 0x180);
+        await _expectPrivate(p.join(walletDir, 'wallet.db'), 0x180);
       });
 
       test('openWallet on a public node reaches is_in_sync', () async {
@@ -196,12 +272,10 @@ void main() {
       });
 
       test('no password, phrase or ACL key on any process argv', () async {
-        final ps = await Process.run('ps', ['-axo', 'pid,args']);
-        final out = '${ps.stdout}';
-        expect(ps.exitCode, 0);
+        final out = await _processes();
         // Other users' and agents' processes may carry hashes; the password
         // and phrase must appear nowhere, any 64-hex token not in ours.
-        expectNoSecret(out, 'ps -axo pid,args', hexCheck: false);
+        expectNoSecret(out, 'process list', hexCheck: false);
         final ours = out
             .split('\n')
             .where((l) => l.contains(root.path) || l.contains(binDir!))
@@ -215,7 +289,7 @@ void main() {
             .where((l) => l.trimLeft().startsWith('${session!.pid} '))
             .toList();
         expect(mine, hasLength(1));
-        _evidence('ps -axo pid,args | wallet-api child:');
+        _evidence('process list | wallet-api child:');
         _evidence('  ${tilde(mine.single.trim())}');
         expect(mine.single, contains('--use_acl=1'));
         expect(mine.single, contains('--config_file='));
@@ -237,38 +311,23 @@ void main() {
           isEmpty,
         );
         expect(SecretFiles.livePaths, isEmpty);
-        expect(await posixMode(host.runDir), 0x1c0);
+        await _expectPrivate(host.runDir, 0x1c0);
       });
 
       test('record what wallet-api listens on', () async {
         final s = session!;
-        final r = await Process.run('lsof', [
-          '-nP',
-          '-a',
-          '-p',
-          '${s.pid}',
-          '-iTCP',
-          '-sTCP:LISTEN',
-        ]);
-        final out = '${r.stdout}'.trim();
-        _evidence('lsof -nP -a -p <wallet-api> -iTCP -sTCP:LISTEN:');
-        for (final line in out.split('\n')) {
-          _evidence('  $line');
-        }
-        expect(out, contains(':${s.port} (LISTEN)'));
-        if (out.contains('*:${s.port}')) {
-          _evidence(
-            'NOTE: stock wallet-api binds 0.0.0.0:${s.port}; '
-            '--ip_whitelist + ACL guard it until B-BIN-1 patches the bind',
-          );
-        }
+        final listening = await _listening(s.pid);
+        _evidence('wallet-api listens on: $listening');
+        expect(listening, contains('127.0.0.1:${s.port}'));
+        // The pinned cores carry patch 0001: loopback only.
+        expect(listening.every((a) => a.startsWith('127.0.0.1:')), isTrue);
         // The captured console log is private and lives with the wallet.
-        final logs = await Directory(
-          ProcessHost.walletLogsDir(walletDir),
-        ).list().toList();
+        final logs = await Directory(ProcessHost.walletLogsDir(walletDir))
+            .list()
+            .toList();
         for (final f in logs.whereType<File>()) {
           if (p.basename(f.path).startsWith('wallet-api-')) {
-            expect(await posixMode(f.path), 0x180);
+            await _expectPrivate(f.path, 0x180);
             expectNoSecret(
               await f.readAsString(),
               'captured log',
@@ -320,8 +379,7 @@ void main() {
         await s.close();
         expect(s.isClosed, isTrue);
         expect(await _running(pid), isFalse);
-        final ps = await Process.run('ps', ['-axo', 'args']);
-        expect('${ps.stdout}', isNot(contains(root.path)));
+        expect(await _processes(), isNot(contains(root.path)));
         expect(await File(p.join(walletDir, '.wallet.lock')).exists(), isFalse);
         _evidence(
           'after close: pid $pid running=false, no process '
@@ -344,8 +402,7 @@ void main() {
           'wrong password -> wrongPassword in '
           '${sw.elapsedMilliseconds} ms',
         );
-        final ps = await Process.run('ps', ['-axo', 'args']);
-        expect('${ps.stdout}', isNot(contains(root.path)));
+        expect(await _processes(), isNot(contains(root.path)));
         final names = (await Directory(
           host.runDir,
         ).list().toList()).map((e) => p.basename(e.path));
