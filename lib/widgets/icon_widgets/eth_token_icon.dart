@@ -23,6 +23,7 @@ import '../../utilities/assets.dart';
 import '../../utilities/default_eth_tokens.dart';
 import '../../wallets/crypto_currency/crypto_currency.dart';
 import '../loading_indicator.dart';
+import '../tor_aware_network_image.dart';
 
 class EthTokenIcon extends ConsumerStatefulWidget {
   const EthTokenIcon({
@@ -87,11 +88,12 @@ class _EthTokenIconState extends ConsumerState<EthTokenIcon> {
         height: widget.size,
       );
     } else {
-      return SvgPicture.network(
+      return TorAwareNetworkImage(
         imageUrl!,
+        svg: true,
         width: widget.size,
         height: widget.size,
-        placeholderBuilder: (_) => const LoadingIndicator(),
+        placeholder: const LoadingIndicator(),
       );
     }
   }

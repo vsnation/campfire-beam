@@ -32,6 +32,7 @@ import '../../../../../widgets/desktop/primary_button.dart';
 import '../../../../../widgets/desktop/secondary_button.dart';
 import '../../../../../widgets/rounded_white_container.dart';
 import '../../../../../widgets/stack_dialog.dart';
+import '../../../../../widgets/tor_aware_network_image.dart';
 
 class StackThemeCard extends ConsumerStatefulWidget {
   const StackThemeCard({super.key, required this.data});
@@ -222,7 +223,7 @@ class _StackThemeCardState extends ConsumerState<StackThemeCard> {
                       aspectRatio: 1,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(100),
-                        child: Image.network(widget.data.previewImageUrl),
+                        child: TorAwareNetworkImage(widget.data.previewImageUrl),
                       ),
                     )
                     : Builder(

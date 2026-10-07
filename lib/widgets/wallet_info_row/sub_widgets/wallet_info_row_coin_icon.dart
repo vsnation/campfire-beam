@@ -22,6 +22,7 @@ import '../../../themes/coin_icon_provider.dart';
 import '../../../themes/theme_providers.dart';
 import '../../../utilities/constants.dart';
 import '../../../wallets/crypto_currency/crypto_currency.dart';
+import '../../tor_aware_network_image.dart';
 
 class WalletInfoCoinIcon extends ConsumerStatefulWidget {
   const WalletInfoCoinIcon({
@@ -89,7 +90,12 @@ class _WalletInfoCoinIconState extends ConsumerState<WalletInfoCoinIcon> {
         padding: EdgeInsets.all(widget.size / 5),
         child:
             imageUrl != null && imageUrl!.isNotEmpty
-                ? SvgPicture.network(imageUrl!, width: 20, height: 20)
+                ? TorAwareNetworkImage(
+                  imageUrl!,
+                  svg: true,
+                  width: 20,
+                  height: 20,
+                )
                 : SvgPicture.file(
                   File(ref.watch(coinIconProvider(widget.coin))),
                   width: 20,

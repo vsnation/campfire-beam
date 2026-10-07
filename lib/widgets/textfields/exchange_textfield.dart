@@ -22,6 +22,7 @@ import '../../utilities/assets.dart';
 import '../../utilities/text_styles.dart';
 import '../../utilities/util.dart';
 import '../loading_indicator.dart';
+import '../tor_aware_network_image.dart';
 
 class ExchangeTextField extends ConsumerStatefulWidget {
   const ExchangeTextField({
@@ -181,10 +182,11 @@ class _ExchangeTextFieldState extends ConsumerState<ExchangeTextField> {
                               } else if (widget.currency != null &&
                                   widget.currency!.image.isNotEmpty) {
                                 return Center(
-                                  child: SvgPicture.network(
+                                  child: TorAwareNetworkImage(
                                     widget.currency!.image,
+                                    svg: true,
                                     height: 18,
-                                    placeholderBuilder: (_) => Container(
+                                    placeholder: Container(
                                       width: 18,
                                       height: 18,
                                       decoration: BoxDecoration(

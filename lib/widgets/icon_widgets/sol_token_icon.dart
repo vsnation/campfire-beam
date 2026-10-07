@@ -21,6 +21,7 @@ import '../../themes/coin_icon_provider.dart';
 import '../../utilities/logger.dart';
 import '../../wallets/crypto_currency/crypto_currency.dart';
 import '../loading_indicator.dart';
+import '../tor_aware_network_image.dart';
 
 /// Token icon widget for Solana tokens.
 ///
@@ -84,11 +85,12 @@ class _SolTokenIconState extends ConsumerState<SolTokenIcon> {
       );
     } else {
       // Display token icon from network.
-      return SvgPicture.network(
+      return TorAwareNetworkImage(
         imageUrl!,
+        svg: true,
         width: widget.size,
         height: widget.size,
-        placeholderBuilder: (_) => const LoadingIndicator(),
+        placeholder: const LoadingIndicator(),
       );
     }
   }

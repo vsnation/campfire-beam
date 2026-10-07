@@ -30,6 +30,7 @@ import '../../../../utilities/default_eth_tokens.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../utilities/util.dart';
 import '../../../../widgets/app_icon.dart';
+import '../../../../widgets/tor_aware_network_image.dart';
 
 class CoinSelectItem extends ConsumerStatefulWidget {
   const CoinSelectItem({super.key, required this.entity});
@@ -145,30 +146,21 @@ class _CoinSelectItemState extends ConsumerState<CoinSelectItem> {
                 SvgPicture.asset(Assets.svg.rsFiro, width: 26, height: 26)
               else
                 tokenImageUri != null
-                    ? tokenImageUri!.toLowerCase().endsWith(".svg")
-                          ? SvgPicture.network(
-                              tokenImageUri!,
-                              width: 26,
-                              height: 26,
-                              placeholderBuilder: (_) =>
-                                  const AppIcon(width: 26, height: 26),
-                            )
-                          : Image.network(
-                              tokenImageUri!,
-                              width: 26,
-                              height: 26,
-                              errorBuilder: (_, _, _) => SvgPicture.file(
-                                File(
-                                  ref.watch(
-                                    coinIconProvider(
-                                      widget.entity.cryptoCurrency,
-                                    ),
-                                  ),
-                                ),
-                                width: 26,
-                                height: 26,
-                              ),
-                            )
+                    ? TorAwareNetworkImage(
+                        tokenImageUri!,
+                        width: 26,
+                        height: 26,
+                        placeholder: const AppIcon(width: 26, height: 26),
+                        error: SvgPicture.file(
+                          File(
+                            ref.watch(
+                              coinIconProvider(widget.entity.cryptoCurrency),
+                            ),
+                          ),
+                          width: 26,
+                          height: 26,
+                        ),
+                      )
                     : SvgPicture.file(
                         File(
                           ref.watch(
