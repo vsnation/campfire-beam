@@ -435,6 +435,35 @@ void main() {
       await finish(tester, w);
     });
 
+    // Seen in the DMG test: in the wallet's tab column (about 460 pt wide,
+    // under the balance card) the stacked QR pushed "Copy address" below
+    // the fold. A column that wide shows the QR beside the address.
+    testWidgets('in the wallet column, the QR sits beside the address and '
+        '"Copy address" is in view', (tester) async {
+      final w = await world(tester, core: ReceiveCore());
+      await pumpScreen(
+        tester,
+        _desktopColumn(w.wallet.walletId, FakeClipboard()),
+        backend: w.backend(),
+        size: const Size(600, 560),
+      );
+      await settle(tester);
+      final qr = tester.getRect(find.byKey(BeamReceiveKeys.qr));
+      final address = tester.getRect(find.byKey(BeamReceiveKeys.address));
+      expect(address.left, greaterThan(qr.right), reason: 'beside, not under');
+      expect(
+        tester.getRect(find.byKey(BeamReceiveKeys.copy)).bottom,
+        lessThanOrEqualTo(560),
+      );
+      if (isMacHost) {
+        await expectLater(
+          find.byKey(goldenKey),
+          matchesGoldenFile('goldens/receive_desktop_wallet_column.png'),
+        );
+      }
+      await finish(tester, w);
+    });
+
     testWidgets('on a public node: disabled with the reason, opens the '
         'desktop node settings', (tester) async {
       final w = await world(tester, core: ReceiveCore()..names = ['alice']);

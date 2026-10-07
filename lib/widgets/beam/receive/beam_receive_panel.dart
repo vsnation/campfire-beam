@@ -284,7 +284,48 @@ class _AddressCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              if (address != null) ...[
+              // Desktop: the QR beside the address, so "Copy address" under
+              // the card stays in view in the wallet's tab column (the DMG
+              // test found it below the fold with the QR stacked on top).
+              if (address != null && desktop && box.maxWidth >= 300)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    BeamReceiveQr(
+                      key: BeamReceiveKeys.qr,
+                      address: address,
+                      size: 140,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SelectableText(
+                            address,
+                            key: BeamReceiveKeys.address,
+                            style: STextStyles.desktopTextExtraExtraSmall(
+                              context,
+                            ).copyWith(color: colors.textDark),
+                          ),
+                          const SizedBox(height: 10),
+                          const BeamNote(
+                            BeamReceiveText.regularExplainer,
+                            key: BeamReceiveKeys.explainer,
+                          ),
+                          if (model.offline) ...[
+                            const SizedBox(height: 6),
+                            const BeamNote(
+                              BeamReceiveText.offlineWarning,
+                              warning: true,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              else if (address != null) ...[
                 Center(
                   child: BeamReceiveQr(
                     key: BeamReceiveKeys.qr,
