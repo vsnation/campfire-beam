@@ -14,7 +14,7 @@ lose while it is in beta.
 ## Download
 
 Get the latest build from [Releases](https://github.com/vsnation/campfire-beam/releases): macOS (Apple
-Silicon) `.dmg`, Android (arm64) `.apk`, and Linux and Windows builds as they are published. Every file
+Silicon) `.dmg`, Android (arm64) `.apk`, Linux (x86_64) `.tar.gz` and Windows (x64) `.zip`. Every file
 is listed in `SHA256SUMS.txt`; check it before you install:
 
 ```bash
@@ -26,6 +26,10 @@ certutil -hashfile Campfire-BEAM-<version>-windows-x86_64.zip SHA256   # Windows
   first launch needs right-click → Open.
 - **Android:** open the APK and allow installing from this source. The signing certificate's SHA-256 is
   `A6:D8:81:7E:AB:D6:A5:19:F4:77:88:70:54:0A:0D:96:72:A1:BA:46:6B:44:7E:7E:06:C5:11:B0:AD:C0:E9:9F`.
+- **Linux:** unpack the archive and run `campfirebeam` in its folder. Needs glibc 2.38 or later (Ubuntu
+  24.04, Fedora 39, Debian 13, Mint 22 or newer) and a GTK 3 desktop.
+- **Windows:** unzip and run `campfirebeam.exe`. It is not code-signed yet, so SmartScreen may ask:
+  More info → Run anyway.
 - It installs beside the original Campfire (app id `com.vsnation.campfirebeam`) and never touches it.
 
 ## Screenshots
@@ -72,7 +76,7 @@ claim, dApps.
 - [x] Every feature one or two taps from the wallet (side menu on desktop, bottom bar on phones)
 - [x] Dashboard: every valuable asset with its fiat value, cached prices
 - [x] macOS DMG and Android APK
-- [ ] Linux and Windows builds (the BEAM core for both is built in CI)
+- [x] Linux and Windows builds (their BEAM core is built and verified in CI)
 - [ ] iOS on the App Store (runs on the iOS Simulator today)
 
 **Release 2**
