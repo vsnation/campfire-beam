@@ -85,6 +85,8 @@ class DappHostSession {
       style: style,
       csp: csp,
       preferredPort: await installer.savedPort(installation.guid),
+      // Another dApp's origin would give this one its browser storage.
+      avoidPorts: await installer.portsOfOtherDapps(installation.guid),
     );
     try {
       await installer.savePort(installation.guid, server.port);

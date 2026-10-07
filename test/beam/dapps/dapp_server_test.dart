@@ -306,6 +306,19 @@ void main() {
     }
   });
 
+  test("never serves on another dApp's origin, even a free one", () async {
+    final port = server.port;
+    await server.close();
+    server = await DappServer.start(
+      inst,
+      bridgeToken: token,
+      preferredPort: port,
+      avoidPorts: {port},
+    );
+    expect(server.port, isNot(port));
+    expect(server.portChanged, isTrue);
+  });
+
   group('pieces', () {
     test('the stylesheet link goes right after the bridge', () {
       final out = latin1.decode(

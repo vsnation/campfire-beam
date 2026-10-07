@@ -151,6 +151,7 @@ class DappServer {
     Map<String, Object> style = dappDefaultStyle,
     DappCsp csp = const DappCsp(),
     int? preferredPort,
+    Set<int> avoidPorts = const {},
   }) async {
     final header = csp.header; // validates the origins
     dappBridgeScript(token: bridgeToken, style: style); // validates both
@@ -158,7 +159,7 @@ class DappServer {
     final root = await Directory(installation.filesDirectory)
         .resolveSymbolicLinks();
     HttpServer? server;
-    if (preferredPort != null) {
+    if (preferredPort != null && !avoidPorts.contains(preferredPort)) {
       try {
         server = await HttpServer.bind(
           InternetAddress.loopbackIPv4,
@@ -168,7 +169,7 @@ class DappServer {
         server = null;
       }
     }
-    server ??= await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    server ??= await _bindAvoiding(avoidPorts);
     server
       ..idleTimeout = const Duration(seconds: 30)
       ..autoCompress = false
@@ -188,6 +189,27 @@ class DappServer {
   }
 
   Future<void> close() => _server.close(force: true);
+
+  /// A free loopback port that is none of [avoid] (other dApps' origins):
+  /// ports the system offers from [avoid] stay held while the next is
+  /// asked for, so it cannot offer them again.
+  static Future<HttpServer> _bindAvoiding(Set<int> avoid) async {
+    final held = <HttpServer>[];
+    try {
+      for (var i = 0; i < 64; i++) {
+        final s = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        if (!avoid.contains(s.port)) return s;
+        held.add(s);
+      }
+      throw const SocketException(
+        "no free loopback port outside the other dApps' origins",
+      );
+    } finally {
+      for (final s in held) {
+        await s.close(force: true);
+      }
+    }
+  }
 
   static const _permissions =
       'camera=(), microphone=(), geolocation=(), payment=(), usb=(), '
