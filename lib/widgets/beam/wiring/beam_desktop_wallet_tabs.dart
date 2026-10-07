@@ -74,6 +74,18 @@ class _BeamDesktopWalletTabsState extends ConsumerState<BeamDesktopWalletTabs> {
     ref.listen<int>(pBeamShowHistoryRequest(widget.walletId), (_, _) {
       final i = widget.titles.indexOf('Transactions');
       if (i >= 0 && i != _selected) setState(() => _selected = i);
+      // The column may still be scrolled down to the Send button: bring the
+      // tabs back into view, or their labels sit cut off above the list.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        unawaited(
+          Scrollable.ensureVisible(
+            context,
+            duration: _duration,
+            alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+          ),
+        );
+      });
     });
     final colors = Theme.of(context).extension<StackColors>()!;
     final paused = ref.watch(pBeamHome(widget.walletId)).sendPausedReason;

@@ -21,17 +21,17 @@ import 'home_ui_support.dart';
 const _walletId = 'history-test';
 
 // Not const: the tabs assert that titles and children match.
-Widget _tabs() => Scaffold(
-  body: BeamDesktopWalletTabs(
-    walletId: _walletId,
-    titles: const ['Send', 'Receive', 'Transactions'],
-    children: const [
-      Text('send body'),
-      Text('receive body'),
-      Text('history body'),
-    ],
-  ),
+Widget _bareTabs() => BeamDesktopWalletTabs(
+  walletId: _walletId,
+  titles: const ['Send', 'Receive', 'Transactions'],
+  children: const [
+    Text('send body'),
+    Text('receive body'),
+    Text('history body'),
+  ],
 );
+
+Widget _tabs() => Scaffold(body: _bareTabs());
 
 void main() {
   testWidgets('a history request brings the tabs to Transactions, again '
@@ -64,6 +64,40 @@ void main() {
 
     request();
     await tester.pumpAndSettle();
+    expect(find.text('history body'), findsOneWidget);
+  });
+
+  testWidgets('a request from further down the page brings the tabs back '
+      'into view', (tester) async {
+    await pumpHome(
+      tester,
+      frame: Scaffold(
+        body: ListView(
+          children: [
+            const SizedBox(height: 900),
+            _bareTabs(),
+            const SizedBox(height: 900),
+          ],
+        ),
+      ),
+      overrides: homeOverrides(
+        source: FakeHomeSource(),
+        balance: beamBalance(spendable: 1),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // Scrolled so the tab labels sit above the top edge (as after scrolling
+    // down to the Send button), the content still on screen.
+    await tester.drag(find.byType(ListView), const Offset(0, -950));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(find.byType(BeamDesktopWalletTabs)).dy, lessThan(0));
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(Scaffold)),
+    );
+    container.read(pBeamShowHistoryRequest(_walletId).state).state++;
+    await tester.pumpAndSettle();
+    final top = tester.getTopLeft(find.byType(BeamDesktopWalletTabs)).dy;
+    expect(top, greaterThanOrEqualTo(0), reason: 'tab labels in view');
     expect(find.text('history body'), findsOneWidget);
   });
 
