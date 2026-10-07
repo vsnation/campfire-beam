@@ -72,7 +72,6 @@ class BeamTxView {
     this.kernelId,
     this.comment,
     this.failureReason,
-    this.confirmations,
     this.height,
     this.counterparty,
     this.contractIds = const [],
@@ -140,7 +139,6 @@ class BeamTxView {
       kernelId: _nonEmpty(od[TxV2OdKeys.beamKernelId]),
       comment: comment is String && comment.trim().isNotEmpty ? comment : null,
       failureReason: _nonEmpty(od[TxV2OdKeys.beamFailureReason]),
-      confirmations: od[TxV2OdKeys.beamConfirmations] as int?,
       height: tx.height,
       counterparty: tx.type == TransactionType.unknown ? null : counterparty,
       contractIds: ids is List
@@ -184,7 +182,15 @@ class BeamTxView {
   final String? kernelId;
   final String? comment;
   final String? failureReason;
-  final int? confirmations;
+
+  /// Confirmations at [chainHeight] (the wallet's current height), counted
+  /// as the core counts them: blocks on top of the proof height. Null when
+  /// the transaction is in no block yet or the tip is unknown.
+  int? confirmationsAt(int chainHeight) {
+    final h = height;
+    if (h == null || h <= 0 || chainHeight <= 0) return null;
+    return chainHeight > h ? chainHeight - h : 0;
+  }
 
   /// Proof height of a completed transaction.
   final int? height;
@@ -230,7 +236,6 @@ class BeamTxView {
     kernel: kernelId,
     failureReason: failureReason,
     height: height,
-    confirmations: confirmations,
   );
 
   bool get canCancel => BeamTxActions.canCancel(toCore());

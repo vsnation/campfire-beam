@@ -314,6 +314,10 @@ void setSurface(WidgetTester tester, {required bool desktop, double? h}) {
 
 const kShot = ValueKey('beam-tx-ui-shot');
 
+/// The chain tip when test/beam/fixtures/tx_list.json was recorded: each
+/// completed row's `height` + `confirmations`.
+const kFixtureTipHeight = 3677099;
+
 /// [home] inside Campfire's theme with every BEAM provider faked.
 /// [coinScan] is a restore scan still looking for the wallet's coins;
 /// [restoredWithFunds] a restored wallet that holds something.
@@ -354,6 +358,9 @@ Widget app({
         ),
         pWalletCoin.overrideWithProvider(
           (_) => Provider<CryptoCurrency>((_) => kBeam),
+        ),
+        pWalletChainHeight.overrideWithProvider(
+          (_) => Provider<int>((_) => kFixtureTipHeight),
         ),
         themeAssetsProvider.overrideWithValue(
           StateController<IThemeAssets>(_themeIcons()),

@@ -41,6 +41,7 @@ import '../../../utilities/format.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../wallets/beam/rpc/beam_transport.dart';
 import '../../../wallets/crypto_currency/crypto_currency.dart';
+import '../../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../background.dart';
 import '../../custom_buttons/app_bar_icon_button.dart';
 import '../../custom_buttons/blue_text_button.dart';
@@ -256,6 +257,9 @@ class _BeamTxDetailsState extends ConsumerState<BeamTxDetails> {
     final isDesktop = ref.watch(pBeamTxIsDesktop);
     final formatter = ref.watch(pAmountFormatter(widget.coin));
     final v = _view;
+    final confirmations = v.confirmationsAt(
+      ref.watch(pWalletChainHeight(widget.walletId)),
+    );
     final funds = watchBeamContractFunds(ref, v);
     final text = BeamTxEntryText.of(
       v,
@@ -366,7 +370,7 @@ class _BeamTxDetailsState extends ConsumerState<BeamTxDetails> {
           label: 'Confirmations',
           isDesktop: isDesktop,
           value: Text(
-            '${v.confirmations ?? '—'}',
+            '${confirmations ?? '—'}',
             style: _detail(context, isDesktop),
           ),
         ),

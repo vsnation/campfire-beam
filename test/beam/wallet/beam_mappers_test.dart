@@ -219,8 +219,9 @@ void main() {
       expect(t.beamAssetId, 0);
       expect(t.contractAddress, isNull);
       expect(_od(t)[TxV2OdKeys.beamComment], 'Sample note');
-      expect(_od(t)[TxV2OdKeys.beamConfirmations], 12);
-      expect(t.getConfirmations(3369249 + 11), 12);
+      // Not stored: it changes with every block (see the test below).
+      expect(_od(t).containsKey(TxV2OdKeys.beamConfirmations), isFalse);
+      expect(t.height, 3369249);
     });
 
     test('sent to self', () {
@@ -337,6 +338,18 @@ void main() {
         ..['status'] = 3
         ..['height'] = 5;
       expect(BeamTxMapper.same(_map(json), _map(later)), isFalse);
+    });
+
+    test('a new block does not make a completed transaction differ', () {
+      final json = txJson(
+        txId: 'a2' * 16,
+        status: 3,
+        sender: _me,
+        height: 3369249,
+        confirmations: 12,
+      );
+      final nextBlock = Map.of(json)..['confirmations'] = 13;
+      expect(BeamTxMapper.same(_map(json), _map(nextBlock)), isTrue);
     });
   });
 
