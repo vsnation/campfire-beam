@@ -129,7 +129,10 @@ abstract final class BeamTxMapper {
       if (tx.comment.isNotEmpty) TxV2OdKeys.beamComment: tx.comment,
       TxV2OdKeys.beamFailureReason: ?tx.failureReason,
       TxV2OdKeys.beamFee: '$fee',
-      TxV2OdKeys.beamConfirmations: ?tx.confirmations,
+      // No confirmation count: it grows with every block, and stored here it
+      // would make every completed row differ from its copy in Isar on each
+      // read, so the whole history was rewritten once a block. Screens work
+      // it out from the height and the chain tip (BeamTxView.confirmationsAt).
       if (tx.isContract)
         TxV2OdKeys.beamContractIds: [
           for (final i in tx.invokeData) i.contractId,
