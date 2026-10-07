@@ -282,7 +282,14 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                   children: [
                     Text(_node.name, style: STextStyles.titleBold12(context)),
                     const SizedBox(height: 2),
-                    Text(_status, style: STextStyles.label(context)),
+                    Text(
+                      // BEAM: whether the wallet uses it; "Disconnected"
+                      // read as broken for nodes that are just not chosen.
+                      widget.coin is Beam
+                          ? (_status == "Connected" ? "In use" : "Not in use")
+                          : _status,
+                      style: STextStyles.label(context),
+                    ),
                   ],
                 ),
                 const Spacer(),

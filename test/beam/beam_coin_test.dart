@@ -16,7 +16,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/app_config.dart';
 import 'package:stackwallet/models/isar/models/blockchain_data/address.dart';
 import 'package:stackwallet/utilities/beam_app_identity.dart';
-import 'package:stackwallet/utilities/default_nodes.dart';
 import 'package:stackwallet/wallets/beam/address/beam_address_format.dart';
 import 'package:stackwallet/wallets/beam/models/beam_address.dart';
 import 'package:stackwallet/wallets/crypto_currency/crypto_currency.dart';
@@ -77,7 +76,7 @@ void main() {
       expect(node.port, 8100);
       expect(node.useSSL, isFalse);
       expect(node.id, 'default_beam');
-      expect(node.name, DefaultNodes.defaultName);
+      expect(node.name, 'eu-nodes');
       expect(node.coinName, 'beam');
       expect(node.enabled, isTrue);
       expect(node.torEnabled, isFalse);
@@ -104,6 +103,8 @@ void main() {
       ]);
       expect(alt.map((n) => n.name).first, 'us-nodes');
       expect(alt.every((n) => !n.isPrimary && !n.useSSL), isTrue);
+      // Built in: neutral in the list, not deletable.
+      expect(alt.every((n) => n.isDefault), isTrue);
       expect(alt.map((n) => n.id).toSet(), hasLength(alt.length));
       expect(
         alt.map((n) => n.id),

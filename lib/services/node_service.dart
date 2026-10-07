@@ -76,24 +76,6 @@ class NodeService extends ChangeNotifier {
       }
     }
 
-    // Campfire for BEAM: every public BEAM node is listed, not only the
-    // default (added once; never overwrites what the user changed).
-    for (final coin in AppConfig.coins.whereType<Beam>()) {
-      for (final node in coin.alternateNodes) {
-        if (DB.instance.get<NodeModel>(
-              boxName: DB.boxNameNodeModels,
-              key: node.id,
-            ) ==
-            null) {
-          await DB.instance.put<NodeModel>(
-            boxName: DB.boxNameNodeModels,
-            key: node.id,
-            value: node,
-          );
-        }
-      }
-    }
-
     for (final defaultNode in AppConfig.coins.map(
       (e) => e.defaultNode(isPrimary: true),
     )) {
@@ -130,6 +112,35 @@ class NodeService extends ChangeNotifier {
         );
       }
     }
+    // Campfire for BEAM: every public BEAM node is listed, not only the
+    // default (added once; never overwrites what the user changed). After
+    // the default: it is saved only while the coin has no nodes yet.
+    for (final coin in AppConfig.coins.whereType<Beam>()) {
+      // A test build saved them under other ids for a day; drop those.
+      for (final old in DB.instance
+          .values<NodeModel>(boxName: DB.boxNameNodeModels)
+          .where((n) => n.id.startsWith('beam_public_'))
+          .toList()) {
+        await DB.instance.delete<NodeModel>(
+          boxName: DB.boxNameNodeModels,
+          key: old.id,
+        );
+      }
+      for (final node in coin.alternateNodes) {
+        if (DB.instance.get<NodeModel>(
+              boxName: DB.boxNameNodeModels,
+              key: node.id,
+            ) ==
+            null) {
+          await DB.instance.put<NodeModel>(
+            boxName: DB.boxNameNodeModels,
+            key: node.id,
+            value: node,
+          );
+        }
+      }
+    }
+
   }
 
   Future<void> setPrimaryNodeFor({
@@ -206,6 +217,20 @@ class NodeService extends ChangeNotifier {
           )
           .toList(),
     );
+
+    // Campfire for BEAM: the public nodes in their listed order (default
+    // first), then the user's own.
+    if (coin is Beam) {
+      final order = [
+        for (final n in Beam.mainnetNodes) '${n.host}:${n.port}',
+      ];
+      int rank(NodeModel n) {
+        final i = order.indexOf('${n.host}:${n.port}');
+        return n.isDefault && i >= 0 ? i : order.length;
+      }
+
+      return [...list]..sort((a, b) => rank(a).compareTo(rank(b)));
+    }
 
     // return reversed list so default node appears at beginning
     return list.reversed.toList();

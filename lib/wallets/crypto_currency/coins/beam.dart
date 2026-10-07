@@ -60,7 +60,9 @@ class Beam extends Bip39Currency {
           host: n.host,
           port: n.port,
           name: n.host.split('.').first,
-          id: 'beam_public_${n.host}',
+          // Built in, like the default: neutral in the node list and not
+          // deletable (NodeModel.isDefault).
+          id: '${DefaultNodes.defaultNodeIdPrefix}beam_${n.host}',
           useSSL: false,
           enabled: true,
           coinName: identifier,
@@ -136,7 +138,9 @@ class Beam extends Bip39Currency {
         return NodeModel(
           host: node.host,
           port: node.port,
-          name: DefaultNodes.defaultName,
+          // Named by its host like the other public nodes ("eu-nodes"),
+          // not "Campfire Default": the list shows where each one is.
+          name: node.host.split('.').first,
           id: DefaultNodes.buildId(this),
           // BEAM's node protocol is its own TCP protocol, not HTTP(S).
           useSSL: false,

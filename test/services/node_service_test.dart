@@ -19,7 +19,12 @@ void main() {
       .toList(growable: false);
   final expectedDefaultNodeCount =
       expectedPrimaryDefaults.length +
-      (AppConfig.coins.any((e) => e.identifier == 'firo') ? 4 : 0);
+      (AppConfig.coins.any((e) => e.identifier == 'firo') ? 4 : 0) +
+      // Campfire for BEAM lists every public BEAM node.
+      AppConfig.coins.whereType<Beam>().fold<int>(
+        0,
+        (n, c) => n + c.alternateNodes.length,
+      );
 
   // The "Defaults populated" cases were written for Stack Wallet's coins
   // (Bitcoin, Monero). Use those when the build ships them, otherwise a coin it
