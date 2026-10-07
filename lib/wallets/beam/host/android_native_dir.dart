@@ -15,14 +15,12 @@ import 'package:path/path.dart' as p;
 /// (`ApplicationInfo.nativeLibraryDir`), or null when this is not Android or
 /// the libraries were not extracted.
 ///
-/// Android lets an app execute files only from there: an app targeting API
-/// 29+ may not execute anything in its writable data directory (W^X). The
-/// BEAM core therefore ships as `jniLibs/<abi>/libbeam_wallet_api.so` (and
-/// `libbeam_wallet.so`, `scripts/android/stage_beam_core.sh`), and
+/// The BEAM core ships as `jniLibs/<abi>/libbeam_core.so`, the core as one
+/// library loaded into the app (`scripts/android/stage_beam_core.sh`), and
 /// `android/app/campfire_beam.gradle` turns on legacy packaging so the
-/// package manager extracts them there. The directory belongs to the system
-/// and is read-only to the app, so a binary in it cannot be swapped between
-/// its hash check and its launch.
+/// package manager extracts it there. The directory belongs to the system and
+/// is read-only to the app, so the library cannot be swapped between its hash
+/// check and its load (`beam_core_location.dart`).
 ///
 /// Read from `/proc/self/maps`: the Flutter engine (`libflutter.so`) is
 /// loaded from that same directory before any Dart code runs. That keeps the

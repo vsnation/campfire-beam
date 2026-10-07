@@ -14,6 +14,7 @@ import '../../wallets/beam/host/beam_core_location.dart';
 import '../../wallets/beam/host/bundled_binaries.dart';
 import '../../wallets/beam/host/in_process_host.dart';
 import '../../wallets/beam/host/process_host.dart';
+import '../../utilities/logger.dart';
 //END_ON
 import '../../wallets/beam/host/beam_host.dart';
 import '../interfaces/libbeam_interface.dart';
@@ -38,6 +39,9 @@ final class _LibBeamInterfaceOff extends LibBeamInterface {
 //ON
 LibBeamInterface _getLib() => const _LibBeamInterfaceImpl();
 
+/// The core's own messages (start, stop, node, never a secret) in the app log.
+void _log(String message) => Logging.instance.i('BEAM core: $message');
+
 final class _LibBeamInterfaceImpl extends LibBeamInterface {
   const _LibBeamInterfaceImpl();
 
@@ -51,17 +55,19 @@ final class _LibBeamInterfaceImpl extends LibBeamInterface {
   /// library yet keeps the child-process core.
   @override
   BeamHost createHost({required String rootDir}) {
-    if (Platform.isIOS) return InProcessHost(rootDir: rootDir);
+    if (Platform.isIOS) return InProcessHost(rootDir: rootDir, log: _log);
     if (beamCoreLibraryAvailableHere()) {
       return InProcessHost(
         rootDir: rootDir,
         locateLibrary: () async =>
             (await locateBeamCoreLibrary(beamRoot: rootDir)).path,
+        log: _log,
       );
     }
     return ProcessHost(
       rootDir: rootDir,
       ensureBinaries: () => installBundledBeamBinaries(beamRoot: rootDir),
+      log: _log,
     );
   }
 }

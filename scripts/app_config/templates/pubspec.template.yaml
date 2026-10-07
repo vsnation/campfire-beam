@@ -474,9 +474,9 @@ flutter:
 ## static WebP stickers and animated .tgs (gzipped Lottie).
 #    - assets/beam/stickers/static/
 #    - assets/beam/stickers/animated/
-## Pinned BEAM core binaries for desktop, staged per build platform by
-## scripts/beam/core/stage_binaries.sh (empty folders elsewhere). A directory
-## entry does not include its subdirectories, so each is listed.
+## Formerly the BEAM core executables. The core is now one library inside the
+## app (libbeam_core, scripts/beam/core/lib); scripts/beam/core/stage_binaries.sh
+## keeps these folders present and empty so the entries stay valid.
 #    - assets/beam/bin/macos-arm64/
 #    - assets/beam/bin/linux-arm64/
 #    - assets/beam/bin/linux-x86_64/

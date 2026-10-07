@@ -10,6 +10,6 @@ app/upload-keystore-stackwallet.jks
 GeneratedPluginRegistrant.java
 /.kotlin/
 
-# Campfire for BEAM: the pinned BEAM core, staged per build by
-# scripts/android/stage_beam_core.sh. Binaries are never committed.
+# Campfire for BEAM: the pinned BEAM core library (libbeam_core.so), staged
+# per build by scripts/android/stage_beam_core.sh. Never committed.
 /app/src/main/jniLibs/*/libbeam_*.so
