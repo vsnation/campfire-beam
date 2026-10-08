@@ -21,6 +21,7 @@ import '../../../wallets/beam/sync/beam_sync_messages.dart';
 import '../../../wallets/beam/sync/beam_sync_state.dart';
 import '../../background.dart';
 import '../../custom_buttons/app_bar_icon_button.dart';
+import '../../custom_buttons/blue_text_button.dart';
 import '../../desktop/desktop_dialog.dart';
 import '../../desktop/desktop_dialog_close_button.dart';
 import '../../desktop/primary_button.dart';
@@ -479,6 +480,8 @@ class DexPrimaryAction extends StatelessWidget {
     required this.onPressed,
     this.reason,
     this.buttonKey,
+    this.reasonActionLabel,
+    this.onReasonAction,
   });
 
   final BeamDexDeps deps;
@@ -490,6 +493,10 @@ class DexPrimaryAction extends StatelessWidget {
   /// Why the button is off (or what is happening), in plain words.
   final String? reason;
   final Key? buttonKey;
+
+  /// A quiet link under [reason] ("Split coins for next time").
+  final String? reasonActionLabel;
+  final VoidCallback? onReasonAction;
 
   @override
   Widget build(BuildContext context) {
@@ -507,6 +514,19 @@ class DexPrimaryAction extends StatelessWidget {
               textAlign: TextAlign.center,
               style: STextStyles.smallMed12(context)
                   .copyWith(color: colors.textSubtitle1),
+            ),
+          ),
+        if (reason != null &&
+            reasonActionLabel != null &&
+            onReasonAction != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Center(
+              child: CustomTextButton(
+                key: const Key('dex-cta-reason-action'),
+                text: reasonActionLabel!,
+                onTap: onReasonAction,
+              ),
             ),
           ),
         PrimaryButton(

@@ -138,7 +138,7 @@ class DexUiFake {
   late final BeamDexService service;
 }
 
-BeamAssetTotals totals(int assetId, BigInt available) {
+BeamAssetTotals totals(int assetId, BigInt available, {BigInt? change}) {
   final z = BigInt.zero;
   return BeamAssetTotals(
     assetId: assetId,
@@ -154,7 +154,7 @@ BeamAssetTotals totals(int assetId, BigInt available) {
     maturing: z,
     maturingRegular: z,
     maturingMp: z,
-    change: z,
+    change: change ?? z,
     locked: z,
   );
 }
@@ -198,6 +198,8 @@ BeamDexDeps makeDeps(
   BeamAssetMetadata? Function(int assetId)? metadataOf,
   Listenable? assetNames,
   Set<int> hidden = const {},
+  Map<int, BigInt> change = const {},
+  void Function(BuildContext context, int assetId)? onSplitCoins,
 }) {
   final g = gate ?? FakeGate();
   return BeamDexDeps(
@@ -207,10 +209,12 @@ BeamDexDeps makeDeps(
     hiddenAssetIds: () => hidden,
     sync: ValueNotifier<BeamSyncAssessment>(sync),
     balances: ValueNotifier<Map<int, BeamAssetTotals>>({
-      for (final e in balances.entries) e.key: totals(e.key, e.value),
+      for (final e in balances.entries)
+        e.key: totals(e.key, e.value, change: change[e.key]),
     }),
     authenticate: g.call,
     fiat: fiat == null ? null : ValueNotifier<BeamDexFiat?>(fiat),
+    onSplitCoins: onSplitCoins,
     isDesktop: desktop,
   );
 }

@@ -76,6 +76,8 @@ void main() {
     bool desktop = false,
     BeamSyncAssessment sync = synced,
     BeamDexFiat? fiat,
+    Map<int, BigInt> change = const {},
+    void Function(BuildContext context, int assetId)? onSplitCoins,
   }) async {
     final fake = DexUiFake({...routes(), ...?extra});
     final deps = makeDeps(
@@ -85,6 +87,8 @@ void main() {
       desktop: desktop,
       sync: sync,
       fiat: fiat,
+      change: change,
+      onSplitCoins: onSplitCoins,
     );
     await pumpDex(
       tester,
@@ -358,6 +362,34 @@ void main() {
       find.byKey(goldenKey),
       matchesGoldenFile('goldens/swap_mobile_insufficient.png'),
     );
+  });
+
+  // B-UTXO-1: the money is there, only tied up in a payment that has not
+  // finished. Say when it is back, and offer the fix for next time.
+  testWidgets('money in an unfinished payment: back in a minute, and a '
+      'split offered for next time', (tester) async {
+    final opened = <int>[];
+    await openSwap(
+      tester,
+      balances: {0: beam('0.05')},
+      change: {0: beam('0.8')},
+      onSplitCoins: (_, assetId) => opened.add(assetId),
+    );
+    await typeAmount(tester, const Key('dex-pay-amount'), '0.1');
+    expect(
+      textOf(tester, const Key('dex-cta-reason')),
+      "0.8 BEAM is in a payment that hasn't finished yet; it's back in "
+      'about a minute.',
+    );
+    expectOnScreen(tester, const Key('dex-swap-cta'), phone);
+    await settleImages(tester);
+    await expectLater(
+      find.byKey(goldenKey),
+      matchesGoldenFile('goldens/swap_mobile_waiting.png'),
+    );
+    await tester.tap(find.byKey(const Key('dex-cta-reason-action')));
+    await tester.pump();
+    expect(opened, [0]);
   });
 
   testWidgets('the network fee counts: 0.1 BEAM held cannot swap 0.1', (

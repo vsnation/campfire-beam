@@ -55,6 +55,7 @@ class BeamSendForm extends StatefulWidget {
     this.assetWorth,
     this.initialRecipient,
     this.initialAmount,
+    this.onSplitCoins,
   });
 
   final BeamSendModel model;
@@ -72,6 +73,10 @@ class BeamSendForm extends StatefulWidget {
   final String? Function(int assetId, BigInt amount)? assetWorth;
   final String? initialRecipient;
   final BigInt? initialAmount;
+
+  /// Opens Split coins for an asset whose coins are tied up in a payment
+  /// that has not finished; null hides the link.
+  final void Function(int assetId)? onSplitCoins;
 
   @override
   State<BeamSendForm> createState() => BeamSendFormState();
@@ -615,7 +620,27 @@ class BeamSendFormState extends State<BeamSendForm> {
   List<Widget> _amountBelow(BuildContext context) {
     final out = <Widget>[];
     final issue = _m.amountIssue;
-    if (issue != null && !issue.quiet) {
+    final waiting = issue?.waitingAssetId;
+    final split = widget.onSplitCoins;
+    if (issue != null && !issue.quiet && waiting != null) {
+      // Not a mistake: the money is there, just busy for a minute.
+      out
+        ..add(const SizedBox(height: 8))
+        ..add(
+          BeamNotice(
+            key: const Key('beamAmountIssue'),
+            kind: BeamNoticeKind.warning,
+            message: issue.message,
+            action: split == null
+                ? null
+                : CustomTextButton(
+                    key: const Key('beamSendSplitLink'),
+                    text: 'Split coins for next time',
+                    onTap: () => split(waiting),
+                  ),
+          ),
+        );
+    } else if (issue != null && !issue.quiet) {
       out
         ..add(const SizedBox(height: 8))
         ..add(

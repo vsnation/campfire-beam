@@ -38,7 +38,12 @@ enum BeamSendField { recipient, asset, amount }
 /// Why the Send button is off, in words a user can act on.
 @immutable
 class BeamSendIssue {
-  const BeamSendIssue(this.field, this.message, {this.quiet = false});
+  const BeamSendIssue(
+    this.field,
+    this.message, {
+    this.quiet = false,
+    this.waitingAssetId,
+  });
 
   final BeamSendField field;
 
@@ -47,6 +52,11 @@ class BeamSendIssue {
 
   /// Nothing to say yet (an empty field): the button is off silently.
   final bool quiet;
+
+  /// Set when the money is there but tied up in a transaction that has not
+  /// finished: the asset whose coins are busy, which splitting them would
+  /// avoid next time.
+  final int? waitingAssetId;
 }
 
 /// The state of the BEAM send form: one recipient field that takes an
@@ -67,6 +77,7 @@ class BeamSendModel extends ChangeNotifier {
     _sync = backend.syncAssessment;
     _syncSub = backend.syncAssessments.listen(_onSync);
     _balances = backend.spendable();
+    _returning = backend.returning();
     unawaited(_loadNames());
   }
 
@@ -79,6 +90,7 @@ class BeamSendModel extends ChangeNotifier {
 
   late BeamSyncAssessment _sync;
   Map<int, BigInt> _balances = const {};
+  Map<int, BigInt> _returning = const {};
 
   String _recipientText = '';
   BeamRecipientInput _recipient = const BeamRecipientEmpty();
@@ -127,6 +139,18 @@ class BeamSendModel extends ChangeNotifier {
 
   /// Spendable [id] (BEAM when omitted).
   BigInt available([int? id]) => _balances[id ?? _assetId] ?? BigInt.zero;
+
+  /// [id]'s change still on its way back from an unfinished transaction.
+  BigInt returning([int? id]) => _returning[id ?? _assetId] ?? BigInt.zero;
+
+  /// The money is there, just not yet: [back] of [assetId] returns once a
+  /// transaction finishes.
+  static BeamSendIssue _waiting(String back, int assetId) => BeamSendIssue(
+    BeamSendField.amount,
+    "$back is in a payment that hasn't finished yet; it's back in about a "
+    'minute. Try again then.',
+    waitingAssetId: assetId,
+  );
 
   /// BEAM plus every asset the wallet can spend now, BEAM first.
   List<int> get assetChoices {
@@ -306,6 +330,10 @@ class BeamSendModel extends ChangeNotifier {
         return null;
       }
       if (a + fee > beam) {
+        final back = returning(0);
+        if (back > BigInt.zero && a + fee <= beam + back) {
+          return _waiting(BeamSendFormat.beam(back), 0);
+        }
         return BeamSendIssue(
           BeamSendField.amount,
           'Not enough BEAM. Sending ${BeamSendFormat.beam(a)} plus the '
@@ -319,6 +347,10 @@ class BeamSendModel extends ChangeNotifier {
     }
     final have = available();
     if (a > have) {
+      final back = returning();
+      if (back > BigInt.zero && a <= have + back) {
+        return _waiting(BeamSendFormat.amount(back, asset), _assetId);
+      }
       return BeamSendIssue(
         BeamSendField.amount,
         'Not enough ${BeamSendFormat.symbol(asset)}: '
@@ -326,6 +358,10 @@ class BeamSendModel extends ChangeNotifier {
       );
     }
     if (fee > beam) {
+      final back = returning(0);
+      if (back > BigInt.zero && fee <= beam + back) {
+        return _waiting(BeamSendFormat.beam(back), 0);
+      }
       return BeamSendIssue(
         BeamSendField.amount,
         'The network fee (${feeIsMinimum ? 'at least ' : ''}'
@@ -399,6 +435,7 @@ class BeamSendModel extends ChangeNotifier {
   /// Re-reads balances (the wallet's cache changed).
   void balancesChanged() {
     _balances = backend.spendable();
+    _returning = backend.returning();
     unawaited(_loadNames());
     _notify();
   }

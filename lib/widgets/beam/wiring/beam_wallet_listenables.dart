@@ -46,6 +46,7 @@ import '../dex/dex_auth_gate.dart';
 import '../dex/dex_deps.dart';
 import '../names/names_deps.dart';
 import '../receive/beam_receive_panel.dart';
+import 'beam_features.dart';
 
 /// What the BEAM screens of one wallet share, built from the wallet itself.
 ///
@@ -211,6 +212,8 @@ class BeamWalletWiring {
       assetNames: assetDirectory,
       fiat: _fiat,
       onSyncAction: onSyncAction,
+      onSplitCoins: (context, assetId) =>
+          unawaited(openBeamSplit(context, wallet, assetId: assetId)),
       isDesktop: debugDesktopLayout,
     );
     _dexBuilt = true;

@@ -58,6 +58,10 @@ import 'beam_dex_pools_view.dart';
 /// (owner, 2026-10-07). BEAM's DEX has a funded BEAM/bETH pool.
 const kDexDefaultReceiveAsset = 36;
 
+/// The swap button's state: its action (null: off), the reason shown above
+/// it, and the asset whose coins are busy in an unfinished transaction.
+typedef _DexCta = ({VoidCallback? onPressed, String? reason, int? waiting});
+
 /// Above this price change the swap is shown in warning colours.
 final kDexPriceImpactWarning = BeamRatio(BigInt.from(3), BigInt.from(100));
 
@@ -318,34 +322,34 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
 
   // ------------------------------------------------------------------ state
 
-  ({VoidCallback? onPressed, String? reason}) _cta() {
+  /// Why the swap button is off, as a reason above it; [waiting] names the
+  /// asset whose coins are tied up in a transaction that has not finished
+  /// (the money is there, just not for a minute).
+  _DexCta _cta() {
     final paySym = _sym(_pay);
-    if (_preparing) return (onPressed: null, reason: 'Building your swap…');
+    if (_preparing) return _off('Building your swap…');
     if (!deps.canSpend) {
-      return (
-        onPressed: null,
-        reason: 'Swaps are paused until the wallet is up to date.',
-      );
+      return _off('Swaps are paused until the wallet is up to date.');
     }
-    if (_input.error != null) return (onPressed: null, reason: _input.error);
+    if (_input.error != null) return _off(_input.error);
     final amount = _input.value;
     if (amount == null || amount == BigInt.zero) {
-      return (onPressed: null, reason: 'Enter how much $paySym to swap.');
+      return _off('Enter how much $paySym to swap.');
     }
     final have = deps.available(_pay);
     if (amount > have) {
-      return (
-        onPressed: null,
-        reason:
-            'Not enough $paySym. You have ${DexFormat.exact(have)} '
-            '$paySym.',
+      final back = deps.returning(_pay);
+      if (back > BigInt.zero && amount <= have + back) {
+        return _off(_waitingLine(back, paySym), waiting: _pay);
+      }
+      return _off(
+        'Not enough $paySym. You have ${DexFormat.exact(have)} '
+        '$paySym.',
       );
     }
-    if (_problem != null) return (onPressed: null, reason: null);
+    if (_problem != null) return _off(null);
     final q = _quote;
-    if (_quoting || q == null) {
-      return (onPressed: null, reason: 'Getting the best price…');
-    }
+    if (_quoting || q == null) return _off('Getting the best price…');
     final fee = q.networkFee;
     final beamOut =
         (_pay == 0 ? q.pay : BigInt.zero) +
@@ -353,9 +357,12 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
         (_receive == 0 ? q.receive : BigInt.zero);
     final beam = deps.available(0);
     if (beamOut > beam) {
-      return (
-        onPressed: null,
-        reason: _pay == 0
+      final back = deps.returning(0);
+      if (back > BigInt.zero && beamOut <= beam + back) {
+        return _off(_waitingLine(back, 'BEAM'), waiting: 0);
+      }
+      return _off(
+        _pay == 0
             ? 'Not enough BEAM. You need ${DexFormat.exact(q.pay + fee)} '
                   'BEAM, including the ${DexFormat.exact(fee)} BEAM network '
                   'fee.'
@@ -363,8 +370,15 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
                   'You have ${DexFormat.exact(beam)} BEAM.',
       );
     }
-    return (onPressed: _swapNow, reason: null);
+    return (onPressed: _swapNow, reason: null, waiting: null);
   }
+
+  static _DexCta _off(String? reason, {int? waiting}) =>
+      (onPressed: null, reason: reason, waiting: waiting);
+
+  static String _waitingLine(BigInt back, String symbol) =>
+      '${DexFormat.exact(back)} $symbol is in a payment that hasn\'t '
+      "finished yet; it's back in about a minute.";
 
   // ------------------------------------------------------------------ build
 
@@ -385,6 +399,12 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
       label: _ctaLabel,
       reason: cta.reason,
       onPressed: cta.onPressed,
+      reasonActionLabel: cta.waiting != null && deps.onSplitCoins != null
+          ? 'Split coins for next time'
+          : null,
+      onReasonAction: cta.waiting == null || deps.onSplitCoins == null
+          ? null
+          : () => deps.onSplitCoins!(context, cta.waiting!),
     );
     final body = _form(context);
     if (widget.embedded) {

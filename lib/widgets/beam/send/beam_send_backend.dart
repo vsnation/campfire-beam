@@ -46,6 +46,10 @@ abstract interface class BeamSendBackend {
   /// Spendable now, per asset id (asset 0 is BEAM), in units of 10^-8.
   Map<int, BigInt> spendable();
 
+  /// Per asset id, change on its way back from transactions that have not
+  /// finished yet: spendable again once they are confirmed, about a minute.
+  Map<int, BigInt> returning();
+
   /// How [assetId] is shown (verified name and icon, or `#id`).
   BeamAssetDisplay asset(int assetId);
 
@@ -124,6 +128,11 @@ class BeamWalletSendBackend implements BeamSendBackend {
     out[0] = info.cachedBalance.spendable.raw;
     return out;
   }
+
+  @override
+  Map<int, BigInt> returning() => {
+    for (final e in wallet.info.beamAssetTotals.entries) e.key: e.value.change,
+  };
 
   @override
   BeamAssetDisplay asset(int assetId) =>

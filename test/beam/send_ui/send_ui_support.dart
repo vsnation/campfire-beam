@@ -240,6 +240,12 @@ class ScriptedBackend implements BeamSendBackend {
   @override
   Map<int, BigInt> spendable() => Map.of(balances);
 
+  /// Change on its way back from unfinished payments, per asset.
+  Map<int, BigInt> back = {};
+
+  @override
+  Map<int, BigInt> returning() => Map.of(back);
+
   /// On-chain metadata of unverified assets, by id.
   final Map<int, String> metadata = {};
 

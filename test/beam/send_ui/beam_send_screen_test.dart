@@ -41,6 +41,7 @@ Widget _page(
   ScriptedBackend b, {
   Duration nameDebounce = const Duration(milliseconds: 400),
   String? Function(int assetId, BigInt amount)? assetWorth,
+  void Function(BuildContext context, int assetId)? onSplitCoins,
 }) => BeamSendPage(
   backend: b,
   coin: Beam(CryptoCurrencyNetwork.main),
@@ -52,6 +53,7 @@ Widget _page(
   routeOnSuccessName: '/',
   nameDebounce: nameDebounce,
   assetWorth: assetWorth,
+  onSplitCoins: onSplitCoins,
 );
 
 Future<ScriptedBackend> _open(
@@ -60,12 +62,18 @@ Future<ScriptedBackend> _open(
   ScriptedBackend? backend,
   Duration nameDebounce = const Duration(milliseconds: 400),
   String? Function(int assetId, BigInt amount)? assetWorth,
+  void Function(BuildContext context, int assetId)? onSplitCoins,
 }) async {
   await setScreen(tester, desktop: desktop);
   final b = backend ?? ScriptedBackend();
   await pumpCampfire(
     tester,
-    home: _page(b, nameDebounce: nameDebounce, assetWorth: assetWorth),
+    home: _page(
+      b,
+      nameDebounce: nameDebounce,
+      assetWorth: assetWorth,
+      onSplitCoins: onSplitCoins,
+    ),
     desktop: desktop,
   );
   await tester.pump(const Duration(milliseconds: 50));
@@ -542,6 +550,42 @@ void main() {
       await _type(tester, _amount, '0');
       expect(find.text('Enter an amount above zero.'), findsOneWidget);
       expect(_sendEnabled(tester), isFalse);
+    });
+
+    // B-UTXO-1: the money is there, only tied up in a payment that has not
+    // finished: no "not enough", a time, and the fix for next time.
+    testWidgets('money in an unfinished payment: back in a minute, and a '
+        'split offered for next time', (tester) async {
+      final opened = <int>[];
+      await _open(
+        tester,
+        desktop: false,
+        backend: ScriptedBackend(balances: {0: g(0.1)})..back = {0: g(0.8)},
+        onSplitCoins: (_, assetId) => opened.add(assetId),
+      );
+      await _type(tester, _to, _regular);
+      await _type(tester, _amount, '0.5');
+      expect(
+        find.text(
+          "0.8 BEAM is in a payment that hasn't finished yet; it's back in "
+          'about a minute. Try again then.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Not enough'), findsNothing);
+      expect(_sendEnabled(tester), isFalse);
+      await _golden(tester, 'phone_waiting_split_link');
+      final link = find.byKey(const Key('beamSendSplitLink'));
+      await tester.ensureVisible(link);
+      await tester.pump();
+      await tester.tap(link);
+      await tester.pump();
+      expect(opened, [0]);
+
+      // More than what comes back: the plain "not enough" again.
+      await _type(tester, _amount, '1');
+      expect(find.textContaining('Not enough BEAM'), findsOneWidget);
+      expect(find.byKey(const Key('beamSendSplitLink')), findsNothing);
     });
 
     testWidgets('an offline address: what it means, and the 0.011 BEAM '

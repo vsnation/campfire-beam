@@ -89,6 +89,7 @@ class BeamDexDeps {
     this.hiddenAssetIds = _noneHidden,
     this.fiat,
     this.onSyncAction,
+    this.onSplitCoins,
     this.isDesktop,
     BeamDexPoolStore? pools,
   }) : pools = pools ?? BeamDexPoolStore(dex);
@@ -130,6 +131,11 @@ class BeamDexDeps {
   /// Runs the sync banner's action ("Try another node", …).
   final void Function(BeamSyncAction action)? onSyncAction;
 
+  /// Opens Split coins for an asset whose coins are tied up in a transaction
+  /// that has not finished, from the DEX screen at the context; null hides
+  /// the link.
+  final void Function(BuildContext context, int assetId)? onSplitCoins;
+
   /// Forces the desktop or mobile layout; null follows the platform.
   final bool? isDesktop;
 
@@ -163,6 +169,11 @@ class BeamDexDeps {
   /// What the wallet can spend of [assetId] right now.
   BigInt available(int assetId) =>
       balances.value[assetId]?.available ?? BigInt.zero;
+
+  /// [assetId]'s change still on its way back from a transaction that has
+  /// not finished: spendable again in about a minute.
+  BigInt returning(int assetId) =>
+      balances.value[assetId]?.change ?? BigInt.zero;
 
   /// The pool whose LP token is [assetId], if it is one.
   BeamPool? poolOfLpToken(int assetId) {

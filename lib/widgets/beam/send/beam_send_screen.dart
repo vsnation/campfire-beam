@@ -58,6 +58,7 @@ import '../../desktop/desktop_dialog_close_button.dart';
 import '../../desktop/primary_button.dart';
 import '../../desktop/qr_code_scanner_dialog.dart';
 import '../../stack_dialog.dart';
+import '../wiring/beam_features.dart';
 import '../wiring/beam_wallet_listenables.dart';
 import 'beam_confirm_content.dart';
 import 'beam_send_backend.dart';
@@ -191,6 +192,8 @@ class _BeamSendScreenState extends ConsumerState<BeamSendScreen> {
       onScanQr: _scan,
       onAddressBook: _addressBook,
       assetWorth: _worth,
+      onSplitCoins: (context, assetId) =>
+          unawaited(openBeamSplit(context, _wallet, assetId: assetId)),
       initialRecipient: auto?.address,
       initialAmount: auto?.amount == null
           ? null
@@ -224,6 +227,7 @@ class BeamSendPage extends StatefulWidget {
     this.nameDebounce = const Duration(milliseconds: 400),
     this.minimumBuildTime = const Duration(milliseconds: 2500),
     this.routeOnSuccessName,
+    this.onSplitCoins,
   });
 
   final BeamSendBackend backend;
@@ -248,6 +252,9 @@ class BeamSendPage extends StatefulWidget {
 
   /// Where a sent payment returns to; Campfire's wallet view by default.
   final String? routeOnSuccessName;
+
+  /// Opens Split coins for an asset (from "funds in an unfinished payment").
+  final void Function(BuildContext context, int assetId)? onSplitCoins;
 
   @override
   State<BeamSendPage> createState() => BeamSendPageState();
@@ -448,6 +455,9 @@ class BeamSendPageState extends State<BeamSendPage> {
       assetWorth: widget.assetWorth,
       initialRecipient: widget.initialRecipient,
       initialAmount: widget.initialAmount,
+      onSplitCoins: widget.onSplitCoins == null
+          ? null
+          : (assetId) => widget.onSplitCoins!(context, assetId),
     );
     final cta = ListenableBuilder(
       listenable: model,
