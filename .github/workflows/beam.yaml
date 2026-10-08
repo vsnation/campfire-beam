@@ -41,8 +41,11 @@ jobs:
           fi
           bad=$(git log --format='%an <%ae>' "$base"..HEAD | grep -vxF -f "$allowed" || true)
           if [ -n "$bad" ]; then echo "Foreign authors:"; echo "$bad" | sort -u; exit 1; fi
-          if git log --format='%B' "$base"..HEAD | grep -qi 'co-authored-by'; then
-            echo "Co-authored-by trailer found"; exit 1
+          # A trailer is a line of its own; prose that names one is not.
+          trailers=$(git log --format='%h %B' "$base"..HEAD \
+            | grep -iE '^[[:space:]]*co-authored-by:|noreply@anthropic\.com' || true)
+          if [ -n "$trailers" ]; then
+            echo "Co-authored-by trailer or AI address found:"; echo "$trailers"; exit 1
           fi
 
       # The app may only run HF6-capable cores (block 3928666).
