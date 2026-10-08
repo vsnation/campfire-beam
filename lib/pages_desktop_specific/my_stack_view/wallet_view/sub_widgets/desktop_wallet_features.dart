@@ -105,6 +105,7 @@ enum WalletFeature {
   beamAirdrops("Airdrops", "Claim a code, or give some away"),
   beamTokens("Tokens", "Create your own token on BEAM"),
   beamNode("Node & sync", "Which node you use, and how up to date"),
+  beamSplit("Split coins", "Send several payments at once"),
 
   // special cases
   clearSparkCache("", ""),

@@ -19,6 +19,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stackwallet/pages/beam/split/beam_split_view.dart';
 import 'package:stackwallet/pages/beam/airdrop/beam_airdrop_batches_view.dart';
 import 'package:stackwallet/pages/beam/airdrop/beam_claim_voucher_view.dart';
 import 'package:stackwallet/pages/beam/airdrop/beam_create_airdrop_view.dart';
@@ -67,6 +68,7 @@ const _beamLabels = [
   'Airdrops',
   'Tokens',
   'Node & sync',
+  'Split coins',
 ];
 
 Finder _rowButton(String label) => find
@@ -240,6 +242,12 @@ void main() {
     await _openFeature(tester, 'Node & sync');
     expect(find.byType(DesktopBeamNodeSyncDialog), findsOneWidget);
     await closeRouteOf(tester, find.byType(DesktopBeamNodeSyncDialog));
+
+    await _openFeature(tester, 'Split coins');
+    await settle(tester, rounds: 2);
+    expect(find.byType(BeamSplitView), findsOneWidget);
+    expect(find.text('Split into 3 coins'), findsOneWidget);
+    await closeRouteOf(tester, find.byType(BeamSplitView));
     await finish(tester);
   });
 

@@ -93,6 +93,24 @@ class WiringCore {
     'wallet_status': (Map<String, Object?> _) => status,
     'addr_list': (Map<String, Object?> _) => [ownAddressJson(kMyAddress)],
     'tx_list': (Map<String, Object?> _) => <Object?>[],
+    // The same 12.5 BEAM and 1,000 FOMO, each in one coin.
+    'get_utxo': (Map<String, Object?> p) => [
+      for (final (id, aid, amount) in [
+        ('beam-coin', 0, g(12.5)),
+        ('fomo-coin', 174, g(1000)),
+      ])
+        {
+          'id': id,
+          'asset_id': aid,
+          'amount': amount.toInt(),
+          'type': 'norm',
+          'status': 1,
+          'status_string': 'available',
+          'maturity': kTip - 100,
+          'createTxId': '',
+          'spentTxId': '',
+        },
+    ].skip(p['skip'] as int? ?? 0).toList(),
   };
 }
 

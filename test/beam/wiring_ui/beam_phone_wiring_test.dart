@@ -28,6 +28,7 @@ import 'package:stackwallet/pages/beam/minter/beam_mint_token_view.dart';
 import 'package:stackwallet/pages/beam/minter/beam_my_tokens_view.dart';
 import 'package:stackwallet/pages/beam/names/beam_names_home_view.dart';
 import 'package:stackwallet/pages/beam/node/beam_node_sync_view.dart';
+import 'package:stackwallet/pages/beam/split/beam_split_view.dart';
 import 'package:stackwallet/pages/token_view/beam_assets_view.dart';
 import 'package:stackwallet/pages/wallet_view/wallet_view.dart';
 import 'package:stackwallet/widgets/wallet_navigation_bar/components/wallet_navigation_bar_item.dart';
@@ -36,7 +37,14 @@ import 'package:stackwallet/widgets/wallet_navigation_bar/wallet_navigation_bar.
 import 'wiring_harness.dart';
 
 const _bar = ['Receive', 'Send', 'Swap', 'Assets', 'More'];
-const _more = ['Names', 'dApps', 'Airdrops', 'Tokens', 'Node & sync'];
+const _more = [
+  'Names',
+  'dApps',
+  'Airdrops',
+  'Tokens',
+  'Node & sync',
+  'Split coins',
+];
 
 /// The bar's "More" label is cross-faded (two Texts): the first is enough.
 Finder _barText(String label) => find
@@ -109,7 +117,8 @@ void main() {
     await finish(tester);
   });
 
-  testWidgets('More lists Names, dApps, Airdrops, Tokens, Node & sync', (
+  testWidgets('More lists Names, dApps, Airdrops, Tokens, Node & sync, Split '
+      'coins', (
     tester,
   ) async {
     final wallet = await openBeamWallet(tester, db);
@@ -252,6 +261,17 @@ void main() {
     await _openMore(tester, 'Node & sync');
     expect(find.byType(BeamNodeSyncView), findsOneWidget);
     await closeRouteOf(tester, find.byType(BeamNodeSyncView));
+
+    // Split coins: BEAM's coins, read from the core, the advice picked.
+    await _openMore(tester, 'Split coins');
+    await settle(tester, rounds: 2);
+    expect(find.byType(BeamSplitView), findsOneWidget);
+    expect(
+      find.text('12.5 BEAM in 1 coin: one payment at a time'),
+      findsOneWidget,
+    );
+    expect(find.text('Split into 3 coins'), findsOneWidget);
+    await closeRouteOf(tester, find.byType(BeamSplitView));
     await finish(tester);
   });
 }

@@ -67,6 +67,7 @@ import 'pages/beam/minter/beam_burn_view.dart';
 import 'pages/beam/import/beam_import_wallet_file_view.dart';
 import 'pages/beam/minter/beam_mint_token_view.dart';
 import 'pages/beam/minter/beam_my_tokens_view.dart';
+import 'pages/beam/split/beam_split_view.dart';
 import 'pages/beam/names/beam_names_home_view.dart';
 import 'pages/buy_view/buy_in_wallet_view.dart';
 import 'pages/buy_view/buy_quote_preview.dart';
@@ -284,6 +285,7 @@ import 'wallets/wallet/impl/beam_wallet.dart';
 import 'wallets/wallet/impl/firo_wallet.dart';
 import 'wallets/wallet/wallet.dart';
 import 'wallets/wallet/wallet_mixin_interfaces/extended_keys_interface.dart';
+import 'widgets/beam/split/beam_split_backend.dart';
 import 'widgets/beam/wiring/beam_features.dart';
 import 'widgets/beam/wiring/beam_wallet_listenables.dart';
 import 'widgets/choose_coin_view.dart';
@@ -3123,6 +3125,19 @@ class RouteGenerator {
                 assetNames: beam.assetNames,
               );
             },
+            settings: RouteSettings(name: settings.name),
+          );
+        }
+        return _routeError("${settings.name} invalid args: ${args.toString()}");
+
+      case BeamSplitView.routeName:
+        if (args is BeamSplitArgs) {
+          return getRoute(
+            shouldUseMaterialRoute: useMaterialPageRoute,
+            builder: (_) => BeamSplitView(
+              backend: BeamWalletSplitBackend(args.wallet),
+              initialAssetId: args.assetId,
+            ),
             settings: RouteSettings(name: settings.name),
           );
         }

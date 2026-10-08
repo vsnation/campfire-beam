@@ -63,8 +63,8 @@ click 1195 493 8                               # "Open wallet" on the only row (
 shot features_02_wallet_home.png               # feature row, Send/Receive/Transactions, Assets
 
 # ---- 4. every feature once ------------------------------------------------------
-# At 1280x800 the feature row holds Swap and Names; dApps, Airdrops, Tokens
-# and Node & sync are under its "More".
+# At 1280x800 the feature row holds Swap and Names; dApps, Airdrops, Tokens,
+# Node & sync and Split coins are under its "More".
 # @rowSwap 874 161
 # @swapClose 1200 72
 click 874 161 4;  shot features_03_swap.png;            click 1200 72 2
@@ -72,23 +72,26 @@ click 874 161 4;  shot features_03_swap.png;            click 1200 72 2
 # @namesBack 266 41
 click 1025 161 4; shot features_04_names.png;           click 266 41 2
 # @rowMore 1173 161
-# @moredApps 459 282
+# @moredApps 459 238
 # @dappsBack 274 41
 click 1173 161 2; shot features_05_more.png
-click 459 282 4;  shot features_06_dapps.png;           click 274 41 2
-# @moreAirdrops 469 371
+click 459 238 4;  shot features_06_dapps.png;           click 274 41 2
+# @moreAirdrops 469 327
 # @airdropsClaim 640 337
 # @claimBack 274 41
-click 1173 161 2; click 469 371 3; shot features_07_airdrops_menu.png
+click 1173 161 2; click 469 327 3; shot features_07_airdrops_menu.png
 click 640 337 4;  shot features_08_claim_code.png;      click 274 41 2
-# @moreTokens 462 460
+# @moreTokens 462 416
 # @tokensCreate 640 337
 # @mintBack 274 41
-click 1173 161 2; click 462 460 3; shot features_09_tokens_menu.png
+click 1173 161 2; click 462 416 3; shot features_09_tokens_menu.png
 click 640 337 4;  shot features_10_create_token.png;    click 274 41 2
-# @moreNodesync 488 549
+# @moreNodesync 488 505
 # @nodeClose 890 233
-click 1173 161 2; click 488 549 4; shot features_11_node_sync.png; click 890 233 2
+click 1173 161 2; click 488 505 4; shot features_11_node_sync.png; click 890 233 2
+# @moreSplitcoins 478 594
+# @splitBack 274 41
+click 1173 161 2; click 478 594 4; shot features_11b_split_coins.png; click 274 41 2
 # @walletOptions 1226 41
 # @addressList 1173 59
 # @addressListClose 920 72

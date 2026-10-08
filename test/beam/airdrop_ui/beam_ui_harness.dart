@@ -138,9 +138,10 @@ Future<void> pumpBeamPage(
   WidgetTester tester,
   Widget page, {
   bool desktop = false,
+  Size? size,
 }) async {
   await loadFonts(tester);
-  final size = desktop ? desktopSize : phoneSize;
+  size ??= desktop ? desktopSize : phoneSize;
   final ratio = desktop ? 1.0 : 2.0;
   tester.view.physicalSize = size * ratio;
   tester.view.devicePixelRatio = ratio;

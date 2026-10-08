@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/pages/add_wallet_views/verify_recovery_phrase_view/sub_widgets/word_table_item.dart';
 import 'package:stackwallet/pages/add_wallet_views/verify_recovery_phrase_view/verify_recovery_phrase_view.dart';
+import 'package:stackwallet/pages/beam/split/beam_split_view.dart';
 import 'package:stackwallet/pages/beam/airdrop/beam_claim_voucher_view.dart';
 import 'package:stackwallet/pages/beam/dapps/dapp_store_view.dart';
 import 'package:stackwallet/pages/beam/minter/beam_mint_token_view.dart';
@@ -145,7 +146,15 @@ void main() {
       matchesGoldenFile('goldens/desktop_wallet_in_app_frame.png'),
     );
 
-    const all = ['Swap', 'Names', 'dApps', 'Airdrops', 'Tokens', 'Node & sync'];
+    const all = [
+      'Swap',
+      'Names',
+      'dApps',
+      'Airdrops',
+      'Tokens',
+      'Node & sync',
+      'Split coins',
+    ];
     final onRow = [
       for (final l in all)
         if (_rowButton(l).evaluate().isNotEmpty) l,
@@ -207,6 +216,10 @@ void main() {
       _closeIn(find.byType(DesktopBeamNodeSyncDialog)),
     );
     await closeRouteOf(tester, find.byType(DesktopBeamNodeSyncDialog));
+
+    await open('Split coins');
+    _point(tester, 'splitBack', _backOf(BeamSplitView));
+    await closeRouteOf(tester, find.byType(BeamSplitView));
 
     // Wallet options → Address list.
     _point(tester, 'walletOptions', find.byType(WalletOptionsButton));
