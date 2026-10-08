@@ -135,10 +135,24 @@ void main() {
       EditWalletTokensView( walletId: widget.walletId, isDesktopPopup: true,
       ), );''', 'Ethereum\'s "Edit tokens" dialog');
     _has(s, '''
-      wallet is BeamWallet || wallet.cryptoCurrency.hasTokenSupport ?
+      wallet.cryptoCurrency.hasTokenSupport ?
       MyTokensView(walletId: widget.walletId) : wallet.isarTransactionVersion
       == 2 ? TransactionsV2List(walletId: widget.walletId) :
       TransactionsList(walletId: widget.walletId),''', 'the right column');
+    // BEAM's page (it scrolls as one) is a branch of its own; every other
+    // coin keeps Campfire's padded column with MyWallet scrolling itself.
+    _has(
+      s,
+      'body: wallet is BeamWallet ? BeamDesktopWalletPage(',
+      'BEAM page behind a BeamWallet guard',
+    );
+    _has(s, '''
+      : Padding( padding: const EdgeInsets.all(24), child: Column( children:
+      [ DesktopWalletHeaderRow(wallet, monke), const SizedBox(height: 24),
+      _columnTitles(context, wallet), const SizedBox(height: 14), Expanded(
+      child: Row( crossAxisAlignment: CrossAxisAlignment.start, children: [
+      SizedBox( width: sendReceiveColumnWidth, child: MyWallet(walletId:
+      widget.walletId), ),''', 'other coins: the upstream layout');
   });
 
   test('desktop My wallet tabs: BEAM tabs and BEAM history tab are BEAM '

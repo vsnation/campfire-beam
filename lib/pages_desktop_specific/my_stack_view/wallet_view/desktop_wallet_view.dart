@@ -10,6 +10,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:event_bus/event_bus.dart';
 import 'package:flutter/foundation.dart';
@@ -48,6 +49,7 @@ import '../../../wallets/wallet/impl/firo_wallet.dart';
 import '../../../wallets/wallet/wallet.dart';
 import '../../../wallets/wallet/wallet_mixin_interfaces/mweb_interface.dart';
 import '../../../wallets/wallet/wallet_mixin_interfaces/view_only_option_interface.dart';
+import '../../../widgets/beam/wiring/beam_desktop_wallet_page.dart';
 import '../../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../../widgets/custom_buttons/blue_text_button.dart';
 import '../../../widgets/desktop/desktop_app_bar.dart';
@@ -169,7 +171,8 @@ class _DesktopWalletViewState extends ConsumerState<DesktopWalletView> {
 
     final monke = wallet is BananoWallet ? wallet.getMonkeyImageBytes() : null;
 
-    // if the view only wallet watches a single address there are no keys of any kind
+    // if the view only wallet watches a single address there are no keys of
+    // any kind
     final showKeysButton =
         !(wallet is ViewOnlyOptionInterface &&
             wallet.isViewOnly &&
@@ -193,10 +196,12 @@ class _DesktopWalletViewState extends ConsumerState<DesktopWalletView> {
                   Assets.svg.arrowLeft,
                   width: 18,
                   height: 18,
-                  color:
-                      Theme.of(
-                        context,
-                      ).extension<StackColors>()!.topNavIconPrimary,
+                  colorFilter: ColorFilter.mode(
+                    Theme.of(
+                      context,
+                    ).extension<StackColors>()!.topNavIconPrimary,
+                    BlendMode.srcIn,
+                  ),
                 ),
                 onPressed: onBackPressed,
               ),
@@ -315,15 +320,66 @@ class _DesktopWalletViewState extends ConsumerState<DesktopWalletView> {
         useSpacers: false,
         isCompactHeight: true,
       ),
-      body: Padding(
+      // BEAM: the page scrolls as a whole when the Send/Receive column is
+      // taller than the space under the header and sync banner.
+      body: wallet is BeamWallet
+          ? BeamDesktopWalletPage(
+              top: Column(
+                children: [
+                  DesktopWalletHeaderRow(wallet, monke),
+                  BeamDesktopSyncBanner(walletId: widget.walletId),
+                  const SizedBox(height: 24),
+                  _columnTitles(context, wallet),
+                  const SizedBox(height: 14),
+                ],
+              ),
+              columnWidth: sendReceiveColumnWidth,
+              // The history tab's list fits under its tabs (69 px with the gap
+              // above the list), so that tab needs no page scroll.
+              left: (visibleHeight) => MyWallet(
+                walletId: widget.walletId,
+                scrollable: false,
+                historyMaxHeight: math.max(240, visibleHeight - 69),
+              ),
+              right: MyTokensView(walletId: widget.walletId),
+            )
+          : Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
             DesktopWalletHeaderRow(wallet, monke),
-            if (wallet is BeamWallet)
-              BeamDesktopSyncBanner(walletId: widget.walletId),
             const SizedBox(height: 24),
-            Row(
+            _columnTitles(context, wallet),
+            const SizedBox(height: 14),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: sendReceiveColumnWidth,
+                    child: MyWallet(walletId: widget.walletId),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child:
+                        wallet.cryptoCurrency.hasTokenSupport
+                            ? MyTokensView(walletId: widget.walletId)
+                            : wallet.isarTransactionVersion == 2
+                            ? TransactionsV2List(walletId: widget.walletId)
+                            : TransactionsList(walletId: widget.walletId),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// "My wallet" over the Send/Receive column, and the title (with its
+  /// button) over the column beside it.
+  Widget _columnTitles(BuildContext context, Wallet wallet) => Row(
               children: [
                 SizedBox(
                   width: sendReceiveColumnWidth,
@@ -394,34 +450,7 @@ class _DesktopWalletViewState extends ConsumerState<DesktopWalletView> {
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 14),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: sendReceiveColumnWidth,
-                    child: MyWallet(walletId: widget.walletId),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child:
-                        wallet is BeamWallet ||
-                                wallet.cryptoCurrency.hasTokenSupport
-                            ? MyTokensView(walletId: widget.walletId)
-                            : wallet.isarTransactionVersion == 2
-                            ? TransactionsV2List(walletId: widget.walletId)
-                            : TransactionsList(walletId: widget.walletId),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+            );
 }
 
 class DesktopWalletHeaderRow extends ConsumerWidget {

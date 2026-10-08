@@ -35,10 +35,25 @@ import 'desktop_sol_token_send.dart';
 import 'desktop_token_send.dart';
 
 class MyWallet extends ConsumerStatefulWidget {
-  const MyWallet({super.key, required this.walletId, this.contractAddress});
+  const MyWallet({
+    super.key,
+    required this.walletId,
+    this.contractAddress,
+    this.scrollable = true,
+    this.historyMaxHeight,
+  });
 
   final String walletId;
   final String? contractAddress;
+
+  /// False when the page around it scrolls (the BEAM desktop wallet scrolls
+  /// as one page, `BeamDesktopWalletPage`): the column then takes its
+  /// content's height instead of scrolling on its own.
+  final bool scrollable;
+
+  /// Height of the "Transactions" tab's list; by default sized for the
+  /// window.
+  final double? historyMaxHeight;
 
   @override
   ConsumerState<MyWallet> createState() => _MyWalletState();
@@ -85,7 +100,10 @@ class _MyWalletState extends ConsumerState<MyWallet> {
 
   // BEAM: the Send tab is dimmed, with the reason, while the wallet may not
   // send (the phone's Send button does the same).
-  Widget _tabs({required List<String> titles, required List<Widget> children}) =>
+  Widget _tabs({
+    required List<String> titles,
+    required List<Widget> children,
+  }) =>
       isBeam
       ? BeamDesktopWalletTabs(
           walletId: widget.walletId,
@@ -94,30 +112,29 @@ class _MyWalletState extends ConsumerState<MyWallet> {
         )
       : CustomTabView(titles: titles, children: children);
 
+  Widget _column(Widget card) => widget.scrollable
+      ? ListView(primary: false, children: [card])
+      : card;
+
   @override
   Widget build(BuildContext context) {
     if (isViewOnly) {
-      return ListView(
-        primary: false,
-        children: [
-          RoundedWhiteContainer(
-            padding: EdgeInsets.zero,
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: DesktopReceive(
-                walletId: widget.walletId,
-                contractAddress: widget.contractAddress,
-              ),
+      return _column(
+        RoundedWhiteContainer(
+          padding: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: DesktopReceive(
+              walletId: widget.walletId,
+              contractAddress: widget.contractAddress,
             ),
           ),
-        ],
+        ),
       );
     }
 
-    return ListView(
-      primary: false,
-      children: [
-        RoundedWhiteContainer(
+    return _column(
+      RoundedWhiteContainer(
           padding: EdgeInsets.zero,
           child: _tabs(
             titles: titles,
@@ -216,7 +233,9 @@ class _MyWalletState extends ConsumerState<MyWallet> {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(context).size.height - 362,
+                      maxHeight:
+                          widget.historyMaxHeight ??
+                          MediaQuery.of(context).size.height - 362,
                     ),
                     child: TransactionsV2List(walletId: widget.walletId),
                   ),
@@ -224,7 +243,6 @@ class _MyWalletState extends ConsumerState<MyWallet> {
             ],
           ),
         ),
-      ],
     );
   }
 }

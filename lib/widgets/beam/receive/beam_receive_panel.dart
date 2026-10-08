@@ -160,95 +160,128 @@ class _BeamReceivePanelState extends ConsumerState<BeamReceivePanel> {
     );
   }
 
+  /// Desktop panels at least this wide show the QR beside the address,
+  /// with "Copy address" right under the address (the card's padding and
+  /// outline take 34 of it).
+  static const _besideMinWidth = 334.0;
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: _model,
-    builder: (context, _) {
-      final address = _model.address;
-      final desktop = widget.desktop;
-      final column = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _AddressCard(model: _model, desktop: desktop),
-          const SizedBox(height: 12),
-          PrimaryButton(
-            key: BeamReceiveKeys.copy,
-            label: BeamReceiveText.copy,
-            buttonHeight: desktop ? ButtonHeight.l : null,
-            enabled: address != null,
-            onPressed: address == null
-                ? null
-                : () => beamCopy(context, widget.clipboard, address),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: SecondaryButton(
-                  key: BeamReceiveKeys.share,
-                  label: BeamReceiveText.share,
-                  buttonHeight: desktop ? ButtonHeight.l : null,
-                  enabled: address != null,
-                  onPressed: address == null
-                      ? null
-                      : () => _model.backend.share(address),
-                ),
+    builder: (context, _) => LayoutBuilder(
+      builder: (context, box) => _build(
+        context,
+        beside: widget.desktop && box.maxWidth >= _besideMinWidth,
+      ),
+    ),
+  );
+
+  Widget _build(BuildContext context, {required bool beside}) {
+    final address = _model.address;
+    final desktop = widget.desktop;
+    final copy = PrimaryButton(
+      key: BeamReceiveKeys.copy,
+      label: BeamReceiveText.copy,
+      buttonHeight: desktop ? ButtonHeight.l : null,
+      enabled: address != null,
+      onPressed: address == null
+          ? null
+          : () => beamCopy(context, widget.clipboard, address),
+    );
+    // Beside the QR, "Copy address" sits under the address itself, near
+    // the top of the tab: in view under the desktop wallet's header and
+    // sync banner (seen in the DMG test: below the fold under them).
+    final copyInCard = beside && address != null;
+    final column = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _AddressCard(
+          model: _model,
+          desktop: desktop,
+          beside: beside,
+          copy: copyInCard ? copy : null,
+        ),
+        if (!copyInCard) ...[const SizedBox(height: 12), copy],
+        SizedBox(height: copyInCard ? 12 : 8),
+        Row(
+          children: [
+            Expanded(
+              child: SecondaryButton(
+                key: BeamReceiveKeys.share,
+                label: BeamReceiveText.share,
+                buttonHeight: desktop ? ButtonHeight.l : null,
+                enabled: address != null,
+                onPressed: address == null
+                    ? null
+                    : () => _model.backend.share(address),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SecondaryButton(
-                  key: BeamReceiveKeys.newAddress,
-                  label: _model.makingRegular
-                      ? BeamReceiveText.making
-                      : BeamReceiveText.newAddress,
-                  buttonHeight: desktop ? ButtonHeight.l : null,
-                  enabled: _model.connected && !_model.makingRegular,
-                  onPressed: _model.connected && !_model.makingRegular
-                      ? _newAddress
-                      : null,
-                ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: SecondaryButton(
+                key: BeamReceiveKeys.newAddress,
+                label: _model.makingRegular
+                    ? BeamReceiveText.making
+                    : BeamReceiveText.newAddress,
+                buttonHeight: desktop ? ButtonHeight.l : null,
+                enabled: _model.connected && !_model.makingRegular,
+                onPressed: _model.connected && !_model.makingRegular
+                    ? _newAddress
+                    : null,
               ),
-            ],
-          ),
-          if (_model.names.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            _NameCard(
-              names: _model.names,
-              clipboard: widget.clipboard,
-              desktop: desktop,
             ),
           ],
+        ),
+        if (_model.names.isNotEmpty) ...[
           const SizedBox(height: 16),
-          BeamMoreWaysToReceive(
-            model: _model,
+          _NameCard(
+            names: _model.names,
             clipboard: widget.clipboard,
             desktop: desktop,
           ),
-          const SizedBox(height: 16),
-          Center(
-            child: CustomTextButton(
-              key: BeamReceiveKeys.allAddresses,
-              text: BeamReceiveText.allAddresses,
-              onTap: _openAddresses,
-            ),
-          ),
         ],
-      );
-      if (desktop) return column;
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: column,
-      );
-    },
-  );
+        const SizedBox(height: 16),
+        BeamMoreWaysToReceive(
+          model: _model,
+          clipboard: widget.clipboard,
+          desktop: desktop,
+        ),
+        const SizedBox(height: 16),
+        Center(
+          child: CustomTextButton(
+            key: BeamReceiveKeys.allAddresses,
+            text: BeamReceiveText.allAddresses,
+            onTap: _openAddresses,
+          ),
+        ),
+      ],
+    );
+    if (desktop) return column;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: column,
+    );
+  }
 }
 
 class _AddressCard extends StatelessWidget {
-  const _AddressCard({required this.model, required this.desktop});
+  const _AddressCard({
+    required this.model,
+    required this.desktop,
+    required this.beside,
+    this.copy,
+  });
 
   final BeamReceiveModel model;
   final bool desktop;
+
+  /// The QR beside the address (wide desktop panels), not above it.
+  final bool beside;
+
+  /// "Copy address", under the address beside the QR; null when the panel
+  /// shows it under the card.
+  final Widget? copy;
 
   @override
   Widget build(BuildContext context) {
@@ -284,10 +317,11 @@ class _AddressCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              // Desktop: the QR beside the address, so "Copy address" under
-              // the card stays in view in the wallet's tab column (the DMG
-              // test found it below the fold with the QR stacked on top).
-              if (address != null && desktop && box.maxWidth >= 300)
+              // Desktop: the QR beside the address and "Copy address" right
+              // under it, so both are in view at the top of the wallet's tab
+              // column, under the header and the sync banner (the DMG test
+              // found Copy below the fold). The notes go under the row.
+              if (address != null && beside) ...[
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -308,24 +342,25 @@ class _AddressCard extends StatelessWidget {
                               context,
                             ).copyWith(color: colors.textDark),
                           ),
-                          const SizedBox(height: 10),
-                          const BeamNote(
-                            BeamReceiveText.regularExplainer,
-                            key: BeamReceiveKeys.explainer,
-                          ),
-                          if (model.offline) ...[
-                            const SizedBox(height: 6),
-                            const BeamNote(
-                              BeamReceiveText.offlineWarning,
-                              warning: true,
-                            ),
+                          if (copy != null) ...[
+                            const SizedBox(height: 12),
+                            copy!,
                           ],
                         ],
                       ),
                     ),
                   ],
-                )
-              else if (address != null) ...[
+                ),
+                const SizedBox(height: 12),
+                const BeamNote(
+                  BeamReceiveText.regularExplainer,
+                  key: BeamReceiveKeys.explainer,
+                ),
+                if (model.offline) ...[
+                  const SizedBox(height: 6),
+                  const BeamNote(BeamReceiveText.offlineWarning, warning: true),
+                ],
+              ] else if (address != null) ...[
                 Center(
                   child: BeamReceiveQr(
                     key: BeamReceiveKeys.qr,
