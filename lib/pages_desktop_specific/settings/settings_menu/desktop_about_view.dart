@@ -80,7 +80,8 @@ class DesktopAboutView extends ConsumerWidget {
                                     // This app has no terms of service of its own; Stack Wallet's did not
                                     // apply to it (owner, 2026-10-08).
                                     TextSpan(
-                                      text: "${AppConfig.appName} is free and open source. ",
+                                      text:
+                                          "${BeamAppIdentity.displayName} is free and open source. ",
                                       style:
                                           STextStyles.desktopTextExtraExtraSmall(
                                             context,
@@ -97,8 +98,11 @@ class DesktopAboutView extends ConsumerWidget {
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
                                           launchUrl(
-                                            Uri.parse("https://github.com/vsnation/campfire-beam"),
-                                            mode: LaunchMode.externalApplication,
+                                            Uri.parse(
+                                              "https://github.com/vsnation/campfire-beam",
+                                            ),
+                                            mode:
+                                                LaunchMode.externalApplication,
                                           );
                                         },
                                     ),
@@ -229,39 +233,44 @@ class DesktopAboutView extends ConsumerWidget {
                                             ),
                                           ],
                                         ),
-                                        const SizedBox(height: 32),
-                                        Row(
-                                          children: [
-                                            Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  "Build signature",
-                                                  style:
-                                                      STextStyles.desktopTextExtraExtraSmall(
-                                                        context,
-                                                      ).copyWith(
-                                                        color: Theme.of(context)
-                                                            .extension<
-                                                              StackColors
-                                                            >()!
-                                                            .textDark,
-                                                      ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                SelectableText(
-                                                  signature,
-                                                  style:
-                                                      STextStyles.itemSubtitle(
-                                                        context,
-                                                      ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
-                                        ),
+                                        // Only Android builds have a signature; an empty field
+                                        // looked broken.
+                                        if (signature.isNotEmpty) ...[
+                                          const SizedBox(height: 32),
+                                          Row(
+                                            children: [
+                                              Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    "Build signature",
+                                                    style:
+                                                        STextStyles.desktopTextExtraExtraSmall(
+                                                          context,
+                                                        ).copyWith(
+                                                          color:
+                                                              Theme.of(context)
+                                                                  .extension<
+                                                                    StackColors
+                                                                  >()!
+                                                                  .textDark,
+                                                        ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  SelectableText(
+                                                    signature,
+                                                    style:
+                                                        STextStyles.itemSubtitle(
+                                                          context,
+                                                        ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                         const SizedBox(height: 35),
                                         Row(
                                           children: [

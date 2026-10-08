@@ -16,6 +16,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app_config.dart';
 import '../../../themes/stack_colors.dart';
+import '../../../utilities/beam_app_identity.dart';
 import '../../../utilities/git_status.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../wallets/crypto_currency/crypto_currency.dart';
@@ -62,7 +63,6 @@ class AboutView extends ConsumerWidget {
                                 (context, AsyncSnapshot<PackageInfo> snapshot) {
                                   String version = "";
                                   String signature = "";
-                                  String appName = "";
                                   String build = "";
 
                                   if (snapshot.connectionState ==
@@ -71,7 +71,6 @@ class AboutView extends ConsumerWidget {
                                     version = snapshot.data!.version;
                                     build = snapshot.data!.buildNumber;
                                     signature = snapshot.data!.buildSignature;
-                                    appName = snapshot.data!.appName;
                                   }
 
                                   return Column(
@@ -80,7 +79,7 @@ class AboutView extends ConsumerWidget {
                                     children: [
                                       Center(
                                         child: Text(
-                                          appName,
+                                          BeamAppIdentity.displayName,
                                           style: STextStyles.pageTitleH2(
                                             context,
                                           ),
@@ -152,28 +151,31 @@ class AboutView extends ConsumerWidget {
                                           ],
                                         ),
                                       ),
-                                      const SizedBox(height: 12),
-                                      RoundedWhiteContainer(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
-                                          children: [
-                                            Text(
-                                              "Build signature",
-                                              style: STextStyles.titleBold12(
-                                                context,
+                                      // Only Android builds have a signature.
+                                      if (signature.isNotEmpty) ...[
+                                        const SizedBox(height: 12),
+                                        RoundedWhiteContainer(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              Text(
+                                                "Build signature",
+                                                style: STextStyles.titleBold12(
+                                                  context,
+                                                ),
                                               ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            SelectableText(
-                                              signature,
-                                              style: STextStyles.itemSubtitle(
-                                                context,
+                                              const SizedBox(height: 4),
+                                              SelectableText(
+                                                signature,
+                                                style: STextStyles.itemSubtitle(
+                                                  context,
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ],
                                   );
                                 },
@@ -257,8 +259,9 @@ class AboutView extends ConsumerWidget {
                               children: [
                                 // This app has no terms of service of its own; Stack Wallet's did not
                                 // apply to it (owner, 2026-10-08).
-                                const TextSpan(
-                                  text: "${AppConfig.appName} is free and open source. ",
+                                TextSpan(
+                                  text:
+                                      "${BeamAppIdentity.displayName} is free and open source. ",
                                 ),
                                 TextSpan(
                                   text: "Source code",
@@ -266,7 +269,9 @@ class AboutView extends ConsumerWidget {
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {
                                       launchUrl(
-                                        Uri.parse("https://github.com/vsnation/campfire-beam"),
+                                        Uri.parse(
+                                          "https://github.com/vsnation/campfire-beam",
+                                        ),
                                         mode: LaunchMode.externalApplication,
                                       );
                                     },

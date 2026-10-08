@@ -17,7 +17,13 @@ enum CommitStatus { isHead, isOldCommit, notACommit, notLoaded }
 abstract class GitStatus {
   // static String get moneroCommit => monero_versions.getPluginVersion();
 
-  static String get appCommitHash => AppConfig.commitHash;
+  static String get appCommitHash =>
+      debugCommitHashOverride ?? AppConfig.commitHash;
+
+  /// BEAM: a fixed hash for golden tests of About, which would otherwise
+  /// change with every commit. Never set in the app.
+  @visibleForTesting
+  static String? debugCommitHashOverride;
 
   //static CommitStatus? _cachedMoneroStatus;
   //static Future<CommitStatus> getMoneroCommitStatus() async {

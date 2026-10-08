@@ -15,10 +15,12 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../app_config.dart';
 import '../../../themes/stack_colors.dart';
 import '../../../utilities/assets.dart';
+import '../../../utilities/beam_app_identity.dart';
 import '../../../utilities/constants.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../utilities/util.dart';
 import '../../../widgets/background.dart';
+import '../../../widgets/beam/airdrop/beam_layout.dart';
 import '../../../widgets/conditional_parent.dart';
 import '../../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../../widgets/desktop/primary_button.dart';
@@ -34,7 +36,9 @@ class SupportView extends StatelessWidget {
   Widget build(BuildContext context) {
     debugPrint("BUILD: $runtimeType");
 
-    final isDesktop = Util.isDesktop;
+    // Util.isDesktop in the app; BeamLayoutScope lets a golden test on a
+    // desktop host show the phone page.
+    final isDesktop = BeamLayoutScope.isDesktop(context);
 
     return ConditionalParent(
       condition: !isDesktop,
@@ -77,7 +81,7 @@ class SupportView extends StatelessWidget {
           isDesktop ? const SizedBox(height: 24) : const SizedBox(height: 12),
           AboutItem(
             linkUrl: "https://t.me/BeamSupport",
-            label: "Support",
+            label: "Support chat",
             buttonText: "@BeamSupport",
             iconAsset: Assets.socials.telegram,
             isDesktop: isDesktop,
@@ -95,6 +99,7 @@ class SupportView extends StatelessWidget {
             linkUrl: "https://github.com/vsnation/campfire-beam/issues",
             label: "A bug in this app",
             buttonText: "GitHub Issues",
+            channel: "GitHub Issues",
             iconAsset: Assets.svg.circleQuestion,
             isDesktop: isDesktop,
           ),
@@ -152,6 +157,7 @@ class AboutItem extends StatelessWidget {
     required this.buttonText,
     required this.iconAsset,
     required this.isDesktop,
+    this.channel,
   });
 
   final String linkUrl;
@@ -159,6 +165,9 @@ class AboutItem extends StatelessWidget {
   final String buttonText;
   final String iconAsset;
   final bool isDesktop;
+
+  /// What the scam warning calls the channel; [label] by default.
+  final String? channel;
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +194,7 @@ class AboutItem extends StatelessWidget {
               context: context,
               builder:
                   (_) => ScamWarningDialog(
-                    channel: label,
+                    channel: channel ?? label,
                     onUnderstandPressed:
                         () => launchUrl(
                           Uri.parse(linkUrl),
@@ -299,9 +308,10 @@ class ScamWarningDialog extends StatelessWidget {
                     text: "All official support for ",
                     style: TextStyle(fontWeight: FontWeight.normal),
                   ),
-                  const TextSpan(
-                    text: AppConfig.appName,
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  // BEAM's channels support BEAM, not this app alone.
+                  TextSpan(
+                    text: BeamAppIdentity.isActive ? "BEAM" : AppConfig.appName,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const TextSpan(
                     text: " in ",
@@ -353,7 +363,7 @@ class ScamWarningDialog extends StatelessWidget {
                     style: TextStyle(fontWeight: FontWeight.normal),
                   ),
                   TextSpan(
-                    text: "*never*",
+                    text: "never",
                     style: TextStyle(
                       fontStyle: FontStyle.italic,
                       fontWeight: FontWeight.bold,

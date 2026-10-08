@@ -200,8 +200,8 @@ class PrivacyAndTOSText extends StatelessWidget {
         children: [
           // This app has no terms of service of its own; Stack Wallet's did not
           // apply to it (owner, 2026-10-08).
-          const TextSpan(
-            text: "${AppConfig.appName} is free and open source. ",
+          TextSpan(
+            text: "${BeamAppIdentity.displayName} is free and open source. ",
           ),
           TextSpan(
             text: "Source code",
