@@ -1,0 +1,5 @@
+# Contributors whose commits keep their own authorship (owner, 2026-10-08:
+# credit contributors, after every change is reviewed for real value and for
+# vulnerabilities). One exact "Name <email>" per line, as `git log --format='%an <%ae>'`
+# prints it. GitHub no-reply addresses only: CI refuses any other.
+Nikita Shliakov <5992345+profinch@users.noreply.github.com>

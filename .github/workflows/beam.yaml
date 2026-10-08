@@ -27,13 +27,19 @@ jobs:
       - name: Secret patterns
         run: bash scripts/beam/secret_scan.sh --all
 
-      # Every commit is authored by the project identity, with no AI
-      # attribution (project rules R1).
+      # Every commit is authored by the project identity or by a credited
+      # contributor (.github/contributors.txt, GitHub no-reply addresses
+      # only), with no AI attribution (project rules R1).
       - name: Commit identity
         run: |
           base=$(git merge-base origin/staging HEAD 2>/dev/null || git rev-list --max-parents=0 HEAD | tail -1)
-          bad=$(git log --format='%an <%ae>' "$base"..HEAD \
-            | grep -v '^vsnation <vsnation@users.noreply.github.com>$' || true)
+          allowed=$(mktemp)
+          echo 'vsnation <vsnation@users.noreply.github.com>' > "$allowed"
+          grep -vE '^[[:space:]]*(#|$)' .github/contributors.txt >> "$allowed" || true
+          if grep -vqE '^[^<>]+ <[^<>@]+@users\.noreply\.github\.com>$' "$allowed"; then
+            echo "contributors.txt may list GitHub no-reply addresses only"; exit 1
+          fi
+          bad=$(git log --format='%an <%ae>' "$base"..HEAD | grep -vxF -f "$allowed" || true)
           if [ -n "$bad" ]; then echo "Foreign authors:"; echo "$bad" | sort -u; exit 1; fi
           if git log --format='%B' "$base"..HEAD | grep -qi 'co-authored-by'; then
             echo "Co-authored-by trailer found"; exit 1
