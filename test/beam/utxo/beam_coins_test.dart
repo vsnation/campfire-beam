@@ -12,6 +12,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/wallets/beam/models/beam_utxo.dart';
+import 'package:stackwallet/wallets/beam/utxo/beam_coin_split.dart';
 import 'package:stackwallet/wallets/beam/utxo/beam_coins.dart';
 
 const _g = BigInt.from;
@@ -115,8 +116,160 @@ void main() {
         count: 4,
         assetId: 174,
       )!;
-      expect(p.size, _g(225)); // 90 % of 1000, in 4
+      // 90 % of 1000 in 4 is 225, rounded down to two digits.
+      expect(p.size, _g(220));
       expect(p.fee, BeamFees.forSplit(4, asset: true));
+      expect(p.change, _g(120), reason: 'the fee is not taken from FOMO');
+    });
+
+    test('coins read the way people count: two significant digits, the '
+        'rest stays as change', () {
+      // 1 BEAM into 5: 6 outputs cost 0.00118; (1 - 0.00118) * 0.9 / 5 =
+      // 0.17978760 → 0.17.
+      final p = BeamSplitPlan.equal(available: _g(100000000), count: 5)!;
+      expect(p.fee, _g(118000));
+      expect(p.size, _g(17000000));
+      expect(p.total + p.fee + p.change, _g(100000000));
+      expect(p.change, _g(100000000 - 85000000 - 118000));
+      expect(BeamSplitPlan.roundDown(_g(17978760)), _g(17000000));
+      expect(BeamSplitPlan.roundDown(_g(123456789012)), _g(120000000000));
+      expect(BeamSplitPlan.roundDown(_g(99)), _g(99));
+    });
+
+    test('rounding never makes a BEAM coin too small to spend', () {
+      // (0.0035 - 0.001) * 0.9 / 2 = 0.001125: rounded, 0.0011 > 0.001.
+      final p = BeamSplitPlan.equal(available: _g(350000), count: 2)!;
+      expect(p.size, _g(110000));
+      // (0.00325 - 0.001) * 0.9 / 2 = 0.0010125: rounded to 0.001, which
+      // is a send's fee, so the unrounded size is kept.
+      final q = BeamSplitPlan.equal(available: _g(325000), count: 2)!;
+      expect(q.size, _g(101250));
+      expect(q.size, greaterThan(BeamFees.minimum));
+    });
+
+    test('an exact split (0.05 in 3, as the live test splits) is checked '
+        'like any other', () {
+      final p = BeamSplitPlan.sized(
+        available: _g(10000000),
+        count: 3,
+        size: _g(1666666),
+      )!;
+      expect(p.coins, List.filled(3, _g(1666666)));
+      expect(p.fee, _g(100000));
+      expect(p.change, _g(10000000 - 4999998 - 100000));
+      expect(
+        BeamSplitPlan.sized(available: _g(4999998), count: 3, size: _g(1666666)),
+        isNull,
+        reason: 'no room for the fee',
+      );
+      expect(
+        BeamSplitPlan.sized(available: _g(10000000), count: 3, size: _g(100000)),
+        isNull,
+        reason: 'a coin worth only a send fee',
+      );
+    });
+
+    test('the screen offers the presets, plus the advised count', () {
+      expect(BeamSplitPlan.choices(0), [2, 3, 5, 8, 10]);
+      expect(BeamSplitPlan.choices(5), [2, 3, 5, 8, 10]);
+      expect(BeamSplitPlan.choices(4), [2, 3, 4, 5, 8, 10]);
+      expect(BeamSplitPlan.choices(7), [2, 3, 5, 7, 8, 10]);
+    });
+  });
+
+  group('advice (BEAM Light Wallet thresholds)', () {
+    BeamCoinSummary coins(List<int> amounts, {int aid = 0}) =>
+        BeamCoinSummary.of([
+          for (final (i, a) in amounts.indexed)
+            BeamUtxo(
+              id: 'c$i',
+              assetId: aid,
+              amount: _g(a),
+              type: 'norm',
+              statusCode: 1,
+              statusString: 'available',
+            ),
+        ])[aid]!;
+
+    test('everything in one coin: needed, one coin per 10 BEAM, 3 to 10', () {
+      final one = coins([100000000]).advice; // 1 BEAM
+      expect(one.urgency, BeamSplitUrgency.needed);
+      expect(one.suggestedCount, 3);
+      expect(coins([4500000000]).advice.suggestedCount, 5); // 45 BEAM
+      expect(coins([50000000000]).advice.suggestedCount, 10); // 500 BEAM
+    });
+
+    test('dust that cannot pay a fee does not count as a coin', () {
+      // One real coin and two of 0.0005 BEAM: still "all in one coin".
+      final s = coins([100000000, 50000, 50000]);
+      expect(s.available, hasLength(3));
+      expect(s.usable, hasLength(1));
+      expect(s.advice.urgency, BeamSplitUrgency.needed);
+      expect(s.largestShare, 1.0);
+    });
+
+    test('two coins with over 80 % in one: worth it, 4 coins', () {
+      final a = coins([85000000, 15000000]).advice;
+      expect(a.urgency, BeamSplitUrgency.worthIt);
+      expect(a.suggestedCount, 4);
+      expect(coins([70000000, 30000000]).advice.urgency, BeamSplitUrgency.none);
+    });
+
+    test('over 90 % in the largest of several: worth it, 3 coins', () {
+      final a = coins([95000000, 2000000, 2000000, 1000000]).advice;
+      expect(a.urgency, BeamSplitUrgency.worthIt);
+      expect(a.suggestedCount, 3);
+      expect(
+        coins([50000000, 30000000, 20000000]).advice.urgency,
+        BeamSplitUrgency.none,
+      );
+    });
+
+    test('too little to make coins worth spending: no advice', () {
+      // 0.003 BEAM in one coin: no split leaves each coin above 0.001.
+      expect(coins([300000]).advice.urgency, BeamSplitUrgency.none);
+      // 0.004 BEAM: 3 coins would be too small, 2 fit.
+      final a = coins([400000]).advice;
+      expect(a.urgency, BeamSplitUrgency.needed);
+      expect(a.suggestedCount, 2);
+    });
+
+    test('an asset is advised in its own units; its fee is BEAM\'s', () {
+      final a = coins([2500000000], aid: 174).advice; // 25 FOMO
+      expect(a.urgency, BeamSplitUrgency.needed);
+      expect(a.suggestedCount, 3);
+    });
+
+    test('nothing spendable: nothing to advise', () {
+      expect(BeamCoinSummary.empty(0).advice.urgency, BeamSplitUrgency.none);
+      expect(BeamCoinSummary.empty(0).largestShare, 0);
+    });
+  });
+
+  group('reading every page of coins', () {
+    test('pages until a short one, and never counts a coin twice', () async {
+      final all = [
+        for (var i = 0; i < 7; i++)
+          BeamUtxo(
+            id: 'c$i',
+            assetId: 0,
+            amount: _g(1000000),
+            type: 'norm',
+            statusCode: 1,
+            statusString: 'available',
+          ),
+      ];
+      final asked = <(int, int)>[];
+      final read = await beamReadAllCoins((skip, count) async {
+        asked.add((skip, count));
+        // The list moved under the read: each later page starts one coin
+        // early, repeating the last coin of the page before.
+        final from = skip == 0 ? 0 : skip - 1;
+        return all.skip(from).take(count).toList();
+      }, pageSize: 3);
+      expect(asked, [(0, 3), (3, 3), (6, 3)]);
+      expect(read.map((u) => u.id).toSet(), {for (final u in all) u.id});
+      expect(read, hasLength(7));
     });
   });
 }

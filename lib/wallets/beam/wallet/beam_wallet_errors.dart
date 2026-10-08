@@ -75,6 +75,13 @@ enum BeamWalletProblem {
   /// The core refused the payment.
   sendRejected,
 
+  /// Another money flow (a payment, swap, claim or dApp approval) is open or
+  /// still being confirmed; this one waits until it is done.
+  walletBusy,
+
+  /// A restored wallet is still looking for its coins.
+  scanningForCoins,
+
   /// Anything else.
   other,
 }

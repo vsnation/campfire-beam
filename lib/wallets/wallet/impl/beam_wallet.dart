@@ -39,6 +39,7 @@ import '../../beam/host/beam_host_exception.dart';
 import '../../beam/host/process_host.dart';
 import '../../beam/host/secret_file.dart';
 import '../../beam/models/beam_address.dart';
+import '../../beam/contracts/dex/beam_lp_tokens.dart';
 import '../../beam/models/beam_transaction.dart';
 import '../../beam/models/beam_wallet_status.dart';
 import '../../beam/node/beam_private_node_coordinator.dart';
@@ -47,6 +48,8 @@ import '../../beam/rpc/beam_connection_exception.dart';
 import '../../beam/rpc/beam_transport.dart';
 import '../../beam/sync/beam_sync_monitor.dart';
 import '../../beam/sync/beam_sync_state.dart';
+import '../../beam/utxo/beam_coin_split.dart';
+import '../../beam/utxo/beam_coins.dart';
 import '../../beam/wallet/beam_balance_mapper.dart';
 import '../../beam/wallet/beam_node_switch_gate.dart';
 import '../../beam/wallet/beam_open_timings.dart';
@@ -1648,6 +1651,206 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
       lease.release();
       _preparedSend?.release();
       _preparedSend = null;
+    }
+  }
+
+  // ===========================================================================
+  // Coins (B-UTXO-1)
+
+  /// Every coin the wallet holds, per asset: all pages of `get_utxo`, spent
+  /// coins left out ([BeamCoinSummary.of]).
+  Future<Map<int, BeamCoinSummary>> loadCoins() async {
+    final api = _requireApi();
+    try {
+      final all = await beamReadAllCoins(
+        (skip, count) => api.getUtxo(skip: skip, count: count),
+      );
+      return BeamCoinSummary.of(all);
+    } catch (e) {
+      throw beamWalletExceptionFrom(e);
+    }
+  }
+
+  /// A restore scan still runs: the wallet looks for its coins and is not
+  /// up to date yet, or reports block bodies still outstanding (the same
+  /// rule as the screens' `beamScanRunning`).
+  bool get isRestoreScanRunning {
+    if (!isScanningForCoins) return false;
+    if (!canSpend) return true;
+    final f = scanProgress?.fraction;
+    return f != null && f < 1;
+  }
+
+  /// Why a split cannot start now (what is open, and that it clears by
+  /// itself), or null when it can. Sync is the screens' own gate.
+  BeamWalletException? get splitBlocked => _splitBlocked(const []);
+
+  BeamWalletException? _splitBlocked(List<String> own) {
+    final others = List.of(_gate.reasons);
+    for (final r in own) {
+      others.remove(r);
+    }
+    if (others.isNotEmpty) {
+      return BeamWalletException(
+        BeamWalletProblem.walletBusy,
+        BeamSplitMessages.busy(others),
+      );
+    }
+    if (isRestoreScanRunning) {
+      return const BeamWalletException(
+        BeamWalletProblem.scanningForCoins,
+        BeamSplitMessages.scanning,
+      );
+    }
+    return null;
+  }
+
+  static bool _isPoolShare(int assetId) =>
+      assetId != 0 && BeamLpTokens.of(assetId) != null;
+
+  /// Checks [plan] against the coins the wallet holds now and holds the node
+  /// switch for the review screen (until [confirmSplit], [BeamPreparedSplit.
+  /// discard], or ten minutes). Never signs or sends anything.
+  ///
+  /// Refused while not synced, while another money flow is open, during a
+  /// restore scan, for a DEX pool share, when the coins no longer cover the
+  /// plan, and for an asset when the BEAM balance cannot pay the fee.
+  Future<BeamPreparedSplit> prepareSplit(BeamSplitPlan plan) async {
+    final blocked = _splitBlocked(const []);
+    if (blocked != null) throw blocked;
+    final lease = _gate.hold(_kSplitHold, maxHold: const Duration(minutes: 10));
+    try {
+      _requireApi();
+      BeamSendRules.checkSynced(_assessment);
+      if (_isPoolShare(plan.assetId)) {
+        throw const BeamWalletException(
+          BeamWalletProblem.other,
+          BeamSplitMessages.poolShare,
+        );
+      }
+      final coins = await loadCoins();
+      final before = coins[plan.assetId] ?? BeamCoinSummary.empty(plan.assetId);
+      final have = before.availableTotal;
+      final beam = plan.assetId == 0
+          ? have
+          : (coins[0]?.availableTotal ?? BigInt.zero);
+      _checkSplitFunds(plan, have: have, beam: beam);
+      return BeamPreparedSplit(
+        plan: plan,
+        before: before,
+        beamAvailable: beam,
+        onDiscard: lease.release,
+      );
+    } catch (e) {
+      lease.release();
+      throw beamWalletExceptionFrom(e);
+    }
+  }
+
+  static void _checkSplitFunds(
+    BeamSplitPlan plan, {
+    required BigInt have,
+    required BigInt beam,
+  }) {
+    if (plan.count < 2 || plan.size <= BigInt.zero) {
+      throw const BeamWalletException(
+        BeamWalletProblem.invalidAmount,
+        BeamSplitMessages.tooLittle,
+      );
+    }
+    if (plan.assetId != 0 && beam < plan.fee) {
+      throw BeamWalletException(
+        BeamWalletProblem.insufficientFunds,
+        BeamSplitMessages.needBeamForFee(plan.fee, beam),
+      );
+    }
+    final needed = plan.total + (plan.assetId == 0 ? plan.fee : BigInt.zero);
+    if (needed > have) {
+      throw BeamWalletException(
+        BeamWalletProblem.insufficientFunds,
+        BeamSplitMessages.changed(),
+      );
+    }
+  }
+
+  /// Splits what [prepareSplit] checked with one `tx_split` and returns its
+  /// tx id. The same steps as [confirmSend]: the node switch held, the sync
+  /// verdict checked, the tx id generated first, so a dropped connection is
+  /// looked up (`tx_status`) instead of risking a second split; a prepared
+  /// split already handed to the core is only ever looked up again.
+  Future<String> confirmSplit(BeamPreparedSplit split) async {
+    final lease = _gate.hold('confirm split');
+    try {
+      if (split.isDiscarded) {
+        throw const BeamWalletException(
+          BeamWalletProblem.other,
+          BeamSplitMessages.notPrepared,
+        );
+      }
+      final api = _requireApi();
+      final handed = split.handedOff;
+      if (handed != null) {
+        return await _lookUpSplit(
+          api,
+          handed,
+          BeamSplitMessages.alreadyHandedOff,
+        );
+      }
+      final blocked = _splitBlocked(const [_kSplitHold, 'confirm split']);
+      if (blocked != null) throw blocked;
+      BeamSendRules.checkSynced(_assessment);
+      final plan = split.plan;
+
+      final txId = await api.generateTxId();
+      split.handedOff = txId;
+      String id;
+      try {
+        id = await api.txSplit(
+          coins: plan.coins,
+          fee: plan.fee,
+          assetId: plan.assetId == 0 ? null : plan.assetId,
+          txId: txId,
+        );
+      } on BeamRpcException catch (e) {
+        if (e.message.toLowerCase().contains('already exists')) {
+          id = await _lookUpSplit(api, txId);
+        } else {
+          // A plain refusal: nothing started, so it may be tried again.
+          split.handedOff = null;
+          throw BeamWalletException(
+            e.message.toLowerCase().contains('funds') ||
+                    e.message.toLowerCase().contains('missing')
+                ? BeamWalletProblem.insufficientFunds
+                : BeamWalletProblem.sendRejected,
+            'The coins were not split: ${e.message}',
+          );
+        }
+      } on BeamConnectionException {
+        id = await _lookUpSplit(api, txId);
+      } on TimeoutException {
+        id = await _lookUpSplit(api, txId);
+      }
+      _markDirty(status: true, transactions: true);
+      return id;
+    } catch (e) {
+      throw beamWalletExceptionFrom(e);
+    } finally {
+      lease.release();
+      split.discard();
+    }
+  }
+
+  static const _kSplitHold = 'split coins';
+
+  static Future<String> _lookUpSplit(
+    BeamApi api,
+    String txId, [
+    String message = BeamSplitMessages.outcomeUnknown,
+  ]) async {
+    try {
+      return (await api.txStatus(txId)).txId;
+    } catch (_) {
+      throw BeamWalletException(BeamWalletProblem.sendOutcomeUnknown, message);
     }
   }
 

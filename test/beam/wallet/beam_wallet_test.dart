@@ -43,6 +43,8 @@ import 'package:stackwallet/wallets/beam/wallet/beam_secret_store.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_swaps_in_flight.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_environment.dart';
 import 'package:stackwallet/wallets/beam/wallet/beam_wallet_errors.dart';
+import 'package:stackwallet/wallets/beam/utxo/beam_coins.dart';
+import 'package:stackwallet/wallets/beam/contracts/dex/beam_lp_tokens.dart';
 import 'package:stackwallet/wallets/crypto_currency/crypto_currency.dart';
 import 'package:stackwallet/wallets/isar/models/wallet_info.dart';
 import 'package:stackwallet/wallets/models/tx_data.dart';
@@ -104,6 +106,12 @@ class _Core {
   bool knowsDroppedTx = true;
   String nextTxId = 'fe' * 16;
 
+  /// Coins `get_utxo` serves, one page at a time as asked.
+  List<Map<String, Object?>> utxos = [];
+  final splits = <Map<String, Object?>>[];
+  bool dropOnSplit = false;
+  String? refuseSplit;
+
   Map<String, Object?> replies() => {
     'ev_subunsub': true,
     'wallet_status': (Map<String, Object?> _) => status,
@@ -125,6 +133,20 @@ class _Core {
     'tx_send': (Map<String, Object?> params) {
       sent.add(params);
       if (dropOnSend) {
+        throw const BeamConnectionException('connection dropped');
+      }
+      return {'txId': params['txId']};
+    },
+    'get_utxo': (Map<String, Object?> params) {
+      final skip = params['skip'] as int? ?? 0;
+      final count = params['count'] as int? ?? utxos.length;
+      return utxos.skip(skip).take(count).toList();
+    },
+    'tx_split': (Map<String, Object?> params) {
+      splits.add(params);
+      final refuse = refuseSplit;
+      if (refuse != null) throw BeamRpcException(-32602, refuse);
+      if (dropOnSplit) {
         throw const BeamConnectionException('connection dropped');
       }
       return {'txId': params['txId']};
@@ -1026,6 +1048,209 @@ void main() {
         BigInt.from(100000),
       );
       expect((await w.fees).medium, BigInt.from(100000));
+    });
+  });
+
+  group('split coins (B-UTXO-1)', () {
+    Map<String, Object?> coin(
+      String id,
+      int amount, {
+      int aid = 0,
+      String status = 'available',
+    }) => {
+      'id': id,
+      'asset_id': aid,
+      'amount': amount,
+      'type': 'norm',
+      'status': status == 'available' ? 1 : 4,
+      'status_string': status,
+      'maturity': _height - 100,
+      'createTxId': '',
+      'spentTxId': '',
+    };
+
+    Future<BeamWallet> ready() async {
+      final w = await newWallet();
+      await w.open();
+      await w.whenCanSend.timeout(const Duration(seconds: 5));
+      return w;
+    }
+
+    Matcher problem(BeamWalletProblem p, [Pattern? says]) => throwsA(
+      isA<BeamWalletException>()
+          .having((e) => e.problem, 'problem', p)
+          .having((e) => e.message, 'message', contains(says ?? '')),
+    );
+
+    test('coins: every page of get_utxo, grouped per asset, spent left out',
+        () async {
+      core.utxos = [
+        for (var i = 0; i < 1203; i++) coin('s$i', 1000, status: 'spent'),
+        coin('big', _g(1).toInt()),
+        coin('small', _g(0.2).toInt()),
+        coin('fomo', 500000000, aid: 174),
+      ];
+      final w = await ready();
+      final coins = await w.loadCoins();
+      expect(coins.keys.toSet(), {0, 174});
+      expect(coins[0]!.available.map((u) => u.id), ['big', 'small']);
+      expect(coins[174]!.availableTotal, BigInt.from(500000000));
+      final pages = host.lastTransport!.callsTo('get_utxo');
+      expect(pages, hasLength(3), reason: '500 + 500 + 206 coins');
+      expect(pages.map((c) => c.params['skip']), [0, 500, 1000]);
+    });
+
+    test('prepare holds the node switch; confirm sends one tx_split with '
+        'the tx id generated first, then lets go', () async {
+      core.utxos = [coin('big', _g(0.05).toInt())];
+      final w = await ready();
+      final plan = BeamSplitPlan.sized(
+        available: _g(0.05),
+        count: 3,
+        size: BigInt.from(1500000),
+      )!;
+      final prepared = await w.prepareSplit(plan);
+      expect(w.isBusy, isTrue, reason: 'held for the review screen');
+      expect(w.nodeSwitchGate.reasons, ['split coins']);
+      expect(prepared.before.available, hasLength(1));
+      expect(core.splits, isEmpty, reason: 'prepare never sends');
+
+      final t = host.lastTransport!;
+      final id = await w.confirmSplit(prepared);
+      expect(id, 'fe' * 16);
+      expect(core.splits.single, {
+        'coins': [1500000, 1500000, 1500000],
+        'fee': 100000,
+        'txId': 'fe' * 16,
+      });
+      final order = [for (final c in t.calls) c.method];
+      expect(
+        order.lastIndexOf('generate_tx_id'),
+        lessThan(order.indexOf('tx_split')),
+      );
+      expect(w.isBusy, isFalse);
+      expect(prepared.isDiscarded, isTrue);
+    });
+
+    test('an asset split names its asset; the BEAM fee must be there', () async {
+      core.utxos = [
+        coin('fomo', 2500000000, aid: 174),
+        coin('dust', 50000),
+      ];
+      final w = await ready();
+      final plan = BeamSplitPlan.equal(
+        available: BigInt.from(2500000000),
+        count: 3,
+        assetId: 174,
+      )!;
+      await expectLater(
+        w.prepareSplit(plan),
+        problem(BeamWalletProblem.insufficientFunds, 'paid in BEAM'),
+      );
+      expect(w.isBusy, isFalse, reason: 'a refusal lets go at once');
+
+      core.utxos = [...core.utxos, coin('beam', _g(0.01).toInt())];
+      final prepared = await w.prepareSplit(plan);
+      expect(prepared.beamAvailable, BigInt.from(1050000));
+      await w.confirmSplit(prepared);
+      expect(core.splits.single['asset_id'], 174);
+      expect(core.splits.single['fee'], plan.fee.toInt());
+    });
+
+    test('not synced, another money flow open, a restore scan, a pool '
+        'share: refused, saying what happens next', () async {
+      core.utxos = [coin('big', _g(1).toInt())];
+      final w = await ready();
+      final plan = BeamSplitPlan.equal(available: _g(1), count: 3)!;
+
+      final swap = w.holdNodeSwitch('swap being confirmed');
+      expect(w.splitBlocked?.problem, BeamWalletProblem.walletBusy);
+      await expectLater(
+        w.prepareSplit(plan),
+        problem(BeamWalletProblem.walletBusy, 'once it is done'),
+      );
+      swap.release();
+      expect(w.splitBlocked, isNull);
+
+      BeamLpTokens.learn(
+        const BeamLpPool(lpToken: 9175, aid1: 0, aid2: 174, kind: 2),
+      );
+      addTearDown(BeamLpTokens.clear);
+      await expectLater(
+        w.prepareSplit(
+          BeamSplitPlan.equal(
+            available: _g(1),
+            count: 3,
+            assetId: 9175,
+          )!,
+        ),
+        problem(BeamWalletProblem.other, 'Pool shares'),
+      );
+
+      explorer.height = _height + 100;
+      await waitFor(() => !w.canSpend, what: 'falls behind');
+      await expectLater(
+        w.prepareSplit(plan),
+        problem(BeamWalletProblem.notSynced),
+      );
+
+      await w.info.updateExtraBeamWalletInfo(
+        beamData: (w.info.beamData ?? const ExtraBeamWalletInfo()).copyWith(
+          restoreScanPending: true,
+        ),
+        isar: isar,
+      );
+      expect(w.isRestoreScanRunning, isTrue);
+      await expectLater(
+        w.prepareSplit(plan),
+        problem(BeamWalletProblem.scanningForCoins, 'scan is done'),
+      );
+      expect(core.splits, isEmpty);
+      expect(w.isBusy, isFalse);
+    });
+
+    test('a dropped connection during tx_split is looked up, never split '
+        'twice', () async {
+      core.utxos = [coin('big', _g(1).toInt())];
+      final w = await ready();
+      final plan = BeamSplitPlan.equal(available: _g(1), count: 5)!;
+      core.dropOnSplit = true;
+
+      final prepared = await w.prepareSplit(plan);
+      expect(await w.confirmSplit(prepared), 'fe' * 16);
+      expect(core.splits, hasLength(1));
+      expect(host.lastTransport!.callsTo('tx_status'), hasLength(1));
+      // The same prepared split again: never handed over a second time.
+      await expectLater(
+        w.confirmSplit(prepared),
+        problem(BeamWalletProblem.other),
+      );
+      expect(core.splits, hasLength(1));
+
+      core.knowsDroppedTx = false;
+      final again = await w.prepareSplit(plan);
+      await expectLater(
+        w.confirmSplit(again),
+        problem(BeamWalletProblem.sendOutcomeUnknown, 'history'),
+      );
+      expect(core.splits, hasLength(2), reason: 'one per prepared split');
+      expect(w.isBusy, isFalse);
+    });
+
+    test('a plain refusal from the core says so; nothing started', () async {
+      core.utxos = [coin('big', _g(1).toInt())];
+      final w = await ready();
+      core.refuseSplit = 'Not enough funds';
+      final prepared = await w.prepareSplit(
+        BeamSplitPlan.equal(available: _g(1), count: 2)!,
+      );
+      await expectLater(
+        w.confirmSplit(prepared),
+        problem(BeamWalletProblem.insufficientFunds, 'not split'),
+      );
+      expect(prepared.handedOff, isNull);
+      expect(host.lastTransport!.callsTo('tx_status'), isEmpty);
+      expect(w.isBusy, isFalse);
     });
   });
 
