@@ -247,6 +247,49 @@ void main() {
     );
   });
 
+  // A tx_split is the core's simple transaction to no one: it must not read
+  // "Sent", wait for a receiver, or offer a payment proof.
+  test('a split reads as a split at every step, never as a payment', () {
+    Map<String, Object?> split(int seed, BeamTxStatus status) =>
+        simpleTxJson(seed: seed, status: status, value: 4999998)
+          ..['sender'] = ''
+          ..['receiver'] = ''
+          ..['fee'] = 100000;
+
+    final going = _view(split(41, BeamTxStatus.inProgress));
+    expect(going.isSplit, isTrue);
+    expect(going.isToSelf, isTrue);
+    final e = BeamTxEntryText.of(going, formatter: _fmt, signed: true);
+    expect(e.title, 'Splitting coins');
+    expect(e.primary, '−${BeamTxText.amount(BigInt.from(100000), 0, _fmt)}');
+    expect(
+      e.secondary,
+      '${BeamTxText.amount(BigInt.from(4999998), 0, _fmt)} split',
+    );
+    expect(
+      BeamTxText.status(going),
+      'In progress: the new coins are ready in about a minute',
+    );
+    expect(BeamTxText.status(going), isNot(contains('receiver')));
+
+    expect(
+      BeamTxText.status(_view(split(42, BeamTxStatus.registering))),
+      'Being added to a block',
+    );
+
+    final done = _view(split(43, BeamTxStatus.completed));
+    expect(BeamTxText.title(done), 'Split into coins');
+    expect(BeamTxText.status(done), 'Completed: the new coins are ready');
+    expect(done.canExportProof, isFalse, reason: 'no one to prove it to');
+    expect(BeamTxText.fee(done, _fmt), BeamTxText.amount(BigInt.from(100000), 0, _fmt));
+
+    expect(BeamTxText.title(_view(split(44, BeamTxStatus.failed))), 'Not split');
+    expect(
+      BeamTxText.title(_view(split(45, BeamTxStatus.canceled))),
+      'Split cancelled',
+    );
+  });
+
   test('a fiat value under a cent says so, never "0.00"', () {
     final v = _view(
       simpleTxJson(seed: 32, status: BeamTxStatus.completed, value: 1000000),

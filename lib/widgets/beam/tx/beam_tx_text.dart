@@ -29,6 +29,7 @@ abstract final class BeamTxText {
   /// The first line of a history entry: what happened.
   static String title(BeamTxView v, {List<BeamFundsLine>? funds}) {
     if (v.isContract) return contractLabel(v, funds: funds);
+    if (v.isSplit) return splitTitle(v);
     if (v.isCancelled) return 'Cancelled';
     if (v.isFailed) return v.isIncoming ? 'Not received' : 'Not sent';
     if (v.isCompleted) {
@@ -44,6 +45,19 @@ abstract final class BeamTxText {
         ? 'Sending to yourself'
         : 'Sending';
   }
+
+  /// A split of the wallet's own coins, by where it is.
+  static String splitTitle(BeamTxView v) {
+    if (v.isCancelled) return 'Split cancelled';
+    if (v.isFailed) return 'Not split';
+    if (v.isCompleted) return 'Split into coins';
+    return 'Splitting coins';
+  }
+
+  /// What a split moved, under its fee (the only thing that left). Short:
+  /// the list gives it the width of the amount above it.
+  static String splitDetail(BeamTxView v, AmountFormatter beam) =>
+      '${amount(v.amount, v.assetId, beam)} split';
 
   /// What a contract transaction was, when Campfire knows the contract.
   /// [funds] (from the core) tells a swap from a liquidity move.
@@ -102,6 +116,15 @@ abstract final class BeamTxText {
     if (v.isCancelled) return 'Cancelled. $_nothing';
     // "Sent" fits a payment, not a swap or a claim.
     if (v.isContract && v.isCompleted) return 'Completed';
+    // A split waits for no one: no "waiting for the receiver".
+    if (v.isSplit) {
+      return switch (v.status) {
+        BeamTxStatus.completed => 'Completed: the new coins are ready',
+        BeamTxStatus.registering => 'Being added to a block',
+        BeamTxStatus.confirming => 'Waiting for confirmation',
+        _ => 'In progress: the new coins are ready in about a minute',
+      };
+    }
     final line = BeamTxActions.statusLine(v.toCore());
     if (v.isFailed && line == 'Failed') return kNotCompleted;
     return line;
@@ -135,7 +158,8 @@ abstract final class BeamTxText {
   /// The core's own text, kept for support. Shown only behind "Copy".
   static String? technical(BeamTxView v) => v.failureReason;
 
-  static bool _interactive(BeamTxView v) => v.txType == BeamTxType.simple;
+  static bool _interactive(BeamTxView v) =>
+      v.txType == BeamTxType.simple && !v.isSplit;
 
   /// How the status line should look.
   static BeamTxTone tone(BeamTxView v) {

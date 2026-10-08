@@ -76,6 +76,7 @@ class BeamTxView {
     this.counterparty,
     this.contractIds = const [],
     this.appName,
+    this.isSplit = false,
   });
 
   /// Null unless [tx] is a BEAM transaction.
@@ -145,6 +146,7 @@ class BeamTxView {
           ? List.unmodifiable(ids.whereType<String>())
           : const [],
       appName: _nonEmpty(od[TxV2OdKeys.beamAppName]),
+      isSplit: od[TxV2OdKeys.beamSplit] == true,
     );
   }
 
@@ -203,6 +205,10 @@ class BeamTxView {
   /// Name the dApp gave itself. Not verified by anyone.
   final String? appName;
 
+  /// The wallet's own coins split into new ones (Split coins): nothing left
+  /// the wallet but the fee, and there is no one to give a proof to.
+  final bool isSplit;
+
   bool get isContract => txType == BeamTxType.contract;
   bool get isIncoming => direction == TransactionType.incoming;
   bool get isToSelf => direction == TransactionType.sentToSelf;
@@ -240,7 +246,7 @@ class BeamTxView {
 
   bool get canCancel => BeamTxActions.canCancel(toCore());
   bool get canDelete => BeamTxActions.canDelete(toCore());
-  bool get canExportProof => BeamTxActions.canExportProof(toCore());
+  bool get canExportProof => !isSplit && BeamTxActions.canExportProof(toCore());
 
   /// A completed plain payment this wallet received: the receiver is the
   /// one who checks a proof the sender gives them.

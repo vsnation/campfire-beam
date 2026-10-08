@@ -178,6 +178,53 @@ void main() {
     );
   });
 
+  // B-UTXO-1: a split (tx_split) is the core's simple transaction to no
+  // one; next to a payment it must read as a split, not "Sent".
+  testWidgets('phone: splits read as splits beside a payment', (tester) async {
+    Map<String, Object?> split(int seed, BeamTxStatus status, int time) =>
+        simpleTxJson(
+            seed: seed,
+            status: status,
+            value: 4999998,
+            createTime: time,
+          )
+          ..['sender'] = ''
+          ..['receiver'] = ''
+          ..['fee'] = 100000;
+    final rows = [
+      split(51, BeamTxStatus.inProgress, 1722600000),
+      split(52, BeamTxStatus.completed, 1722596400),
+      simpleTxJson(seed: 53, status: BeamTxStatus.completed, createTime: 1722592800),
+    ];
+    final mappedRows = rows.map(mapped).toList();
+    setSurface(tester, desktop: false, h: 420);
+    await loadFonts(tester);
+    await tester.pumpWidget(
+      app(
+        home: _cards(mappedRows),
+        fake: FakeTxBackend()..serveTxStatus(rows),
+        desktop: false,
+      ),
+    );
+    await settle(tester);
+
+    expect(find.text('Splitting coins'), findsOneWidget);
+    expect(find.text('Split into coins'), findsOneWidget);
+    expect(find.text('Sent'), findsOneWidget, reason: 'only the payment');
+    expect(
+      find.text('In progress: the new coins are ready in about a minute'),
+      findsOneWidget,
+    );
+    expect(
+      find.text("Waiting for the receiver's wallet to come online"),
+      findsNothing,
+    );
+    await expectLater(
+      find.byKey(kShot),
+      matchesGoldenFile('goldens/tx_split_rows_phone.png'),
+    );
+  });
+
   testWidgets('desktop: the same list with signed amounts', (tester) async {
     setSurface(tester, desktop: true, h: 1000);
     await loadFonts(tester);

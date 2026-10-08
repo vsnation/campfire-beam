@@ -408,8 +408,11 @@ class TransactionV2 {
   String _beamStatusLabel(String Function() prettyConfirms) {
     final incoming = type == TransactionType.incoming;
     final self = type == TransactionType.sentToSelf;
+    final split = _getFromOtherData(key: TxV2OdKeys.beamSplit) == true;
     final verb = incoming
         ? "Receiving"
+        : split
+        ? "Splitting coins"
         : self
         ? "Sending to self"
         : "Sending";
@@ -421,6 +424,8 @@ class TransactionV2 {
       case "completed":
         return incoming
             ? "Received"
+            : split
+            ? "Split into coins"
             : self
             ? "Sent to self"
             : "Sent";
@@ -429,6 +434,8 @@ class TransactionV2 {
       case "inProgress":
         return incoming
             ? "Receiving (waiting for sender)"
+            : split
+            ? "Splitting coins (in progress)"
             : self
             ? "Sending to self (in progress)"
             : "Sending (waiting for receiver)";
@@ -508,4 +515,7 @@ abstract final class TxV2OdKeys {
   /// Contract ids of a contract (dApp) transaction.
   static const beamContractIds = "beamContractIds";
   static const beamAppName = "beamAppName";
+
+  /// A `tx_split`: the wallet's own coins split into new ones.
+  static const beamSplit = "beamSplit";
 }

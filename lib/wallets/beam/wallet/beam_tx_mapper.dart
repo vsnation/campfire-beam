@@ -34,7 +34,9 @@ String beamAssetTag(int assetId) => 'beamAsset:$assetId';
 /// * incoming: input = value (not owned, the sender), output = value
 ///   (owned): "received: value";
 /// * sent to self: input = value + fee (owned), output = value (owned):
-///   "received: value".
+///   "received: value";
+/// * a split (`tx_split`, [BeamTransaction.isSplit]): sent to self, tagged
+///   `beamSplit` so the history says "Split into coins", not "Sent".
 ///
 /// The fee this wallet paid goes into `overrideFee` (0 for incoming); the
 /// fee the core reported is kept raw in `beamFee`.
@@ -80,10 +82,11 @@ abstract final class BeamTxMapper {
       final value = tx.value ?? BigInt.zero;
       final income = tx.income ?? false;
       final toSelf =
-          !income &&
-          tx.receiver.isNotEmpty &&
-          ownAddresses.contains(tx.receiver) &&
-          (tx.sender.isEmpty || ownAddresses.contains(tx.sender));
+          tx.isSplit ||
+          (!income &&
+              tx.receiver.isNotEmpty &&
+              ownAddresses.contains(tx.receiver) &&
+              (tx.sender.isEmpty || ownAddresses.contains(tx.sender)));
       if (income) {
         type = TransactionType.incoming;
         sent = BigInt.zero;
@@ -138,6 +141,7 @@ abstract final class BeamTxMapper {
           for (final i in tx.invokeData) i.contractId,
         ],
       TxV2OdKeys.beamAppName: ?tx.appName,
+      if (!tx.isContract && tx.isSplit) TxV2OdKeys.beamSplit: true,
       TxV2OdKeys.overrideFee: Amount(
         rawValue: paidFee,
         fractionDigits: fractionDigits,

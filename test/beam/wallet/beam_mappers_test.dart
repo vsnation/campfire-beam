@@ -241,6 +241,38 @@ void main() {
       expect(_label(t), 'Sent to self');
     });
 
+    test('a split (tx_split: no address on either side) reads as a split, '
+        'never as a payment', () {
+      final json = txJson(
+        txId: 'd5' * 16,
+        status: 1,
+        value: 4999998,
+        fee: 100000,
+        height: null,
+      );
+      expect(BeamTransaction.fromJson(json).isSplit, isTrue);
+      final t = _map(json);
+      expect(t.type, TransactionType.sentToSelf);
+      expect(_od(t)[TxV2OdKeys.beamSplit], isTrue);
+      expect(_received(t).raw, BigInt.from(4999998));
+      expect(_fee(t).raw, BigInt.from(100000));
+      expect(_label(t), 'Splitting coins (in progress)');
+
+      final done = _map({...json, 'status': 3, 'height': 10});
+      expect(_label(done), 'Split into coins');
+
+      // A payment always names its receiver; one to yourself too.
+      final paid = _map(txJson(txId: 'd6' * 16, status: 3, receiver: _peer));
+      expect(_od(paid).containsKey(TxV2OdKeys.beamSplit), isFalse);
+      expect(paid.type, TransactionType.outgoing);
+      expect(
+        BeamTransaction.fromJson(
+          txJson(txId: 'd7' * 16, status: 3, income: true),
+        ).isSplit,
+        isFalse,
+      );
+    });
+
     test('a Confidential Asset transfer is tagged and kept out of the BEAM '
         'history', () {
       final t = _map(

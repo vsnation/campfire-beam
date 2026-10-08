@@ -185,6 +185,16 @@ class BeamTransaction {
   BeamTxType get txType => BeamTxType.fromCode(txTypeCode);
   bool get isContract => txType == BeamTxType.contract;
   DateTime get createdAt => BeamJson.unixSeconds(createTime);
+
+  /// A `tx_split` (Split coins): the core keeps it as a simple transaction
+  /// it sends, to no one. It has no peer address on either side
+  /// (`TxDescription::getAddressFrom/To` print a zero `WalletID` as ""),
+  /// while every payment has the receiver's address or token.
+  bool get isSplit =>
+      txType == BeamTxType.simple &&
+      income != true &&
+      sender.isEmpty &&
+      receiver.isEmpty;
 }
 
 /// One contract invocation inside a contract transaction.

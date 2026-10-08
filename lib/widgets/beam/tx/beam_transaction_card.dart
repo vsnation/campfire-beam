@@ -76,9 +76,10 @@ class BeamTxEntryText {
       // Only the fee left the wallet; the amount moved between its own
       // addresses. "−0.01 BEAM" would read as money gone.
       primary = BeamTxText.amount(-v.paidFee, 0, formatter, sign: !stopped);
-      secondary =
-          '${BeamTxText.amount(v.amount, v.assetId, formatter)} moved to '
-          'your own address';
+      secondary = v.isSplit
+          ? BeamTxText.splitDetail(v, formatter)
+          : '${BeamTxText.amount(v.amount, v.assetId, formatter)} moved to '
+                'your own address';
     } else {
       // What arrived reads first: "+4,864 CHAD" above "−0.07 BEAM".
       final ordered = [
