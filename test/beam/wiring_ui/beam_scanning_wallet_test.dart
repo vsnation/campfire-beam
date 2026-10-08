@@ -205,6 +205,15 @@ void main() {
     expect(history, BeamMoments.coinsOnTheirWay);
     expect(assets, BeamMoments.emptyAssets);
     expect(history, isNot(assets));
+    // Under the scanning banner the sticker shrinks so the whole button
+    // shows; it used to be cut off at the bottom of the history.
+    final receive = find.byKey(const Key('beamNoTxReceive'));
+    final shown = tester.getRect(
+      find
+          .ancestor(of: receive, matching: find.byType(SingleChildScrollView))
+          .first,
+    );
+    expect(tester.getRect(receive).bottom, lessThanOrEqualTo(shown.bottom));
     await expectLater(
       find.byKey(goldenKey),
       matchesGoldenFile('goldens/desktop_wallet_scanning.png'),

@@ -19,8 +19,10 @@
 // the coins are still being found, with how far it is; once it is over and
 // the wallet holds something, it says why the list is empty and that the
 // balance is complete. Never "nothing yet" next to a balance.
-// The Beam girl sits above it, secondary to the button; on a short phone she
-// gives way first, and whatever still does not fit scrolls.
+// The Beam girl sits above it, secondary to the button: where the height is
+// fixed she gets only what the words and the button leave (measured, not
+// guessed: on desktop a fixed guess cut the button off under the scanning
+// banner), and whatever still does not fit scrolls.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,7 +31,9 @@ import '../../../pages/receive_view/receive_view.dart';
 import '../../../pages/wallet_view/wallet_view.dart';
 import '../../../pages_desktop_specific/my_stack_view/wallet_view/sub_widgets/desktop_receive.dart';
 import '../../../utilities/text_styles.dart';
+import '../../../utilities/util.dart';
 import '../../desktop/desktop_dialog.dart';
+import '../../desktop/custom_text_button.dart';
 import '../../desktop/desktop_dialog_close_button.dart';
 import '../../desktop/primary_button.dart';
 import '../../rounded_white_container.dart';
@@ -49,8 +53,30 @@ class BeamNoTransactions extends ConsumerWidget {
 
   static const double _stickerSize = 160;
 
-  /// The card without its sticker: padding, title, text and button.
-  static const double _textAndButton = 190;
+  /// Smaller than this, the sticker is left out.
+  static const double _minSticker = 64;
+
+  /// The button's height: [ButtonHeight.xl], which PrimaryButton sizes by
+  /// the platform itself.
+  static double get _buttonHeight => Util.isDesktop ? 70 : 46;
+
+  /// How tall [text] lays out in [width].
+  static double _textHeight(
+    BuildContext context,
+    String text,
+    TextStyle style,
+    double width,
+  ) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textAlign: TextAlign.center,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout(maxWidth: width);
+    final height = painter.height;
+    painter.dispose();
+    return height.ceilToDouble();
+  }
 
   /// What a restore leaves out of the list.
   static const _noPastPayments =
@@ -130,23 +156,39 @@ class BeamNoTransactions extends ConsumerWidget {
     // On a phone the bar floats over the bottom of the list, as under
     // Campfire's own last transaction.
     final bottom = isDesktop ? 0.0 : WalletView.navBarHeight + 14;
+    final pad = isDesktop ? 20.0 : 16.0;
+    final heading = title(scan, restoredWithFunds: restored);
+    final headingStyle = isDesktop
+        ? STextStyles.desktopTextSmall(context)
+        : STextStyles.titleBold12(context);
+    final words = detail(scan, restoredWithFunds: restored);
+    final wordsStyle = STextStyles.itemSubtitle(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final room = constraints.maxHeight;
-        // A 375 × 667 phone leaves little room under the balance card: the
+        // A short window or phone leaves little room under the balance: the
         // sticker shrinks, then goes, before the words or the button do.
-        final sticker = room.isFinite
-            ? (room - bottom - _textAndButton - 12).clamp(0.0, _stickerSize)
-            : _stickerSize;
+        var sticker = _stickerSize;
+        if (room.isFinite) {
+          final width = constraints.maxWidth - 2 * pad;
+          final rest =
+              2 * pad +
+              _textHeight(context, heading, headingStyle, width) +
+              6 +
+              _textHeight(context, words, wordsStyle, width) +
+              16 +
+              _buttonHeight;
+          sticker = (room - bottom - rest - 12).clamp(0.0, _stickerSize);
+        }
         final card = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             RoundedWhiteContainer(
-              padding: EdgeInsets.all(isDesktop ? 20 : 16),
+              padding: EdgeInsets.all(pad),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (sticker >= 64) ...[
+                  if (sticker >= _minSticker) ...[
                     Center(
                       child: BeamStickerImage(
                         scan == null
@@ -159,24 +201,23 @@ class BeamNoTransactions extends ConsumerWidget {
                     const SizedBox(height: 12),
                   ],
                   Text(
-                    title(scan, restoredWithFunds: restored),
+                    heading,
                     textAlign: TextAlign.center,
-                    style: isDesktop
-                        ? STextStyles.desktopTextSmall(context)
-                        : STextStyles.titleBold12(context),
+                    style: headingStyle,
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    detail(scan, restoredWithFunds: restored),
+                    words,
                     key: const Key('beamNoTxDetail'),
                     textAlign: TextAlign.center,
-                    style: STextStyles.itemSubtitle(context),
+                    style: wordsStyle,
                   ),
                   const SizedBox(height: 16),
                   Center(
                     child: PrimaryButton(
                       key: const Key('beamNoTxReceive'),
                       width: isDesktop ? 220 : null,
+                      buttonHeight: ButtonHeight.xl,
                       label: 'Receive BEAM',
                       onPressed: () => _receive(context, isDesktop),
                     ),
