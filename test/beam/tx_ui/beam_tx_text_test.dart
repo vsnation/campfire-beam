@@ -281,9 +281,15 @@ void main() {
     expect(BeamTxText.title(done), 'Split into coins');
     expect(BeamTxText.status(done), 'Completed: the new coins are ready');
     expect(done.canExportProof, isFalse, reason: 'no one to prove it to');
-    expect(BeamTxText.fee(done, _fmt), BeamTxText.amount(BigInt.from(100000), 0, _fmt));
+    expect(
+      BeamTxText.fee(done, _fmt),
+      BeamTxText.amount(BigInt.from(100000), 0, _fmt),
+    );
 
-    expect(BeamTxText.title(_view(split(44, BeamTxStatus.failed))), 'Not split');
+    expect(
+      BeamTxText.title(_view(split(44, BeamTxStatus.failed))),
+      'Not split',
+    );
     expect(
       BeamTxText.title(_view(split(45, BeamTxStatus.canceled))),
       'Split cancelled',

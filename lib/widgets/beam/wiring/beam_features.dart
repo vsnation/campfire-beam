@@ -204,10 +204,14 @@ Future<void> openBeamSplit(
   BuildContext context,
   BeamWallet wallet, {
   int assetId = 0,
-}) => Navigator.of(context).pushNamed(
-  BeamSplitView.routeName,
-  arguments: BeamSplitArgs(wallet, assetId: assetId),
-);
+}) {
+  // "Receive BEAM" on the split screen opens from here.
+  BeamWalletWiring.of(wallet).attach(context);
+  return Navigator.of(context).pushNamed(
+    BeamSplitView.routeName,
+    arguments: BeamSplitArgs(wallet, assetId: assetId),
+  );
+}
 
 BeamFeatureMenuOption _route(
   String key,

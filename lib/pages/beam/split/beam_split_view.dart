@@ -444,6 +444,9 @@ class _BeamSplitViewState extends State<BeamSplitView> {
           key: const ValueKey('split-funds'),
           kind: BeamNoticeKind.info,
           message: issue,
+          // Never a dead end: more BEAM is one tap away.
+          actionLabel: _b.addFunds == null ? null : 'Receive BEAM',
+          onAction: _b.addFunds,
         ),
       if (plan != null) ...[
         if (issue != null) const BeamGap(16),

@@ -61,9 +61,9 @@ void main() {
     });
 
     test('reads the recorded get_utxo shape', () {
-      final json =
-          jsonDecode(File('test/beam/fixtures/get_utxo.json').readAsStringSync())
-              as Map;
+      final json = jsonDecode(
+        File('test/beam/fixtures/get_utxo.json').readAsStringSync(),
+      ) as Map;
       final utxos = [
         for (final u in json['result'] as List)
           BeamUtxo.fromJson((u as Map).cast<String, Object?>()),
@@ -158,12 +158,20 @@ void main() {
       expect(p.fee, _g(100000));
       expect(p.change, _g(10000000 - 4999998 - 100000));
       expect(
-        BeamSplitPlan.sized(available: _g(4999998), count: 3, size: _g(1666666)),
+        BeamSplitPlan.sized(
+          available: _g(4999998),
+          count: 3,
+          size: _g(1666666),
+        ),
         isNull,
         reason: 'no room for the fee',
       );
       expect(
-        BeamSplitPlan.sized(available: _g(10000000), count: 3, size: _g(100000)),
+        BeamSplitPlan.sized(
+          available: _g(10000000),
+          count: 3,
+          size: _g(100000),
+        ),
         isNull,
         reason: 'a coin worth only a send fee',
       );

@@ -194,7 +194,11 @@ void main() {
     final rows = [
       split(51, BeamTxStatus.inProgress, 1722600000),
       split(52, BeamTxStatus.completed, 1722596400),
-      simpleTxJson(seed: 53, status: BeamTxStatus.completed, createTime: 1722592800),
+      simpleTxJson(
+        seed: 53,
+        status: BeamTxStatus.completed,
+        createTime: 1722592800,
+      ),
     ];
     final mappedRows = rows.map(mapped).toList();
     setSurface(tester, desktop: false, h: 420);

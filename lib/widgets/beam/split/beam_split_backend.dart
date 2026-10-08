@@ -50,6 +50,10 @@ abstract interface class BeamSplitBackend {
 
   /// Splits [split] (`tx_split`) and returns the transaction id.
   Future<String> confirm(BeamPreparedSplit split);
+
+  /// Opens the wallet's Receive screen, for "nothing (or too little) to
+  /// split" and "no BEAM for the fee"; null hides that action.
+  VoidCallback? get addFunds;
 }
 
 /// [BeamSplitBackend] over a real [BeamWallet].
@@ -84,6 +88,9 @@ class BeamWalletSplitBackend implements BeamSplitBackend {
 
   @override
   Future<String> confirm(BeamPreparedSplit split) => wallet.confirmSplit(split);
+
+  @override
+  VoidCallback get addFunds => _wiring.onAddFunds;
 }
 
 /// What the Split coins route takes: the wallet, and which asset's coins

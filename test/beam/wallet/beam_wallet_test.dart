@@ -1082,23 +1082,25 @@ void main() {
           .having((e) => e.message, 'message', contains(says ?? '')),
     );
 
-    test('coins: every page of get_utxo, grouped per asset, spent left out',
-        () async {
-      core.utxos = [
-        for (var i = 0; i < 1203; i++) coin('s$i', 1000, status: 'spent'),
-        coin('big', _g(1).toInt()),
-        coin('small', _g(0.2).toInt()),
-        coin('fomo', 500000000, aid: 174),
-      ];
-      final w = await ready();
-      final coins = await w.loadCoins();
-      expect(coins.keys.toSet(), {0, 174});
-      expect(coins[0]!.available.map((u) => u.id), ['big', 'small']);
-      expect(coins[174]!.availableTotal, BigInt.from(500000000));
-      final pages = host.lastTransport!.callsTo('get_utxo');
-      expect(pages, hasLength(3), reason: '500 + 500 + 206 coins');
-      expect(pages.map((c) => c.params['skip']), [0, 500, 1000]);
-    });
+    test(
+      'coins: every page of get_utxo, grouped per asset, spent left out',
+      () async {
+        core.utxos = [
+          for (var i = 0; i < 1203; i++) coin('s$i', 1000, status: 'spent'),
+          coin('big', _g(1).toInt()),
+          coin('small', _g(0.2).toInt()),
+          coin('fomo', 500000000, aid: 174),
+        ];
+        final w = await ready();
+        final coins = await w.loadCoins();
+        expect(coins.keys.toSet(), {0, 174});
+        expect(coins[0]!.available.map((u) => u.id), ['big', 'small']);
+        expect(coins[174]!.availableTotal, BigInt.from(500000000));
+        final pages = host.lastTransport!.callsTo('get_utxo');
+        expect(pages, hasLength(3), reason: '500 + 500 + 206 coins');
+        expect(pages.map((c) => c.params['skip']), [0, 500, 1000]);
+      },
+    );
 
     test('prepare holds the node switch; confirm sends one tx_split with '
         'the tx id generated first, then lets go', () async {
@@ -1132,30 +1134,30 @@ void main() {
       expect(prepared.isDiscarded, isTrue);
     });
 
-    test('an asset split names its asset; the BEAM fee must be there', () async {
-      core.utxos = [
-        coin('fomo', 2500000000, aid: 174),
-        coin('dust', 50000),
-      ];
-      final w = await ready();
-      final plan = BeamSplitPlan.equal(
-        available: BigInt.from(2500000000),
-        count: 3,
-        assetId: 174,
-      )!;
-      await expectLater(
-        w.prepareSplit(plan),
-        problem(BeamWalletProblem.insufficientFunds, 'paid in BEAM'),
-      );
-      expect(w.isBusy, isFalse, reason: 'a refusal lets go at once');
+    test(
+      'an asset split names its asset; the BEAM fee must be there',
+      () async {
+        core.utxos = [coin('fomo', 2500000000, aid: 174), coin('dust', 50000)];
+        final w = await ready();
+        final plan = BeamSplitPlan.equal(
+          available: BigInt.from(2500000000),
+          count: 3,
+          assetId: 174,
+        )!;
+        await expectLater(
+          w.prepareSplit(plan),
+          problem(BeamWalletProblem.insufficientFunds, 'paid in BEAM'),
+        );
+        expect(w.isBusy, isFalse, reason: 'a refusal lets go at once');
 
-      core.utxos = [...core.utxos, coin('beam', _g(0.01).toInt())];
-      final prepared = await w.prepareSplit(plan);
-      expect(prepared.beamAvailable, BigInt.from(1050000));
-      await w.confirmSplit(prepared);
-      expect(core.splits.single['asset_id'], 174);
-      expect(core.splits.single['fee'], plan.fee.toInt());
-    });
+        core.utxos = [...core.utxos, coin('beam', _g(0.01).toInt())];
+        final prepared = await w.prepareSplit(plan);
+        expect(prepared.beamAvailable, BigInt.from(1050000));
+        await w.confirmSplit(prepared);
+        expect(core.splits.single['asset_id'], 174);
+        expect(core.splits.single['fee'], plan.fee.toInt());
+      },
+    );
 
     test('not synced, another money flow open, a restore scan, a pool '
         'share: refused, saying what happens next', () async {
@@ -1178,11 +1180,7 @@ void main() {
       addTearDown(BeamLpTokens.clear);
       await expectLater(
         w.prepareSplit(
-          BeamSplitPlan.equal(
-            available: _g(1),
-            count: 3,
-            assetId: 9175,
-          )!,
+          BeamSplitPlan.equal(available: _g(1), count: 3, assetId: 9175)!,
         ),
         problem(BeamWalletProblem.other, 'Pool shares'),
       );

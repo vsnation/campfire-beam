@@ -62,6 +62,12 @@ class FakeSplitBackend implements BeamSplitBackend {
   @override
   final names = BeamAssetNames();
 
+  int receiveOpened = 0;
+
+  @override
+  VoidCallback get addFunds =>
+      () => receiveOpened++;
+
   @override
   ValueListenable<BeamSyncAssessment> get sync => syncNow;
 
@@ -116,10 +122,7 @@ Future<FakeSplitBackend> _open(
   final b = backend ?? FakeSplitBackend(_coins([(0, 45.2)]));
   await pumpBeamPage(
     tester,
-    BeamSplitView(
-      backend: b,
-      authorize: (auth ?? FakeAuth()).authorizer,
-    ),
+    BeamSplitView(backend: b, authorize: (auth ?? FakeAuth()).authorizer),
     desktop: desktop,
     size: desktop ? desktopSize : _phone,
   );
@@ -162,7 +165,10 @@ void main() {
       desktop: true,
       backend: FakeSplitBackend(_coins([(0, 45.2), (0, 0.3)])),
     );
-    expect(find.text('45.5 BEAM in 2 coins; the largest holds 99%'), findsOneWidget);
+    expect(
+      find.text('45.5 BEAM in 2 coins; the largest holds 99%'),
+      findsOneWidget,
+    );
     expect(find.textContaining('Most of your BEAM'), findsOneWidget);
     expect(find.text('Split into 4 coins'), findsOneWidget);
     await expectScreen(tester, 'split_desktop');
@@ -256,9 +262,7 @@ void main() {
     );
     final b = await _open(
       tester,
-      backend: FakeSplitBackend(
-        _coins([(0, 0.0005), (174, 25), (9175, 3)]),
-      ),
+      backend: FakeSplitBackend(_coins([(0, 0.0005), (174, 25), (9175, 3)])),
     );
     await tester.tap(_key('split-asset'));
     await tester.pumpAndSettle();
@@ -271,6 +275,8 @@ void main() {
     expect(find.textContaining('paid in BEAM'), findsOneWidget);
     expect(_enabled(tester, 'split-cta'), isFalse);
     expect(b.prepared, isEmpty);
+    await tester.tap(find.text('Receive BEAM'));
+    expect(b.receiveOpened, 1, reason: 'never a dead end');
   });
 
   testWidgets('nothing to split: says why and what fills it', (tester) async {
@@ -279,8 +285,12 @@ void main() {
     expect(_enabled(tester, 'split-cta'), isFalse);
   });
 
-  testWidgets('no coins at all: says what fills it', (tester) async {
-    await _open(tester, backend: FakeSplitBackend({}));
+  testWidgets('no coins at all: says what fills it, one tap away', (
+    tester,
+  ) async {
+    final b = await _open(tester, backend: FakeSplitBackend({}));
+    await tester.tap(find.text('Receive BEAM'));
+    expect(b.receiveOpened, 1);
     expect(find.textContaining('no BEAM it can spend'), findsOneWidget);
     expect(_enabled(tester, 'split-cta'), isFalse);
   });
