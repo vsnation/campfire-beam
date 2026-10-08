@@ -51,6 +51,10 @@ class BeamLayoutScope extends InheritedWidget {
 ///   [desktopMaxWidth], and [bottom] right under the content when it fits
 ///   (never a window-height gap between a field and its button), pinned
 ///   under it only when the content has to scroll.
+///
+/// Where the content scrolls under [bottom], its last few pixels fade out,
+/// so a card cut off at the edge reads as "more below" rather than as a
+/// card glued to the notice or button under it.
 class BeamPageScaffold extends StatelessWidget {
   const BeamPageScaffold({
     super.key,
@@ -71,6 +75,30 @@ class BeamPageScaffold extends StatelessWidget {
   /// Defaults to popping the route.
   final VoidCallback? onBack;
   final double desktopMaxWidth;
+
+  /// How far the fade above [bottom] reaches.
+  static const double _fade = 16;
+
+  /// [scroll], fading out over its last [_fade] pixels when there is a
+  /// [bottom] under it. Scrolled to the end, only the scroll view's own
+  /// bottom padding is in the fade, so nothing stays faded.
+  Widget _fadeAboveBottom(Widget scroll) => bottom == null
+      ? scroll
+      : ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (rect) {
+            final solid = rect.height <= _fade
+                ? 0.0
+                : 1 - _fade / rect.height;
+            return LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: const [Colors.black, Colors.black, Colors.transparent],
+              stops: [0, solid, 1],
+            ).createShader(rect);
+          },
+          child: scroll,
+        );
 
   @override
   Widget build(BuildContext context) {
@@ -123,9 +151,11 @@ class BeamPageScaffold extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                    child: body,
+                  child: _fadeAboveBottom(
+                    SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                      child: body,
+                    ),
                   ),
                 ),
                 if (bottom != null)
@@ -178,9 +208,11 @@ class BeamPageScaffold extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  child: body,
+                child: _fadeAboveBottom(
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    child: body,
+                  ),
                 ),
               ),
               if (bottom != null)

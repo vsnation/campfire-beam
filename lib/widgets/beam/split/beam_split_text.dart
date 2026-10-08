@@ -34,18 +34,6 @@ abstract final class BeamSplitText {
     return '$total in $n coins; the largest holds $share%';
   }
 
-  /// A line under the coins when splitting would help, or null.
-  static String? advice(BeamSplitAdvice advice, String symbol) =>
-      switch (advice.urgency) {
-        BeamSplitUrgency.needed =>
-          'All your $symbol is in one coin. While a payment is on its way, '
-              'nothing else can be sent.',
-        BeamSplitUrgency.worthIt =>
-          'Most of your $symbol is in one coin. Splitting lets more '
-              'payments go at the same time.',
-        BeamSplitUrgency.none => null,
-      };
-
   /// When the coins are already spread out.
   static String spreadWell(int coins) =>
       'Your coins are already spread out: up to $coins payments can go at '

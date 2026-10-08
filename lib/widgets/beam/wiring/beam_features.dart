@@ -78,7 +78,7 @@ enum BeamFeature {
     BeamFeature.airdrops => Assets.svg.envelope,
     BeamFeature.tokens => Assets.svg.circlePlus,
     BeamFeature.node => Assets.svg.node,
-    BeamFeature.split => Assets.svg.coinControl.gamePad,
+    BeamFeature.split => Assets.svg.splitCoins,
   };
 
   /// On the phone wallet's bottom bar, after Receive and Send.

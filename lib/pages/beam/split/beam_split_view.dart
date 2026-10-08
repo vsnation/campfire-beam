@@ -406,8 +406,6 @@ class _BeamSplitViewState extends State<BeamSplitView> {
     final coins = _summary;
     final symbol = _symbol;
     final many = _choices.length > 1;
-    final advice = coins.advice;
-    final adviceLine = BeamSplitText.advice(advice, symbol);
     final issue = _fundsIssue;
     final colors = Theme.of(context).extension<StackColors>()!;
     return [
@@ -423,14 +421,13 @@ class _BeamSplitViewState extends State<BeamSplitView> {
               : null,
         ),
       ),
-      if (adviceLine != null) ...[
-        const BeamGap(8),
-        BeamNotice(
-          key: const ValueKey('split-advice'),
-          kind: advice.isNeeded ? BeamNoticeKind.warning : BeamNoticeKind.info,
-          message: adviceLine,
-        ),
-      ] else if (coins.usable.length > 1 && plan != null) ...[
+      // The line above already says when the coins sit in one place (and
+      // the intro what splitting does): a notice of its own repeated it and
+      // pushed "After" off a small phone. It is left only for coins that are
+      // already spread out, so nobody splits without need.
+      if (coins.advice.urgency == BeamSplitUrgency.none &&
+          coins.usable.length > 1 &&
+          plan != null) ...[
         const BeamGap(8),
         BeamNotice(
           key: const ValueKey('split-advice'),

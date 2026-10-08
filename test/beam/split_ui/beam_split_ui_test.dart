@@ -143,7 +143,8 @@ void main() {
       find.text('45.2 BEAM in 1 coin: one payment at a time'),
       findsOneWidget,
     );
-    expect(find.textContaining('All your BEAM is in one coin'), findsOneWidget);
+    // Said once, by the line above; no notice repeating it.
+    expect(_key('split-advice'), findsNothing);
     // 45.2 BEAM: one coin per 10 BEAM, so 5 is picked for the user.
     expect(find.text('Split into 5 coins'), findsOneWidget);
     expect(_text(tester, 'split-new-coins'), '5 coins of 8.1 BEAM');
@@ -152,6 +153,19 @@ void main() {
     expect(_enabled(tester, 'split-cta'), isTrue);
     final cta = tester.getRect(_key('split-cta'));
     expect(cta.bottom, lessThanOrEqualTo(_phone.height));
+    // "After" fits above the button without scrolling, change row and all.
+    final shown = tester.getRect(
+      find
+          .ancestor(
+            of: _key('split-change'),
+            matching: find.byType(SingleChildScrollView),
+          )
+          .first,
+    );
+    expect(
+      tester.getRect(_key('split-change')).bottom,
+      lessThanOrEqualTo(shown.bottom),
+    );
     // No technical word for coins anywhere on screen.
     expect(find.textContaining('UTXO'), findsNothing);
     expect(find.textContaining('utxo'), findsNothing);
@@ -169,7 +183,7 @@ void main() {
       find.text('45.5 BEAM in 2 coins; the largest holds 99%'),
       findsOneWidget,
     );
-    expect(find.textContaining('Most of your BEAM'), findsOneWidget);
+    expect(_key('split-advice'), findsNothing);
     expect(find.text('Split into 4 coins'), findsOneWidget);
     await expectScreen(tester, 'split_desktop');
   });

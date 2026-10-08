@@ -170,6 +170,8 @@ class _SVG {
   String get chevronUp => "assets/svg/chevron-up.svg";
   String get swap => "assets/svg/swap.svg";
   String get swap2 => "assets/svg/swap2.svg";
+  // BEAM: Split coins (a stem forking in two).
+  String get splitCoins => "assets/svg/split-coins.svg";
   String get downloadFolder => "assets/svg/folder-down.svg";
   String get lock => "assets/svg/lock-keyhole.svg";
   String get lockOpen => "assets/svg/lock-open.svg";
