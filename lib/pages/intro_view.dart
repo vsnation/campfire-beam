@@ -198,35 +198,21 @@ class PrivacyAndTOSText extends StatelessWidget {
       text: TextSpan(
         style: STextStyles.label(context).copyWith(fontSize: fontSize),
         children: [
+          // This app has no terms of service of its own; Stack Wallet's did not
+          // apply to it (owner, 2026-10-08).
           const TextSpan(
-            text: "By using ${AppConfig.appName}, you agree to the ",
+            text: "${AppConfig.appName} is free and open source. ",
           ),
           TextSpan(
-            text: "Terms of service",
+            text: "Source code",
             style: STextStyles.richLink(context).copyWith(fontSize: fontSize),
-            recognizer:
-                TapGestureRecognizer()
-                  ..onTap = () {
-                    launchUrl(
-                      Uri.parse(
-                        "https://stackwallet.com/terms-of-service.html",
-                      ),
-                      mode: LaunchMode.externalApplication,
-                    );
-                  },
-          ),
-          const TextSpan(text: " and "),
-          TextSpan(
-            text: "Privacy policy",
-            style: STextStyles.richLink(context).copyWith(fontSize: fontSize),
-            recognizer:
-                TapGestureRecognizer()
-                  ..onTap = () {
-                    launchUrl(
-                      Uri.parse("https://stackwallet.com/privacy-policy.html"),
-                      mode: LaunchMode.externalApplication,
-                    );
-                  },
+            recognizer: TapGestureRecognizer()
+              ..onTap = () {
+                launchUrl(
+                  Uri.parse("https://github.com/vsnation/campfire-beam"),
+                  mode: LaunchMode.externalApplication,
+                );
+              },
           ),
         ],
       ),

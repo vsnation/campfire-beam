@@ -46,21 +46,17 @@ class _DesktopSupportView extends ConsumerState<DesktopSupportView> {
           ],
         ),
       ),
-      body: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(24, 10, 0, 0),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 576,
-                  child: SupportView(),
-                ),
-              ],
+      // Scrolls: BEAM's channels make a longer list than a short window shows.
+      body: const SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(24, 10, 0, 24),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 576,
+              child: SupportView(),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -52,7 +52,11 @@ class SupportView extends StatelessWidget {
               title: Text("Support", style: STextStyles.navBarTitle(context)),
             ),
             body: SafeArea(
-              child: Padding(padding: const EdgeInsets.all(16), child: child),
+              // BEAM's channels make a longer list than a small phone shows.
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: child,
+              ),
             ),
           ),
         );
@@ -62,48 +66,76 @@ class SupportView extends StatelessWidget {
         children: [
           RoundedWhiteContainer(
             child: Text(
-              "If you need support or want to report a bug, reach out to us on any of our socials!",
+              // BEAM's official channels, as listed on beam.mw (owner,
+              // 2026-10-08). Bugs in this app go to its GitHub issues.
+              "Questions about BEAM or your wallet: BEAM's support team and "
+              "community are on these channels. Found a bug in this app? "
+              "Tell us on GitHub.",
               style: STextStyles.smallMed12(context),
             ),
           ),
           isDesktop ? const SizedBox(height: 24) : const SizedBox(height: 12),
           AboutItem(
-            linkUrl: "https://t.me/stackwallet",
-            label: "Telegram",
-            buttonText: "@stackwallet",
+            linkUrl: "https://t.me/BeamSupport",
+            label: "Support",
+            buttonText: "@BeamSupport",
             iconAsset: Assets.socials.telegram,
             isDesktop: isDesktop,
           ),
           const SizedBox(height: 8),
           AboutItem(
-            linkUrl: "https://discord.com/invite/mRPZuXx3At",
+            linkUrl: "mailto:support@beam.mw",
+            label: "Email",
+            buttonText: "support@beam.mw",
+            iconAsset: Assets.svg.envelope,
+            isDesktop: isDesktop,
+          ),
+          const SizedBox(height: 8),
+          AboutItem(
+            linkUrl: "https://github.com/vsnation/campfire-beam/issues",
+            label: "A bug in this app",
+            buttonText: "GitHub Issues",
+            iconAsset: Assets.svg.circleQuestion,
+            isDesktop: isDesktop,
+          ),
+          const SizedBox(height: 8),
+          AboutItem(
+            linkUrl: "https://t.me/BeamPrivacy",
+            label: "Telegram",
+            buttonText: "@BeamPrivacy",
+            iconAsset: Assets.socials.telegram,
+            isDesktop: isDesktop,
+          ),
+          const SizedBox(height: 8),
+          AboutItem(
+            linkUrl: "https://discord.gg/BHZvAhg",
             label: "Discord",
-            buttonText: AppConfig.appName,
+            buttonText: "BEAM",
             iconAsset: Assets.socials.discord,
             isDesktop: isDesktop,
           ),
           const SizedBox(height: 8),
           AboutItem(
-            linkUrl: "https://www.reddit.com/r/stackwallet/",
+            linkUrl: "https://www.reddit.com/r/beamprivacy/",
             label: "Reddit",
-            buttonText: "r/stackwallet",
+            buttonText: "r/beamprivacy",
             iconAsset: Assets.socials.reddit,
             isDesktop: isDesktop,
           ),
           const SizedBox(height: 8),
           AboutItem(
-            linkUrl: "https://x.com/stack_wallet",
+            linkUrl: "https://x.com/beamprivacy",
             label: "X",
-            buttonText: "@stack_wallet",
+            buttonText: "@beamprivacy",
             iconAsset: Assets.socials.twitter,
             isDesktop: isDesktop,
           ),
           const SizedBox(height: 8),
           AboutItem(
-            linkUrl: "mailto:support@stackwallet.com",
-            label: "Email",
-            buttonText: "support@stackwallet.com",
-            iconAsset: Assets.svg.envelope,
+            linkUrl: "https://forum.beam.mw",
+            label: "Forum",
+            buttonText: "forum.beam.mw",
+            iconAsset: Assets.svg.questionMessage,
             isDesktop: isDesktop,
           ),
         ],

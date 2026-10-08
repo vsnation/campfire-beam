@@ -189,10 +189,10 @@ class AboutView extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 CustomTextButton(
-                                  text: "https://stackwallet.com",
+                                  text: "https://beam.mw",
                                   onTap: () {
                                     launchUrl(
-                                      Uri.parse("https://stackwallet.com"),
+                                      Uri.parse("https://beam.mw"),
                                       mode: LaunchMode.externalApplication,
                                     );
                                   },
@@ -213,10 +213,10 @@ class AboutView extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   CustomTextButton(
-                                    text: "https://stackwallet.com",
+                                    text: "https://beam.mw",
                                     onTap: () {
                                       launchUrl(
-                                        Uri.parse("https://stackwallet.com"),
+                                        Uri.parse("https://beam.mw"),
                                         mode: LaunchMode.externalApplication,
                                       );
                                     },
@@ -255,33 +255,18 @@ class AboutView extends ConsumerWidget {
                             text: TextSpan(
                               style: STextStyles.label(context),
                               children: [
+                                // This app has no terms of service of its own; Stack Wallet's did not
+                                // apply to it (owner, 2026-10-08).
                                 const TextSpan(
-                                  text:
-                                      "By using ${AppConfig.appName}, you agree to the ",
+                                  text: "${AppConfig.appName} is free and open source. ",
                                 ),
                                 TextSpan(
-                                  text: "Terms of service",
+                                  text: "Source code",
                                   style: STextStyles.richLink(context),
                                   recognizer: TapGestureRecognizer()
                                     ..onTap = () {
                                       launchUrl(
-                                        Uri.parse(
-                                          "https://stackwallet.com/terms-of-service.html",
-                                        ),
-                                        mode: LaunchMode.externalApplication,
-                                      );
-                                    },
-                                ),
-                                const TextSpan(text: " and "),
-                                TextSpan(
-                                  text: "Privacy policy",
-                                  style: STextStyles.richLink(context),
-                                  recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      launchUrl(
-                                        Uri.parse(
-                                          "https://stackwallet.com/privacy-policy.html",
-                                        ),
+                                        Uri.parse("https://github.com/vsnation/campfire-beam"),
                                         mode: LaunchMode.externalApplication,
                                       );
                                     },

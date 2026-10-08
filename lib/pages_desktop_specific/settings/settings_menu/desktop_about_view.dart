@@ -77,9 +77,10 @@ class DesktopAboutView extends ConsumerWidget {
                                 text: TextSpan(
                                   style: STextStyles.label(context),
                                   children: [
+                                    // This app has no terms of service of its own; Stack Wallet's did not
+                                    // apply to it (owner, 2026-10-08).
                                     TextSpan(
-                                      text:
-                                          "By using ${AppConfig.appName}, you agree to the ",
+                                      text: "${AppConfig.appName} is free and open source. ",
                                       style:
                                           STextStyles.desktopTextExtraExtraSmall(
                                             context,
@@ -90,43 +91,14 @@ class DesktopAboutView extends ConsumerWidget {
                                           ),
                                     ),
                                     TextSpan(
-                                      text: "Terms of service",
+                                      text: "Source code",
                                       style: STextStyles.richLink(context)
                                           .copyWith(fontSize: 14),
                                       recognizer: TapGestureRecognizer()
                                         ..onTap = () {
                                           launchUrl(
-                                            Uri.parse(
-                                              "https://stackwallet.com/terms-of-service.html",
-                                            ),
-                                            mode:
-                                                LaunchMode.externalApplication,
-                                          );
-                                        },
-                                    ),
-                                    TextSpan(
-                                      text: " and ",
-                                      style:
-                                          STextStyles.desktopTextExtraExtraSmall(
-                                            context,
-                                          ).copyWith(
-                                            color: Theme.of(context)
-                                                .extension<StackColors>()!
-                                                .textDark3,
-                                          ),
-                                    ),
-                                    TextSpan(
-                                      text: "Privacy policy",
-                                      style: STextStyles.richLink(context)
-                                          .copyWith(fontSize: 14),
-                                      recognizer: TapGestureRecognizer()
-                                        ..onTap = () {
-                                          launchUrl(
-                                            Uri.parse(
-                                              "https://stackwallet.com/privacy-policy.html",
-                                            ),
-                                            mode:
-                                                LaunchMode.externalApplication,
+                                            Uri.parse("https://github.com/vsnation/campfire-beam"),
+                                            mode: LaunchMode.externalApplication,
                                           );
                                         },
                                     ),
@@ -307,12 +279,10 @@ class DesktopAboutView extends ConsumerWidget {
                                                   ),
                                             ),
                                             CustomTextButton(
-                                              text: "https://stackwallet.com",
+                                              text: "https://beam.mw",
                                               onTap: () {
                                                 launchUrl(
-                                                  Uri.parse(
-                                                    "https://stackwallet.com",
-                                                  ),
+                                                  Uri.parse("https://beam.mw"),
                                                   mode: LaunchMode
                                                       .externalApplication,
                                                 );
