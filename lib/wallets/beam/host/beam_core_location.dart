@@ -25,11 +25,11 @@ import 'secret_file.dart';
 /// checked before it is loaded; nothing is downloaded.
 const Map<String, String> kBeamCoreLibraryManifest = {
   'macos-arm64':
-      '16a5b6b1bce5cb6afbee0bc000a892d4a34c6a6cf6690efa82a9dc6617005d3e',
+      '7f660944b64aa3742399b9f51824cd4989629827d66a20cc12b3d32b670488ba',
   'android-arm64':
-      '203499e0a65b7bd9141b2829d9f8540a19abd6a27d9988ec2df2911e7e3ac8fb',
+      '07860dc16ea70502f686bbcf76f7473a5946bf5d5deabfd0884350751b6c133a',
   'android-x86_64':
-      '0d632f9ceff93cd1e13cb431949c7b22568ac607c0f159bfa4df0be91a0c2b19',
+      'c63b7b4f72992b33c62c298c550ac883be678408f1e34037a33c43256d3e201a',
   // Built and checked by CI (.github/workflows/beam-lib.yml, pre-release
   // beam-core-7.5.14493-cf2).
   'linux-x86_64':
