@@ -175,7 +175,7 @@ void main() {
   testWidgets('a swap and the node step: both are said; the swap settling '
       'alone does not quit', (tester) async {
     swaps.update('w1', [_swap('a1' * 16)]);
-    int? finishing = 10;
+    const finishing = 10;
     await pumpBeamPage(
       tester,
       _Quitter(swaps, answers, nodeFinishing: () => finishing),

@@ -213,8 +213,6 @@ class BeamInProcessNode implements BeamPrivateNode, BeamNodeStorage {
   /// Nodes started by this process and not stopped yet.
   static final Set<BeamInProcessNode> _live = {};
 
-  /// Stops every node of this process (the app's quit path). A node in a
-  /// long step stops when the step ends.
   /// How far a running node of this process is through one of its long
   /// maintenance steps (0-100), or null when none runs one. A node stopped
   /// by quitting the app mid-step starts that step over on its next start.
@@ -226,6 +224,8 @@ class BeamInProcessNode implements BeamPrivateNode, BeamNodeStorage {
     return null;
   }
 
+  /// Stops every node of this process (the app's quit path). A node in a
+  /// long step stops when the step ends.
   static Future<void> stopAll() =>
       Future.wait([for (final n in List.of(_live)) n.stop()]);
 
