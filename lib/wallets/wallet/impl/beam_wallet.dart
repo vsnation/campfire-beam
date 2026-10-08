@@ -240,6 +240,10 @@ class BeamWallet extends Bip39Wallet<Beam> implements ExternalWallet<Beam> {
   /// True while a money flow holds the node switch.
   bool get isBusy => _gate.isBusy;
 
+  /// Completes once no money flow holds the node switch (at once when none
+  /// does).
+  Future<void> whenNotBusy() => _gate.whenIdle();
+
   // ===========================================================================
   // Lifecycle
 

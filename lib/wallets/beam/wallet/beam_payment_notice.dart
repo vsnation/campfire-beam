@@ -7,9 +7,12 @@
  *
  */
 
+import '../../../services/wallets.dart';
 import '../../../utilities/amount/amount.dart';
 import '../../../widgets/crypto_notifications.dart';
 import '../../crypto_currency/crypto_currency.dart';
+import '../../wallet/impl/beam_wallet.dart';
+import '../../wallet/wallet.dart';
 import '../assets/beam_asset_registry.dart';
 
 /// An incoming payment that completed while its wallet was open.
@@ -61,4 +64,21 @@ void announceBeamPayment(BeamPaymentReceived payment) {
       txid: payment.txId,
     ),
   );
+}
+
+/// Completes when no BEAM wallet has a money flow open: a send being
+/// confirmed, a swap, a claim or a dApp approval (whatever holds the
+/// wallet's node switch, [BeamWallet.isBusy]). The system's notification
+/// permission question waits for this, so it never lands on top of one
+/// (`NotificationApi.permissionDialogMayShow`). [wallets]: Campfire's open
+/// wallets by default.
+Future<void> beamNoMoneyFlowOpen({Iterable<Wallet>? wallets}) async {
+  while (true) {
+    final busy = [
+      for (final w in wallets ?? Wallets.sharedInstance.wallets)
+        if (w is BeamWallet && w.isBusy) w,
+    ];
+    if (busy.isEmpty) return;
+    await Future.wait(busy.map((w) => w.whenNotBusy()));
+  }
 }

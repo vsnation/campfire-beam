@@ -10,6 +10,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../app_config.dart';
@@ -17,6 +18,7 @@ import '../models/notification_model.dart';
 import '../utilities/beam_app_identity.dart';
 import '../utilities/logger.dart';
 import '../utilities/prefs.dart';
+import '../wallets/beam/wallet/beam_payment_notice.dart';
 import 'notifications_service.dart';
 
 abstract final class NotificationApi {
@@ -122,11 +124,60 @@ abstract final class NotificationApi {
 
   static Future<void>? _asking;
 
-  /// Asks once per run, right before the first notification, in the BEAM
-  /// build (others asked at [init]). Never throws: a refusal just means no
-  /// banner; the notification still lands in Campfire's own list.
+  /// BEAM build: completes when the system's permission question may
+  /// appear. It waits while a send, swap, claim or dApp approval is open
+  /// ([beamNoMoneyFlowOpen]), so the question never lands on top of one.
+  /// Only the system banner waits for it: the entry in Campfire's own list
+  /// never does. Tests replace it.
+  static Future<void> Function() permissionDialogMayShow =
+      BeamAppIdentity.isActive ? beamNoMoneyFlowOpen : _now;
+
+  static Future<void> _now() async {}
+
+  /// Back to a fresh start (tests: the plugin, the question and the wait).
+  @visibleForTesting
+  static void debugReset() {
+    _initCalledCompleter = null;
+    _asking = null;
+    permissionDialogMayShow = BeamAppIdentity.isActive
+        ? beamNoMoneyFlowOpen
+        : _now;
+  }
+
+  /// Whether asking would put a question on screen: false where nothing is
+  /// asked (Linux, Windows) and where notifications are already allowed.
+  static Future<bool> _questionWouldShow() async {
+    final mac = _notifications.resolvePlatformSpecificImplementation<
+      MacOSFlutterLocalNotificationsPlugin
+    >();
+    if (mac != null) {
+      return !((await mac.checkPermissions())?.isEnabled ?? false);
+    }
+    final ios = _notifications.resolvePlatformSpecificImplementation<
+      IOSFlutterLocalNotificationsPlugin
+    >();
+    if (ios != null) {
+      return !((await ios.checkPermissions())?.isEnabled ?? false);
+    }
+    final android = _notifications.resolvePlatformSpecificImplementation<
+      AndroidFlutterLocalNotificationsPlugin
+    >();
+    if (android != null) {
+      return !(await android.areNotificationsEnabled() ?? false);
+    }
+    return false;
+  }
+
+  /// Asks once per run, at the first notification Campfire actually has to
+  /// show (in the BEAM build: the first payment that arrives), never at
+  /// launch; others asked at [init]. Not while a money flow is open
+  /// ([permissionDialogMayShow]), and not at all when notifications are
+  /// already allowed. Never throws: a refusal just means no banner; the
+  /// notification still lands in Campfire's own list.
   static Future<void> _askPermissionOnce() => _asking ??= () async {
     try {
+      if (!await _questionWouldShow()) return;
+      await permissionDialogMayShow();
       await _notifications
           .resolvePlatformSpecificImplementation<
             MacOSFlutterLocalNotificationsPlugin
