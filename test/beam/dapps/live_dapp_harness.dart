@@ -392,4 +392,14 @@ class LiveWalletLink implements DappWalletLink {
 
   @override
   void Function() holdForApproval(String reason) => () {};
+
+  @override
+  DappWalletWait? get walletWait =>
+      inSync ? null : const DappWalletWait(DappWalletWaitKind.catchingUp);
+
+  @override
+  Stream<void> get walletChanges => const Stream.empty();
+
+  @override
+  Future<void> retryConnection() async {}
 }

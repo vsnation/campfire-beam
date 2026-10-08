@@ -15,6 +15,7 @@
 // and Linux): these were generated and are compared on macOS through
 // scripts/beam/host_test.sh.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -190,6 +191,26 @@ class FakeWalletLink implements DappWalletLink {
 
   @override
   String? get spendBlockedReason => blocked;
+
+  /// What the dApp screen's wallet line reads; change it with [setWait].
+  DappWalletWait? wait;
+  final _changes = StreamController<void>.broadcast();
+  int retries = 0;
+
+  /// The wallet's state changes to [next], and says so (no polling).
+  void setWait(DappWalletWait? next) {
+    wait = next;
+    _changes.add(null);
+  }
+
+  @override
+  DappWalletWait? get walletWait => wait;
+
+  @override
+  Stream<void> get walletChanges => _changes.stream;
+
+  @override
+  Future<void> retryConnection() async => retries++;
 
   @override
   void Function() holdForApproval(String reason) {

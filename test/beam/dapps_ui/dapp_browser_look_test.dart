@@ -25,6 +25,7 @@ import 'package:stackwallet/pages/beam/dapps/dapp_browser_view.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_api_version.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_installer.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_manifest.dart';
+import 'package:stackwallet/wallets/beam/dapps/host/dapp_wallet_link.dart';
 import 'package:stackwallet/widgets/beam/dapps/dapp_avatar.dart';
 import 'package:stackwallet/widgets/beam/dapps/dapp_surface.dart';
 
@@ -116,10 +117,14 @@ void main() {
   });
 
   testWidgets('phone: the BEAM wallet background reaches the bottom edge, '
-      'under the "not up to date" note', (tester) async {
+      'under the "catching up" note', (tester) async {
     await loadCampfireFonts(tester);
     setSurface(tester, const Size(375, 812));
-    final l = link(root)..blocked = 'Catching up with the network.';
+    final l = link(root)
+      ..wait = const DappWalletWait(
+        DappWalletWaitKind.catchingUp,
+        timeLeft: Duration(minutes: 3),
+      );
     await tester.pumpWidget(
       campfireApp(
         home: DappBrowserView(

@@ -52,4 +52,55 @@ abstract class DappWalletLink {
   /// switch restarts wallet-api under it (project rules R11). Returns the
   /// function that ends the hold; calling it twice is harmless.
   void Function() holdForApproval(String reason);
+
+  /// Null when the wallet core can serve dApps; otherwise why it cannot
+  /// yet (the dApp screen says so in one line). Read again on every
+  /// [walletChanges] event.
+  DappWalletWait? get walletWait;
+
+  /// Fires whenever [walletWait] and [spendBlockedReason] may have changed:
+  /// the wallet's own sync verdicts and connection changes, as they happen.
+  /// Broadcast; nothing is polled.
+  Stream<void> get walletChanges;
+
+  /// Asks the wallet to reconnect and read the network again now (the
+  /// wallet home's "Try again").
+  Future<void> retryConnection();
+}
+
+/// Why a dApp may not load: what the wallet core is doing instead of
+/// answering.
+enum DappWalletWaitKind {
+  /// Starting, or connecting to a node: usually a few seconds.
+  connecting,
+
+  /// Getting the latest blocks; answers may be slow or out of date.
+  catchingUp,
+
+  /// Cannot reach a node, or the core could not start.
+  unreachable,
+
+  /// Connected but no longer getting new blocks.
+  stuck,
+}
+
+class DappWalletWait {
+  const DappWalletWait(this.kind, {this.timeLeft});
+
+  final DappWalletWaitKind kind;
+
+  /// While catching up: about how long until it is done, when known.
+  final Duration? timeLeft;
+
+  @override
+  bool operator ==(Object other) =>
+      other is DappWalletWait &&
+      other.kind == kind &&
+      other.timeLeft == timeLeft;
+
+  @override
+  int get hashCode => Object.hash(kind, timeLeft);
+
+  @override
+  String toString() => 'DappWalletWait(${kind.name}, $timeLeft)';
 }

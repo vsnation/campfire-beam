@@ -24,6 +24,7 @@ import 'package:stackwallet/wallets/beam/dapps/dapp_package.dart';
 import 'package:stackwallet/wallets/beam/dapps/host/dapp_host.dart';
 import 'package:stackwallet/wallets/beam/dapps/host/dapp_package_fetcher.dart';
 import 'package:stackwallet/wallets/beam/dapps/host/dapp_store_controller.dart';
+import 'package:stackwallet/wallets/beam/dapps/host/dapp_wallet_link.dart';
 import 'package:stackwallet/pages/beam/dapps/dapp_browser_view.dart';
 import 'package:stackwallet/pages/beam/dapps/dapp_store_view.dart';
 import 'package:stackwallet/widgets/beam/dapps/dapp_avatar.dart';
@@ -259,7 +260,8 @@ void main() {
       directory: '${root.path}/dapps/$dexGuid/1.0.0',
       installedAt: DateTime.utc(2026, 10, 6),
     );
-    final l = link(root)..blocked = 'Catching up with the network.';
+    final l = link(root)
+      ..wait = const DappWalletWait(DappWalletWaitKind.catchingUp);
     await tester.pumpWidget(
       campfireApp(
         home: DappBrowserView(
@@ -273,12 +275,13 @@ void main() {
     await tester.pump();
     expect(find.byKey(const Key('dappWalletNotReady')), findsOneWidget);
     expect(
-      find.textContaining('may not load or may show old numbers'),
+      find.textContaining("Beam DEX may not load until it's done"),
       findsOneWidget,
     );
 
-    l.blocked = null;
-    await tester.pump(const Duration(seconds: 4));
+    // The wallet catches up and says so: the note goes at once.
+    l.setWait(null);
+    await tester.pump();
     expect(find.byKey(const Key('dappWalletNotReady')), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });

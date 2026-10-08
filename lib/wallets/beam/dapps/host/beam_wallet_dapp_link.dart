@@ -7,10 +7,16 @@
  *
  */
 
+import 'package:async/async.dart';
+
+import '../../../../services/event_bus/events/global/node_connection_status_changed_event.dart';
+import '../../../../services/event_bus/events/global/wallet_sync_status_changed_event.dart';
+import '../../../../services/event_bus/global_event_bus.dart';
 import '../../../wallet/impl/beam_wallet.dart';
 import '../../models/beam_asset_info.dart';
 import '../../rpc/beam_transport.dart';
 import '../../sync/beam_sync_messages.dart';
+import '../../sync/beam_sync_state.dart';
 import '../../wallet/beam_wallet_services.dart';
 import '../dapp_identity.dart';
 import 'dapp_shared_transport.dart';
@@ -88,4 +94,51 @@ class BeamWalletDappLink implements DappWalletLink {
   @override
   void Function() holdForApproval(String reason) =>
       wallet.holdNodeSwitch(reason, maxHold: maxApprovalHold).release;
+
+  /// From the wallet's honest sync verdict (project rules R5) and the core's
+  /// start-up problem, the same state the wallet home's banner shows.
+  @override
+  DappWalletWait? get walletWait {
+    if (wallet.coreProblem != null) {
+      return const DappWalletWait(DappWalletWaitKind.unreachable);
+    }
+    return switch (wallet.syncAssessment) {
+      BeamSynced() => null,
+      BeamSyncConnecting() => const DappWalletWait(
+        DappWalletWaitKind.connecting,
+      ),
+      BeamSyncCatchingUp(:final eta) => DappWalletWait(
+        DappWalletWaitKind.catchingUp,
+        timeLeft: eta,
+      ),
+      BeamSyncNotConnected() => const DappWalletWait(
+        DappWalletWaitKind.unreachable,
+      ),
+      BeamSyncStalled() => const DappWalletWait(DappWalletWaitKind.stuck),
+    };
+  }
+
+  /// The wallet's verdicts as they change, plus Campfire's connection and
+  /// sync events for this wallet (a core that cannot start reports only
+  /// those).
+  @override
+  Stream<void> get walletChanges {
+    final id = wallet.walletId;
+    return StreamGroup.mergeBroadcast<void>([
+      wallet.syncAssessments.map((_) {}),
+      GlobalEventBus.instance
+          .on<Object>()
+          .where(
+            (e) => switch (e) {
+              NodeConnectionStatusChangedEvent(:final walletId) ||
+              WalletSyncStatusChangedEvent(:final walletId) => walletId == id,
+              _ => false,
+            },
+          )
+          .map((_) {}),
+    ]);
+  }
+
+  @override
+  Future<void> retryConnection() => wallet.refresh();
 }

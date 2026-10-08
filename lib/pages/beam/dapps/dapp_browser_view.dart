@@ -22,6 +22,11 @@
 //   for "Review". The page never decides when the sheet appears.
 // * A request Campfire refuses: says so, and that nothing was sent.
 // * A blank page while it loads: "Opening <dApp>…" with progress.
+// * A dApp that cannot load because the wallet is still connecting or
+//   catching up: one plain line above it says so, what happens next ("goes
+//   away by itself", how long), and it does go by itself, following the
+//   wallet's own sync state. "Try again" only when waiting may not be
+//   enough (no network, the wallet stopped updating).
 // * A white or pink page behind the dApp: dApps are drawn for the BEAM
 //   wallet's dark-blue page (white text on it), so the whole dApp area —
 //   while it loads, behind the page, and the page itself (the server's host
@@ -49,7 +54,9 @@ import '../../../wallets/beam/dapps/dapp_session.dart';
 import '../../../wallets/beam/dapps/host/dapp_approval_model.dart';
 import '../../../wallets/beam/dapps/host/dapp_host.dart';
 import '../../../wallets/beam/dapps/host/dapp_host_session.dart';
+import '../../../wallets/beam/dapps/host/dapp_wallet_link.dart';
 import '../../../wallets/beam/price/beam_fiat_price.dart';
+import '../../../wallets/beam/sync/beam_sync_messages.dart';
 import '../../../widgets/background.dart';
 import '../../../widgets/beam/dapps/dapp_approval_banner.dart';
 import '../../../widgets/beam/dapps/dapp_approval_sheet.dart';
@@ -57,6 +64,7 @@ import '../../../widgets/beam/dapps/dapp_surface.dart';
 import '../../../widgets/beam/dapps/dapp_tap_tracker.dart';
 import '../../../widgets/beam/dapps/dapp_webview.dart';
 import '../../../widgets/conditional_parent.dart';
+import '../../../widgets/custom_buttons/blue_text_button.dart';
 import '../../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../../widgets/desktop/desktop_app_bar.dart';
 import '../../../widgets/desktop/desktop_dialog.dart';
@@ -117,14 +125,13 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
   bool _disposed = false;
   DateTime? _lastRefusalNotice;
 
-  /// Why the wallet cannot act yet ("Catching up with the network…"), shown
-  /// above the dApp: its calls wait on a core that is not up to date, so
-  /// the dApp may sit on its own spinner with no word from Campfire.
-  String? _walletNotReady;
-  Timer? _readyPoll;
-
-  /// How often [_walletNotReady] is read again.
-  static const _readyPollInterval = Duration(seconds: 3);
+  /// Why the wallet core cannot serve the dApp yet (catching up, still
+  /// connecting…), said in one line above it: its calls wait on that core,
+  /// so the dApp may sit on its own spinner with no word from Campfire.
+  /// Follows the wallet's own sync and connection changes, so the line goes
+  /// by itself once the wallet can answer.
+  DappWalletWait? _walletWait;
+  StreamSubscription<void>? _walletChanges;
 
   /// The "Opening…" cover goes after this long even if the page never
   /// reports it has finished loading (a stalled image, say): by then it has
@@ -136,18 +143,18 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
   bool get _available => widget.webviewAvailable ?? dappWebviewAvailable();
   String get _name => widget.installation.manifest.name;
 
-  void _readWalletReady() {
-    final reason = widget.host.wallet.spendBlockedReason;
-    if (reason != _walletNotReady && mounted) {
-      setState(() => _walletNotReady = reason);
-    }
+  void _readWalletWait() {
+    final wait = widget.host.wallet.walletWait;
+    if (wait != _walletWait && mounted) setState(() => _walletWait = wait);
   }
 
   @override
   void initState() {
     super.initState();
-    _walletNotReady = widget.host.wallet.spendBlockedReason;
-    _readyPoll = Timer.periodic(_readyPollInterval, (_) => _readWalletReady());
+    _walletWait = widget.host.wallet.walletWait;
+    _walletChanges = widget.host.wallet.walletChanges.listen(
+      (_) => _readWalletWait(),
+    );
     if (_available) {
       widget.host.presenter.attach(_showApproval, fiat: _fiatPrice);
       unawaited(_start());
@@ -156,7 +163,7 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
 
   @override
   void dispose() {
-    _readyPoll?.cancel();
+    unawaited(_walletChanges?.cancel());
     _coverTimer?.cancel();
     _disposed = true;
     widget.host.presenter.detach(_showApproval);
@@ -505,7 +512,6 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
   bool get _showsDapp => _available && _failure == null;
 
   Widget _body(BuildContext context, bool desktop) {
-    final colors = Theme.of(context).extension<StackColors>()!;
     if (!_available) {
       return _Unavailable(name: _name, desktop: desktop);
     }
@@ -545,17 +551,12 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
           ),
         if (_session case final session?)
           _WalletBusyLine(calls: session.callsInFlight, name: _name),
-        if (_walletNotReady != null)
-          Container(
-            key: const Key('dappWalletNotReady'),
-            color: colors.warningBackground,
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            child: Text(
-              'This app may not load or may show old numbers until your '
-              'wallet is up to date. $_walletNotReady',
-              style: STextStyles.smallMed12(context)
-                  .copyWith(color: colors.warningForeground),
-            ),
+        if (_walletWait case final wait?)
+          _WalletWaitStrip(
+            wait: wait,
+            name: _name,
+            desktop: desktop,
+            onRetry: () => unawaited(widget.host.wallet.retryConnection()),
           ),
         Expanded(
           child: DappSurface(
@@ -582,6 +583,107 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// What the strip above a dApp says while the wallet core cannot serve it:
+/// what is happening, what it means for the dApp, and what happens next.
+abstract final class DappWalletWaitText {
+  static String title(DappWalletWait wait, String name) =>
+      switch (wait.kind) {
+        DappWalletWaitKind.connecting =>
+          "Your wallet is still connecting — $name may not load until "
+              "it's connected.",
+        DappWalletWaitKind.catchingUp =>
+          "Your wallet is catching up — $name may not load until it's done.",
+        DappWalletWaitKind.unreachable =>
+          "Your wallet can't reach the network — $name can't load until it "
+              "does.",
+        DappWalletWaitKind.stuck =>
+          "Your wallet has stopped updating — $name may show old numbers.",
+      };
+
+  static String next(DappWalletWait wait) => switch (wait.kind) {
+    DappWalletWaitKind.connecting =>
+      'This goes away by itself, usually within a few seconds.',
+    DappWalletWaitKind.catchingUp => switch (wait.timeLeft) {
+      final left? =>
+        '${_capitalized(BeamSyncMessages.approxDuration(left))} left. '
+            "This goes away by itself when it's done.",
+      null => "This goes away by itself when it's done.",
+    },
+    DappWalletWaitKind.unreachable =>
+      'It keeps trying on its own, and this goes away once it connects.',
+    DappWalletWaitKind.stuck =>
+      "Your wallet's page says why and what to do. This goes away once it "
+          'updates again.',
+  };
+
+  static const retry = 'Try again';
+
+  static String _capitalized(String s) =>
+      s.isEmpty ? s : '${s[0].toUpperCase()}${s.substring(1)}';
+}
+
+/// The line above a dApp while the wallet core cannot serve it
+/// ([DappWalletWaitText]). "Try again" only where waiting alone may not
+/// fix it.
+class _WalletWaitStrip extends StatelessWidget {
+  const _WalletWaitStrip({
+    required this.wait,
+    required this.name,
+    required this.desktop,
+    required this.onRetry,
+  });
+
+  final DappWalletWait wait;
+  final String name;
+  final bool desktop;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<StackColors>()!;
+    final retry =
+        wait.kind == DappWalletWaitKind.unreachable ||
+        wait.kind == DappWalletWaitKind.stuck;
+    final ink = colors.warningForeground;
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        key: const Key('dappWalletNotReady'),
+        color: colors.warningBackground,
+        padding: EdgeInsets.fromLTRB(desktop ? 24 : 16, 10, 16, 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    DappWalletWaitText.title(wait, name),
+                    style: STextStyles.w600_14(context).copyWith(color: ink),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    DappWalletWaitText.next(wait),
+                    style: STextStyles.w500_12(context).copyWith(color: ink),
+                  ),
+                ],
+              ),
+            ),
+            if (retry) ...[
+              const SizedBox(width: 12),
+              CustomTextButton(
+                key: const Key('dappWalletRetry'),
+                text: DappWalletWaitText.retry,
+                onTap: onRetry,
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
