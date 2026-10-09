@@ -7,8 +7,7 @@
  *
  */
 
-// Campfire's desktop side menu as the BEAM build's main navigation (owner,
-// 2026-10-06: "Left side bar menu can provide really nice navigation").
+// Campfire's desktop side menu as the BEAM build's main navigation.
 //
 // What lives here:
 // * which BEAM features the menu lists, in which order, with which icon;
@@ -19,7 +18,7 @@
 // The menu itself is `beam_sidebar_menu.dart`; the pages it opens are under
 // lib/pages_desktop_specific/beam/sidebar/.
 //
-// Click budget (USER_PSYCHOLOGY §1.2), from opening the app on desktop:
+// Click budget, from opening the app on desktop:
 //   Buy BEAM: 1 click (the menu), then BEAM or WBEAM (2), then its form.
 //   Swap, Bridge, Assets, Names, dApps: 1 click (the menu).
 //   Claim a code, My airdrops, Create codes, Create a token, My tokens,

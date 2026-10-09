@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: show where to send the coin (address, QR, memo, amount,
 //    deadline), then where the swap is, until the ETH is in this wallet.
 // 2. Primary CTA: "Copy address" while waiting; once the ETH is here, "Buy
@@ -15,7 +15,7 @@
 // 3. Taps: this screen opens from "Get a … deposit address"; the deposit
 //    happens in the user's other wallet; coming back shows the progress.
 //
-// Exit-intent (§1.7): "Is this address real?" — "Signed by NEAR Intents"
+// Exit-intent: "Is this address real?" — "Signed by NEAR Intents"
 // (the signature is checked before this screen opens); "Which network?" —
 // named in the warning, with what happens to anything else; "Did it
 // work?" — the status updates by itself and names the next step; "What if

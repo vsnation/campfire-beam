@@ -17,7 +17,7 @@
 // offers "Create a BEAM wallet"; with several and none chosen it asks which,
 // at the top of the page.
 //
-// Specs (USER_PSYCHOLOGY §6): Swap, Names and dApps are the wallet
+// Specs: Swap, Names and dApps are the wallet
 // screen's own pages (their specs are in desktop_beam_dex_view.dart,
 // beam_names_home_view.dart, dapp_store_view.dart), shown under the side
 // menu's header; Assets and the Airdrops / Tokens hubs are in this folder;

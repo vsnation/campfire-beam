@@ -7,12 +7,12 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: pick the coin you pay with, and its chain.
 // 2. Primary action: tap it.
 // 3. One tap from the coin button of Buy BEAM.
 //
-// Exit-intent (§1.7): "Is my coin here?" — the coins people bring most
+// Exit-intent: "Is my coin here?" — the coins people bring most
 // come first (BTC, ETH, USDT on Tron…), then every other coin by chain,
 // with a search box for a ticker or a chain name. "Which USDT?" — every
 // row names its chain, because USDT on Tron and USDT on Ethereum are

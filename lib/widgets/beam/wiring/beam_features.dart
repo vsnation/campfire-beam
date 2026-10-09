@@ -12,7 +12,7 @@
 // (the phone wallet's bottom bar and its More sheet, the desktop wallet's
 // feature row and its More dialog) only list these.
 //
-// Click budget (USER_PSYCHOLOGY §1.2), from opening the wallet:
+// Click budget, from opening the wallet:
 //   phone   Send, Receive, Buy, Swap, Assets: 1 tap (the bar); Buy then
 //           needs an amount and its button (2).
 //           Names, dApps, Node & sync, Split coins, Bridge: 2 (More → it).

@@ -7,13 +7,13 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: pick the coin you have, and its chain.
 // 2. Primary action: tap it.
 // 3. One tap from the coin button.
 //
-// The coins people bring most come first (BTC, ZEC, LTC, USDT on Tron…,
-// owner 2026-10-09), then every other coin NEAR Intents takes, by chain.
+// The coins people bring most come first (BTC, ZEC, LTC, USDT on Tron…),
+// then every other coin NEAR Intents takes, by chain.
 // Each row names its chain, because USDT on Tron and USDT on BNB Chain are
 // different deposits.
 

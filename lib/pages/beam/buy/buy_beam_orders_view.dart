@@ -7,12 +7,12 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: find a buy of this wallet and see where it is.
 // 2. Primary action: tap the buy (its deposit address and steps open).
 // 3. Taps from app open: wallet → Buy (1) → "Your buys" (2) → the buy (3).
 //
-// Exit-intent (§1.7): "Where is my BEAM?" — each buy says where it is in
+// Exit-intent: "Where is my BEAM?" — each buy says where it is in
 // words, the unfinished ones first by date. "I have none" — says so, with
 // the way back to buying.
 

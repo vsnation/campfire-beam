@@ -111,8 +111,8 @@ class OneClickToken {
 /// Chain names people know (shared with every other coin list).
 const Map<String, String> kOneClickChainNames = kChainNames;
 
-/// The coins people bring most, first (owner, 2026-10-09: "Prioritize
-/// BTC/ZEC/LTC and other main by traffic tokens"), as (symbol, chain).
+/// The coins people bring most, first (BTC, ZEC, LTC and the other main
+/// coins by traffic), as (symbol, chain).
 const List<(String, String)> kOneClickPopular = [
   ('BTC', 'btc'),
   ('ZEC', 'zec'),

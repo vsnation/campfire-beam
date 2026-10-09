@@ -9,7 +9,7 @@
 
 // Campfire's desktop side menu with every BEAM feature in it.
 //
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   1. Job: get to any part of the wallet in one click.
 //   2. Primary CTA: none of its own; the selected item is the one pill.
 //   3. Clicks from app open: every BEAM feature 1, its sub-tasks 2.
@@ -22,7 +22,7 @@
 // 1280 × 800 window (beam_sidebar_menu_test.dart measures it); a shorter
 // window scrolls the items, never the logo or Exit.
 //
-// Exit-intent (§1.7): a menu that scrolls, so Settings is hidden below the
+// Exit-intent: a menu that scrolls, so Settings is hidden below the
 // fold (fits); icons that mean nothing once minimized (every item has a
 // tooltip then); a status line that claims "connected" when it is not (the
 // chip only says what the core reports).

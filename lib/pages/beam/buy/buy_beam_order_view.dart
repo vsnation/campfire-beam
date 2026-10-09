@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: send exactly this much of this coin to this address; then
 //    see the buy go through until the BEAM is in the wallet.
 // 2. Primary CTA: "Copy address" while the payment is awaited; after it,
@@ -17,7 +17,7 @@
 // 3. Taps: it opens by itself from "Get a … deposit address"; later, Buy →
 //    "Your buys" → the buy.
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 // * "Which network? How much exactly?" — the coin and its network are
 //   said above the address, the exact amount has its own copy button.
 // * "Did it work?" — four steps, each ticked as it happens; the screen

@@ -13,7 +13,7 @@
 // Ethereum wallet, with WBEAM to receive. Like the Bridge page it has no
 // wallet chip: each card finds (or creates) its own wallet.
 //
-// Spec (USER_PSYCHOLOGY §6): as `buy_chooser_view.dart`. Clicks from app
+// Spec: as `buy_chooser_view.dart`. Clicks from app
 // open: Buy BEAM (1), a card (2), then the form's button (3).
 
 import 'package:flutter/material.dart';

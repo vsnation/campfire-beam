@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: bring a coin from another chain (BTC, ZEC, LTC… any coin
 //    NEAR Intents swaps) into this Ethereum wallet as ETH, and then buy
 //    WBEAM with it.
@@ -17,7 +17,7 @@
 // 3. Taps from app open: wallet → Swap (2) → "Pay with BTC, ZEC, LTC…"
 //    (3) → coin, amount, refund address → the button (4).
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 // * "Is this a scam?" — NEAR Intents is named, the ETH lands in this
 //   wallet's own address (shown), and the next screen's address is only
 //   shown when NEAR Intents' signature on it checks out.

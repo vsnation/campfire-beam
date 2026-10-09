@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: swap one Ethereum token for another on Uniswap, from this
 //    wallet, directly on Uniswap's own contracts.
 // 2. Primary CTA: the outcome, "Swap 0.01 ETH" ("Swap" until an amount is
@@ -16,7 +16,7 @@
 // 3. Taps from app open: wallet → Swap (2), type an amount, "Swap 0.01
 //    ETH" (3); then the review and Campfire's PIN.
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 // * A greyed-out button with no reason — every disabled state says why
 //   above it (no amount, not enough of the token, not enough ETH for the
 //   network fee, no pool, still pricing).

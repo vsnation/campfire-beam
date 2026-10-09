@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: say which BEAM to buy, the private coin or the token on
 //    Ethereum. Shown only where Campfire cannot tell (the desktop side
 //    menu's Buy BEAM); a wallet's own Buy already knows.
 // 2. No primary button: two equal cards, one tap each.
 // 3. Clicks from app open: Buy BEAM (1) → a card (2) → its form.
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 // * "What's the difference?" — each card says in one line where the coin
 //   ends up and what pays for it.
 // * "I don't have that wallet" — the card still works: it says so and

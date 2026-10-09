@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: pay with a coin from another chain, get BEAM in this wallet.
 // 2. Primary CTA: "Get a BTC deposit address" (the ticker follows the
 //    coin). Paying happens on the next screen, from any wallet.
 // 3. Taps from app open: BEAM wallet → Buy (1) → amount (and a refund
 //    address, pre-filled when Campfire has one) → the button (2).
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 // * "What do I get?" — about how much BEAM, as buybeam.my prices it, in
 //   which wallet, and how long it usually takes, before any address
 //   exists.
