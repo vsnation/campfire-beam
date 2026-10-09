@@ -265,18 +265,16 @@ class UniswapService {
     required BigInt amountIn,
     String? owner,
   }) async {
-    BigInt? gasPrice;
-    try {
-      final f = await fees();
-      gasPrice = f.baseFee + f.maxPriorityFeePerGas;
-    } catch (_) {
-      // The price is still right without it; only the gas tie-break is off.
-    }
+    // Read alongside the pools. Without it the price is still right; only
+    // how many routes are worth their gas is guessed.
+    final gasPrice = fees()
+        .then<BigInt?>((f) => f.baseFee + f.maxPriorityFeePerGas)
+        .catchError((Object _) => null);
     return quoter.bestQuote(
       tokenIn: tokenIn,
       tokenOut: tokenOut,
       amountIn: amountIn,
-      gasPriceWei: gasPrice,
+      gasPrice: gasPrice,
       simulate: owner != null && tokenIn.isEth
           ? (q) => simulates(q, owner)
           : null,
@@ -295,7 +293,7 @@ class UniswapService {
     }
     final plan = _planner.build(
       quote: q,
-      minimumOut: q.minimumOut(100),
+      slippageBips: 100,
       deadline: BigInt.from(_now + deadline.inSeconds),
     );
     try {
@@ -317,7 +315,7 @@ class UniswapService {
   /// best other price is returned; otherwise null (a plain failure).
   Future<UniQuote?> _rerouteAround(UniQuote quote, String owner) async {
     final hooked = [
-      for (final p in quote.route.pools)
+      for (final p in quote.pools)
         if (p is UniV4Pool && p.hasHooks) p.id,
     ];
     if (hooked.isEmpty) return null;
@@ -458,7 +456,7 @@ class UniswapService {
     } else {
       final plan = _planner.build(
         quote: fresh,
-        minimumOut: minimumOut,
+        slippageBips: slippageBips,
         deadline: dl,
       );
       try {
@@ -511,7 +509,7 @@ class UniswapService {
     }
     final plan = _planner.build(
       quote: q,
-      minimumOut: review.minimumOut,
+      slippageBips: review.slippageBips,
       deadline: review.deadline,
       permit: permit,
     );

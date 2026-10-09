@@ -116,33 +116,57 @@ class UniTokenChip extends StatelessWidget {
   }
 }
 
-/// "ETH → WBEAM · Uniswap v4, 1% pool" — the route in words.
+/// The route in words: "ETH → WBEAM" for one route; "Split over 3
+/// pools" when the swap is shared (the note says how).
 String uniRouteText(UniQuote q, UniswapDeps deps) {
-  String sym(String currency) {
-    if (currency == UniToken.eth.address) return 'ETH';
-    if (currency == q.tokenIn.address) return q.tokenIn.symbol;
-    if (currency == q.tokenOut.address) return q.tokenOut.symbol;
-    return deps.token(currency)?.symbol ?? UniFormat.short(currency);
+  if (q.isSplit) {
+    final direct = q.parts.every((p) => p.route.isDirect);
+    return 'Split over ${q.parts.length} ${direct ? 'pools' : 'routes'}';
   }
-
-  final hops = q.route.hops;
-  final path = [
-    sym(hops.first.currencyIn),
-    for (final h in hops) sym(h.currencyOut),
-  ];
-  // ETH ⇄ WETH conversions on the way are the router's own; keep "ETH".
-  final names = path.map(
-    (s) => s == 'WETH' && !q.tokenIn.isWeth && !q.tokenOut.isWeth ? 'ETH' : s,
-  );
-  return names.join(' → ');
+  return _pathText(q, q.route, deps);
 }
 
+/// "Uniswap v4 · 1%" for one route; for a shared swap each share:
+/// "70% v4 · 1%, 30% via USDC (v4 · 0.05% then v3 · 1%)".
+String uniRouteNote(UniQuote q, UniswapDeps deps) {
+  if (!q.isSplit) return 'Uniswap ${uniPoolsText(q.route)}';
+  // No line break inside a share's "70% v4 · 1%" (U+00A0 spaces).
+  String keep(String s) => s.replaceAll(' · ', '\u00A0·\u00A0');
+  return [
+    for (final p in q.parts)
+      p.route.isDirect
+          ? '${UniFormat.share(q.shareOf(p))}\u00A0'
+                '${keep(uniPoolsText(p.route))}'
+          : '${UniFormat.share(q.shareOf(p))}\u00A0via '
+                '${_middle(q, p.route, deps)} '
+                '(${keep(uniPoolsText(p.route, then: ' then '))})',
+  ].join(', ');
+}
+
+String _symbol(UniQuote q, String currency, UniswapDeps deps) {
+  if (currency == UniToken.eth.address) return 'ETH';
+  if (currency == q.tokenIn.address) return q.tokenIn.symbol;
+  if (currency == q.tokenOut.address) return q.tokenOut.symbol;
+  final s = deps.token(currency)?.symbol ?? UniFormat.short(currency);
+  // ETH ⇄ WETH conversions on the way are the router's own; keep "ETH".
+  return s == 'WETH' && !q.tokenIn.isWeth && !q.tokenOut.isWeth ? 'ETH' : s;
+}
+
+String _middle(UniQuote q, UniRoute r, UniswapDeps deps) => [
+  for (final h in r.hops.skip(1)) _symbol(q, h.currencyIn, deps),
+].join(', ');
+
+String _pathText(UniQuote q, UniRoute r, UniswapDeps deps) => [
+  _symbol(q, r.hops.first.currencyIn, deps),
+  for (final h in r.hops) _symbol(q, h.currencyOut, deps),
+].join(' → ');
+
 /// "v4 · 1%" for each pool of the route.
-String uniPoolsText(UniRoute route) => [
+String uniPoolsText(UniRoute route, {String then = ', then '}) => [
   for (final h in route.hops)
     '${h.pool.version.label} · ${UniFormat.fee(h.pool.fee)}'
         '${h.pool is UniV4Pool && (h.pool as UniV4Pool).hasHooks ? ' · hook' : ''}',
-].join(', then ');
+].join(then);
 
 /// Warns about a token Campfire does not vouch for: anyone can make a token
 /// called "USDT".

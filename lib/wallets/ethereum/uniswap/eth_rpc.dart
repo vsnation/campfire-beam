@@ -224,26 +224,37 @@ class EthRpc {
   Future<List<EthCallResult>> multicall(
     List<EthCall> calls, {
     int chunk = 40,
+    int parallel = 4,
   }) async {
-    final out = <EthCallResult>[];
-    for (var i = 0; i < calls.length; i += chunk) {
-      final part = calls.sublist(
-        i,
-        i + chunk > calls.length ? calls.length : i + chunk,
-      );
+    final parts = <List<EthCall>>[
+      for (var i = 0; i < calls.length; i += chunk)
+        calls.sublist(
+          i,
+          i + chunk > calls.length ? calls.length : i + chunk,
+        ),
+    ];
+    final results = List<List<EthCallResult>?>.filled(parts.length, null);
+    Future<void> run(int i) async {
       final data = encodeCall('aggregate3((address,bool,bytes)[])', [
         [
-          for (final c in part) [c.to, true, c.data],
+          for (final c in parts[i]) [c.to, true, c.data],
         ],
       ]);
       final raw = await ethCall(UniswapAddresses.multicall3, data);
       final decoded = abiDecode('(bool,bytes)[]', raw).first as List;
-      for (final r in decoded) {
-        final pair = r as List;
-        out.add(EthCallResult(pair[0] as bool, pair[1] as Uint8List));
-      }
+      results[i] = [
+        for (final r in decoded)
+          EthCallResult((r as List)[0] as bool, r[1] as Uint8List),
+      ];
     }
-    return out;
+
+    // A few requests at a time: quicker over Tor, gentle on public RPCs.
+    for (var i = 0; i < parts.length; i += parallel) {
+      await Future.wait([
+        for (var j = i; j < i + parallel && j < parts.length; j++) run(j),
+      ]);
+    }
+    return [for (final r in results) ...r!];
   }
 
   /// eth_getLogs.

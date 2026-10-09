@@ -67,6 +67,9 @@ void main() {
     if (unavailable != null) return markTestSkipped(unavailable);
 
     final wallet = await openEthWallet(tester, node: _forkNode());
+    // Leave the fork as it was (see rollBackForkAfterEachTest).
+    final snapshot = await tester.runAsync(takeFork);
+    addTearDown(() => tester.runAsync(() => releaseFork(snapshot!)));
     await tester.runAsync(() async {
       final address = (await wallet.getCurrentReceivingAddress())!.value
           .toLowerCase();

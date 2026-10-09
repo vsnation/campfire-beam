@@ -75,6 +75,7 @@ class UniswapSwapView extends StatefulWidget {
     this.onPairChanged,
     this.initialAmount,
     this.onPayWithOtherCoin,
+    this.onQuoteChanged,
   });
 
   final UniswapDeps deps;
@@ -95,6 +96,10 @@ class UniswapSwapView extends StatefulWidget {
   /// True inside the desktop view: the form without a page around it.
   final bool embedded;
 
+  /// Told when the price shown changes (the desktop pools column marks
+  /// the pools the swap uses).
+  final void Function(UniQuote? quote)? onQuoteChanged;
+
   @override
   State<UniswapSwapView> createState() => _UniswapSwapViewState();
 }
@@ -106,7 +111,19 @@ class _UniswapSwapViewState extends State<UniswapSwapView> {
   final _receiveText = TextEditingController();
   UniAmountInput _input = UniAmountInput.empty;
 
-  UniQuote? _quote;
+  UniQuote? _quoteValue;
+  UniQuote? get _quote => _quoteValue;
+  set _quote(UniQuote? q) {
+    if (identical(q, _quoteValue)) return;
+    _quoteValue = q;
+    final tell = widget.onQuoteChanged;
+    if (tell != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && identical(_quoteValue, q)) tell(q);
+      });
+    }
+  }
+
   bool _quoting = false;
   _Problem? _problem;
   String? _problemDetail;
@@ -477,7 +494,7 @@ class _UniswapSwapViewState extends State<UniswapSwapView> {
     showDexPage<void>(
       context,
       deps,
-      (_) => UniswapPoolsView(deps: deps, a: _pay, b: _receive),
+      (_) => UniswapPoolsView(deps: deps, a: _pay, b: _receive, quote: _quote),
     ),
   );
 
@@ -594,7 +611,7 @@ class _UniswapSwapViewState extends State<UniswapSwapView> {
             label: 'Route',
             valueKey: const Key('uni-route'),
             value: uniRouteText(q, deps),
-            note: 'Uniswap ${uniPoolsText(q.route)}',
+            note: uniRouteNote(q, deps),
             noteKey: const Key('uni-route-pools'),
             onTap: _openPools,
             trailing: Icon(

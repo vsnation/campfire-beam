@@ -109,6 +109,12 @@ abstract final class UniFormat {
     return '${p >= 10 ? p.toStringAsFixed(1) : p.toStringAsFixed(2)}%';
   }
 
+  /// A share of a swap, in whole percent: 0.7 → "70%".
+  static String share(double fraction) {
+    final p = (fraction * 100).round();
+    return p < 1 ? '< 1%' : '$p%';
+  }
+
   /// A pool's fee: 3000 → "0.3%", 100 → "0.01%", null → "set by its hook".
   static String fee(int? hundredthsOfBip) {
     if (hundredthsOfBip == null) return 'set by its hook';

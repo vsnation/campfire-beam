@@ -26,6 +26,7 @@ import 'package:stackwallet/wallets/ethereum/uniswap/eth_rpc.dart';
 import 'package:stackwallet/wallets/ethereum/uniswap/uniswap_constants.dart';
 import 'package:stackwallet/wallets/ethereum/uniswap/uniswap_discovery.dart';
 import 'package:stackwallet/wallets/ethereum/uniswap/uniswap_models.dart';
+import 'package:stackwallet/wallets/ethereum/uniswap/uniswap_quoter.dart';
 import 'package:stackwallet/wallets/ethereum/uniswap/uniswap_service.dart';
 
 import 'fork_support.dart';
@@ -111,6 +112,7 @@ Future<UniTxOutcome> swap(
 
 void main() {
   setUpAll(() async => skip = await forkUnavailable());
+  rollBackForkAfterEachTest();
 
   UniswapService service() => UniswapService(rpc: forkRpc());
 
@@ -254,7 +256,7 @@ void main() {
         owner: who.address,
       );
       expect(
-        q.route.pools.whereType<UniV4Pool>().map((p) => p.hooks),
+        q.pools.whereType<UniV4Pool>().map((p) => p.hooks),
         isNot(contains(trap)),
       );
       await swap(svc, who, q);
@@ -299,7 +301,7 @@ void main() {
       BigInt amountIn,
       List<UniHop> hops,
     ) => svc.quoter.requote(
-      UniQuote(
+      UniQuote.single(
         tokenIn: tokenIn,
         tokenOut: tokenOut,
         amountIn: amountIn,
@@ -410,6 +412,93 @@ void main() {
       final q = await forced(svc, weth, wbeam, eth ~/ BigInt.from(100), [
         UniHop(v4EthWbeam, UniswapAddresses.nativeEth, wbeam.address),
       ]);
+      await swap(svc, who, q);
+    });
+  });
+
+  group('one swap shared between pools', () {
+    // Front-running feeds on a swap that moves one pool a lot. A large
+    // purchase is spread over every WBEAM pool that adds to it, each
+    // share with its own minimum on its own pool.
+    UniswapService singleRouteOnly() {
+      final rpc = forkRpc();
+      final d = UniswapDiscovery(rpc: rpc);
+      return UniswapService(
+        rpc: rpc,
+        discovery: d,
+        quoter: UniswapQuoter(rpc: rpc, discovery: d, maxParts: 1),
+      );
+    }
+
+    test('2 ETH → WBEAM: shared, more than any one route gives, and '
+        'exactly the quote arrives', () async {
+      if (skip != null) return markTestSkipped(skip!);
+      final svc = service();
+      final who = await ForkSigner.funded(eth: eth * BigInt.from(5));
+      final amount = eth * BigInt.two;
+      final q = await svc.quote(
+        tokenIn: UniToken.eth,
+        tokenOut: wbeam,
+        amountIn: amount,
+      );
+      expect(q.isSplit, isTrue, reason: 'one route: ${q.route.id}');
+      final ids = q.pools.map((p) => p.id).toList();
+      expect(ids.toSet().length, ids.length, reason: 'a pool used twice');
+      expect(q.parts.fold(BigInt.zero, (s, p) => s + p.amountIn), amount);
+      final single = await singleRouteOnly().quote(
+        tokenIn: UniToken.eth,
+        tokenOut: wbeam,
+        amountIn: amount,
+      );
+      expect(q.amountOut > single.amountOut, isTrue);
+      expect(q.priceImpact!, lessThan(single.priceImpact!));
+      for (final p in q.parts) {
+        printOnFailure(
+          '${p.amountIn * BigInt.from(100) ~/ amount}% '
+          '${p.route.pools.map((x) => '${x.version.label}/${x.fee}').join(' > ')}'
+          ' → ${p.amountOut}',
+        );
+      }
+      await swap(svc, who, q);
+      expect(await svc.balanceOf(wbeam, who.address), q.amountOut);
+
+      // Selling it all back: one Permit2 signature pays every share.
+      final sell = await svc.quote(
+        tokenIn: wbeam,
+        tokenOut: UniToken.eth,
+        amountIn: q.amountOut,
+      );
+      expect(sell.isSplit, isTrue);
+      await swap(svc, who, sell);
+      expect(await svc.balanceOf(wbeam, who.address), BigInt.zero);
+    });
+
+    test('a small purchase stays in one pool: a second would cost more gas '
+        'than it saves', () async {
+      if (skip != null) return markTestSkipped(skip!);
+      final q = await service().quote(
+        tokenIn: UniToken.eth,
+        tokenOut: wbeam,
+        amountIn: eth ~/ BigInt.from(2000),
+      );
+      expect(q.parts.length, 1);
+    });
+
+    test('USDC → WBEAM, shared between the direct pools and the routes '
+        'through ETH', () async {
+      if (skip != null) return markTestSkipped(skip!);
+      final svc = service();
+      final who = await ForkSigner.funded(eth: eth * BigInt.from(5));
+      final buy = await svc.quote(
+        tokenIn: UniToken.eth,
+        tokenOut: usdc,
+        amountIn: eth,
+      );
+      await swap(svc, who, buy);
+      final have = await svc.balanceOf(usdc, who.address);
+      final q = await svc.quote(tokenIn: usdc, tokenOut: wbeam, amountIn: have);
+      final ids = q.pools.map((p) => p.id).toList();
+      expect(ids.toSet().length, ids.length);
       await swap(svc, who, q);
     });
   });

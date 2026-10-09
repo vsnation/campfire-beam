@@ -12,8 +12,9 @@
 //    which version, its fee, whether it has a hook, its price and how deep
 //    it is next to the others — so "is this the best place to swap?" has a
 //    visible answer.
-// 2. No action: read-only; the swap always uses whichever pool or route
-//    gives the most.
+// 2. No action: read-only; the swap is always shared between the pools
+//    that, together, give the most, and the pools it uses say how much
+//    of it each takes.
 // 3. One tap from the swap form ("Pools", or the route line).
 
 import 'dart:async';
@@ -36,12 +37,16 @@ class UniswapPoolsView extends StatefulWidget {
     required this.deps,
     required this.a,
     required this.b,
+    this.quote,
     this.embedded = false,
   });
 
   final UniswapDeps deps;
   final UniToken a;
   final UniToken b;
+
+  /// The swap being priced, if any: its pools show their share of it.
+  final UniQuote? quote;
 
   /// True beside the desktop swap form: no page around it.
   final bool embedded;
@@ -185,12 +190,22 @@ class _UniswapPoolsViewState extends State<UniswapPoolsView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            '${live!.length} of ${rows.length} pools can trade now. The swap '
-            'uses whichever pool, or pair of pools, gives you the most.',
+            '${live!.length} of ${rows.length} pools can trade now. Your swap '
+            'is shared between the pools that, together, give you the most, '
+            'so no one pool moves far.',
             key: const Key('uni-pools-summary'),
             style: STextStyles.label(context)
                 .copyWith(color: colors.textSubtitle1),
           ),
+          if (_viaOthers() case final via?) ...[
+            const SizedBox(height: 6),
+            Text(
+              via,
+              key: const Key('uni-pools-via'),
+              style: STextStyles.label(context)
+                  .copyWith(color: colors.textSubtitle1),
+            ),
+          ],
           const SizedBox(height: 8),
           for (final r in rows.take(40)) _row(context, r, deepest),
           if (rows.length > 40)
@@ -220,6 +235,36 @@ class _UniswapPoolsViewState extends State<UniswapPoolsView> {
     if (widget.embedded) return content;
     return DexPage(deps: deps, title: 'Uniswap pools', body: content);
   }
+
+  /// "70%" when the swap sends that much straight through [pool].
+  String? _shareOf(UniPool pool) {
+    final q = widget.quote;
+    if (q == null || !_samePair(q)) return null;
+    for (final p in q.parts) {
+      if (p.route.isDirect && p.route.hops.first.pool.id == pool.id) {
+        return UniFormat.share(q.shareOf(p));
+      }
+    }
+    return null;
+  }
+
+  /// The shares that go through another token, which this list (pools
+  /// between the two tokens only) does not show.
+  String? _viaOthers() {
+    final q = widget.quote;
+    if (q == null || !_samePair(q)) return null;
+    final others = [
+      for (final p in q.parts)
+        if (!p.route.isDirect) p,
+    ];
+    if (others.isEmpty) return null;
+    final total = others.fold(0.0, (s, p) => s + q.shareOf(p));
+    return 'Another ${UniFormat.share(total)} of your swap goes through a '
+        'second token, on pools not listed here.';
+  }
+
+  bool _samePair(UniQuote q) =>
+      q.tokenIn.sameAsset(widget.a) && q.tokenOut.sameAsset(widget.b);
 
   Widget _row(BuildContext context, _PoolRow r, BigInt? deepest) {
     final colors = Theme.of(context).extension<StackColors>()!;
@@ -254,11 +299,21 @@ class _UniswapPoolsViewState extends State<UniswapPoolsView> {
                   style: STextStyles.label(context),
                 ),
                 const Spacer(),
-                Text(
-                  isLive ? '' : 'empty',
-                  style: STextStyles.label(context)
-                      .copyWith(color: colors.textSubtitle1),
-                ),
+                if (_shareOf(pool) case final used?)
+                  Text(
+                    '$used of your swap',
+                    key: Key('uni-pool-share-${pool.id}'),
+                    style: STextStyles.label(context).copyWith(
+                      color: colors.accentColorGreen,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                else
+                  Text(
+                    isLive ? '' : 'empty',
+                    style: STextStyles.label(context)
+                        .copyWith(color: colors.textSubtitle1),
+                  ),
               ],
             ),
             if (isLive) ...[

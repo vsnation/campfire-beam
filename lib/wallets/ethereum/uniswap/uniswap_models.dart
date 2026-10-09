@@ -271,43 +271,121 @@ class UniRoute {
   String get id => hops.map((h) => h.pool.id).join('>');
 }
 
-/// A price for swapping [amountIn] of [tokenIn] into [tokenOut].
+/// One share of a swap: [amountIn] of it through [route].
+class UniPart {
+  const UniPart({
+    required this.route,
+    required this.amountIn,
+    required this.amountOut,
+    required this.hopOutputs,
+    required this.gas,
+  });
+
+  final UniRoute route;
+  final BigInt amountIn;
+  final BigInt amountOut;
+
+  /// What each pool of [route] gives, in order (the last is [amountOut]).
+  final List<BigInt> hopOutputs;
+
+  /// The quoters' gas estimate for this share's swaps.
+  final BigInt gas;
+
+  /// The least this share may give: [amountOut] less [slippageBips] /
+  /// 10 000. The router checks it on this share's last pool, so no pool
+  /// can be pushed further than this on its own.
+  BigInt minimumOut(int slippageBips) =>
+      amountOut * BigInt.from(10000 - slippageBips) ~/ BigInt.from(10000);
+}
+
+/// A price for swapping [amountIn] of [tokenIn] into [tokenOut], split
+/// between one or more routes ([parts], largest share first).
+///
+/// Splitting matters for more than the price: a swap that moves one pool
+/// a lot is what a front-runner waits for (buy before it, sell after it).
+/// Spread over every pool that adds to the result, each pool moves less,
+/// and each share carries its own minimum, checked by the router on that
+/// pool.
 class UniQuote {
-  const UniQuote({
+  UniQuote({
     required this.tokenIn,
     required this.tokenOut,
     required this.amountIn,
-    required this.amountOut,
-    required this.route,
-    required this.hopOutputs,
+    required List<UniPart> parts,
     required this.gasEstimate,
     this.priceImpact,
     required this.block,
-  });
+  }) : parts = List<UniPart>.unmodifiable(
+         <UniPart>[...parts]
+           ..sort((UniPart a, UniPart b) => b.amountIn.compareTo(a.amountIn)),
+       ),
+       amountOut = parts.fold(BigInt.zero, (s, p) => s + p.amountOut);
+
+  /// A quote with one route (tests, and the review's fresh price of a
+  /// route the user already saw).
+  factory UniQuote.single({
+    required UniToken tokenIn,
+    required UniToken tokenOut,
+    required BigInt amountIn,
+    required BigInt amountOut,
+    required UniRoute route,
+    required List<BigInt> hopOutputs,
+    required BigInt gasEstimate,
+    double? priceImpact,
+    required int block,
+  }) => UniQuote(
+    tokenIn: tokenIn,
+    tokenOut: tokenOut,
+    amountIn: amountIn,
+    parts: [
+      UniPart(
+        route: route,
+        amountIn: amountIn,
+        amountOut: amountOut,
+        hopOutputs: hopOutputs,
+        gas: gasEstimate,
+      ),
+    ],
+    gasEstimate: gasEstimate,
+    priceImpact: priceImpact,
+    block: block,
+  );
 
   final UniToken tokenIn;
   final UniToken tokenOut;
   final BigInt amountIn;
-  final BigInt amountOut;
-  final UniRoute route;
 
-  /// What each hop gives, in order (the last is [amountOut]).
-  final List<BigInt> hopOutputs;
+  /// What all the shares give together.
+  final BigInt amountOut;
+  final List<UniPart> parts;
 
   /// The quoters' gas estimate for the swaps alone (the router and the
   /// permit add a little; the real limit comes from eth_estimateGas).
   final BigInt gasEstimate;
 
-  /// How much worse this is than the route's current price, as a fraction
+  /// How much worse this is than the pools' current prices, as a fraction
   /// (0.031 = 3.1%); null when it could not be measured.
   final double? priceImpact;
 
   /// The block the quote was read at (for "price moved" checks).
   final int block;
 
-  /// The least the user accepts: [amountOut] less [slippageBips] / 10 000.
+  bool get isSplit => parts.length > 1;
+
+  /// The largest share's route.
+  UniRoute get route => parts.first.route;
+
+  /// Every pool the swap goes through.
+  Iterable<UniPool> get pools => parts.expand((p) => p.route.pools);
+
+  /// The least the user accepts: each share's minimum, added up.
   BigInt minimumOut(int slippageBips) =>
-      amountOut * BigInt.from(10000 - slippageBips) ~/ BigInt.from(10000);
+      parts.fold(BigInt.zero, (s, p) => s + p.minimumOut(slippageBips));
+
+  /// The share of the amount in that [part] carries (0–1).
+  double shareOf(UniPart part) => amountIn == BigInt.zero
+      ? 0
+      : part.amountIn.toDouble() / amountIn.toDouble();
 }
 
 /// A pool's address as an `address` word, for event topics.

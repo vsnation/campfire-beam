@@ -112,7 +112,14 @@ EthRpc _noRpc() => EthRpc(
 );
 
 /// What the next quote does.
-enum FakeQuoteMode { normal, bigImpact, noPool }
+enum FakeQuoteMode {
+  normal,
+  bigImpact,
+  noPool,
+
+  /// ETH → WBEAM shared: 70% through the v4 pool, 30% through v2.
+  split,
+}
 
 class FakeUniswapService extends UniswapService {
   FakeUniswapService() : super(rpc: _noRpc(), discovery: FakeDiscovery());
@@ -151,7 +158,43 @@ class FakeUniswapService extends UniswapService {
       ethToBeam ? UniswapAddresses.nativeEth : kWbeamToken.address,
       ethToBeam ? kWbeamToken.address : UniswapAddresses.nativeEth,
     );
-    return UniQuote(
+    if (mode == FakeQuoteMode.split && ethToBeam) {
+      final viaV4 = amountIn * BigInt.from(7) ~/ BigInt.from(10);
+      final viaV2 = amountIn - viaV4;
+      final outV4 = out * BigInt.from(7) ~/ BigInt.from(10);
+      final outV2 = out * BigInt.from(3) ~/ BigInt.from(10);
+      return UniQuote(
+        tokenIn: tokenIn,
+        tokenOut: tokenOut,
+        amountIn: amountIn,
+        parts: [
+          UniPart(
+            route: UniRoute([hop]),
+            amountIn: viaV4,
+            amountOut: outV4,
+            hopOutputs: [outV4],
+            gas: BigInt.from(150000),
+          ),
+          UniPart(
+            route: UniRoute([
+              UniHop(
+                v2WethWbeam,
+                UniswapAddresses.weth,
+                kWbeamToken.address,
+              ),
+            ]),
+            amountIn: viaV2,
+            amountOut: outV2,
+            hopOutputs: [outV2],
+            gas: BigInt.from(90000),
+          ),
+        ],
+        gasEstimate: BigInt.from(320000),
+        priceImpact: 0.0019,
+        block: 26155432,
+      );
+    }
+    return UniQuote.single(
       tokenIn: tokenIn,
       tokenOut: tokenOut,
       amountIn: amountIn,
@@ -217,7 +260,7 @@ class FakeUniswapService extends UniswapService {
     calls.add('finalize');
     final plan = const UniswapPlanner().build(
       quote: review.quote,
-      minimumOut: review.minimumOut,
+      slippageBips: review.slippageBips,
       deadline: review.deadline,
     );
     return UniPreparedSwap(

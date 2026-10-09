@@ -305,6 +305,57 @@ void main() {
     await finish(tester);
   });
 
+  testWidgets('phone: a swap shared between pools shows each share', (
+    tester,
+  ) async {
+    final service = FakeUniswapService()..mode = FakeQuoteMode.split;
+    final signer = FakeSigner();
+    final deps = fakeUniswapDeps(
+      desktop: false,
+      service: service,
+      signer: signer,
+    );
+    await _pump(
+      tester,
+      UniswapSwapView(deps: deps, onPayWithOtherCoin: () {}),
+      desktop: false,
+    );
+    await _flush(tester);
+    await _type(tester, '0.004');
+    expect(_text(tester, 'uni-route'), 'Split over 2 pools');
+    expect(
+      _text(tester, 'uni-route-pools').replaceAll('\u00A0', ' '),
+      '70% v4 · 1%, 30% v2 · 0.3%',
+    );
+    await _golden('phone_uniswap_split');
+
+    // The pools page marks the pools the swap uses, with their share.
+    await tester.tap(_k('uni-route'));
+    await _flush(tester);
+    expect(
+      _text(tester, 'uni-pool-share-${v4EthWbeam.id}'),
+      '70% of your swap',
+    );
+    expect(
+      _text(tester, 'uni-pool-share-${v2WethWbeam.id}'),
+      '30% of your swap',
+    );
+    await _golden('phone_uniswap_pools_split');
+    tester.state<NavigatorState>(find.byType(Navigator).last).pop();
+    await _flush(tester);
+
+    await tester.tap(_k('uni-swap-cta'));
+    await _flush(tester);
+    expect(find.text('Confirm swap'), findsOneWidget);
+    await _golden('phone_uniswap_review_split');
+    await tester.tap(_k('uni-review-cta'));
+    await _flush(tester);
+    // One transaction carries both shares.
+    expect(signer.sent.single.kind, UniTxKind.swap);
+    expect(signer.sent.single.value, ethUnit * BigInt.from(4) ~/ BigInt.from(1000));
+    await finish(tester);
+  });
+
   testWidgets('desktop: the form beside every pool', (tester) async {
     final deps = fakeUniswapDeps(desktop: true);
     await _pump(
@@ -317,6 +368,26 @@ void main() {
     expect(_text(tester, 'uni-rate'), '1 ETH ≈ 322,127.46 WBEAM');
     expect(find.byKey(const Key('uni-pools-summary')), findsOneWidget);
     await _golden('desktop_uniswap');
+    await finish(tester);
+  });
+
+  testWidgets('desktop: the pools column shows each pool\'s share', (
+    tester,
+  ) async {
+    final service = FakeUniswapService()..mode = FakeQuoteMode.split;
+    final deps = fakeUniswapDeps(desktop: true, service: service);
+    await _pump(
+      tester,
+      DesktopUniswapView(deps: deps, onPayWithOtherCoin: () {}),
+      desktop: true,
+    );
+    await _flush(tester);
+    await _type(tester, '0.004');
+    expect(
+      _text(tester, 'uni-pool-share-${v4EthWbeam.id}'),
+      '70% of your swap',
+    );
+    await _golden('desktop_uniswap_split');
     await finish(tester);
   });
 

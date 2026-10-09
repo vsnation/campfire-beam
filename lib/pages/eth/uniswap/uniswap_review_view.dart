@@ -258,7 +258,7 @@ class _UniswapReviewViewState extends State<UniswapReviewView> {
               DexDetailRow(
                 label: 'Route',
                 value: uniRouteText(q, deps),
-                note: 'Uniswap ${uniPoolsText(q.route)}',
+                note: uniRouteNote(q, deps),
               ),
               DexDetailRow(
                 label: 'Price change from your swap',
@@ -293,7 +293,7 @@ class _UniswapReviewViewState extends State<UniswapReviewView> {
             ],
           ),
         ),
-        if (q.route.pools.any((p) => p is UniV4Pool && p.hasHooks)) ...[
+        if (q.pools.any((p) => p is UniV4Pool && p.hasHooks)) ...[
           const SizedBox(height: 12),
           const DexNotice(
             key: Key('uni-review-hook'),

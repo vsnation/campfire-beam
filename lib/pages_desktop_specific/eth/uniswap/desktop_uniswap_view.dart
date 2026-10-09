@@ -53,6 +53,7 @@ class DesktopUniswapView extends StatefulWidget {
 class _DesktopUniswapViewState extends State<DesktopUniswapView> {
   UniToken _a = UniToken.eth;
   UniToken _b = kWbeamToken;
+  UniQuote? _quote;
 
   @override
   Widget build(BuildContext context) {
@@ -96,6 +97,7 @@ class _DesktopUniswapViewState extends State<DesktopUniswapView> {
                             _a = a;
                             _b = b;
                           }),
+                          onQuoteChanged: (q) => setState(() => _quote = q),
                         ),
                       ),
                     ],
@@ -118,6 +120,7 @@ class _DesktopUniswapViewState extends State<DesktopUniswapView> {
                           deps: widget.deps,
                           a: _a,
                           b: _b,
+                          quote: _quote,
                           embedded: true,
                         ),
                       ),

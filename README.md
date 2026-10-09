@@ -57,7 +57,7 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
 | ![Split your BEAM into several coins so several payments can go at once](docs/screenshots/desktop-split-coins.png) | ![Your own private BEAM node, running from inside the wallet](docs/screenshots/desktop-private-node.png) |
 | **Split coins** so several payments can go out at once; nothing leaves your wallet | **Your own private node** with one switch: sees offline and max-privacy payments |
 | ![Swap on Uniswap from the Ethereum wallet, beside every Uniswap pool for the pair](docs/screenshots/desktop-uniswap.png) | ![My Campfire with a BEAM wallet and an Ethereum wallet side by side](docs/screenshots/desktop-my-campfire-eth.png) |
-| **Swap on Uniswap** from your Ethereum wallet: every v2, v3 and v4 pool, the best route, exact approvals | **BEAM and Ethereum wallets** side by side, each with its balance; WBEAM, USDT and USDC built in |
+| **Swap on Uniswap** from your Ethereum wallet: every v2, v3 and v4 pool, larger swaps shared between pools, exact approvals | **BEAM and Ethereum wallets** side by side, each with its balance; WBEAM, USDT and USDC built in |
 
 ![On an iPhone: wallet, pools and assets](docs/screenshots/phone.png)
 
@@ -101,8 +101,10 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
   PublicNode, dRPC, MEV Blocker, Blast) or add your own; "Test connection" checks it really is Ethereum
   mainnet. With Tor on, every Ethereum request goes through Tor or is not made.
 - **Swap on Uniswap** from the Ethereum wallet, straight to Uniswap's own contracts (no exchange partner,
-  no API key): every v2, v3 and v4 pool is found from Uniswap's own records through your RPC, the best
-  direct or two-pool route wins, tokens are approved for exactly the amount swapped (Permit2), and the
+  no API key): every v2, v3 and v4 pool is found from Uniswap's own records through your RPC, and a
+  larger swap is **shared between the pools** that together give the most, so no single pool moves far
+  (less to lose to price impact and to front-runners; each pool's share has its own minimum). Tokens
+  are approved for exactly the amount swapped (Permit2), and the
   review shows what you pay, the least you get and the network fee before your PIN. A pool whose hook
   quotes a price its swap would not give is detected and skipped.
 - **Pay with BTC, ZEC, LTC or any coin NEAR Intents takes** (200+ coins on 37 chains): send it from any

@@ -19,6 +19,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:stackwallet/wallets/ethereum/uniswap/abi.dart';
 import 'package:stackwallet/wallets/ethereum/uniswap/eth_rpc.dart';
@@ -44,6 +45,52 @@ Future<String?> forkUnavailable() async {
     return id == 1 ? null : 'the fork at $forkUrl is chain $id, not 1';
   } catch (e) {
     return 'no mainnet fork at $forkUrl ($e)';
+  }
+}
+
+/// Each test leaves the fork as it found it (anvil's evm_snapshot /
+/// evm_revert). Nothing arbitrages a local fork, so without this every run
+/// pushes the small pools a little further from mainnet's prices, until
+/// the quotes are about a market that does not exist.
+///
+/// Test files run in parallel, and one file's revert would undo another's
+/// test half-way (its wallet's ETH gone), so fork tests take a lock that
+/// every process sees, one test at a time.
+void rollBackForkAfterEachTest() {
+  String? snapshot;
+  setUp(() async {
+    snapshot = null;
+    if (await forkUnavailable() != null) return;
+    snapshot = await takeFork();
+  });
+  tearDown(() async {
+    final id = snapshot;
+    if (id != null) await releaseFork(id);
+  });
+}
+
+RandomAccessFile? _forkLock;
+
+/// Waits for the fork to be free, then snapshots it.
+Future<String> takeFork() async {
+  final file = File('${Directory.systemTemp.path}/campfire-eth-fork.lock');
+  final raf = await file.open(mode: FileMode.append);
+  await raf.lock(FileLock.blockingExclusive);
+  _forkLock = raf;
+  return await forkRpc().call('evm_snapshot', const []) as String;
+}
+
+/// Puts the fork back as [snapshot] found it and lets the next test in.
+Future<void> releaseFork(String snapshot) async {
+  try {
+    await forkRpc().call('evm_revert', [snapshot]);
+  } finally {
+    final raf = _forkLock;
+    _forkLock = null;
+    if (raf != null) {
+      await raf.unlock();
+      await raf.close();
+    }
   }
 }
 
