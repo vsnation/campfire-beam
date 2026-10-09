@@ -30,13 +30,16 @@ import about from './screens/about.js';
 import deleteWallet from './screens/delete_wallet.js';
 import problem from './screens/problem.js';
 import install from './screens/install.js';
+import swap from './screens/swap.js';
+import { installConsent } from './screens/consent.js';
+import { consentLog, contractsState } from './lib/contracts.js';
 
 const SCREENS = {
   welcome, backup, confirmWords, restore, importWallet, setPassword, passkeySetup, ipNotice, fastStart, unlock,
-  home, send, review, txStatus, receive, activity, settings, changePassword, about, deleteWallet, problem, install,
+  home, send, review, txStatus, receive, activity, settings, changePassword, about, deleteWallet, problem, install, swap,
 };
 // Screens that need an unlocked, running wallet.
-const NEEDS_WALLET = new Set(['home', 'send', 'review', 'txStatus', 'receive', 'activity', 'settings', 'changePassword', 'about']);
+const NEEDS_WALLET = new Set(['home', 'send', 'review', 'txStatus', 'receive', 'activity', 'settings', 'changePassword', 'about', 'swap']);
 
 const root = document.getElementById('app');
 
@@ -69,7 +72,10 @@ export const app = {
         console.error(e);
       }
     }
-    document.querySelectorAll('.overlay').forEach((o) => o.remove());
+    document.querySelectorAll('.overlay').forEach((o) => {
+      o.dispatchEvent(new Event('campfire:dismiss'));
+      o.remove();
+    });
     clear(root);
     this.currentName = name;
     this.params = params;
@@ -124,6 +130,9 @@ export const app = {
     return Boolean(this.dbPass) && this.currentName !== 'fastStart' && !wallet.state.importing;
   },
 };
+
+// Every contract request that spends is shown on the approve sheet; without it, all are refused.
+installConsent(app);
 
 window.addEventListener('pointerdown', () => app.touch(), { passive: true });
 window.addEventListener('keydown', () => app.touch(), { passive: true });
@@ -223,5 +232,8 @@ window.__campfire = Object.freeze({
   addresses: async () => ((await wallet.session.call('addr_list', { own: true })) || []).map((a) => a.address).sort(),
   // Names and flags only: which files the engine holds, and what kind of wallet this is.
   walletFiles: () => walletFiles(),
+  // Contract calls: the last consent decisions (amounts as the engine reported them) and counters.
+  consents: () => consentLog(),
+  contracts: () => contractsState(),
   record: () => (app.record ? { imported: Boolean(app.record.imported), restored: Boolean(app.record.restored), scan: app.record.scan !== false, setupDone: Boolean(app.record.setupDone), passkey: Boolean(app.record.envelopes && app.record.envelopes.passkey) } : null),
 });

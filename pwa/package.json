@@ -17,6 +17,7 @@
     "e2e:import": "node tools/stage_engine.mjs && node --test --test-concurrency=1 test/e2e/import.test.mjs",
     "e2e:offline": "node tools/stage_engine.mjs && node --test --test-concurrency=1 test/e2e/offline.test.mjs",
     "e2e:pages": "node tools/stage_engine.mjs && node --test --test-concurrency=1 test/e2e/pages.test.mjs",
+    "e2e:swap": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/swap.test.mjs",
     "e2e:live": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live.mjs"
   },
   "devDependencies": {
