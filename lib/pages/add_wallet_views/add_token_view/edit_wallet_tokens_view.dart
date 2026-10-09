@@ -29,6 +29,7 @@ import '../../../utilities/constants.dart';
 import '../../../utilities/default_sol_tokens.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../utilities/util.dart';
+import '../../../wallets/ethereum/eth_token_order.dart';
 import '../../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../../wallets/wallet/impl/ethereum_wallet.dart';
 import '../../../wallets/wallet/impl/solana_wallet.dart';
@@ -270,7 +271,12 @@ class _EditWalletTokensViewState extends ConsumerState<EditWalletTokensView> {
             );
       }
 
-      tokenEntities.addAll(contracts.map((e) => AddTokenListElementData(e)));
+      // Campfire for BEAM: the default tokens first (WBEAM on top).
+      tokenEntities.addAll(
+        defaultEthTokensFirst(
+          contracts,
+        ).map((e) => AddTokenListElementData(e)),
+      );
     }
 
     // Get token addresses.

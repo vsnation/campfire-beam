@@ -11,6 +11,17 @@
 import '../models/isar/models/ethereum/eth_contract.dart';
 
 abstract class DefaultTokens {
+  /// Wrapped BEAM: BEAM moved to Ethereum by the Beam Bridge, 1:1. Checked
+  /// against the contract itself on 2026-10-09 (name() "Wrapped BEAM",
+  /// symbol() "WBEAM", decimals() 8) and against the bridge's Ethereum pipe
+  /// 0x6063024646E8A1561970840a4b0e0f1082f5a670, which mints and burns it.
+  static final wbeam = EthContract(
+    address: "0xe5acbb03d73267c03349c76ead672ee4d941f499",
+    name: "Wrapped BEAM",
+    symbol: "WBEAM",
+    decimals: 8,
+    type: EthContractType.erc20,
+  );
   static final usdc = EthContract(
     address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
     name: "USD Coin",

@@ -2,7 +2,8 @@
 
 set -x -e
 
-# Configure files for Campfire with BEAM as its only coin.
+# Configure files for Campfire with BEAM and Ethereum (ETH and ERC-20 tokens,
+# WBEAM first).
 
 # Campfire's logo and branding, named "BEAM Campfire" (owner, 2026-10-07): a
 # second "Campfire.app" would replace Firo's Campfire in /Applications. The
@@ -87,9 +88,17 @@ const ({String light, String dark})? _appIconAsset = (
 
 final List<CryptoCurrency> _supportedCoins = List.unmodifiable([
   Beam(CryptoCurrencyNetwork.main),
+  Ethereum(CryptoCurrencyNetwork.main),
 ]);
 
-const List<EthContract> _defaultEthTokens = [];
+// The tokens every Ethereum wallet is offered, in this order: WBEAM (BEAM
+// wrapped on Ethereum) first, then the two dollar tokens. DefaultTokens are
+// static final, so this list cannot be const.
+final List<EthContract> _defaultEthTokens = [
+  DefaultTokens.wbeam,
+  DefaultTokens.usdt,
+  DefaultTokens.usdc,
+];
 
 // Read by AppConfig.swapDefaults even while AppFeature.swap is off.
 final ({String from, String fromFuzzyNet, String to, String toFuzzyNet})
