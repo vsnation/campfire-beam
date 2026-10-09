@@ -205,6 +205,16 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
+      # The plugins need the macOS 26 SDK (connectivity_plus uses
+      # NWPath.isUltraConstrained): the newest Xcode on the image, 26 or later.
+      - name: Xcode 26 or later
+        run: |
+          ls -d /Applications/Xcode*.app
+          x=$(ls -d /Applications/Xcode_2[6-9]*.app 2>/dev/null | sort -V | tail -1)
+          [[ -n "$x" ]] || { echo "::error::No Xcode 26 or later on this runner image"; exit 1; }
+          sudo xcode-select -s "$x"
+          xcodebuild -version
+
       - uses: actions/checkout@v6
 
       - uses: subosito/flutter-action@v2
