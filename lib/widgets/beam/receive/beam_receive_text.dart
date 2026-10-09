@@ -54,7 +54,8 @@ abstract final class BeamReceiveText {
   // ---------------------------------------------------- more ways to receive
 
   static const moreWays = 'More ways to receive';
-  static const moreWaysHint = 'Get paid while your wallet is closed, or more '
+  static const moreWaysHint =
+      'Get paid while your wallet is closed, or more '
       'privately';
   static const needsPrivateNode = 'These need your private node';
   static const openNodeSettings = 'Open Node settings';
@@ -82,8 +83,7 @@ abstract final class BeamReceiveText {
 
   /// What the address does for the person being paid.
   static String typeExplainer(BeamAddressType type) => switch (type) {
-    BeamAddressType.regular ||
-    BeamAddressType.regularNew => regularExplainer,
+    BeamAddressType.regular || BeamAddressType.regularNew => regularExplainer,
     BeamAddressType.offline =>
       'Works while your wallet is closed. Good for one payment.',
     BeamAddressType.maxPrivacy =>
@@ -152,6 +152,12 @@ abstract final class BeamReceiveText {
           'public node. Open Node settings to see why.',
       showNodeSettings: true,
     ),
+    BeamPrivateReceiveBlock.nodeServingOtherWallet => (
+      reason:
+          'Your private node is serving another of your wallets. These '
+          'unlock here when that wallet closes.',
+      showNodeSettings: true,
+    ),
   };
 
   // ------------------------------------------------------- address list
@@ -185,9 +191,7 @@ abstract final class BeamReceiveText {
     final ends = a.expiresAt;
     if (ends == null) return '$created · Never expires';
     final when = _date.format(ends.toLocal());
-    return a.expired
-        ? '$created · Expired $when'
-        : '$created · Expires $when';
+    return a.expired ? '$created · Expired $when' : '$created · Expires $when';
   }
 
   /// First and last characters, for lists where the full address is one

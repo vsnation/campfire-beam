@@ -93,6 +93,20 @@ void main() {
       );
     });
 
+    test('the node serving another wallet: says so, and when it unlocks', () {
+      final r = _eval(
+        status: const BeamPrivateNodeStatus(
+          phase: BeamPrivateNodePhase.failed,
+          issue: BeamPrivateNodeIssue.servingOtherWallet,
+        ),
+      );
+      expect(r.block, BeamPrivateReceiveBlock.nodeServingOtherWallet);
+      final why = BeamReceiveText.privateReason(r);
+      expect(why.reason, contains('serving another of your wallets'));
+      expect(why.reason, contains('when that wallet closes'));
+      expect(why.showNodeSettings, isTrue);
+    });
+
     test('every node phase maps to a reason with a next step', () {
       final expected = {
         BeamPrivateNodePhase.off: BeamPrivateReceiveBlock.nodeOff,
@@ -182,9 +196,10 @@ void main() {
 
   test('every type is named and explained without jargon', () {
     for (final t in BeamAddressType.values) {
-      final words = '${BeamReceiveText.typeTitle(t)} '
-              '${BeamReceiveText.typeExplainer(t)}'
-          .toLowerCase();
+      final words =
+          '${BeamReceiveText.typeTitle(t)} '
+                  '${BeamReceiveText.typeExplainer(t)}'
+              .toLowerCase();
       for (final banned in [
         'sbbs',
         'voucher',

@@ -40,6 +40,10 @@ enum BeamPrivateReceiveBlock {
   /// The node failed, stopped, fell behind or cannot be verified; the
   /// wallet is on a public node.
   nodeProblem,
+
+  /// The app's one node serves another of the user's wallets; this one
+  /// takes it when that wallet closes.
+  nodeServingOtherWallet,
 }
 
 /// Whether this wallet may offer offline, max-privacy and public addresses.
@@ -54,7 +58,8 @@ enum BeamPrivateReceiveBlock {
 class BeamPrivateReceive {
   const BeamPrivateReceive.available() : block = null, percent = null;
 
-  const BeamPrivateReceive.blocked(BeamPrivateReceiveBlock this.block, {
+  const BeamPrivateReceive.blocked(
+    BeamPrivateReceiveBlock this.block, {
     this.percent,
   });
 
@@ -118,6 +123,11 @@ class BeamPrivateReceive {
       case BeamPrivateNodePhase.active:
         return const BeamPrivateReceive.blocked(
           BeamPrivateReceiveBlock.nodeConfirming,
+        );
+      case BeamPrivateNodePhase.failed
+          when status.issue == BeamPrivateNodeIssue.servingOtherWallet:
+        return const BeamPrivateReceive.blocked(
+          BeamPrivateReceiveBlock.nodeServingOtherWallet,
         );
       case BeamPrivateNodePhase.cannotVerify:
       case BeamPrivateNodePhase.stuck:
