@@ -253,11 +253,15 @@ void main() {
       hasLength(1),
     );
     expect(find.text('Assets'), findsNothing);
-    // BEAM's "Tokens" (its minter) shares the word with Ethereum's header.
-    final beamOnly = kBeamWalletFeatures.keys.where((f) => f.label != 'Tokens');
+    // BEAM's "Tokens" (its minter) shares the word with Ethereum's header;
+    // "Swap" is Ethereum's own here: Uniswap (WalletFeature.ethUniswap).
+    final beamOnly = kBeamWalletFeatures.keys.where(
+      (f) => f.label != 'Tokens' && f.label != 'Swap',
+    );
     for (final f in beamOnly) {
       expect(find.text(f.label), findsNothing, reason: f.label);
     }
+    expect(find.text('Swap'), findsOneWidget);
     await drainWork(tester);
     await finish(tester);
   });
@@ -291,6 +295,14 @@ void main() {
         w.data.label,
     ];
     expect(labels, contains('Tokens'));
+    // Ethereum's own Swap (Uniswap) is on the bar itself.
+    expect(
+      find.descendant(
+        of: find.byType(WalletNavigationBarItem),
+        matching: find.text('Swap'),
+      ),
+      findsOneWidget,
+    );
     for (final beamOnly in ['Names', 'dApps', 'Airdrops', 'Node & sync']) {
       expect(labels, isNot(contains(beamOnly)), reason: beamOnly);
     }

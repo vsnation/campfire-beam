@@ -31,6 +31,17 @@ import '../../rounded_white_container.dart';
 import '../stickers/beam_sticker.dart';
 import 'dex_deps.dart';
 
+/// What the DEX screens need to know to lay themselves out: a dialog on
+/// desktop, a page on a phone. [BeamDexDeps] and the Uniswap swap's deps
+/// both provide it, so both DEXes share these widgets.
+abstract interface class DexLayout {
+  bool get desktop;
+}
+
+/// Font features for addresses: no contextual alternates (Inter would draw
+/// "0x" and digit-x-digit as "×").
+const List<FontFeature> kAddressFontFeatures = [FontFeature.disable('calt')];
+
 /// How loud a [DexNotice] is.
 enum DexNoticeKind { info, warning, error, success }
 
@@ -223,12 +234,18 @@ class DexDetailRow extends StatelessWidget {
     this.noteKey,
     this.trailing,
     this.onTap,
+    this.address = false,
   });
 
   final String label;
   final String value;
   final Key? valueKey;
   final Color? valueColor;
+
+  /// [value] is (or holds) an address: drawn without Inter's contextual
+  /// alternates, which turn "0x1" into "0×1" and any digit-x-digit in an
+  /// address into a multiplication sign.
+  final bool address;
 
   /// A quieter line under the value, e.g. what it is worth.
   final String? note;
@@ -243,8 +260,10 @@ class DexDetailRow extends StatelessWidget {
       value,
       key: valueKey,
       textAlign: TextAlign.right,
-      style: STextStyles.itemSubtitle12(context)
-          .copyWith(color: valueColor ?? colors.textDark),
+      style: STextStyles.itemSubtitle12(context).copyWith(
+        color: valueColor ?? colors.textDark,
+        fontFeatures: address ? kAddressFontFeatures : null,
+      ),
     );
     final row = Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -356,7 +375,7 @@ class DexPage extends StatelessWidget {
     this.actions,
   });
 
-  final BeamDexDeps deps;
+  final DexLayout deps;
   final String title;
   final Widget body;
   final Widget? bottom;
@@ -439,7 +458,7 @@ class DexPage extends StatelessWidget {
 /// Opens a DEX screen: pushed as a page on mobile, in a dialog on desktop.
 Future<T?> showDexPage<T>(
   BuildContext context,
-  BeamDexDeps deps,
+  DexLayout deps,
   WidgetBuilder builder,
 ) {
   if (deps.desktop) {
@@ -484,7 +503,7 @@ class DexPrimaryAction extends StatelessWidget {
     this.onReasonAction,
   });
 
-  final BeamDexDeps deps;
+  final DexLayout deps;
   final String label;
 
   /// Null disables the button.

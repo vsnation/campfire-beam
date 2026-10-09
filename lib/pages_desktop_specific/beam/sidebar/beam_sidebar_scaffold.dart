@@ -41,7 +41,9 @@ import '../../../utilities/assets.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../../wallets/wallet/impl/beam_wallet.dart';
+import '../../../wallets/wallet/wallet.dart';
 import '../../../widgets/beam/sidebar/beam_sidebar.dart';
+import '../../../widgets/beam/sidebar/swap_sidebar_wallets.dart';
 import '../../../widgets/beam/stickers/beam_sticker.dart';
 import '../../../widgets/beam/wallet_home/beam_dashboard_assets.dart'
     show BeamDashboardModel;
@@ -60,6 +62,7 @@ class BeamSidebarScaffold extends StatelessWidget {
     required this.title,
     required this.body,
     this.showWallet = true,
+    this.walletChip,
   });
 
   final String title;
@@ -67,6 +70,9 @@ class BeamSidebarScaffold extends StatelessWidget {
 
   /// The wallet chip on the right (off while there is no wallet to show).
   final bool showWallet;
+
+  /// Another chip in its place (the Swap page also lists Ethereum wallets).
+  final Widget? walletChip;
 
   @override
   Widget build(BuildContext context) => DesktopScaffold(
@@ -83,7 +89,7 @@ class BeamSidebarScaffold extends StatelessWidget {
               style: STextStyles.desktopH3(context),
             ),
             const Spacer(),
-            if (showWallet) const BeamSidebarWalletChip(),
+            if (showWallet) walletChip ?? const BeamSidebarWalletChip(),
             const SizedBox(width: 24),
           ],
         ),
@@ -187,8 +193,48 @@ class BeamSidebarWalletChip extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ctx = ref.watch(pBeamSidebarWallet);
-    final wallet = ctx.wallet;
+    return SidebarWalletChip(
+      wallets: ctx.wallets,
+      wallet: ctx.wallet,
+      onChoose: (id) => ref.read(pBeamSidebarWalletChoice.notifier).choose(id),
+    );
+  }
+}
+
+/// The Swap page's chip: BEAM and Ethereum wallets.
+class SwapSidebarWalletChip extends ConsumerWidget {
+  const SwapSidebarWalletChip({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!ref.watch(pSwapHasEthereum)) return const BeamSidebarWalletChip();
+    final ctx = ref.watch(pSwapSidebarWallet);
+    return SidebarWalletChip(
+      wallets: ctx.wallets,
+      wallet: ctx.wallet,
+      onChoose: (id) => chooseSwapSidebarWallet(ref, id),
+    );
+  }
+}
+
+/// A wallet chip: icon and name; a menu to switch when there are several.
+class SidebarWalletChip extends StatelessWidget {
+  const SidebarWalletChip({
+    super.key,
+    required this.wallets,
+    required this.wallet,
+    required this.onChoose,
+  });
+
+  final List<Wallet> wallets;
+  final Wallet? wallet;
+  final ValueChanged<String> onChoose;
+
+  @override
+  Widget build(BuildContext context) {
+    final wallet = this.wallet;
     if (wallet == null) return const SizedBox.shrink();
+    final canSwitch = wallets.length > 1;
     final colors = Theme.of(context).extension<StackColors>()!;
     final chip = Container(
       key: const Key('beamSidebarWalletChip'),
@@ -215,7 +261,7 @@ class BeamSidebarWalletChip extends ConsumerWidget {
                   .copyWith(color: colors.textDark),
             ),
           ),
-          if (ctx.canSwitch) ...[
+          if (canSwitch) ...[
             const SizedBox(width: 8),
             SvgPicture.asset(
               Assets.svg.chevronDown,
@@ -230,7 +276,7 @@ class BeamSidebarWalletChip extends ConsumerWidget {
         ],
       ),
     );
-    if (!ctx.canSwitch) {
+    if (!canSwitch) {
       return Semantics(label: 'Wallet: ${wallet.info.name}', child: chip);
     }
     return PopupMenuButton<String>(
@@ -239,10 +285,9 @@ class BeamSidebarWalletChip extends ConsumerWidget {
       offset: const Offset(0, 46),
       color: colors.popupBG,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      onSelected: (id) =>
-          ref.read(pBeamSidebarWalletChoice.notifier).choose(id),
+      onSelected: onChoose,
       itemBuilder: (_) => [
-        for (final w in ctx.wallets)
+        for (final w in wallets)
           PopupMenuItem<String>(
             key: Key('beamSidebarWalletOption_${w.walletId}'),
             value: w.walletId,
@@ -281,7 +326,7 @@ class BeamSidebarWalletChip extends ConsumerWidget {
 class _CoinIcon extends ConsumerWidget {
   const _CoinIcon({required this.wallet, required this.size});
 
-  final BeamWallet wallet;
+  final Wallet wallet;
   final double size;
 
   @override

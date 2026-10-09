@@ -24,6 +24,7 @@ import '../../desktop/desktop_dialog_close_button.dart';
 Future<bool?> campfireDexAuthGate(
   BuildContext context, {
   required String reason,
+  CryptoCurrency? coin,
 }) async {
   if (Util.isDesktop) {
     final unlocked = await showDialog<bool?>(
@@ -41,7 +42,7 @@ Future<bool?> campfireDexAuthGate(
             Padding(
               padding: const EdgeInsets.only(left: 32, right: 32, bottom: 32),
               child: DesktopAuthSend(
-                coin: Beam(CryptoCurrencyNetwork.main),
+                coin: coin ?? Beam(CryptoCurrencyNetwork.main),
                 // "Enter your wallet password to swap", not "to send BEAM".
                 action: dexAuthAction(reason),
               ),

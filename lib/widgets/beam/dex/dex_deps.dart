@@ -22,6 +22,7 @@ import '../../../wallets/beam/models/beam_wallet_status.dart';
 import '../../../wallets/beam/price/beam_asset_pricer.dart';
 import '../../../wallets/beam/sync/beam_sync_state.dart';
 import 'dex_format.dart';
+import 'dex_widgets.dart' show DexLayout;
 
 /// Asks the user to prove it is them before money moves (Campfire's PIN on
 /// mobile, the wallet password on desktop).
@@ -78,7 +79,7 @@ class BeamDexFiat {
 /// The screens own no wallet state: balances, sync and prices come from
 /// listenables the wallet already keeps, so the DEX never waits for the
 /// core to show what is known (R11).
-class BeamDexDeps {
+class BeamDexDeps implements DexLayout {
   BeamDexDeps({
     required this.dex,
     required this.sync,
@@ -154,6 +155,7 @@ class BeamDexDeps {
     fiat,
   ]);
 
+  @override
   bool get desktop => isDesktop ?? Util.isDesktop;
 
   bool get canSpend => sync.value.canSpend;

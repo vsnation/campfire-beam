@@ -68,7 +68,9 @@ import '../../wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
 import '../../wallets/wallet/wallet_mixin_interfaces/view_only_option_interface.dart';
 import '../../widgets/background.dart';
 import '../../widgets/beam/wallet_home/beam_wallet_home.dart';
+import '../../wallets/wallet/impl/ethereum_wallet.dart';
 import '../../widgets/beam/wiring/beam_features.dart';
+import '../eth/uniswap/uniswap_wiring.dart';
 import '../../widgets/conditional_parent.dart';
 import '../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../widgets/custom_buttons/blue_text_button.dart';
@@ -1109,6 +1111,14 @@ class _WalletViewState extends ConsumerState<WalletView> {
                   // BEAM: Swap (DEX) and Assets right after Send.
                   if (wallet is BeamWallet)
                     ...beamWalletNavItems(context, wallet),
+                  // Ethereum: Swap on Uniswap right after Send.
+                  if (wallet is EthereumWallet && !viewOnly)
+                    WalletNavigationBarItemData(
+                      label: "Swap",
+                      icon: const ExchangeNavIcon(),
+                      onTap: () =>
+                          unawaited(openUniswapSwap(context, ref, wallet)),
+                    ),
                   if (!viewOnly &&
                       Constants.enableExchange &&
                       ref.watch(pWalletCoin(walletId)) is! FrostCurrency &&

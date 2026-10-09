@@ -33,13 +33,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../pages/beam/dapps/dapp_store_view.dart';
 import '../../../pages/beam/names/beam_names_home_view.dart';
+import '../../../pages/eth/near_intents/near_intents_view.dart';
+import '../../../pages/eth/uniswap/uniswap_deps.dart';
+import '../../../pages/eth/uniswap/uniswap_wiring.dart';
 import '../../../pages/token_view/my_tokens_view.dart';
 import '../../../route_generator.dart';
 import '../../../utilities/logger.dart';
 import '../../../wallets/beam/dapps/host/dapp_host.dart';
 import '../../../wallets/wallet/impl/beam_wallet.dart';
+import '../../../wallets/wallet/impl/ethereum_wallet.dart';
 import '../../../widgets/beam/sidebar/beam_sidebar.dart';
+import '../../../widgets/beam/sidebar/swap_sidebar_wallets.dart';
 import '../../../widgets/beam/wiring/beam_wallet_listenables.dart';
+import '../../eth/uniswap/desktop_uniswap_view.dart';
 import '../dex/desktop_beam_dex_view.dart';
 import 'beam_sidebar_assets_page.dart';
 import 'beam_sidebar_hub_page.dart';
@@ -62,6 +68,7 @@ class BeamSidebarSection extends ConsumerStatefulWidget {
     return switch (destination) {
       BeamSidebarDestination.swap => BeamSidebarScaffold(
         title: destination.label,
+        walletChip: const SwapSidebarWalletChip(),
         body: BeamWithoutOwnHeader(child: DesktopBeamDexView(deps: wiring.dex)),
       ),
       BeamSidebarDestination.assets => BeamSidebarAssetsPage(wallet: wallet),
@@ -128,6 +135,20 @@ class _BeamSidebarSectionState extends ConsumerState<BeamSidebarSection> {
   @override
   Widget build(BuildContext context) {
     final d = widget.destination;
+    if (d == BeamSidebarDestination.swap && ref.watch(pSwapHasEthereum)) {
+      // Swap also takes Ethereum wallets: Uniswap for those.
+      final w = ref.watch(pSwapSidebarWallet).wallet;
+      if (w is EthereumWallet) {
+        return _UniswapSidebarPage(key: ValueKey(w.walletId), wallet: w);
+      }
+      if (w is BeamWallet) {
+        _startInBackground(w);
+        return Navigator(
+          key: ValueKey('beamSidebarNav_${d.name}_${w.walletId}'),
+          onGenerateRoute: (settings) => _route(settings, w),
+        );
+      }
+    }
     final ctx = ref.watch(pBeamSidebarWallet);
     if (!ctx.hasWallets) {
       return BeamSidebarScaffold(
@@ -150,4 +171,52 @@ class _BeamSidebarSectionState extends ConsumerState<BeamSidebarSection> {
       onGenerateRoute: (settings) => _route(settings, wallet),
     );
   }
+}
+
+/// The Swap page for an Ethereum wallet: Uniswap, beside the side menu.
+class _UniswapSidebarPage extends ConsumerStatefulWidget {
+  const _UniswapSidebarPage({super.key, required this.wallet});
+
+  final EthereumWallet wallet;
+
+  @override
+  ConsumerState<_UniswapSidebarPage> createState() =>
+      _UniswapSidebarPageState();
+}
+
+class _UniswapSidebarPageState extends ConsumerState<_UniswapSidebarPage> {
+  late final Future<UniswapDeps> _deps = uniswapDepsFor(
+    widget.wallet,
+    ref,
+    isDesktop: true,
+  );
+
+  @override
+  void dispose() {
+    unawaited(_deps.then((d) => d.dispose(), onError: (Object _) {}));
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => BeamSidebarScaffold(
+    title: BeamSidebarDestination.swap.label,
+    walletChip: const SwapSidebarWalletChip(),
+    body: FutureBuilder<UniswapDeps>(
+      future: _deps,
+      builder: (context, snap) {
+        final deps = snap.data;
+        if (deps == null) return const SizedBox.shrink();
+        return DesktopUniswapView(
+          deps: deps,
+          showHeader: false,
+          onPayWithOtherCoin: () => unawaited(
+            NearIntentsView.show(
+              context,
+              nearIntentsDepsFor(widget.wallet, deps, ref),
+            ),
+          ),
+        );
+      },
+    ),
+  );
 }

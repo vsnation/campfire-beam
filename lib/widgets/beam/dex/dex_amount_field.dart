@@ -35,6 +35,7 @@ class DexAmountField extends StatelessWidget {
     this.fieldKey,
     this.assetButtonKey,
     this.error = false,
+    this.assetLabel,
   });
 
   final TextEditingController controller;
@@ -53,6 +54,10 @@ class DexAmountField extends StatelessWidget {
 
   /// Draws the field in Campfire's error colours.
   final bool error;
+
+  /// Drawn on the asset button instead of [asset]'s icon and ticker (the
+  /// Uniswap swap's Ethereum tokens).
+  final Widget? assetLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +129,9 @@ class DexAmountField extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (a != null) ...[
+                      if (assetLabel != null)
+                        assetLabel!
+                      else if (a != null) ...[
                         DexAssetIcon(asset: a, size: 20),
                         const SizedBox(width: 6),
                         ConstrainedBox(

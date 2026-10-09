@@ -45,6 +45,7 @@ import '../../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../../../wallets/wallet/impl/bitcoin_wallet.dart';
 import '../../../../wallets/wallet/impl/firo_wallet.dart';
 import '../../../../wallets/wallet/impl/namecoin_wallet.dart';
+import '../../../../wallets/wallet/impl/ethereum_wallet.dart';
 import '../../../../wallets/wallet/impl/salvium_wallet.dart';
 import '../../../../wallets/wallet/intermediate/cryptonote_wallet.dart';
 import '../../../../wallets/wallet/intermediate/lib_salvium_wallet.dart';
@@ -59,6 +60,7 @@ import '../../../../wallets/wallet/wallet_mixin_interfaces/rbf_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/sign_verify_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/spark_interface.dart';
 import '../../../../wallets/wallet/wallet_mixin_interfaces/view_only_option_interface.dart';
+import '../../../../pages/eth/uniswap/uniswap_wiring.dart';
 import '../../../../widgets/beam/wiring/beam_features.dart';
 import '../../../../widgets/custom_loading_overlay.dart';
 import '../../../../widgets/desktop/desktop_dialog.dart';
@@ -106,6 +108,9 @@ enum WalletFeature {
   beamTokens("Tokens", "Create your own token on BEAM"),
   beamNode("Node & sync", "Which node you use, and how up to date"),
   beamSplit("Split coins", "Send several payments at once"),
+
+  // Ethereum (lib/pages/eth/uniswap)
+  ethUniswap("Swap", "Swap on Uniswap, straight from this wallet"),
 
   // special cases
   clearSparkCache("", ""),
@@ -499,6 +504,14 @@ class _DesktopWalletFeaturesState extends ConsumerState<DesktopWalletFeatures> {
 
       if (wallet is SparkInterface && !isViewOnly || isSparkViewOnly)
         (WalletFeature.sparkNames, Assets.svg.robotHead, _onSparkNamesPressed),
+
+      // Ethereum: swap on Uniswap's own contracts.
+      if (wallet is EthereumWallet && !isViewOnly)
+        (
+          WalletFeature.ethUniswap,
+          Assets.svg.swap,
+          () => unawaited(openUniswapSwap(context, ref, wallet)),
+        ),
 
       if (!isViewOnly &&
           Constants.enableExchange &&
