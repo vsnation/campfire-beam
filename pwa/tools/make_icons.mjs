@@ -31,7 +31,9 @@ for (const [file, size, frac] of ICONS) {
   const w = Math.round((h * 72) / 84);
   const html = `<!doctype html><html><body style="margin:0;background:${BG};width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center">
     <div style="width:${w}px;height:${h}px">${svg.replace('<svg ', `<svg style="width:100%;height:100%" `)}</div></body></html>`;
-  await page.setViewportSize({ width: size, height: size });
+  // Headless Chrome lays out no window under ~500 px: a 180 px window drew the logo twice. The
+  // window is at least 512 px; the icon is drawn in its top-left corner and clipped.
+  await page.setViewportSize({ width: Math.max(size, 512), height: Math.max(size, 512) });
   await page.setContent(html);
   const png = await page.screenshot({ clip: { x: 0, y: 0, width: size, height: size } });
   await writeFile(join(src, 'icons', file), png);
