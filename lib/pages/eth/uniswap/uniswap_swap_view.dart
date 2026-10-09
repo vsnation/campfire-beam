@@ -75,6 +75,7 @@ class UniswapSwapView extends StatefulWidget {
     this.onPairChanged,
     this.initialAmount,
     this.onPayWithOtherCoin,
+    this.onBuyNativeBeam,
     this.onQuoteChanged,
   });
 
@@ -92,6 +93,10 @@ class UniswapSwapView extends StatefulWidget {
   /// Opens NEAR Intents ("Pay with BTC, ZEC, LTC or another coin"); null
   /// hides the link.
   final VoidCallback? onPayWithOtherCoin;
+
+  /// Opens Buy BEAM for a BEAM wallet ("Want BEAM in your BEAM wallet
+  /// instead?"); null hides the link.
+  final VoidCallback? onBuyNativeBeam;
 
   /// True inside the desktop view: the form without a page around it.
   final bool embedded;
@@ -516,6 +521,17 @@ class _UniswapSwapViewState extends State<UniswapSwapView> {
         if (widget.onPayWithOtherCoin != null) ...[
           const SizedBox(height: 10),
           UniPayWithOtherCoinCard(onTap: widget.onPayWithOtherCoin!),
+        ],
+        if (widget.onBuyNativeBeam != null) ...[
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: CustomTextButton(
+              key: const Key('uni-buy-native-beam'),
+              text: 'Want BEAM in your BEAM wallet instead?',
+              onTap: widget.onBuyNativeBeam,
+            ),
+          ),
         ],
         const SizedBox(height: 12),
         Row(

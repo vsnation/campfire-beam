@@ -330,17 +330,22 @@ void main() {
     await pumpSidebar(tester, wallets: const []);
     for (final d in BeamSidebarDestination.values) {
       await tapMenu(tester, d.menuKey);
-      // The bridge says so in its own form (it needs a wallet of each).
+      // The bridge says so in its own form (it needs a wallet of each);
+      // Buy BEAM's cards each lead to creating their wallet.
       expect(
         find.byKey(
-          Key(
-            d == BeamSidebarDestination.bridge
-                ? 'bridge-no-wallet'
-                : 'beamSidebarNoWallet',
-          ),
+          Key(switch (d) {
+            BeamSidebarDestination.bridge => 'bridge-no-wallet',
+            BeamSidebarDestination.buy => 'buy-choose-beam',
+            _ => 'beamSidebarNoWallet',
+          }),
         ),
         findsOneWidget,
       );
+      if (d == BeamSidebarDestination.buy) {
+        expect(find.text('Create a BEAM wallet first'), findsOneWidget);
+        expect(find.text('Create an Ethereum wallet first'), findsOneWidget);
+      }
       expect(_title(tester), d.label);
       expect(find.byKey(const Key('beamSidebarWalletChip')), findsNothing);
     }

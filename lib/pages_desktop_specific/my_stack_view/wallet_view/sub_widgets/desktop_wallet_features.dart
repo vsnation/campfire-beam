@@ -101,6 +101,7 @@ enum WalletFeature {
   masternodes("Masternodes", "Manage masternodes"),
 
   // BEAM (lib/widgets/beam/wiring/beam_features.dart)
+  beamBuy("Buy", "Pay with another coin, get BEAM"),
   beamSwap("Swap", "Swap one asset for another"),
   beamNames("Names", "Your BEAM names, and getting one"),
   beamDapps("dApps", "Apps that run on BEAM"),
@@ -666,7 +667,9 @@ class _DesktopWalletFeaturesState extends ConsumerState<DesktopWalletFeatures> {
                 label: option.$1.label,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 buttonHeight: ButtonHeight.l,
-                icon: option.$1 == WalletFeature.buy
+                icon:
+                    option.$1 == WalletFeature.buy ||
+                        option.$1 == WalletFeature.beamBuy
                     ? SvgPicture.file(
                         File(
                           ref.watch(

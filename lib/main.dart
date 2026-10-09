@@ -41,6 +41,7 @@ import 'models/node_model.dart';
 import 'models/notification_model.dart';
 import 'models/trade_wallet_lookup.dart';
 import 'pages/already_running_view.dart';
+import 'pages/beam/buy/buy_beam_wiring.dart';
 import 'pages/campfire_migrate_view.dart';
 import 'pages/home_view/home_view.dart';
 import 'pages/intro_view.dart';
@@ -470,6 +471,10 @@ class _MaterialAppWithThemeState extends ConsumerState<MaterialAppWithTheme>
             );
       }
       loadingCompleter.complete();
+      // BEAM: buys still open from before (buybeam.my) are followed again.
+      if (loadWallets && AppConfig.coins.whereType<Beam>().isNotEmpty) {
+        BuyBeamWiring.start();
+      }
       // TODO: this should probably run unawaited. Keep commented out for now as proper community nodes ui hasn't been implemented yet
       //  unawaited(_nodeService.updateCommunityNodes());
 

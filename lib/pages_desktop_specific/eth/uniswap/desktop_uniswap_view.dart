@@ -22,6 +22,7 @@ import '../../../pages/eth/uniswap/uniswap_swap_view.dart';
 import '../../../pages/eth/uniswap/uniswap_widgets.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../wallets/ethereum/uniswap/uniswap_models.dart';
+import '../../../widgets/custom_buttons/blue_text_button.dart';
 import '../../../widgets/desktop/desktop_app_bar.dart';
 import '../../../widgets/desktop/desktop_scaffold.dart';
 import '../../../widgets/rounded_white_container.dart';
@@ -33,6 +34,7 @@ class DesktopUniswapView extends StatefulWidget {
     this.showHeader = true,
     this.initialAmount,
     this.onPayWithOtherCoin,
+    this.onBuyNativeBeam,
   });
 
   final UniswapDeps deps;
@@ -42,6 +44,9 @@ class DesktopUniswapView extends StatefulWidget {
 
   /// Opens NEAR Intents; null hides the link.
   final VoidCallback? onPayWithOtherCoin;
+
+  /// Opens Buy BEAM for a BEAM wallet; null hides the link.
+  final VoidCallback? onBuyNativeBeam;
 
   /// False inside the side menu's page, which has its own title.
   final bool showHeader;
@@ -111,6 +116,17 @@ class _DesktopUniswapViewState extends State<DesktopUniswapView> {
                       if (widget.onPayWithOtherCoin != null) ...[
                         UniPayWithOtherCoinCard(
                           onTap: widget.onPayWithOtherCoin!,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      if (widget.onBuyNativeBeam != null) ...[
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: CustomTextButton(
+                            key: const Key('uni-buy-native-beam'),
+                            text: 'Want BEAM in your BEAM wallet instead?',
+                            onTap: widget.onBuyNativeBeam,
+                          ),
                         ),
                         const SizedBox(height: 16),
                       ],

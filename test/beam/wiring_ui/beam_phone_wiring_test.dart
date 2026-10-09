@@ -8,8 +8,8 @@
  */
 
 // The phone wallet screen (Campfire's real WalletView on a 375 × 667 phone)
-// for a REAL BeamWallet: the bottom bar is Receive, Send, Swap, Assets and
-// More, entirely on screen; More lists Names, dApps, Airdrops, Tokens and
+// for a REAL BeamWallet: the bottom bar is Receive, Send, Buy, Swap, Assets
+// and More, entirely on screen; More lists Names, dApps, Airdrops, Tokens and
 // Node & sync; each entry opens its page. Goldens are copied to
 // docs/beam/screenshots/B-WIRING/.
 //
@@ -21,6 +21,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/pages/beam/airdrop/beam_airdrop_batches_view.dart';
 import 'package:stackwallet/pages/beam/airdrop/beam_claim_voucher_view.dart';
 import 'package:stackwallet/pages/beam/airdrop/beam_create_airdrop_view.dart';
+import 'package:stackwallet/pages/beam/buy/buy_beam_view.dart';
+import 'package:stackwallet/pages/beam/buy/buy_beam_wiring.dart';
 import 'package:stackwallet/pages/beam/dapps/dapp_store_view.dart';
 import 'package:stackwallet/pages/beam/dex/beam_dex_swap_view.dart';
 import 'package:stackwallet/pages/beam/minter/beam_burn_view.dart';
@@ -31,12 +33,16 @@ import 'package:stackwallet/pages/beam/node/beam_node_sync_view.dart';
 import 'package:stackwallet/pages/beam/split/beam_split_view.dart';
 import 'package:stackwallet/pages/token_view/beam_assets_view.dart';
 import 'package:stackwallet/pages/wallet_view/wallet_view.dart';
+import 'package:stackwallet/wallets/beam/buy/buybeam_client.dart';
+import 'package:stackwallet/wallets/beam/buy/buybeam_controller.dart';
+import 'package:stackwallet/wallets/beam/buy/buybeam_store.dart';
 import 'package:stackwallet/widgets/wallet_navigation_bar/components/wallet_navigation_bar_item.dart';
 import 'package:stackwallet/widgets/wallet_navigation_bar/wallet_navigation_bar.dart';
 
+import '../buy/buybeam_fakes.dart';
 import 'wiring_harness.dart';
 
-const _bar = ['Receive', 'Send', 'Swap', 'Assets', 'More'];
+const _bar = ['Receive', 'Send', 'Buy', 'Swap', 'Assets', 'More'];
 const _more = [
   'Names',
   'dApps',
@@ -86,8 +92,8 @@ void main() {
   setUpAll(db.open);
   tearDownAll(db.close);
 
-  testWidgets('the bar is Receive, Send, Swap, Assets, More — all on a '
-      '375 × 667 screen', (tester) async {
+  testWidgets('the bar is Receive, Send, Buy, Swap, Assets, More — all on '
+      'a 375 × 667 screen', (tester) async {
     final wallet = await openBeamWallet(tester, db);
     await pumpWiring(
       tester,
@@ -183,11 +189,24 @@ void main() {
 
   testWidgets('each entry opens its page', (tester) async {
     final wallet = await openBeamWallet(tester, db);
+    BuyBeamWiring.debugController = BuyBeamController(
+      client: BuyBeamClient(clientFactory: FakeBuyBeamServer().client),
+      store: MemoryBuyBeamStore(),
+      autoPoll: false,
+    );
+    addTearDown(() => BuyBeamWiring.debugController = null);
     await pumpWiring(
       tester,
       WalletView(walletId: wallet.walletId),
       desktop: false,
     );
+
+    // Buy: straight to the form, for this wallet (no BEAM-or-WBEAM).
+    await _openBar(tester, 'Buy');
+    expect(find.byType(BuyBeamView), findsOneWidget);
+    expect(find.text('Arrives in Everyday BEAM'), findsOneWidget);
+    expect(find.text('Get a BTC deposit address'), findsOneWidget);
+    await closeRouteOf(tester, find.byType(BuyBeamView));
 
     await _openBar(tester, 'Swap');
     expect(find.byType(BeamDexSwapView), findsOneWidget);

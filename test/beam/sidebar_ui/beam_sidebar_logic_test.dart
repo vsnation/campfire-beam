@@ -208,6 +208,7 @@ void main() {
   group('the menu', () {
     test('BEAM items in their order, each with its own menu id', () {
       expect(BeamSidebarDestination.values.map((d) => d.label).toList(), [
+        'Buy BEAM',
         'Swap',
         'Bridge',
         'Assets',

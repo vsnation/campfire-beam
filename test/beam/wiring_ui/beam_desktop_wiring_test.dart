@@ -23,6 +23,8 @@ import 'package:stackwallet/pages/beam/split/beam_split_view.dart';
 import 'package:stackwallet/pages/beam/airdrop/beam_airdrop_batches_view.dart';
 import 'package:stackwallet/pages/beam/airdrop/beam_claim_voucher_view.dart';
 import 'package:stackwallet/pages/beam/airdrop/beam_create_airdrop_view.dart';
+import 'package:stackwallet/pages/beam/buy/buy_beam_view.dart';
+import 'package:stackwallet/pages/beam/buy/buy_beam_wiring.dart';
 import 'package:stackwallet/pages/beam/dapps/dapp_store_view.dart';
 import 'package:stackwallet/pages/beam/minter/beam_burn_view.dart';
 import 'package:stackwallet/pages/beam/minter/beam_mint_token_view.dart';
@@ -36,17 +38,21 @@ import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/des
 import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/sub_widgets/desktop_wallet_features.dart';
 import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/sub_widgets/more_features/more_features_dialog.dart';
 import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/sub_widgets/wallet_options_button.dart';
+import 'package:stackwallet/wallets/beam/buy/buybeam_client.dart';
+import 'package:stackwallet/wallets/beam/buy/buybeam_controller.dart';
+import 'package:stackwallet/wallets/beam/buy/buybeam_store.dart';
 import 'package:stackwallet/widgets/beam/receive/beam_address_list.dart';
 import 'package:stackwallet/widgets/beam/wallet_home/beam_wallet_home.dart';
 import 'package:stackwallet/widgets/beam/wiring/beam_features.dart';
 import 'package:stackwallet/widgets/desktop/secondary_button.dart';
 
+import '../buy/buybeam_fakes.dart';
 import 'wiring_harness.dart';
 
-/// Every label Campfire's desktop feature row can show for another coin.
+/// Every label Campfire's desktop feature row can show for another coin
+/// (its "Buy" too is BEAM's own here: buybeam.my, see the next list).
 const _otherCoinsLabels = [
   'Privatize funds',
-  'Buy',
   'PayNym',
   'Coin control',
   'Spark coins',
@@ -62,6 +68,7 @@ const _otherCoinsLabels = [
 ];
 
 const _beamLabels = [
+  'Buy',
   'Swap',
   'Names',
   'dApps',
@@ -180,11 +187,24 @@ void main() {
 
   testWidgets('each feature opens its page', (tester) async {
     final wallet = await openBeamWallet(tester, db);
+    BuyBeamWiring.debugController = BuyBeamController(
+      client: BuyBeamClient(clientFactory: FakeBuyBeamServer().client),
+      store: MemoryBuyBeamStore(),
+      autoPoll: false,
+    );
+    addTearDown(() => BuyBeamWiring.debugController = null);
     await pumpWiring(
       tester,
       DesktopWalletView(walletId: wallet.walletId),
       desktop: true,
     );
+
+    // Buy: the Buy BEAM form for this wallet, in a dialog.
+    await _openFeature(tester, 'Buy');
+    expect(find.byType(BuyBeamView), findsOneWidget);
+    expect(find.text('Arrives in Everyday BEAM'), findsOneWidget);
+    await closeRouteOf(tester, find.byType(BuyBeamView));
+    expect(find.byType(BuyBeamView), findsNothing);
 
     // Swap: the desktop DEX (form beside the pools) in a large dialog.
     await _openFeature(tester, 'Swap');

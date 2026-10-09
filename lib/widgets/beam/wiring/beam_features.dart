@@ -13,12 +13,15 @@
 // feature row and its More dialog) only list these.
 //
 // Click budget (USER_PSYCHOLOGY §1.2), from opening the wallet:
-//   phone   Send, Receive, Swap, Assets: 1 tap (the bar).
+//   phone   Send, Receive, Buy, Swap, Assets: 1 tap (the bar); Buy then
+//           needs an amount and its button (2).
 //           Names, dApps, Node & sync, Split coins, Bridge: 2 (More → it).
 //           Airdrops and Tokens: 3 (More → it → which task).
 //   desktop Send, Receive: 0 (the wallet's tabs); Assets: 0 (beside them).
-//           Swap, Names, dApps, Node & sync, Split coins: 1 (the feature
-//           row, or 2 when the window is narrow and it sits under More).
+//           Buy, Swap, Names, dApps, Node & sync, Split coins: 1 (the
+//           feature row, or 2 when the window is narrow and it sits under
+//           More). Buy opens its form straight away (the wallet says what
+//           is bought); the side menu's Buy BEAM asks BEAM or WBEAM first.
 //           Bridge: 1, the side menu's own item (a pair of wallets, not a
 //           feature of one).
 //           Airdrops and Tokens: 2 (it → which task).
@@ -31,6 +34,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../pages/beam/airdrop/beam_airdrop_batches_view.dart';
 import '../../../pages/beam/airdrop/beam_claim_voucher_view.dart';
 import '../../../pages/beam/airdrop/beam_create_airdrop_view.dart';
+import '../../../pages/beam/buy/buy_beam_wiring.dart';
 import '../../../pages/beam/dapps/dapp_store_view.dart';
 import '../../../pages/beam/minter/beam_burn_view.dart';
 import '../../../pages/beam/minter/beam_mint_token_view.dart';
@@ -47,6 +51,7 @@ import '../../../utilities/text_styles.dart';
 import '../../../wallets/wallet/impl/beam_wallet.dart';
 import '../../desktop/desktop_dialog.dart';
 import '../../desktop/desktop_dialog_close_button.dart';
+import '../../wallet_navigation_bar/components/icons/buy_nav_icon.dart';
 import '../../wallet_navigation_bar/components/icons/exchange_nav_icon.dart';
 import '../../wallet_navigation_bar/components/wallet_navigation_bar_item.dart';
 import '../airdrop/beam_layout.dart';
@@ -58,6 +63,7 @@ import 'beam_wallet_listenables.dart';
 
 /// The BEAM features a BEAM wallet offers beyond Send and Receive.
 enum BeamFeature {
+  buy('Buy', 'Pay with another coin, get BEAM'),
   swap('Swap', 'Swap one asset for another'),
   assets('Assets', 'Every asset this wallet holds'),
   names('Names', 'Your BEAM names, and getting one'),
@@ -75,6 +81,9 @@ enum BeamFeature {
 
   /// Campfire's own icon for it (`Assets.svg`).
   String get icon => switch (this) {
+    // Where a theme's own Buy icon cannot be drawn (the bar and the
+    // desktop row draw that one).
+    BeamFeature.buy => Assets.svg.creditCard,
     BeamFeature.swap => Assets.svg.swap,
     BeamFeature.assets => Assets.svg.tokens,
     BeamFeature.names => Assets.svg.robotHead,
@@ -90,7 +99,7 @@ enum BeamFeature {
   bool get available => this != bridge || bridgeAvailable;
 
   /// On the phone wallet's bottom bar, after Receive and Send.
-  static const phoneBar = [swap, assets];
+  static const phoneBar = [buy, swap, assets];
 
   /// In the phone wallet's More sheet, most used first; newer features
   /// last (Split coins, then Bridge), so the older rows keep their order.
@@ -106,9 +115,18 @@ enum BeamFeature {
 
   /// The desktop wallet's feature row, most used first (what does not fit
   /// moves under Campfire's "More"). Assets sit beside Send / Receive.
-  /// Split coins last, so the older buttons keep their places. Bridge is
-  /// the side menu's own item on desktop.
-  static const desktopRow = [swap, names, dapps, airdrops, tokens, node, split];
+  /// Buy first; Split coins last, so the older buttons keep their order.
+  /// Bridge is the side menu's own item on desktop.
+  static const desktopRow = [
+    buy,
+    swap,
+    names,
+    dapps,
+    airdrops,
+    tokens,
+    node,
+    split,
+  ];
 }
 
 /// Route names of BEAM pages that have none of their own.
@@ -129,6 +147,8 @@ Future<void> openBeamFeature(
   final desktop = BeamLayoutScope.isDesktop(context);
   final nav = Navigator.of(context);
   switch (feature) {
+    case BeamFeature.buy:
+      await openBuyBeam(context, wallet);
     case BeamFeature.swap:
       if (desktop) {
         await showDialog<void>(
@@ -255,16 +275,23 @@ BeamFeatureMenuOption _route(
 List<WalletNavigationBarItemData> beamWalletNavItems(
   BuildContext context,
   BeamWallet wallet,
-) => [
-  for (final f in BeamFeature.phoneBar)
-    WalletNavigationBarItemData(
-      label: f.label,
-      icon: f == BeamFeature.swap
-          ? const ExchangeNavIcon()
-          : BeamNavIcon(asset: f.icon),
-      onTap: () => unawaited(openBeamFeature(context, wallet, f)),
-    ),
-];
+) {
+  // Buys still open from before are followed again once a BEAM wallet is
+  // open (its BEAM can only arrive while it is).
+  BuyBeamWiring.start();
+  return [
+    for (final f in BeamFeature.phoneBar)
+      WalletNavigationBarItemData(
+        label: f.label,
+        icon: switch (f) {
+          BeamFeature.swap => const ExchangeNavIcon(),
+          BeamFeature.buy => const BuyNavIcon(),
+          _ => BeamNavIcon(asset: f.icon),
+        },
+        onTap: () => unawaited(openBeamFeature(context, wallet, f)),
+      ),
+  ];
+}
 
 /// The BEAM rows of the phone wallet's More sheet ([BeamFeature.phoneMore]).
 List<WalletNavigationBarItemData> beamWalletMoreItems(
@@ -303,6 +330,7 @@ class BeamNavIcon extends StatelessWidget {
 /// Campfire's desktop `WalletFeature` for each entry of
 /// [BeamFeature.desktopRow] (same label and description).
 const Map<BeamFeature, WalletFeature> kBeamWalletFeatures = {
+  BeamFeature.buy: WalletFeature.beamBuy,
   BeamFeature.swap: WalletFeature.beamSwap,
   BeamFeature.names: WalletFeature.beamNames,
   BeamFeature.dapps: WalletFeature.beamDapps,
@@ -316,14 +344,17 @@ const Map<BeamFeature, WalletFeature> kBeamWalletFeatures = {
 /// option shape: [BeamFeature.desktopRow], most used first, opened from
 /// [context] (the wallet screen).
 List<(WalletFeature, String, FutureOr<void> Function())>
-beamDesktopWalletFeatures(BuildContext context, BeamWallet wallet) => [
-  for (final f in BeamFeature.desktopRow)
-    (
-      kBeamWalletFeatures[f]!,
-      f.icon,
-      () => openBeamFeature(context, wallet, f),
-    ),
-];
+beamDesktopWalletFeatures(BuildContext context, BeamWallet wallet) {
+  BuyBeamWiring.start();
+  return [
+    for (final f in BeamFeature.desktopRow)
+      (
+        kBeamWalletFeatures[f]!,
+        f.icon,
+        () => openBeamFeature(context, wallet, f),
+      ),
+  ];
+}
 
 /// The desktop DEX (swap form beside the pools) in a large Campfire dialog,
 /// with Campfire's close button where the view's own bar leaves room.

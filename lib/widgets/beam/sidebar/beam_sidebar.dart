@@ -20,6 +20,7 @@
 // lib/pages_desktop_specific/beam/sidebar/.
 //
 // Click budget (USER_PSYCHOLOGY §1.2), from opening the app on desktop:
+//   Buy BEAM: 1 click (the menu), then BEAM or WBEAM (2), then its form.
 //   Swap, Bridge, Assets, Names, dApps: 1 click (the menu).
 //   Claim a code, My airdrops, Create codes, Create a token, My tokens,
 //   Burn: 2 (Airdrops / Tokens → the task).
@@ -65,6 +66,7 @@ abstract final class BeamSidebar {
 
 /// The BEAM pages of the desktop menu, in menu order.
 enum BeamSidebarDestination {
+  buy(BeamFeature.buy, DesktopMenuItemId.beamBuy),
   swap(BeamFeature.swap, DesktopMenuItemId.beamSwap),
   bridge(BeamFeature.bridge, DesktopMenuItemId.beamBridge),
   assets(BeamFeature.assets, DesktopMenuItemId.beamAssets),
@@ -85,15 +87,19 @@ enum BeamSidebarDestination {
   final BeamFeature feature;
   final DesktopMenuItemId menuId;
 
-  /// "Swap", "Assets"… (the feature's own word, everywhere).
-  String get label => feature.label;
+  /// "Swap", "Assets"… (the feature's own word, everywhere; the menu's
+  /// Buy says what it buys, as it is not inside a BEAM wallet).
+  String get label => this == buy ? 'Buy BEAM' : feature.label;
 
   /// One line under the page title.
-  String get description => feature.description;
+  String get description =>
+      this == buy ? 'BEAM, or WBEAM on Ethereum' : feature.description;
 
   /// Campfire's own solid desktop icons, so the BEAM items have the weight
   /// and size of My Campfire, Notifications and the rest.
   String get icon => switch (this) {
+    // The menu draws the theme's own Buy icon (as Campfire's Buy).
+    buy => Assets.svg.creditCard,
     swap => Assets.svg.exchangeDesktop,
     bridge => Assets.svg.arrowsTwoWay,
     assets => Assets.svg.tokens,

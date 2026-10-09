@@ -39,6 +39,7 @@ import '../../../pages_desktop_specific/desktop_menu.dart';
 import '../../../pages_desktop_specific/desktop_menu_item.dart';
 import '../../../providers/desktop/current_desktop_menu_item.dart';
 import '../../../themes/stack_colors.dart';
+import '../../../themes/theme_providers.dart';
 import '../../../utilities/assets.dart';
 import '../../../utilities/beam_app_identity.dart';
 import '../../../utilities/text_styles.dart';
@@ -68,7 +69,7 @@ class BeamSidebarMenu extends ConsumerStatefulWidget {
   final void Function(DesktopMenuItemId) onSelected;
 
   /// Item rows of the BEAM build (Campfire's are 52).
-  static const double itemHeight = 40;
+  static const double itemHeight = 38;
 
   @override
   ConsumerState<BeamSidebarMenu> createState() => _BeamSidebarMenuState();
@@ -140,7 +141,7 @@ class _BeamSidebarMenuState extends ConsumerState<BeamSidebarMenu> {
       ],
       Padding(
         padding: EdgeInsets.symmetric(
-          vertical: 7,
+          vertical: 3,
           horizontal: expanded ? 12 : 8,
         ),
         child: Container(
@@ -224,7 +225,7 @@ class _BeamSidebarMenuState extends ConsumerState<BeamSidebarMenu> {
                 showTor: AppConfig.hasFeature(AppFeature.tor),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
             Expanded(
               child: AnimatedContainer(
                 duration: duration,
@@ -302,21 +303,30 @@ class BeamSidebarMenuIcon extends ConsumerWidget {
     final selected =
         ref.watch(currentDesktopMenuItemProvider.state).state ==
         destination.menuId;
+    final filter = ColorFilter.mode(
+      selected
+          ? colors.accentColorDark
+          : colors.accentColorDark.withValues(alpha: 0.8),
+      BlendMode.srcIn,
+    );
     // A square box, so a wide glyph (dApps' box) never pushes its label
     // out of line with the others.
     return SizedBox.square(
       dimension: 20,
-      child: SvgPicture.asset(
-        destination.icon,
-        width: 20,
-        height: 20,
-        colorFilter: ColorFilter.mode(
-          selected
-              ? colors.accentColorDark
-              : colors.accentColorDark.withValues(alpha: 0.8),
-          BlendMode.srcIn,
-        ),
-      ),
+      child: destination == BeamSidebarDestination.buy
+          // Campfire's own Buy icon, from the theme.
+          ? SvgPicture.file(
+              File(ref.watch(themeProvider.select((t) => t.assets.buy))),
+              width: 20,
+              height: 20,
+              colorFilter: filter,
+            )
+          : SvgPicture.asset(
+              destination.icon,
+              width: 20,
+              height: 20,
+              colorFilter: filter,
+            ),
     );
   }
 }

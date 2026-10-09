@@ -21,6 +21,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app_config.dart';
 import '../../../db/isar/main_db.dart';
 import '../../../pages_desktop_specific/eth/uniswap/desktop_uniswap_view.dart';
 import '../../../providers/global/prefs_provider.dart';
@@ -39,6 +40,7 @@ import '../../../wallets/ethereum/uniswap/uniswap_service.dart';
 import '../../../wallets/wallet/impl/ethereum_wallet.dart';
 import '../../../widgets/beam/dex/dex_auth_gate.dart';
 import '../../../widgets/desktop/desktop_dialog.dart';
+import '../../beam/buy/buy_beam_wiring.dart';
 import '../near_intents/near_intents_view.dart';
 import 'uniswap_deps.dart';
 import 'uniswap_swap_view.dart';
@@ -201,6 +203,10 @@ Future<void> openUniswapSwap(
   final intents = nearIntentsDepsFor(wallet, deps, ref);
   void payWithOtherCoin(BuildContext c) =>
       unawaited(NearIntentsView.show(c, intents));
+  // BEAM itself, in a BEAM wallet, when the build has BEAM.
+  final withBeam = AppConfig.coins.whereType<Beam>().isNotEmpty;
+  void buyNativeBeam(BuildContext c) =>
+      unawaited(openBuyBeamFromAnywhere(c, ref));
   if (deps.desktop) {
     await showDialog<void>(
       context: context,
@@ -225,6 +231,7 @@ Future<void> openUniswapSwap(
                 showHeader: false,
                 initialAmount: initialAmount,
                 onPayWithOtherCoin: () => payWithOtherCoin(context),
+                onBuyNativeBeam: withBeam ? () => buyNativeBeam(context) : null,
               ),
             ),
           ],
@@ -238,6 +245,7 @@ Future<void> openUniswapSwap(
           deps: deps,
           initialAmount: initialAmount,
           onPayWithOtherCoin: () => payWithOtherCoin(c),
+          onBuyNativeBeam: withBeam ? () => buyNativeBeam(c) : null,
         ),
       ),
     );

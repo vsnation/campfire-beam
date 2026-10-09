@@ -25,6 +25,8 @@ import 'package:stackwallet/pages/add_wallet_views/verify_recovery_phrase_view/s
 import 'package:stackwallet/pages/add_wallet_views/verify_recovery_phrase_view/verify_recovery_phrase_view.dart';
 import 'package:stackwallet/pages/beam/split/beam_split_view.dart';
 import 'package:stackwallet/pages/beam/airdrop/beam_claim_voucher_view.dart';
+import 'package:stackwallet/pages/beam/buy/buy_beam_view.dart';
+import 'package:stackwallet/pages/beam/buy/buy_beam_wiring.dart';
 import 'package:stackwallet/pages/beam/dapps/dapp_store_view.dart';
 import 'package:stackwallet/pages/beam/minter/beam_mint_token_view.dart';
 import 'package:stackwallet/pages/beam/names/beam_names_home_view.dart';
@@ -34,10 +36,14 @@ import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/des
 import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/sub_widgets/desktop_wallet_features.dart';
 import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/sub_widgets/more_features/more_features_dialog.dart';
 import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/sub_widgets/wallet_options_button.dart';
+import 'package:stackwallet/wallets/beam/buy/buybeam_client.dart';
+import 'package:stackwallet/wallets/beam/buy/buybeam_controller.dart';
+import 'package:stackwallet/wallets/beam/buy/buybeam_store.dart';
 import 'package:stackwallet/widgets/custom_buttons/app_bar_icon_button.dart';
 import 'package:stackwallet/widgets/desktop/desktop_dialog_close_button.dart';
 import 'package:stackwallet/widgets/desktop/secondary_button.dart';
 
+import '../buy/buybeam_fakes.dart';
 import 'wiring_harness.dart';
 
 const _script = 'scripts/beam/docker/steps/beam_features_tour.sh';
@@ -136,6 +142,12 @@ void main() {
     tester,
   ) async {
     final wallet = await openBeamWallet(tester, db, name: 'Savings');
+    BuyBeamWiring.debugController = BuyBeamController(
+      client: BuyBeamClient(clientFactory: FakeBuyBeamServer().client),
+      store: MemoryBuyBeamStore(),
+      autoPoll: false,
+    );
+    addTearDown(() => BuyBeamWiring.debugController = null);
     await pumpWiring(
       tester,
       DesktopWalletView(walletId: wallet.walletId),
@@ -147,6 +159,7 @@ void main() {
     );
 
     const all = [
+      'Buy',
       'Swap',
       'Names',
       'dApps',
@@ -178,6 +191,10 @@ void main() {
       }
       await settle(tester, rounds: 2);
     }
+
+    await open('Buy');
+    _point(tester, 'buyClose', _closeIn(find.byType(BuyBeamView)));
+    await closeRouteOf(tester, find.byType(BuyBeamView));
 
     await open('Swap');
     _point(
