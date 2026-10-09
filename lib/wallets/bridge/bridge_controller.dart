@@ -1084,8 +1084,9 @@ class BridgeController extends ChangeNotifier {
       if (!_sameRecord(next, c)) await _saveQuietly(next);
       if (next.isOpen) _dueAt[id] = clock.now().add(wait);
       return next;
-    } catch (_) {
+    } catch (e) {
       // A node that did not answer: the same question next time.
+      Logging.instance.w('Bridge: following a crossing failed: $e');
       _dueAt[id] = clock.now().add(polling.blocks);
       return c;
     } finally {
@@ -1138,7 +1139,8 @@ class BridgeController extends ChangeNotifier {
           c.copyWith(
             state: BridgeCrossingState.confirmed,
             msgId: found.$1,
-            height: found.$2,
+            // The block it was mined in: one above the pipe's stamp.
+            height: found.$2 + 1,
             updatedAt: clock.now(),
             clearError: true,
           ),
@@ -1219,13 +1221,20 @@ class BridgeController extends ChangeNotifier {
       if (m.receiver.toLowerCase() == c.ethAddress.toLowerCase() &&
           m.amount == c.amount &&
           m.relayerFee == c.relayerFee &&
-          (height == null || m.height == height)) {
+          (height == null || _sameBlock(m.height, height))) {
         out.add((id, m.height));
       }
     }
     out.sort((a, b) => a.$1.compareTo(b.$1));
     return out;
   }
+
+  /// Whether a message the pipe stamped [recorded] was made by a
+  /// transaction mined in block [mined]. The pipe stamps the chain's height
+  /// while that block is applied, one below it (mainnet: mined in 4072998,
+  /// stamped 4072997); the block itself is accepted too.
+  static bool _sameBlock(int recorded, int mined) =>
+      recorded == mined - 1 || recorded == mined;
 
   Future<(BridgeCrossing, Duration)> _stepToBeam(BridgeCrossing c) async {
     final route = c.route;

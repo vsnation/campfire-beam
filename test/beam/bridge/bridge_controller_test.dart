@@ -387,6 +387,35 @@ void main() {
       ]);
     });
 
+    test('its message is stamped one block below the transaction, as on '
+        'mainnet; two below is not it', () async {
+      final rig = Rig();
+      final fee = b2eFee(beamRoute);
+      var x = await rig.move(beamRoute, toEth, beams(1000));
+      rig.beam.status['beamtx1'] = const BeamPipeTxStatus.completed(4072998);
+      rig.beam.addLocal(
+        beamRoute,
+        receiver: kFakeEthAddress,
+        amount: beams(1000),
+        fee: fee,
+        height: 4072996,
+      );
+      x = await rig.after(const Duration(seconds: 20), x.id);
+      expect(x.state, BridgeCrossingState.sent);
+      expect(x.msgId, isNull);
+      rig.beam.addLocal(
+        beamRoute,
+        receiver: kFakeEthAddress,
+        amount: beams(1000),
+        fee: fee,
+        height: 4072997,
+      );
+      x = await rig.after(const Duration(seconds: 20), x.id);
+      expect(x.state, BridgeCrossingState.confirmed);
+      expect(x.msgId, 2);
+      expect(x.height, 4072998);
+    });
+
     test(
       'a failed BEAM transaction: failed, nothing left the wallet',
       () async {

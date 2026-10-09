@@ -137,7 +137,8 @@ class FakeBeamSide implements BeamPipeSide {
         receiver: p.ethReceiver!,
         amount: p.amount,
         fee: p.relayerFee,
-        height: height,
+        // As the real pipe does: one below the block it is mined in.
+        height: height - 1,
       );
     } else {
       remote[p.route.id]?.remove(p.msgId);

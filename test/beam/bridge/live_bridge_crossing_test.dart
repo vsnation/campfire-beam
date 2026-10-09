@@ -355,6 +355,22 @@ void main() {
           _evidence(line);
           last = line;
         }
+        if (c.state == BridgeCrossingState.sent && c.height != null) {
+          // Mined but not matched yet: what the pipe itself shows.
+          try {
+            final n = await beam.localMessageCount(route);
+            final m = await beam.localMessage(route, n);
+            final ours =
+                m?.receiver.toLowerCase() == c.ethAddress.toLowerCase();
+            _evidence(
+              'pipe: $n messages; last: '
+              '${m == null ? 'none' : 'amount ${m.amount} fee '
+                        '${m.relayerFee} height ${m.height} to us $ours'}',
+            );
+          } catch (e) {
+            _evidence('pipe read failed: $e');
+          }
+        }
         if (c.state.isFinal) break;
         await Future<void>.delayed(const Duration(seconds: 20));
       }
