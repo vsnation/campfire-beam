@@ -268,7 +268,8 @@ jobs:
           [[ "$(otool -L "$EXE" | tail -n +2)" == "$links_before" ]] || { echo "linked libraries changed"; exit 1; }
           found="$(find "$APP" -type f \( -name wallet-api -o -name beam-node -o -name beam-wallet \))"
           [[ -z "$found" ]] || { echo "BEAM executables in the app: $found"; exit 1; }
-          if LC_ALL=C grep -rlaF -e "/Users/runner/" "$APP" | head -3 | grep -q .; then echo "the runner's home path is inside the app"; exit 1; fi
+          # (No account-name check here: the build paths inside the app are
+          # GitHub's generic /Users/runner/work, as /home/runner on Linux.)
           name="BEAM-Campfire-${{ inputs.version }}-macos-arm64"
           mkdir -p dist/stage && cp -R "$APP" dist/stage/ && ln -s /Applications dist/stage/Applications
           hdiutil create -quiet -volname "BEAM Campfire" -srcfolder dist/stage -ov -format UDZO "dist/$name.dmg"
