@@ -229,12 +229,9 @@ jobs:
           echo "yes" | ./build_app.sh -v "${{ inputs.version }}" -b "${{ inputs.build_number }}" -p macos -a campfire -d
           ./prebuild.sh
 
-      - name: The core inside the app, live on mainnet (direct, two wallets)
-        env:
-          BEAM_LIB_IT: '1'
-          BEAM_CORE_LIB: ${{ runner.temp }}/out/lib-macos-arm64/libbeam_core.dylib
-        run: flutter test test/beam/host/in_process_lib_integration_test.dart
-
+      # The live core test runs in the Linux and Windows jobs (and on the
+      # maintainer's Mac): here `flutter test` would build the native assets a
+      # second time, which the runner's install_name_tool refuses.
       - name: Build
         run: flutter build macos --release
 
