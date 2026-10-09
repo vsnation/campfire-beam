@@ -118,21 +118,20 @@ void main() {
       await finishSidebar(tester);
     });
 
-    testWidgets('a channel first warns about scammers, naming BEAM and the '
-        'channel', (tester) async {
+    testWidgets('a channel first warns about scammers, naming BEAM, with a '
+        'button that names the channel', (tester) async {
       final wallet = await openBeamWallet(tester, db, core: SidebarCore());
       await pumpSidebar(tester, wallets: [wallet]);
       await tapMenu(tester, const ValueKey('support'));
 
       await tester.tap(find.text('A bug in this app'));
       await settle(tester);
+      expect(find.text('Real support is always public'), findsOneWidget);
       expect(
-        find.textContaining(
-          'All official support for BEAM in GitHub Issues is provided ONLY',
-          findRichText: true,
-        ),
+        find.textContaining("BEAM's team only ever helps in public"),
         findsOneWidget,
       );
+      expect(find.text('Open GitHub Issues'), findsOneWidget);
       await _golden('support_warning');
       await finishSidebar(tester);
     });
