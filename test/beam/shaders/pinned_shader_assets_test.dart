@@ -20,11 +20,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/wallets/beam/contracts/airdrop/airdrop_constants.dart';
 import 'package:stackwallet/wallets/beam/contracts/bans/bans_constants.dart';
+import 'package:stackwallet/wallets/beam/contracts/bridge/pipe_constants.dart';
 import 'package:stackwallet/wallets/beam/contracts/burn/blackhole_constants.dart';
 import 'package:stackwallet/wallets/beam/contracts/common/asset_shader_source.dart';
 import 'package:stackwallet/wallets/beam/contracts/common/pinned_shader.dart';
 import 'package:stackwallet/wallets/beam/contracts/dex/dex_constants.dart';
 import 'package:stackwallet/wallets/beam/contracts/minter/minter_constants.dart';
+import 'package:stackwallet/wallets/bridge/bridge_routes.dart';
 
 /// Every shader the app pins, built over [source].
 List<PinnedShader> _pinned(ShaderSource source) => [
@@ -33,6 +35,8 @@ List<PinnedShader> _pinned(ShaderSource source) => [
   airdropAppShader(source),
   minterAppShader(source),
   blackHoleAppShader(source),
+  pipeAppShader(BridgeShader.forward, source),
+  pipeAppShader(BridgeShader.reverse, source),
 ];
 
 /// Records which asset keys were asked for, then defers to rootBundle.
@@ -56,7 +60,7 @@ void main() {
       () => Future.wait([for (final s in _pinned(source)) s.load()]),
     );
     final shaders = _pinned(source);
-    expect(loaded, hasLength(5));
+    expect(loaded, hasLength(7));
     for (var i = 0; i < shaders.length; i++) {
       final bytes = loaded![i];
       expect(bytes.length, shaders[i].size, reason: shaders[i].name);
@@ -72,6 +76,8 @@ void main() {
       kAirdropAppShaderName,
       kMinterAppShaderName,
       kBlackHoleAppShaderName,
+      kPipeAppShaderName,
+      kPipeReverseAppShaderName,
     ]);
   });
 

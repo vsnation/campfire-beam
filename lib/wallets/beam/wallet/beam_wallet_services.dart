@@ -16,6 +16,7 @@ import '../contracts/airdrop/beam_airdrop_service.dart';
 import '../contracts/airdrop/voucher_code_store.dart';
 import '../contracts/bans/bans_inbox_monitor.dart';
 import '../contracts/bans/bans_service.dart';
+import '../contracts/bridge/beam_pipe_service.dart';
 import '../contracts/burn/beam_burn_service.dart';
 import '../contracts/burn/blackhole_constants.dart';
 import '../contracts/common/asset_shader_source.dart';
@@ -35,9 +36,9 @@ import '../rpc/beam_transport.dart';
 /// Screens get them here instead of building their own, for two reasons:
 ///
 /// * They all share one [BeamApi] over one [transport], so `invoke_contract`
-///   calls from the DEX, BANS, airdrop and minter screens queue in order
-///   (`BeamApi` keeps one shader lane per transport). Separate APIs would
-///   each have their own lane and could overlap in the core.
+///   calls from the DEX, BANS, airdrop, minter and bridge screens queue in
+///   order (`BeamApi` keeps one shader lane per transport). Separate APIs
+///   would each have their own lane and could overlap in the core.
 /// * The transport forwards to the wallet's *current* core connection,
 ///   which is replaced whenever the wallet moves between the public node and
 ///   the private one. A service holding the old connection would fail after
@@ -129,6 +130,10 @@ class BeamWalletServices {
     blackHoleAppShader(_shaders),
   );
 
+  /// The BEAM side of the Ethereum bridge: this wallet's pipe keys, the
+  /// pipes' messages, and the `send` / `receive` transactions.
+  late final BeamPipeService bridge = BeamPipeService(api, _shaders);
+
   BeamAssetPricer? _pricer;
   DateTime? _pricedAt;
 
@@ -179,9 +184,7 @@ class BeamWalletTransport implements BeamTransport {
     final t = _current;
     if (t == null) {
       return Future.error(
-        const BeamConnectionException(
-          'The BEAM wallet is not connected yet',
-        ),
+        const BeamConnectionException('The BEAM wallet is not connected yet'),
       );
     }
     return t.call(method, params, timeout);

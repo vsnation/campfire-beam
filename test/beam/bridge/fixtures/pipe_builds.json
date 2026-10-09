@@ -1,0 +1,66 @@
+{
+ "_comment": [
+  "Recorded 2026-10-09 at wallet height 4072898 on eu-nodes.mainnet.beam.mw:8100",
+  "from a throwaway, zero-balance wallet created for this capture and then",
+  "deleted (test/beam/bridge/live_pipe_test.dart, BEAM_BRIDGE_RECORD=1), with",
+  "the HF6 wallet-api 7.5.14493 and the two pinned pipe shaders as `contract`,",
+  "create_tx false. process_invoke_data was never called.",
+  "Five `send` builds (every route, receiver 5a5a...5a, amount 1.0, fee 0.01)",
+  "and three `receive` builds of messages the relayer pushed for other",
+  "people and nobody claimed (bUSDT 78, bETH 67, BEAM 226): this wallet could",
+  "never sign them, and they were only built to be read. Stored unmodified:",
+  "they carry no wallet data (the signature entry is the hash of the pipe's",
+  "public cid, the same for every wallet)."
+ ],
+ "height": 4072898,
+ "builds": {
+  "action=send,cid=e63bd26ca5b226558686dd191122a8e5d6861a97597db9f40bda48aef6dbe835,amount=100000000,receiver=5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a,relayerFee=1000000": {
+   "shader_size": 5876,
+   "output": "{}",
+   "raw_data_base64": "gYSkWlpaWlpaWlpaWlpaWlpaWlpaWloA4fUFAAAAAEBCDwAAAAAAgICKU2VuZCBmdW5kc4GABEAjBQbmO9JspbImVYaG3RkRIqjl1oYal1l9ufQL2kiu9tvoNQ==",
+   "raw_data_sha256": "911083a1bc2690b56010696efb8acab8da212e8e33e1f0efdba22c565133ea80"
+  },
+  "action=send,cid=8872509d36a8e2aa7a60839a1828c372af47c0a5309f3f6186379cddec847369,amount=100000000,receiver=5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a,relayerFee=1000000": {
+   "shader_size": 7840,
+   "output": "{}",
+   "raw_data_base64": "gYOkWlpaWlpaWlpaWlpaWlpaWlpaWloA4fUFAAAAAEBCDwAAAAAAgICKU2VuZCBmdW5kc4GkBEAjBQaIclCdNqjiqnpgg5oYKMNyr0fApTCfP2GGN5zd7IRzaQ==",
+   "raw_data_sha256": "704c89be49920424476f888abaad3c9cfce836b1466965c680dbecac44eee52d"
+  },
+  "action=send,cid=7c66181ba4625202aae6e46afe89acbf1f839523344b0b371fc7988ac2e8c056,amount=100000000,receiver=5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a,relayerFee=1000000": {
+   "shader_size": 7840,
+   "output": "{}",
+   "raw_data_base64": "gYOkWlpaWlpaWlpaWlpaWlpaWlpaWloA4fUFAAAAAEBCDwAAAAAAgICKU2VuZCBmdW5kc4GmBEAjBQZ8ZhgbpGJSAqrm5Gr+iay/H4OVIzRLCzcfx5iKwujAVg==",
+   "raw_data_sha256": "7150d1dee9b40ab99a8a4466c255d88d9527c178c4ac3052c45fd3ac9e692bed"
+  },
+  "action=send,cid=8af23fe6338e3e67574f4548c9acf3d269756ae9b25ab025fd4268a07b8a3c29,amount=100000000,receiver=5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a,relayerFee=1000000": {
+   "shader_size": 7840,
+   "output": "{}",
+   "raw_data_base64": "gYOkWlpaWlpaWlpaWlpaWlpaWlpaWloA4fUFAAAAAEBCDwAAAAAAgICKU2VuZCBmdW5kc4GlBEAjBQaK8j/mM44+Z1dPRUjJrPPSaXVq6bJasCX9Qmige4o8KQ==",
+   "raw_data_sha256": "265467dace39b2ae7f8b8f71ef5a377235d7ad9583e353a99bae2c395110509e"
+  },
+  "action=send,cid=02fb908e55a59ab5acc5bf6f1707a8dcdb70a944d6f2a7bff3c7af18c8e278da,amount=100000000,receiver=5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a,relayerFee=1000000": {
+   "shader_size": 7840,
+   "output": "{}",
+   "raw_data_base64": "gYOkWlpaWlpaWlpaWlpaWlpaWlpaWloA4fUFAAAAAEBCDwAAAAAAgICKU2VuZCBmdW5kc4GnBEAjBQYC+5COVaWatazFv28XB6jc23CpRNbyp7/zx68YyOJ42g==",
+   "raw_data_sha256": "672c69dc00e7324d680af604029bfa9e0ea8704889bbcfa49f5829759c336504"
+  },
+  "action=receive,cid=8af23fe6338e3e67574f4548c9acf3d269756ae9b25ab025fd4268a07b8a3c29,msgId=78": {
+   "shader_size": 7840,
+   "output": "{}",
+   "raw_data_base64": "gYSITgAAAAAAAACB3xnNw1gkBugtG0B/AgVQHc5JIs00jO3sct5Ky5+aBwsDgE8SjVJlY2VpdmUgZnVuZHOBpYQoTG0FivI/5jOOPmdXT0VIyazz0ml1aumyWrAl/UJooHuKPCk=",
+   "raw_data_sha256": "ade4fb709db9d879e097817618059bb16eaf9cc5da8f6adbc1041f9ef50507d0"
+  },
+  "action=receive,cid=8872509d36a8e2aa7a60839a1828c372af47c0a5309f3f6186379cddec847369,msgId=67": {
+   "shader_size": 7840,
+   "output": "{}",
+   "raw_data_base64": "gYSIQwAAAAAAAACBfOk3W2R7aO4ZMgHKHp/pYD2dUGfC/aVFi1WgWW/s9rsDgE8SjVJlY2VpdmUgZnVuZHOBpIMgoQeIclCdNqjiqnpgg5oYKMNyr0fApTCfP2GGN5zd7IRzaQ==",
+   "raw_data_sha256": "5e82859a15005a767f5fc99a7967477191eb05493bdeabbee12e793bb80dde5c"
+  },
+  "action=receive,cid=e63bd26ca5b226558686dd191122a8e5d6861a97597db9f40bda48aef6dbe835,msgId=226": {
+   "shader_size": 5876,
+   "output": "{}",
+   "raw_data_base64": "gYaI4gAAAAAAAACB6tIE++C01QQIrApZLGsgRT4i42S++ck9K+s+jl0mXqYDgE8SjVJlY2VpdmUgZnVuZHOBgIOAhB7mO9JspbImVYaG3RkRIqjl1oYal1l9ufQL2kiu9tvoNQ==",
+   "raw_data_sha256": "51b37e6ab2f4008f26f1cdea0d6cd29f10440559bfd5ec3cc6ce3e444e5bae7b"
+  }
+ }
+}

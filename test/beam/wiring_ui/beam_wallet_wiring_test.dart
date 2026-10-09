@@ -57,6 +57,13 @@ void main() {
     expect(identical(w.names, BeamWalletWiring.of(wallet).names), isTrue);
     expect(identical(w.services, BeamWalletServices.of(wallet)), isTrue);
 
+    // The bridge's BEAM side: one per wallet, on the wallet's shared API
+    // (one shader queue), reading through the wallet's live connection.
+    final bridge = w.services.bridge;
+    expect(identical(bridge, BeamWalletServices.of(wallet).bridge), isTrue);
+    expect(identical(bridge.api, w.services.api), isTrue);
+    expect(await tester.runAsync(bridge.tipHeight), kTip);
+
     expect(w.sync.value, isA<BeamSynced>());
     expect(w.sync.value.canSpend, isTrue);
     expect(w.balances.value[0]!.available, g(12.5));
