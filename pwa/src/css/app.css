@@ -317,3 +317,56 @@ label.btn.disabled { pointer-events: none; opacity: 0.5; }
 [data-testid="check-updates"] .main .s { white-space: normal; }
 .prompt-actions { margin-top: 10px; justify-content: flex-start; }
 .prompt-actions .btn { flex: none; }
+
+/* Asset badges: BEAM's logo, or first letters on a colour picked by the asset id. */
+.asset-badge.tinted { background: var(--badge); color: var(--badge-ink); }
+.asset-badge.beam { background: none; }
+.asset-badge.beam img { width: 100%; height: 100%; }
+.asset-badge.small { width: 22px; height: 22px; font-size: 10px; }
+.row .ico.swap { background: var(--info-bg); color: var(--info); }
+.row .end .in { color: var(--success); }
+.row.on { background: var(--surface-2); border-radius: 8px; }
+.btn.wrap { white-space: normal; text-align: center; line-height: 1.25; }
+
+/* Home: three actions side by side, icon above the word. */
+.btn-row.three .btn { flex-direction: column; gap: 2px; min-height: 62px; padding: 8px 4px; font-size: 15px; }
+.btn-row.three .btn svg { width: 22px; height: 22px; }
+
+/* Swap */
+.swap .content { gap: 12px; }
+.swap-pair { position: relative; display: flex; flex-direction: column; gap: 6px; }
+.swap-box { padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.swap-label { font-size: 14px; font-weight: 500; color: var(--muted); }
+.swap-line { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.swap-input { flex: 1; min-width: 0; border: 0; background: none; outline: none; padding: 0; font-size: 28px; font-weight: 700; color: var(--text); }
+.swap-input::placeholder { color: var(--subtle); }
+.swap-out { flex: 1; min-width: 0; font-size: 28px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.swap-out.muted { color: var(--subtle); }
+.swap-sub { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); min-height: 22px; }
+.swap-sub .btn-small { min-height: 28px; padding: 2px 6px; }
+.asset-pick { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 8px 7px 7px; border-radius: 22px; border: 0; background: var(--surface-2); color: var(--text); font-weight: 600; font-size: 16px; cursor: pointer; max-width: 50%; }
+.asset-pick span:not(.asset-badge) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asset-pick svg { width: 16px; height: 16px; flex: none; color: var(--muted); }
+.swap-flip { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 38px; height: 38px; border-radius: 50%; border: 3px solid var(--bg); background: var(--surface); color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1; box-shadow: var(--shadow); }
+.swap-flip svg { width: 18px; height: 18px; }
+.swap-details { padding: 4px 14px; }
+.swap-details .kv { padding: 8px 0; }
+.swap-notes { display: flex; flex-direction: column; gap: 8px; }
+.swap .actions { margin-top: 12px; gap: 6px; }
+.swap .actions .hint { min-height: 0; }
+.notice .btn.inline { display: inline-flex; width: auto; min-height: 0; padding: 0; color: inherit; text-decoration: underline; }
+.picker-list { max-height: 52vh; overflow: auto; padding: 4px 8px; }
+.pad { padding: 16px 8px; }
+.swap-amounts { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 4px 10px; font-size: 26px; }
+.swap-amounts .arrow { color: var(--muted); }
+
+/* Approve sheet */
+.consent { display: flex; flex-direction: column; gap: 12px; }
+.consent h2 { margin: 0; font-size: 20px; }
+.consent-app { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--text-2); font-weight: 500; }
+.consent-app img { width: 22px; height: 26px; }
+.consent-app .app-dot { width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); display: flex; align-items: center; justify-content: center; }
+.consent-app .app-dot svg { width: 16px; height: 16px; }
+.consent .card { padding: 4px 14px; }
+.consent .asset-v { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.consent .actions { margin-top: 4px; }

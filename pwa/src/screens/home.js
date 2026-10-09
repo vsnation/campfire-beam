@@ -1,6 +1,6 @@
 /* Home
  * Spec: ONE job: see what I have and start a payment.
- *       Primary CTA: "Send" (when there is nothing to send yet: "Receive BEAM").
+ *       Primary CTA: "Send" (when there is nothing to send yet: "Receive"); "Swap" sits beside them.
  *       Taps from app open: 0 after unlock.
  * Exit-intent reasons and answers:
  *   - "Is this number real / up to date?" -> sync line says Synced (and whether a second source
@@ -14,9 +14,9 @@
  */
 import { h, fmtDate, put } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
-import { screen, notice, primary, secondary } from '../lib/ui.js';
+import { screen, notice, primary, secondary, assetBadge } from '../lib/ui.js';
 import { formatAmount } from '../lib/amount.js';
-import { wallet, txStatusText, isPendingTx } from '../lib/wallet.js';
+import { wallet, txStatusText, isPendingTx, isContractTx, contractMoves } from '../lib/wallet.js';
 import { needsBackupPrompt } from '../lib/session.js';
 
 export function syncLine(sync) {
@@ -25,7 +25,29 @@ export function syncLine(sync) {
   return h('div', { class: 'syncline', 'data-testid': 'sync', 'data-state': sync.state, 'data-verified': String(Boolean(sync.verified)) }, h('span', { class: `dot ${cls}` }), h('span', { text: `${sync.title}${pct}` }));
 }
 
+function contractRow(app, tx, onclick) {
+  const m = contractMoves(tx);
+  const failed = Number(tx.status) === 4 || Number(tx.status) === 2;
+  const get = m.receives[0];
+  const pay = m.spends[0];
+  const amt = (a, sign) => `${sign}${formatAmount(a.amount)} ${app.wallet.label(a.assetId).unit}`;
+  const app2 = tx.appname && tx.appname !== 'BEAM Campfire' ? ` · ${tx.appname}` : '';
+  return h(
+    'button',
+    { class: 'row', onclick, 'data-txid': tx.txId },
+    h('span', { class: `ico ${failed ? 'fail' : 'swap'}` }, icon(isPendingTx(tx) ? 'clock' : 'swap')),
+    h('span', { class: 'main' }, h('div', { class: 't', text: txStatusText(tx) }), h('div', { class: 's', text: `${fmtDate(tx.create_time)}${app2}` })),
+    h(
+      'span',
+      { class: 'end' },
+      get ? h('div', { class: failed ? '' : 'in', text: amt(get, '+') }) : pay ? h('div', { text: amt(pay, '−') }) : h('div', { text: `−${formatAmount(BigInt(tx.fee || 0))} BEAM` }),
+      get && pay ? h('div', { class: 'small', text: amt(pay, '−') }) : null,
+    ),
+  );
+}
+
 export function txRow(app, tx, onclick) {
+  if (isContractTx(tx)) return contractRow(app, tx, onclick);
   const label = app.wallet.label(tx.asset_id || 0);
   const income = Boolean(tx.income);
   const failed = Number(tx.status) === 4 || Number(tx.status) === 2;
@@ -65,17 +87,32 @@ export default function home(app) {
       ),
     );
 
-    const others = [...s.totals.entries()].filter(([id, t]) => id !== 0 && (t.available > 0n || t.receiving > 0n || t.sending > 0n));
-    put(assetsBox, 
+    // Every other asset this wallet has anything of: available, on its way, or maturing.
+    const others = [...s.totals.entries()]
+      .filter(([id, t]) => id !== 0 && (t.available > 0n || t.receiving > 0n || t.sending > 0n || t.maturing > 0n))
+      .map(([id, t]) => [id, t, app.wallet.label(id)])
+      .sort(([a, , la], [b, , lb]) => (la.verified === lb.verified ? a - b : la.verified ? -1 : 1));
+    put(assetsBox,
       ...(others.length
         ? [
-            h('p', { class: 'section-title', text: 'Other assets' }),
+            h('p', { class: 'section-title', text: 'Tokens' }),
             h(
               'div',
-              { class: 'card list' },
-              ...others.map(([id, t]) => {
-                const l = app.wallet.label(id);
-                return h('div', { class: 'row asset-row' }, h('span', { class: 'asset-badge', text: l.unit.startsWith('Asset ') ? 'CA' : l.unit.slice(0, 3) }), h('span', { class: 'main' }, h('div', { class: 't', text: l.name }), h('div', { class: 's', text: `Asset #${id}` })), h('span', { class: 'end' }, h('div', { text: formatAmount(t.available) }), h('div', { class: 'small', text: l.unit.startsWith('Asset ') ? '' : l.unit })));
+              { class: 'card list', 'data-testid': 'tokens' },
+              ...others.map(([id, t, l]) => {
+                const named = !l.unit.startsWith('Asset #');
+                const sub = !named ? `Asset #${id}` : l.verified ? l.unit : `${l.unit} · asset #${id}`;
+                const pending = [];
+                if (t.receiving > 0n) pending.push(`+${formatAmount(t.receiving)} incoming`);
+                if (t.sending > 0n) pending.push(`−${formatAmount(t.sending)} outgoing`);
+                if (t.maturing > 0n) pending.push(`${formatAmount(t.maturing)} maturing`);
+                return h(
+                  'div',
+                  { class: 'row asset-row', 'data-testid': 'token-row', 'data-asset-id': String(id) },
+                  assetBadge(l),
+                  h('span', { class: 'main' }, h('div', { class: 't', text: named ? l.name : 'Unnamed asset' }), h('div', { class: 's', text: sub })),
+                  h('span', { class: 'end' }, h('div', { 'data-testid': 'token-balance', text: `${formatAmount(t.available)}${named ? ` ${l.unit}` : ''}` }), pending.length ? h('div', { class: 'small', text: pending.join(' · ') }) : null),
+                );
               }),
             ),
           ]
@@ -96,8 +133,10 @@ export default function home(app) {
     sendBtn.prepend(icon('send'));
     const recvBtn = (hasFunds ? secondary : primary)(h('span', {}, 'Receive'), () => app.go('receive'), { 'data-testid': 'receive' });
     recvBtn.prepend(icon('receive'));
-    const why = !hasFunds ? null : !canSend ? h('p', { class: 'small center', text: s.sync.state === 'synced' ? '' : `Sending is paused: ${s.sync.title.toLowerCase()}.` }) : null;
-    put(actionsBox, h('div', { class: 'btn-row' }, ...(hasFunds ? [sendBtn, recvBtn] : [recvBtn, sendBtn])), why);
+    const swapBtn = secondary(h('span', {}, 'Swap'), () => app.go('swap'), { disabled: !canSend, 'data-testid': 'swap' });
+    swapBtn.prepend(icon('swap'));
+    const why = !canSend && s.sync.state !== 'synced' ? h('p', { class: 'small center', text: `${hasFunds ? 'Sending and swaps are' : 'Swaps are'} paused: ${s.sync.title.toLowerCase()}.` }) : null;
+    put(actionsBox, h('div', { class: 'btn-row three' }, ...(hasFunds ? [sendBtn, recvBtn, swapBtn] : [recvBtn, sendBtn, swapBtn])), why);
   }
 
   function renderBanner() {
