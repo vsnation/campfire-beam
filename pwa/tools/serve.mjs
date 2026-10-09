@@ -15,6 +15,7 @@
 // - --selftest enables /__dev/flags and POST /__dev/result, which the in-page
 //   self-test (?selftest=1 on localhost) uses to report back. Without the flag
 //   both answer 404, which is what any production host does.
+// - With --selftest also /__dev/dapp-probe.html (test/e2e/dapp_probe/): the dApp frame probe.
 // - --import-test <dir> (with --selftest): serves <dir>/wallet.db at /__dev/import.db and
 //   <dir>/import.json ({password, addresses}) at /__dev/import.json for the wallet.db import
 //   self-test (?selftest=import). Throwaway test wallets only; 404 otherwise.
@@ -168,6 +169,13 @@ const server = (host) =>
         const name = p === '/__dev/import.db' ? 'wallet.db' : 'import.json';
         const body = await readFile(join(String(importTestDir), name));
         return send(res, 200, body, name === 'wallet.db' ? 'application/octet-stream' : 'application/json', { 'Cache-Control': 'no-store' });
+      }
+      if (p === '/__dev/dapp-probe.html' || p === '/__dev/dapp-probe.js' || p === '/__dev/probe-dapp.js') {
+        // The dApp frame probe (test/e2e/dapp_probe/), for Safari on the iOS Simulator.
+        if (!selftest || req.method !== 'GET') return send(res, 404, 'not found');
+        const name = p.slice('/__dev/'.length);
+        const body = await readFile(join(pwaRoot, 'test', 'e2e', 'dapp_probe', name));
+        return send(res, 200, body, mimeFor(name), { 'Cache-Control': 'no-store' });
       }
       if (p === '/__dev/result') {
         if (!selftest || req.method !== 'POST') return send(res, 404, 'not found');
