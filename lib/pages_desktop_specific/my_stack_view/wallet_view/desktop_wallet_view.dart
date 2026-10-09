@@ -38,6 +38,7 @@ import '../../../services/event_bus/global_event_bus.dart';
 import '../../../themes/coin_icon_provider.dart';
 import '../../../themes/stack_colors.dart';
 import '../../../utilities/assets.dart';
+import '../../../utilities/beam_app_identity.dart';
 import '../../../utilities/enums/backup_frequency_type.dart';
 import '../../../utilities/enums/sync_type_enum.dart';
 import '../../../utilities/text_styles.dart';
@@ -230,8 +231,10 @@ class _DesktopWalletViewState extends ConsumerState<DesktopWalletView> {
                             .textFieldActiveSearchIconLeft,
                   ),
                 ),
-              if (kDebugMode) const Spacer(),
-              if (kDebugMode)
+              // Stack Wallet's debug readout; never in the BEAM build, whose
+              // screenshots come from debug-mode tests.
+              if (kDebugMode && !BeamAppIdentity.isActive) const Spacer(),
+              if (kDebugMode && !BeamAppIdentity.isActive)
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
