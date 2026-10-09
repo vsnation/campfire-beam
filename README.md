@@ -7,6 +7,10 @@ wallets can do. BEAM's own HF6-capable core (7.5.14493) runs **inside the app**,
 wallet runs it: the wallet and your private node are part of BEAM Campfire, not separate programs, and keys
 never leave the device.
 
+It also holds **Ethereum wallets** with **WBEAM** (wrapped BEAM) beside your BEAM wallets, swaps on
+**Uniswap's own contracts** right from the wallet, and turns **BTC, ZEC, LTC or 200 other coins** into ETH
+through **NEAR Intents**, so you can buy WBEAM with whatever you have.
+
 **Status: public beta.** Tested on BEAM mainnet with small amounts. Use it with funds you can afford to
 lose while it is in beta.
 
@@ -52,6 +56,8 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
 | **Airdrops**: claim a code, or put BEAM or a token into codes to give away | **My airdrops**: see which codes were claimed; take back what nobody claimed |
 | ![Split your BEAM into several coins so several payments can go at once](docs/screenshots/desktop-split-coins.png) | ![Your own private BEAM node, running from inside the wallet](docs/screenshots/desktop-private-node.png) |
 | **Split coins** so several payments can go out at once; nothing leaves your wallet | **Your own private node** with one switch: sees offline and max-privacy payments |
+| ![Swap on Uniswap from the Ethereum wallet, beside every Uniswap pool for the pair](docs/screenshots/desktop-uniswap.png) | ![My Campfire with a BEAM wallet and an Ethereum wallet side by side](docs/screenshots/desktop-my-campfire-eth.png) |
+| **Swap on Uniswap** from your Ethereum wallet: every v2, v3 and v4 pool, the best route, exact approvals | **BEAM and Ethereum wallets** side by side, each with its balance; WBEAM, USDT and USDC built in |
 
 ![On an iPhone: wallet, pools and assets](docs/screenshots/phone.png)
 
@@ -60,6 +66,10 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
 ![On a phone: give BEAM away in one-time codes, and claim a code someone gave you](docs/screenshots/phone-airdrops.png)
 
 ![On a phone: create your own token on BEAM, then mint it from My tokens](docs/screenshots/phone-create-token.png)
+
+![On a phone: buy WBEAM on Uniswap, check what you pay and the least you get, and see what arrived](docs/screenshots/phone-uniswap.png)
+
+![On a phone: pay with ZEC through NEAR Intents: a signed deposit address, then buy WBEAM with the ETH that arrived](docs/screenshots/phone-near-intents.png)
 
 ## What works today
 
@@ -86,8 +96,23 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
   wallet. Every public BEAM node (`eu-nodes`, `us-nodes`, `eu-node01`–`04`,
   `us-node01`–`04`) is listed in Settings › Nodes.
 
+- **Ethereum** wallets next to BEAM wallets, with **WBEAM**, USDT and USDC built in (WBEAM shows with BEAM's
+  icon and is valued at BEAM's price) and any ERC-20 token you add. Pick your Ethereum RPC (Stack Wallet,
+  PublicNode, dRPC, MEV Blocker, Blast) or add your own; "Test connection" checks it really is Ethereum
+  mainnet. With Tor on, every Ethereum request goes through Tor or is not made.
+- **Swap on Uniswap** from the Ethereum wallet, straight to Uniswap's own contracts (no exchange partner,
+  no API key): every v2, v3 and v4 pool is found from Uniswap's own records through your RPC, the best
+  direct or two-pool route wins, tokens are approved for exactly the amount swapped (Permit2), and the
+  review shows what you pay, the least you get and the network fee before your PIN. A pool whose hook
+  quotes a price its swap would not give is detected and skipped.
+- **Pay with BTC, ZEC, LTC or any coin NEAR Intents takes** (200+ coins on 37 chains): send it from any
+  wallet or exchange to a deposit address that Campfire checks against NEAR Intents' signature, the ETH
+  arrives in your Campfire wallet, and one tap buys WBEAM with it. NEAR Intents adds a 0.25% fee
+  (included in the price shown).
+
 Proven live on BEAM mainnet with small amounts: send/receive between wallets, DEX swap, airdrop create and
-claim, dApps.
+claim, dApps. On Ethereum mainnet, through Tor: ETH ⇄ WBEAM, USDC → WBEAM across two pools, exact approvals
+with Permit2, and a NEAR Intents swap into ETH.
 
 ## Roadmap
 
@@ -105,7 +130,9 @@ claim, dApps.
 - [ ] iOS web app (PWA) — built and tested in the iOS Simulator; needs its own domain to go online
 
 **Release 2**
-- [ ] Ethereum: ETH and ERC-20 tokens, with **WBEAM** as a default token
+- [x] Ethereum: ETH and ERC-20 tokens, with **WBEAM** as a default token
+- [x] Swap on Uniswap (v2, v3, v4) from the Ethereum wallet
+- [x] Any coin into ETH (and then WBEAM) through NEAR Intents
 - [ ] BEAM ↔ Ethereum bridge (deposit addresses)
 - [ ] Games (Fuddle, MemeClash) and atomic swaps
 
