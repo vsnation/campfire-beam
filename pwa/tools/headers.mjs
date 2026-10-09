@@ -9,9 +9,17 @@
 // - CORP same-origin: no other site can embed our files.
 // - CSP: scripts only from this origin; 'wasm-unsafe-eval' is what
 //   WebAssembly.instantiate needs (no 'unsafe-eval': the engine is built with
-//   DYNAMIC_EXECUTION=0). connect-src names the BEAM nodes and nothing else:
+//   DYNAMIC_EXECUTION=0). connect-src names the BEAM nodes and one more host:
 //   the explorer check goes through this origin (/explorer/status), so the
-//   browser talks to exactly two parties, this origin and the chosen node.
+//   wallet talks to this origin and the chosen node, plus BEAM's GitHub
+//   (raw.githubusercontent.com, one directory at a pinned commit) only when
+//   the person opens a dApp for the first time: that is where BEAM publishes
+//   the dApp packages, and the app refuses any package whose SHA-256 differs
+//   from its pin. dApps themselves run in sandboxed frames with their own,
+//   stricter policy (src/lib/dapps/frame_policy.js); frames come from this
+//   origin only (default-src 'self').
+
+import { SOURCE_HOST, SOURCE_COMMIT } from '../src/lib/dapps/catalogue.js';
 
 export const NODES = [
   'eu-nodes.mainnet.beam.mw:8200',
@@ -19,11 +27,14 @@ export const NODES = [
   'eu-node02.mainnet.beam.mw:8200',
 ];
 
+/** The one directory BEAM's dApp packages are fetched from: beam-ui at the pinned commit (src/lib/dapps/catalogue.js). */
+export const DAPP_PACKAGE_SOURCE = `${SOURCE_HOST}/BeamMW/beam-ui/${SOURCE_COMMIT}/ui/apps/mainnet/`;
+
 export const CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval'",
   "worker-src 'self'",
-  `connect-src 'self' ${NODES.map((n) => `wss://${n}`).join(' ')}`,
+  `connect-src 'self' ${NODES.map((n) => `wss://${n}`).join(' ')} ${DAPP_PACKAGE_SOURCE}`,
   "img-src 'self' data: blob:",
   "style-src 'self'",
   "font-src 'self'",

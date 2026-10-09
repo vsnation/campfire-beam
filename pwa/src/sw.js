@@ -24,6 +24,11 @@
  * Every response gets the security headers (COOP/COEP for the engine's
  * SharedArrayBuffer, CSP, CORP): a response from the cache would carry none.
  *
+ * dApp frames: a navigation to dapp-run/<policy>/... is answered with the
+ * frame document built from the verified dapp-frame.js and the frame's own
+ * headers (lib/dapps/frame_policy.js, inlined below): a sandboxed, opaque
+ * origin with its own CSP. Nothing for that route ever comes from the network.
+ *
  * Not intercepted (they go to the network, and only when the app asks):
  * release.json/.sig, manifest.json, the loader script, the recovery snapshot,
  * the explorer status and dev-server paths. The BEAM node is a WebSocket,
@@ -46,12 +51,15 @@ const MIME = /*__MIME__*/ {};
 
 /*__INLINE_RELEASE_JS__*/
 
+/*__INLINE_FRAME_POLICY_JS__*/
+
 const META_CACHE = 'campfire-meta';
 const scopeUrl = new URL(self.registration.scope);
 const STATE_KEY = new URL('__campfire_state', scopeUrl).href;
 const PROGRESS_KEY = new URL('__campfire_install', scopeUrl).href;
 const PASSTHROUGH = [/^release\.json$/, /^release\.sig$/, /^manifest\.json$/, /^sw(-[0-9a-f]+)?\.js$/, /^recovery\//, /^explorer\//, /^__dev\//, /^_headers$/];
 const PARALLEL = 6;
+const FRAME_SCRIPT = 'dapp-frame.js';
 const FILE_TIMEOUT_MS = 90000; // per file: a stalled connection fails the run, which can then resume
 
 let stateCache = null;
@@ -282,6 +290,20 @@ async function serve(request, path) {
   return new Response('Not part of this BEAM Campfire release.', { status: 404, headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/plain; charset=utf-8' } });
 }
 
+const notInRelease = () => new Response('Not part of this BEAM Campfire release.', { status: 404, headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/plain; charset=utf-8' } });
+
+/** A dApp frame document: the verified bootstrap under a fresh nonce, with the frame's own headers. */
+async function serveFrame(request, policy) {
+  if (request.mode !== 'navigate') return notInRelease();
+  const st = await readState();
+  if (!st.current || !Object.prototype.hasOwnProperty.call(st.current.files, FRAME_SCRIPT)) return notInRelease();
+  const cache = await caches.open(st.current.cache);
+  const hit = await cache.match(new URL(FRAME_SCRIPT, scopeUrl).href);
+  if (!hit) return notInRelease();
+  const nonce = newNonce();
+  return new Response(frameDocument(await hit.text(), nonce), { status: 200, headers: frameHeaders(policy, nonce) });
+}
+
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET') return;
@@ -289,6 +311,11 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return;
   const path = relPath(url);
   if (path === null || PASSTHROUGH.some((r) => r.test(path))) return;
+  if (path.startsWith(FRAME_ROUTE)) {
+    const policy = frameRouteFor(path);
+    event.respondWith(policy ? serveFrame(req, policy) : Promise.resolve(notInRelease()));
+    return;
+  }
   event.respondWith(serve(req, path));
 });
 

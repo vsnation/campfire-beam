@@ -85,6 +85,8 @@ await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 const srcDir = join(root, 'src');
 const releaseJs = (await readFile(join(srcDir, 'lib', 'release.js'), 'utf8')).replace(/^export /gm, '');
+const framePolicyJs = (await readFile(join(srcDir, 'lib', 'dapps', 'frame_policy.js'), 'utf8')).replace(/^export /gm, '');
+if (/^import /m.test(framePolicyJs)) throw new Error('lib/dapps/frame_policy.js must not import anything: it is inlined into the service worker');
 const engineLockForApp = { beam_tag: lock.beam_tag, files: lock.files, rules_signature_contains: lock.rules_signature_contains };
 
 // The loader first: its name goes into lib/version.js.
@@ -92,7 +94,8 @@ const swSrc = (await readFile(join(srcDir, 'sw.js'), 'utf8'))
   .replace('/*__RELEASE_PUBLIC_JWK__*/ null', JSON.stringify(pub))
   .replace('/*__SECURITY_HEADERS__*/ {}', JSON.stringify(SECURITY_HEADERS))
   .replace('/*__MIME__*/ {}', JSON.stringify(MIME))
-  .replace('/*__INLINE_RELEASE_JS__*/', () => `// ---- inlined from lib/release.js\n${releaseJs}\n// ---- end of lib/release.js`);
+  .replace('/*__INLINE_RELEASE_JS__*/', () => `// ---- inlined from lib/release.js\n${releaseJs}\n// ---- end of lib/release.js`)
+  .replace('/*__INLINE_FRAME_POLICY_JS__*/', () => `// ---- inlined from lib/dapps/frame_policy.js\n${framePolicyJs}\n// ---- end of lib/dapps/frame_policy.js`);
 if (/__[A-Z_]+__/.test(swSrc.replace(/__campfire_(state|install)/g, ''))) throw new Error('sw.js: a placeholder was not filled');
 const LOADER_NAME = `sw-${sha256(Buffer.from(swSrc)).slice(0, 16)}.js`;
 await writeFile(join(out, LOADER_NAME), swSrc);
