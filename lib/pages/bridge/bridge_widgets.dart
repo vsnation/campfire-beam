@@ -318,7 +318,8 @@ class BridgeWords {
               'gas comes down to it. Your coins are safe; nothing needs '
               'doing.',
           'Waiting for gas',
-          BridgeMood.warning,
+          // Nothing for the user to do: told calmly, not as an alarm.
+          BridgeMood.progress,
         );
       case BridgeCrossingState.paid:
         return BridgeWords(

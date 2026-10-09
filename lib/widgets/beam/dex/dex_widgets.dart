@@ -385,6 +385,29 @@ class DexPage extends StatelessWidget {
   /// button.
   final List<Widget>? actions;
 
+  /// How far the fade above [bottom] reaches; also the scroll view's own
+  /// bottom padding, so scrolled to the end nothing stays faded.
+  static const double _fade = 16;
+
+  /// [scroll], fading out over its last [_fade] pixels when [bottom] is
+  /// pinned under it: text running under the button area reads as "more
+  /// below", not as cut off.
+  Widget _fadeAboveBottom(Widget scroll) => bottom == null
+      ? scroll
+      : ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (rect) {
+            final solid = rect.height <= _fade ? 0.0 : 1 - _fade / rect.height;
+            return LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: const [Colors.black, Colors.black, Colors.transparent],
+              stops: [0, solid, 1],
+            ).createShader(rect);
+          },
+          child: scroll,
+        );
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<StackColors>()!;
@@ -406,14 +429,21 @@ class DexPage extends StatelessWidget {
             ),
           ),
           Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: body,
+            child: _fadeAboveBottom(
+              SingleChildScrollView(
+                padding: EdgeInsets.fromLTRB(
+                  32,
+                  0,
+                  32,
+                  bottom == null ? 0 : _fade,
+                ),
+                child: body,
+              ),
             ),
           ),
           if (bottom != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(32, 16, 32, 32),
+              padding: const EdgeInsets.fromLTRB(32, 0, 32, 32),
               child: bottom,
             )
           else
@@ -437,9 +467,11 @@ class DexPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  child: body,
+                child: _fadeAboveBottom(
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, _fade),
+                    child: body,
+                  ),
                 ),
               ),
               if (bottom != null)
