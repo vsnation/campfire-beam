@@ -242,7 +242,9 @@ Future<bool> testNodeConnection({
 
     case Ethereum():
       try {
-        testPassed = await testEthNodeConnection(formData.host!);
+        // Campfire for BEAM: through Tor when it is on, and only Ethereum
+        // mainnet passes (test_eth_node_connection.dart).
+        testPassed = (await testEthNodeConnection(formData.host!)).ok;
       } catch (_) {
         testPassed = false;
       }

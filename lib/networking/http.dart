@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:socks5_proxy/socks_client.dart';
 
 import '../utilities/logger.dart';
+import 'socks5_tunnel.dart';
 
 // WIP wrapper layer
 
@@ -31,6 +31,9 @@ Map<String, String> _headerMap(HttpClientResponse response) {
   return map;
 }
 
+/// With `proxyInfo` (Tor's SOCKS5 proxy), every request goes through it and
+/// the proxy resolves the host name: the name never reaches this device's
+/// DNS (Campfire for BEAM, `socks5_tunnel.dart`).
 class HTTP {
   const HTTP();
 
@@ -46,9 +49,7 @@ class HTTP {
     }
     try {
       if (proxyInfo != null) {
-        SocksTCPClient.assignToHttpClient(httpClient, [
-          ProxySettings(proxyInfo.host, proxyInfo.port),
-        ]);
+        routeHttpClientThroughSocks5(httpClient, proxyInfo);
       }
       final HttpClientRequest request = await httpClient.getUrl(url);
 
@@ -81,9 +82,7 @@ class HTTP {
     final httpClient = HttpClient();
     try {
       if (proxyInfo != null) {
-        SocksTCPClient.assignToHttpClient(httpClient, [
-          ProxySettings(proxyInfo.host, proxyInfo.port),
-        ]);
+        routeHttpClientThroughSocks5(httpClient, proxyInfo);
       }
       final HttpClientRequest request = await httpClient.postUrl(url);
 
@@ -117,9 +116,7 @@ class HTTP {
     final httpClient = HttpClient();
     try {
       if (proxyInfo != null) {
-        SocksTCPClient.assignToHttpClient(httpClient, [
-          ProxySettings(proxyInfo.host, proxyInfo.port),
-        ]);
+        routeHttpClientThroughSocks5(httpClient, proxyInfo);
       }
       final HttpClientRequest request = await httpClient.postUrl(url);
 
@@ -153,9 +150,7 @@ class HTTP {
     final httpClient = HttpClient();
     try {
       if (proxyInfo != null) {
-        SocksTCPClient.assignToHttpClient(httpClient, [
-          ProxySettings(proxyInfo.host, proxyInfo.port),
-        ]);
+        routeHttpClientThroughSocks5(httpClient, proxyInfo);
       }
       final HttpClientRequest request = await httpClient.putUrl(url);
 
@@ -188,9 +183,7 @@ class HTTP {
     final httpClient = HttpClient();
     try {
       if (proxyInfo != null) {
-        SocksTCPClient.assignToHttpClient(httpClient, [
-          ProxySettings(proxyInfo.host, proxyInfo.port),
-        ]);
+        routeHttpClientThroughSocks5(httpClient, proxyInfo);
       }
       final HttpClientRequest request = await httpClient.patchUrl(url);
 
@@ -222,9 +215,7 @@ class HTTP {
     final httpClient = HttpClient();
     try {
       if (proxyInfo != null) {
-        SocksTCPClient.assignToHttpClient(httpClient, [
-          ProxySettings(proxyInfo.host, proxyInfo.port),
-        ]);
+        routeHttpClientThroughSocks5(httpClient, proxyInfo);
       }
       final HttpClientRequest request = await httpClient.deleteUrl(url);
 

@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:decimal/decimal.dart';
 import 'package:ethereum_addresses/ethereum_addresses.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart';
 import 'package:isar_community/isar.dart';
 import 'package:wallet/wallet.dart' as eth_wallet;
 import 'package:web3dart/json_rpc.dart' show RPCError;
@@ -25,6 +24,7 @@ import '../../../utilities/amount/amount.dart';
 import '../../../utilities/eth_commons.dart';
 import '../../../utilities/logger.dart';
 import '../../crypto_currency/crypto_currency.dart';
+import '../../ethereum/eth_http_client.dart';
 import '../../models/tx_data.dart';
 import '../intermediate/bip39_wallet.dart';
 import '../wallet_mixin_interfaces/private_key_interface.dart';
@@ -85,8 +85,6 @@ Future<List<TransactionV2>> findReplacedPendingEthereumTransactions({
   return replacedTransactions;
 }
 
-// Eth can not use tor with web3dart
-
 @visibleForTesting
 ({BigInt maxFeePerGas, BigInt maxPriorityFeePerGas}) resolveEip1559FeeCaps({
   required BigInt baseFee,
@@ -141,13 +139,15 @@ class EthereumWallet extends Bip39Wallet with PrivateKeyInterface {
     );
   }
 
+  // Campfire for BEAM: one pool for every RPC call of this wallet, routed
+  // per request (Tor on: through Tor or not at all; eth_http_client.dart).
+  // Idle connections close by themselves (HttpClient.idleTimeout).
+  final EthRpcHttpClient _rpcHttpClient = EthRpcHttpClient();
+
   web3.Web3Client getEthClient() {
     final node = getCurrentNode();
 
-    // Eth can not use tor with web3dart as Client does not support proxies
-    final client = Client();
-
-    return web3.Web3Client(node.host, client);
+    return ethWeb3Client(node.host, httpClient: _rpcHttpClient);
   }
 
   Amount estimateEthFee(BigInt feeRate, int gasLimit, int decimals) {
