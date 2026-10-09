@@ -44,8 +44,22 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
 | **dApps**: BEAM's dApp store; a dApp cannot move money without your approval | BEAM's own dApps run inside Campfire, as in the BEAM wallet |
 | ![BEAM names](docs/screenshots/desktop-names.png) | ![Notifications](docs/screenshots/desktop-notifications.png) |
 | **Names**: pay `alice` instead of a 67-character address | **Notifications** for payments you receive |
+| ![Every payment in plain language: waiting, sent, received, swapped, or not sent and why](docs/screenshots/desktop-history.png) | ![The details of a payment that is still waiting, with a button to cancel it](docs/screenshots/desktop-payment-details.png) |
+| **History** in plain words: what is waiting, what went through, and why something was not sent | **Payment details**; cancel a payment while the receiver's wallet is still offline |
+| ![Check the amount, fee and total before a payment leaves your wallet](docs/screenshots/desktop-send-review.png) | ![A dApp asks to swap and you see what you pay, what you get and the total before approving](docs/screenshots/desktop-dapp-approval.png) |
+| **Review before sending**: the amount, the fee and the total, every time | **dApp requests**: what you pay, what you get and the total leaving your wallet, before you approve |
+| ![Airdrops: claim a code someone gave you, or give BEAM away in codes](docs/screenshots/desktop-airdrops.png) | ![See which of your airdrop codes were claimed and take back the rest](docs/screenshots/desktop-airdrop-batches.png) |
+| **Airdrops**: claim a code, or put BEAM or a token into codes to give away | **My airdrops**: see which codes were claimed; take back what nobody claimed |
+| ![Split your BEAM into several coins so several payments can go at once](docs/screenshots/desktop-split-coins.png) | ![Your own private BEAM node, running from inside the wallet](docs/screenshots/desktop-private-node.png) |
+| **Split coins** so several payments can go out at once; nothing leaves your wallet | **Your own private node** with one switch: sees offline and max-privacy payments |
 
 ![On an iPhone: wallet, pools and assets](docs/screenshots/phone.png)
+
+![On a phone: a payment to your BEAM name is waiting; claim it, even with an empty wallet](docs/screenshots/phone-name-payments.png)
+
+![On a phone: give BEAM away in one-time codes, and claim a code someone gave you](docs/screenshots/phone-airdrops.png)
+
+![On a phone: create your own token on BEAM, then mint it from My tokens](docs/screenshots/phone-create-token.png)
 
 ## What works today
 
