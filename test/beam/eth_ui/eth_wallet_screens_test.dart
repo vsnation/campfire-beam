@@ -24,6 +24,7 @@ import 'package:stackwallet/pages/settings_views/global_settings_view/manage_nod
 import 'package:stackwallet/pages/settings_views/global_settings_view/manage_nodes_views/coin_nodes_view.dart';
 import 'package:stackwallet/pages/token_view/my_tokens_view.dart';
 import 'package:stackwallet/pages/wallets_view/wallets_overview.dart';
+import 'package:stackwallet/pages_desktop_specific/my_stack_view/my_stack_view.dart';
 import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/desktop_wallet_view.dart';
 import 'package:stackwallet/providers/global/node_service_provider.dart';
 import 'package:stackwallet/providers/global/price_provider.dart';
@@ -333,6 +334,40 @@ void main() {
     await expectLater(
       find.byKey(goldenKey),
       matchesGoldenFile('goldens/my_campfire_ethereum_wallets_desktop.png'),
+    );
+    await drainWork(tester);
+    await finish(tester);
+  });
+
+  testWidgets('My Campfire: a BEAM wallet and an Ethereum wallet with its '
+      'tokens, in one list (desktop)', (tester) async {
+    Util.debugIsDesktop = true;
+    addTearDown(() => Util.debugIsDesktop = null);
+    final beam = await openBeamWallet(tester, db);
+    final eth = await _ethWithTokens(tester);
+    await pumpWiring(
+      tester,
+      const MyStackView(),
+      desktop: true,
+      prefs: PricesOnPrefs(),
+      overrides: [
+        pAllWalletsInfo.overrideWithValue([beam.info, eth.info]),
+        priceAnd24hChangeNotifierProvider.overrideWithValue(LayoutPrices()),
+        nodeServiceChangeNotifierProvider.overrideWithValue(testNodeService()),
+      ],
+    );
+    await drainWork(tester);
+    await settle(tester);
+    // Each wallet with its balance, BEAM first; Ethereum's tokens below it.
+    expect(find.text('Everyday BEAM'), findsWidgets);
+    expect(find.textContaining('1,250.00000000 WBEAM'), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Everyday BEAM').last).dy,
+      lessThan(tester.getTopLeft(find.textContaining('WBEAM').first).dy),
+    );
+    await expectLater(
+      find.byKey(goldenKey),
+      matchesGoldenFile('goldens/my_campfire_beam_and_ethereum_desktop.png'),
     );
     await drainWork(tester);
     await finish(tester);
