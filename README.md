@@ -9,12 +9,14 @@ never leave the device.
 
 It also holds **Ethereum wallets** with **WBEAM** (wrapped BEAM) beside your BEAM wallets, swaps on
 **Uniswap's own contracts** right from the wallet, and turns **BTC, ZEC, LTC or 200 other coins** into ETH
-through **NEAR Intents**, so you can buy WBEAM with whatever you have.
+through **NEAR Intents**, so you can buy WBEAM with whatever you have. **Buy BEAM** in the BEAM wallet
+delivers native BEAM, paid in Bitcoin, Ether, USDT or another coin, and the **bridge** moves BEAM and
+the wrapped assets between your own BEAM and Ethereum wallets through BEAM's official bridge.
 
 **Status: public beta.** Tested on BEAM mainnet with small amounts. Use it with funds you can afford to
 lose while it is in beta.
 
-![BEAM Campfire on macOS: wallet home](docs/screenshots/desktop-wallet.png)
+![BEAM Campfire on macOS: BEAM and Ethereum wallets side by side, with Buy BEAM and Bridge in the menu](docs/screenshots/desktop-wallet.png)
 
 ## Download
 
@@ -46,8 +48,8 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
 | **Swap** on BEAM's DEX: every pool, named assets, sizes in your currency | **Assets**: every Confidential Asset you hold, valued at today's DEX prices |
 | ![dApp store](docs/screenshots/desktop-dapps.png) | ![The Beam DEX dApp inside Campfire](docs/screenshots/desktop-dapp-dex.png) |
 | **dApps**: BEAM's dApp store; a dApp cannot move money without your approval | BEAM's own dApps run inside Campfire, as in the BEAM wallet |
-| ![BEAM names](docs/screenshots/desktop-names.png) | ![Notifications](docs/screenshots/desktop-notifications.png) |
-| **Names**: pay `alice` instead of a 67-character address | **Notifications** for payments you receive |
+| ![BEAM names](docs/screenshots/desktop-names.png) | ![What do you want to buy: BEAM in your BEAM wallet, or WBEAM on Ethereum](docs/screenshots/desktop-buy-choice.png) |
+| **Names**: pay `alice` instead of a 67-character address | **BEAM or WBEAM**: where Campfire cannot tell which you mean, one plain question |
 | ![Every payment in plain language: waiting, sent, received, swapped, or not sent and why](docs/screenshots/desktop-history.png) | ![The details of a payment that is still waiting, with a button to cancel it](docs/screenshots/desktop-payment-details.png) |
 | **History** in plain words: what is waiting, what went through, and why something was not sent | **Payment details**; cancel a payment while the receiver's wallet is still offline |
 | ![Check the amount, fee and total before a payment leaves your wallet](docs/screenshots/desktop-send-review.png) | ![A dApp asks to swap and you see what you pay, what you get and the total before approving](docs/screenshots/desktop-dapp-approval.png) |
@@ -58,8 +60,10 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
 | **Split coins** so several payments can go out at once; nothing leaves your wallet | **Your own private node** with one switch: sees offline and max-privacy payments |
 | ![Swap on Uniswap from the Ethereum wallet, beside every Uniswap pool for the pair](docs/screenshots/desktop-uniswap.png) | ![My Campfire with a BEAM wallet and an Ethereum wallet side by side](docs/screenshots/desktop-my-campfire-eth.png) |
 | **Swap on Uniswap** from your Ethereum wallet: every v2, v3 and v4 pool, larger swaps shared between pools, exact approvals | **BEAM and Ethereum wallets** side by side, each with its balance; WBEAM, USDT and USDC built in |
+| ![Move BEAM to your Ethereum wallet through BEAM's official bridge](docs/screenshots/desktop-bridge.png) | ![Buy BEAM with Bitcoin or another coin, delivered to your BEAM wallet](docs/screenshots/desktop-buy-beam.png) |
+| **Bridge** between your own BEAM and Ethereum wallets, straight to BEAM's official bridge | **Buy BEAM** with Bitcoin, Ether, USDT or another coin; the BEAM arrives in your own wallet |
 
-![On an iPhone: wallet, pools and assets](docs/screenshots/phone.png)
+![On a phone: the wallet with Buy in its bar, the pools and your assets](docs/screenshots/phone.png)
 
 ![On a phone: a payment to your BEAM name is waiting; claim it, even with an empty wallet](docs/screenshots/phone-name-payments.png)
 
@@ -70,6 +74,8 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
 ![On a phone: buy WBEAM on Uniswap, check what you pay and the least you get, and see what arrived](docs/screenshots/phone-uniswap.png)
 
 ![On a phone: pay with ZEC through NEAR Intents: a signed deposit address, then buy WBEAM with the ETH that arrived](docs/screenshots/phone-near-intents.png)
+
+![On a phone: buy BEAM with Bitcoin: see what you get, send to the deposit address, and follow it until your BEAM arrives](docs/screenshots/phone-buy-beam.png)
 
 ![On a phone: move BEAM to your Ethereum wallet through BEAM's official bridge, check what arrives, and follow it block by block](docs/screenshots/phone-bridge.png)
 
@@ -113,6 +119,11 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
   wallet or exchange to a deposit address that Campfire checks against NEAR Intents' signature, the ETH
   arrives in your Campfire wallet, and one tap buys WBEAM with it. NEAR Intents adds a 0.25% fee
   (included in the price shown).
+- **Buy BEAM** in the BEAM wallet with Bitcoin, Ether, USDT, Litecoin, Zcash and many other coins, through
+  buybeam.my: you see what you get before anything exists to pay, then one deposit address (with QR) and the
+  progress until the BEAM is in your own wallet. Buys are kept on the device and picked up again after a
+  restart; with Tor on, every request goes through Tor. Where Campfire cannot tell which you mean, it asks
+  plainly: BEAM in your BEAM wallet, or WBEAM on Ethereum.
 - **Bridge between your own BEAM and Ethereum wallets**, straight to BEAM's official bridge contracts on
   both chains, with no website or exchange in between: BEAM ⇄ WBEAM, and bETH, bUSDT, bWBTC and bDAI ⇄ ETH,
   USDT, WBTC and DAI. Before you confirm you see what arrives, what it costs and how long it takes; every
@@ -123,8 +134,9 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
 Proven live on BEAM mainnet with small amounts: send/receive between wallets, DEX swap, airdrop create and
 claim, dApps. On Ethereum mainnet, through Tor: ETH ⇄ WBEAM, USDC → WBEAM across two pools, exact approvals
 with Permit2, and a NEAR Intents swap into ETH. Across BEAM's bridge, with the app's own bridge code:
-WBEAM → BEAM (collected 14 minutes after the lock) and BEAM → WBEAM (paid 61 blocks after the send), each
-exactly as quoted.
+WBEAM → BEAM (collected 14 minutes after the lock), BEAM → WBEAM (paid 61 blocks after the send), ETH → bETH
+(3.5 minutes) and bETH → ETH, each exactly as quoted. Buy BEAM: run end to end against buybeam.my's test
+environment through Tor, every state to delivery.
 
 ## Roadmap
 
@@ -146,6 +158,7 @@ exactly as quoted.
 - [x] Swap on Uniswap (v2, v3, v4) from the Ethereum wallet
 - [x] Any coin into ETH (and then WBEAM) through NEAR Intents
 - [x] BEAM ↔ Ethereum bridge inside the wallet (BEAM's official bridge, all five routes)
+- [x] Buy BEAM with other coins, delivered to your BEAM wallet (buybeam.my)
 - [ ] Games (Fuddle, MemeClash) and atomic swaps
 
 ## Building
