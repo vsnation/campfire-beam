@@ -21,6 +21,7 @@ import '../../../app_config.dart';
 import '../../../models/isar/models/ethereum/eth_contract.dart';
 import '../../../providers/global/locale_provider.dart';
 import '../../../providers/global/prefs_provider.dart';
+import '../../../providers/global/wallets_provider.dart';
 import '../../../providers/global/price_provider.dart';
 import '../../../services/event_bus/events/global/wallet_sync_status_changed_event.dart';
 import '../../../themes/stack_colors.dart';
@@ -30,6 +31,7 @@ import '../../../utilities/amount/amount_formatter.dart';
 import '../../../utilities/assets.dart';
 import '../../../utilities/constants.dart';
 import '../../../utilities/text_styles.dart';
+import '../../../wallets/bridge/bridge_routes.dart';
 import '../../../wallets/crypto_currency/crypto_currency.dart';
 import '../../../wallets/isar/providers/eth/current_token_wallet_provider.dart';
 import '../../../wallets/isar/providers/eth/token_balance_provider.dart';
@@ -37,6 +39,7 @@ import '../../../wallets/isar/providers/wallet_info_provider.dart';
 import '../../../widgets/coin_ticker_tag.dart';
 import '../../../widgets/conditional_parent.dart';
 import '../../../widgets/rounded_container.dart';
+import '../../bridge/bridge_wiring.dart';
 import '../../buy_view/buy_in_wallet_view.dart';
 import '../../exchange_view/wallet_initiated_exchange_view.dart';
 import '../../receive_view/receive_view.dart';
@@ -182,6 +185,13 @@ class TokenWalletOptions extends ConsumerWidget {
     );
   }
 
+  /// BEAM Campfire: a token the bridge carries (WBEAM, USDT, WBTC, DAI)
+  /// moves to the user's BEAM wallet from its own page.
+  void _onBridgePressed(BuildContext context, WidgetRef ref, BridgeRoute r) {
+    final wallet = ref.read(pWallets).getWallet(walletId);
+    unawaited(openBridge(context, wallet, route: r));
+  }
+
   void _onBuyPressed(BuildContext context) {
     unawaited(
       Navigator.of(context).pushNamed(
@@ -195,6 +205,9 @@ class TokenWalletOptions extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(prefsChangeNotifierProvider);
     final showExchange = prefs.enableExchange;
+    final bridgeRoute = bridgeAvailable
+        ? bridgeRouteForEthToken(tokenContract.address)
+        : null;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -220,6 +233,15 @@ class TokenWalletOptions extends ConsumerWidget {
           subLabel: "Send",
           iconAssetPathSVG: Assets.svg.arrowUpRight,
         ),
+        if (bridgeRoute != null) ...[
+          const SizedBox(width: 16),
+          TokenOptionsButton(
+            key: const Key('tokenBridgeButton'),
+            onPressed: () => _onBridgePressed(context, ref, bridgeRoute),
+            subLabel: "Bridge",
+            iconAssetPathSVG: Assets.svg.arrowsTwoWay,
+          ),
+        ],
         if (AppConfig.hasFeature(AppFeature.swap) && showExchange)
           const SizedBox(width: 16),
         if (AppConfig.hasFeature(AppFeature.swap) && showExchange)

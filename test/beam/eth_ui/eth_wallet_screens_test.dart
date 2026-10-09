@@ -22,7 +22,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/pages/settings_views/global_settings_view/manage_nodes_views/add_edit_node_view.dart';
 import 'package:stackwallet/pages/settings_views/global_settings_view/manage_nodes_views/coin_nodes_view.dart';
+import 'package:stackwallet/pages/bridge/bridge_wiring.dart';
 import 'package:stackwallet/pages/token_view/my_tokens_view.dart';
+import 'package:stackwallet/pages/token_view/sub_widgets/token_summary.dart';
 import 'package:stackwallet/pages/wallets_view/wallets_overview.dart';
 import 'package:stackwallet/pages_desktop_specific/my_stack_view/my_stack_view.dart';
 import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/desktop_wallet_view.dart';
@@ -300,6 +302,43 @@ void main() {
       });
     });
   }
+
+  testWidgets('a token the bridge carries offers Bridge on its page; one it '
+      'does not, none (phone)', (tester) async {
+    Util.debugIsDesktop = false;
+    BridgeSides.debugAvailable = true;
+    addTearDown(() {
+      Util.debugIsDesktop = null;
+      BridgeSides.debugAvailable = null;
+    });
+    final wallet = await _ethWithTokens(tester);
+    for (final (token, bridged) in [
+      (DefaultTokens.wbeam, true),
+      (DefaultTokens.usdt, true),
+      (DefaultTokens.usdc, false),
+    ]) {
+      await pumpWiring(
+        tester,
+        _phone(
+          Center(
+            child: TokenWalletOptions(
+              walletId: wallet.walletId,
+              tokenContract: token,
+            ),
+          ),
+        ),
+        desktop: false,
+        prefs: PricesOnPrefs(),
+      );
+      await tester.pump();
+      expect(
+        find.byKey(const Key('tokenBridgeButton')),
+        bridged ? findsOneWidget : findsNothing,
+        reason: token.symbol,
+      );
+      expect(find.text('Send'), findsOneWidget);
+    }
+  });
 
   testWidgets('My Campfire › Ethereum: the wallet with its tokens, WBEAM as '
       'BEAM (desktop)', (tester) async {
