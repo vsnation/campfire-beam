@@ -58,8 +58,8 @@ sleep 3
 
 # ---- 3. My Campfire → the wallet ---------------------------------------------
 shot features_01_my_campfire.png
-# @openWallet 1195 423
-click 1195 423 8                               # the Beam row: its only wallet (Savings) opens
+# @openWallet 1195 493
+click 1195 493 8                               # "Open wallet" on the only row (Savings)
 shot features_02_wallet_home.png               # feature row, Send/Receive/Transactions, Assets
 
 # ---- 4. every feature once ------------------------------------------------------

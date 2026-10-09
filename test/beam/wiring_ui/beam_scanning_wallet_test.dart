@@ -9,9 +9,8 @@
 
 // A restored wallet whose coins are still being found, on Campfire's real
 // screens over a REAL BeamWallet (fake core, nothing found yet):
-//   * My Campfire: the favourite card, and the wallet's row in the BEAM
-//     wallets list the Beam row opens, say "Scanning…", never a bare
-//     "0.00000000 BEAM";
+//   * My Campfire: the wallet row and its favourite card say "Scanning…",
+//     never a bare "0.00000000 BEAM";
 //   * the phone wallet (375 × 667): "Scanning… 43%" where the balance goes,
 //     the percent said once more only in the banner, and a history that says
 //     the coins are on their way — with nothing overflowing;
@@ -136,18 +135,13 @@ void main() {
     await _startScan(tester, db, done);
     await openBeamWallet(tester, db, core: _nothingFound(), name: 'Empty');
     await pumpWiring(tester, const MyStackView(), desktop: true);
-    // The favourite card, on My Campfire itself.
-    expect(find.byKey(const Key('beamFavoriteScanning')), findsOneWidget);
-    // My Campfire lists coins (the build has Ethereum too): the Beam row
-    // opens the list of BEAM wallets.
-    await tester.tap(find.byKey(const Key('DesktopWalletSummaryRow_key_beam')));
-    await settle(tester);
 
     for (final name in ['Restored', 'Scanned', 'Empty']) {
       expect(find.text(name), findsWidgets, reason: name);
     }
-    // The scanning wallet's row.
+    // The scanning wallet: its row and its favourite card.
     expect(find.byKey(const Key('beamWalletRowScanning')), findsOneWidget);
+    expect(find.byKey(const Key('beamFavoriteScanning')), findsOneWidget);
     // The other two rows are a plain, honest 0.
     expect(_text('0.00000000 BEAM'), findsNWidgets(2));
     expect(_text('0.00 USD'), findsNothing);

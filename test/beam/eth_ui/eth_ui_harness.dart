@@ -102,11 +102,13 @@ class FakeEthIndex extends HTTP {
 }
 
 /// A real Ethereum wallet, created from a fresh phrase, registered in
-/// Campfire's Wallets. Never refreshed: no network.
+/// Campfire's Wallets. Never refreshed: no network. [node] replaces the
+/// default RPC (a local mainnet fork in the Uniswap tests).
 Future<EthereumWallet> openEthWallet(
   WidgetTester tester, {
   String name = 'Ethereum',
   List<String> tokenAddresses = const [],
+  NodeModel? node,
 }) async {
   late EthereumWallet wallet;
   await tester.runAsync(() async {
@@ -115,7 +117,7 @@ Future<EthereumWallet> openEthWallet(
       walletInfo: WalletInfo.createNew(coin: eth, name: name),
       mainDB: MainDB.instance,
       secureStorageInterface: FakeSecureStorage(),
-      nodeService: FakeNodeService(eth.defaultNode(isPrimary: true)),
+      nodeService: FakeNodeService(node ?? eth.defaultNode(isPrimary: true)),
       prefs: FakePrefs(),
       mnemonic: bip39.generateMnemonic(),
       mnemonicPassphrase: '',

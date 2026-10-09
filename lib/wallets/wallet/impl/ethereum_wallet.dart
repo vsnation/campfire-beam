@@ -16,6 +16,7 @@ import '../../../models/isar/models/blockchain_data/transaction.dart';
 import '../../../models/isar/models/blockchain_data/v2/input_v2.dart';
 import '../../../models/isar/models/blockchain_data/v2/output_v2.dart';
 import '../../../models/isar/models/blockchain_data/v2/transaction_v2.dart';
+import '../../../models/isar/models/transaction_note.dart';
 import '../../../models/paymint/fee_object_model.dart';
 import '../../../services/ethereum/ethereum_api.dart';
 import '../../../services/event_bus/events/global/updated_in_background_event.dart';
@@ -707,6 +708,115 @@ class EthereumWallet extends Bip39Wallet with PrivateKeyInterface {
           "${e.toString()}${e.data == null ? "" : e.data.toString()}";
       throw Exception(message);
     }
+  }
+
+  // ============= Campfire for BEAM: contract calls (Uniswap swaps) ===========
+
+  /// Signs a 32-byte digest (an EIP-712 hash, such as a Uniswap Permit2
+  /// permit) with this wallet's key, inside the wallet: r ‖ s ‖ v, v 27/28.
+  Future<Uint8List> signDigest(Uint8List digest) async {
+    if (digest.length != 32) {
+      throw ArgumentError("A digest is 32 bytes, got ${digest.length}");
+    }
+    if (_credentials == null) {
+      await _initCredentials();
+    }
+    final sig = web3.sign(digest, _credentials!.privateKey);
+    Uint8List word(BigInt v) {
+      final hex = v.toRadixString(16).padLeft(64, "0");
+      return Uint8List.fromList([
+        for (var i = 0; i < 64; i += 2)
+          int.parse(hex.substring(i, i + 2), radix: 16),
+      ]);
+    }
+
+    return Uint8List.fromList([...word(sig.r), ...word(sig.s), sig.v]);
+  }
+
+  /// Signs and broadcasts a call to a contract ([to], [data], [value] wei)
+  /// with the given gas limit and EIP-1559 fees, records it as a pending
+  /// outgoing transaction, and saves [note] as its note. Returns the hash.
+  /// Refuses anything but Ethereum mainnet.
+  Future<String> sendContractCall({
+    required String to,
+    required Uint8List data,
+    required BigInt value,
+    required BigInt gasLimit,
+    required BigInt maxFeePerGas,
+    required BigInt maxPriorityFeePerGas,
+    String? note,
+  }) async {
+    final client = getEthClient();
+    if (_credentials == null) {
+      await _initCredentials();
+    }
+    final chainId = await client.getChainId();
+    if (chainId != BigInt.one) {
+      throw Exception(
+        "The Ethereum RPC is not Ethereum mainnet (chain id $chainId).",
+      );
+    }
+    final myWeb3Address = await getMyWeb3Address();
+    final nonce = await client.getTransactionCount(
+      myWeb3Address,
+      atBlock: const web3.BlockNum.pending(),
+    );
+    final tx = web3.Transaction(
+      to: eth_wallet.EthereumAddress.fromHex(to),
+      data: data,
+      value: eth_wallet.EtherAmount.inWei(value),
+      maxGas: gasLimit.toInt(),
+      nonce: nonce,
+      maxFeePerGas: eth_wallet.EtherAmount.fromBigInt(
+        eth_wallet.EtherUnit.wei,
+        maxFeePerGas,
+      ),
+      maxPriorityFeePerGas: eth_wallet.EtherAmount.fromBigInt(
+        eth_wallet.EtherUnit.wei,
+        maxPriorityFeePerGas,
+      ),
+    );
+    final String txid;
+    try {
+      txid = await client.sendTransaction(_credentials!, tx, chainId: 1);
+    } on RPCError catch (e) {
+      throw Exception(
+        "${e.toString()}${e.data == null ? "" : e.data.toString()}",
+      );
+    }
+
+    final myAddress = (await getCurrentReceivingAddress())!.value;
+    final fee = Amount(
+      rawValue: gasLimit * maxFeePerGas,
+      fractionDigits: cryptoCurrency.fractionDigits,
+    );
+    final pending = _prepareTempTx(
+      TxData(
+        recipients: [
+          TxRecipient(
+            address: to,
+            amount: Amount(
+              rawValue: value,
+              fractionDigits: cryptoCurrency.fractionDigits,
+            ),
+            isChange: false,
+            addressType: AddressType.ethereum,
+          ),
+        ],
+        fee: fee,
+        nonce: nonce,
+        txid: txid,
+        txHash: txid,
+      ),
+      myAddress,
+    );
+    await updateSentCachedTxData(txData: pending);
+    if (note != null && note.isNotEmpty) {
+      await mainDB.putTransactionNote(
+        TransactionNote(walletId: walletId, txid: txid, value: note),
+      );
+    }
+    return txid;
   }
 
   @override
