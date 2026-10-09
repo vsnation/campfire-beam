@@ -461,7 +461,7 @@ flutter:
 # %%END_ENABLE_MWEBDEXE%%
 
 # %%ENABLE_BEAM%%
-## BEAM app shaders (amm, bans, airdrop, minter, blackhole). Each is pinned
+## BEAM app shaders (amm, bans, airdrop, minter, blackhole, bridge pipes). Each is pinned
 ## by SHA-256 and checked before first use (contracts/common/pinned_shader).
 #    - assets/beam/shaders/
 ## Icons of the verified assets (lib/wallets/beam/assets/beam_asset_catalog).
