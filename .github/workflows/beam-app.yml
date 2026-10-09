@@ -25,7 +25,10 @@ on:
       release_tag:
         description: 'App release to add the packages to (empty: artifacts only)'
         required: false
-        default: 'beam-v1.0.1'
+        # Empty by default: a test run must never replace a published
+        # release's files. (gh drops an empty -f value, so a default here
+        # would be used even when "empty" was asked for.)
+        default: ''
 
 permissions:
   contents: read
