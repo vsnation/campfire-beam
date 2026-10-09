@@ -19,16 +19,16 @@
   "linux-x86_64": {
     "file": "libbeam_core.so",
     "out": "lib-linux-x86_64",
-    "sha256": "56de364f96d1952a837eb9b0132d7d352c185e59f129508d2a8e5af401cf65b9"
+    "sha256": "d15b0a93421075991b29f341b70be133c4bccaae1b2f91f9e34cce48bf0003cc"
   },
   "linux-arm64": {
     "file": "libbeam_core.so",
     "out": "lib-linux-aarch64",
-    "sha256": "d3e3b40b83e4faa0828a8c0c911ca0dcb9d7a9126ed2721192c101b356fbc814"
+    "sha256": "a02138c496f4d6dbc1465734e7d0a9c23ab13f597f0948aaeb4f152fc3296d75"
   },
   "windows-x86_64": {
     "file": "beam_core.dll",
     "out": "lib-windows-x86_64",
-    "sha256": "1631543b8f7e480e8eea256c646a0c2eac76caa57504e6d9789c2c5d3dfd0fe2"
+    "sha256": "ddf1807697c756baa1a9b34f3a11eb031bafec6a5d7d2bff724066d95ed391a0"
   }
 }

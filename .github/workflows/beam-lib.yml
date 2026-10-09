@@ -16,7 +16,7 @@ on:
       release_tag:
         description: 'Pre-release to publish the libraries to'
         required: true
-        default: 'beam-core-7.5.14493-cf2'
+        default: 'beam-core-7.5.14493-cf3'
 
 permissions:
   contents: read

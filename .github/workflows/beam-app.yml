@@ -21,7 +21,7 @@ on:
       lib_tag:
         description: 'Pre-release holding the BEAM core library'
         required: true
-        default: 'beam-core-7.5.14493-cf2'
+        default: 'beam-core-7.5.14493-cf3'
       release_tag:
         description: 'App release to add the packages to (empty: artifacts only)'
         required: false
