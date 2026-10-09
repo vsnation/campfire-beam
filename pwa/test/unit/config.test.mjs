@@ -48,6 +48,9 @@ test('no source file reaches out to another origin', () => {
     for (const m of s.matchAll(/https?:\/\/[^\s'"`)<]+/g)) {
       const u = m[0];
       if (/^http:\/\/www\.w3\.org\/2000\/svg/.test(u)) continue; // SVG namespace, not a request
+      // A link the person taps to download BEAM's own recovery file in the browser: a navigation
+      // they choose, never a request by the app. Only this one, only on that screen.
+      if (u === 'https://${RECOVERY_OFFICIAL}' && f.endsWith(join('screens', 'fast_start.js'))) continue;
       offenders.push(`${f.slice(pwa.length)}: ${u}`);
     }
   }
