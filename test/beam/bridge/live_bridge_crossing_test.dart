@@ -376,8 +376,20 @@ void main() {
       }
       expect(crossing.state.isDone, isTrue, reason: crossing.state.name);
 
-      final beamAfter = await beam.available(route.beamAssetId);
-      final ethAfter = await eth.balance(route);
+      // A slow Tor circuit must not fail a crossing that is done: retry.
+      Future<BigInt> retry(Future<BigInt> Function() read) async {
+        for (var i = 0; ; i++) {
+          try {
+            return await read();
+          } catch (_) {
+            if (i == 2) rethrow;
+            await Future<void>.delayed(const Duration(seconds: 10));
+          }
+        }
+      }
+
+      final beamAfter = await retry(() => beam.available(route.beamAssetId));
+      final ethAfter = await retry(() => eth.balance(route));
       _evidence(
         'after: BEAM wallet ${_units(beamAfter, 8)} ${route.beamSymbol} '
         '(${_units(beamAfter - beamBefore, 8)}); Ethereum wallet '
