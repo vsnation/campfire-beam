@@ -141,8 +141,8 @@ void main() {
         await finish(tester);
       });
 
-      testWidgets('Ethereum RPCs: Stack Wallet first, then the public ones, and '
-          'where the rest of the data comes from ($where)', (tester) async {
+      testWidgets('Ethereum RPCs: Stack Wallet first, then the public ones, '
+          'and where the rest of the data comes from ($where)', (tester) async {
         await pumpWiring(
           tester,
           CoinNodesView(coin: _eth),

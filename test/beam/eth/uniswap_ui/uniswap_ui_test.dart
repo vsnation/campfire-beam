@@ -352,7 +352,10 @@ void main() {
     await _flush(tester);
     // One transaction carries both shares.
     expect(signer.sent.single.kind, UniTxKind.swap);
-    expect(signer.sent.single.value, ethUnit * BigInt.from(4) ~/ BigInt.from(1000));
+    expect(
+      signer.sent.single.value,
+      ethUnit * BigInt.from(4) ~/ BigInt.from(1000),
+    );
     await finish(tester);
   });
 

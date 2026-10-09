@@ -131,7 +131,9 @@ UniSplit? _knapsack(
 
   for (var i = 0; i < curves.length; i++) {
     final c = curves[i];
-    final next = [for (final row in best) [...row]];
+    final next = [
+      for (final row in best) [...row],
+    ];
     final choice = List.generate(
       steps + 1,
       (_) => List<int>.filled(maxParts + 1, 0),

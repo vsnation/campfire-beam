@@ -335,8 +335,10 @@ class UniswapQuoter {
       states: states,
     );
     BigInt costOf(List<UniHop> c) => costPerGas(
-      (pricer.route(c, at(n)) ?? pricer.route(c, at(1)) ?? const [])
-          .fold(BigInt.zero, (s, l) => s + l.gas),
+      (pricer.route(c, at(n)) ?? pricer.route(c, at(1)) ?? const []).fold(
+        BigInt.zero,
+        (s, l) => s + l.gas,
+      ),
     );
 
     UniQuote? quoteOf(List<List<UniHop>> routes, UniSplit split) {
@@ -417,9 +419,7 @@ class UniswapQuoter {
         );
       final kept = [best, ...ranked.take(maxSplitRoutes - 1)];
       if (kept.length > 1) {
-        await pricer.priceRoutes(kept, [
-          for (var k = 2; k < n - 1; k++) at(k),
-        ]);
+        await pricer.priceRoutes(kept, [for (var k = 2; k < n - 1; k++) at(k)]);
       }
 
       // Step 4: the best sharing of the amount between them.
@@ -553,10 +553,7 @@ class UniswapQuoter {
       UniswapAddresses.weth,
     ]) {
       for (final out in tokenOut.poolCurrencies) {
-        for (final p in [
-          ...?found[(eth, out)],
-          ...?found[(out, eth)],
-        ]) {
+        for (final p in [...?found[(eth, out)], ...?found[(out, eth)]]) {
           final s = states[p.id];
           final price = s?.price0to1;
           if (s == null || price == null || price <= 0) continue;

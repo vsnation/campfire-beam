@@ -453,10 +453,10 @@ void main() {
       expect(q.amountOut > single.amountOut, isTrue);
       expect(q.priceImpact!, lessThan(single.priceImpact!));
       for (final p in q.parts) {
+        final pools = p.route.pools.map((x) => '${x.version.label}/${x.fee}');
         printOnFailure(
           '${p.amountIn * BigInt.from(100) ~/ amount}% '
-          '${p.route.pools.map((x) => '${x.version.label}/${x.fee}').join(' > ')}'
-          ' → ${p.amountOut}',
+          '${pools.join(' > ')} → ${p.amountOut}',
         );
       }
       await swap(svc, who, q);

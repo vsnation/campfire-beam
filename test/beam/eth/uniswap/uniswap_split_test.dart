@@ -46,7 +46,8 @@ const v2WethWbeam = UniV2Pool(
 /// A constant-product pool's output for [steps] steps of [stepIn].
 List<BigInt?> curve(int steps, BigInt stepIn, BigInt rIn, BigInt rOut) => [
   BigInt.zero,
-  for (var k = 1; k <= steps; k++) v2AmountOut(stepIn * BigInt.from(k), rIn, rOut),
+  for (var k = 1; k <= steps; k++)
+    v2AmountOut(stepIn * BigInt.from(k), rIn, rOut),
 ];
 
 BigInt b(num v) => BigInt.from(v);
@@ -65,7 +66,10 @@ BigInt? bruteForce(List<UniSplitCurve> curves, int steps, int maxParts) {
     for (var j = 1; j <= left; j++) {
       final out = c.outs[j];
       if (out == null || out <= BigInt.zero) continue;
-      go(i + 1, left - j, parts + 1, sum + out - c.cost, {...pools, ...c.pools});
+      go(i + 1, left - j, parts + 1, sum + out - c.cost, {
+        ...pools,
+        ...c.pools,
+      });
     }
   }
 
@@ -100,8 +104,7 @@ void main() {
       expect(split.steps, [16, 4]);
     });
 
-    test('a second pool is not used when its gas costs more than it saves',
-        () {
+    test('a second pool is not used when its gas costs more than it saves', () {
       final c = curve(20, b(1e15), b(100e18), b(1e12));
       // A whole 1% of the output per extra route: far more than splitting
       // 0.02 ETH between two deep pools saves.
@@ -125,8 +128,7 @@ void main() {
       expect(split.parts, 2);
     });
 
-    test('many routes through one first pool: still never two of them',
-        () {
+    test('many routes through one first pool: still never two of them', () {
       // Every way on from one pool: twelve routes, all sharing 'first'.
       final curves = [
         for (var i = 0; i < 12; i++)
@@ -207,8 +209,7 @@ void main() {
 
     List<int> commandsOf(UniSwapPlan p) => p.commands.toList();
 
-    test('ETH → WBEAM: wraps only the v2 share, each pool its own minimum',
-        () {
+    test('ETH → WBEAM: wraps only the v2 share, each pool its own minimum', () {
       final q = UniQuote(
         tokenIn: UniToken.eth,
         tokenOut: wbeam,
@@ -258,10 +259,10 @@ void main() {
       final settle = abiDecode('address,uint256,bool', params[0]);
       expect(settle[1], eth * b(7) ~/ b(10));
       expect(settle[2], false); // paid from the ETH sent with the call
-      final swap = abiDecode(
-        '((address,address,uint24,int24,address),bool,uint128,uint128,bytes)',
-        params[1],
-      ).first as List;
+      const swapParams =
+          '((address,address,uint24,int24,address),bool,uint128,uint128,'
+          'bytes)';
+      final swap = abiDecode(swapParams, params[1]).first as List;
       expect(swap[3], minV4);
       final take = abiDecode('address,uint256', params[2]);
       expect(take[1], minV4);

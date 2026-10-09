@@ -228,10 +228,7 @@ class EthRpc {
   }) async {
     final parts = <List<EthCall>>[
       for (var i = 0; i < calls.length; i += chunk)
-        calls.sublist(
-          i,
-          i + chunk > calls.length ? calls.length : i + chunk,
-        ),
+        calls.sublist(i, i + chunk > calls.length ? calls.length : i + chunk),
     ];
     final results = List<List<EthCallResult>?>.filled(parts.length, null);
     Future<void> run(int i) async {

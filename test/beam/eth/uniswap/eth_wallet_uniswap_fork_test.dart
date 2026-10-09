@@ -94,7 +94,13 @@ void main() {
             owner: address,
           );
           final h = await signer.send(tx.withNote('approve'));
-          expect((await svc.waitForReceipt(h, every: const Duration(milliseconds: 200)))!.success, isTrue);
+          expect(
+            (await svc.waitForReceipt(
+              h,
+              every: const Duration(milliseconds: 200),
+            ))!.success,
+            isTrue,
+          );
         }
         final prepared = await svc.prepareSwap(
           quote: q,
