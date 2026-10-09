@@ -118,21 +118,86 @@ BigInt ceilToGrid(BigInt v, BigInt grid) {
   return r == BigInt.zero ? v : v + grid - r;
 }
 
-/// The b2e relayer fee in groth for [route], rounded up to the route's
-/// grid; null when a price is missing (quote nothing rather than guess).
+/// The relayer's minimum fee for [route] right now, in the Ethereum side's
+/// smallest units — computed exactly as the relayer computes it, double for
+/// double (beam-bridge-ethrelay `utils/eth_fee.js` `calcCurrentRelayerFee`
+/// and `beam2eth_relay.js` `getCurrentMinRelayerFee`):
+///
+///   gasPrice   = Number(fromWei(maxFeePerGas, 'gwei'))
+///   relayCosts = (RELAY_COSTS_IN_GAS * gasPrice * ethRate) / 10^9
+///   minimum    = Math.trunc(10^ETH_SIDE_DECIMALS * (relayCosts / rate))
+///
+/// Null when a price is missing (quote nothing rather than guess).
+BigInt? b2eRelayerMinimum(
+  BridgeRoute route,
+  BridgeRelayerGas gas,
+  BridgePrices prices,
+) {
+  final ethRate = prices.of('ethereum');
+  final rate = prices.of(route.coingeckoId);
+  if (ethRate == null || rate == null) return null;
+  final gasPrice = double.parse(_weiAsGwei(gas.maxFeePerGas));
+  if (!gasPrice.isFinite || gasPrice == 0) return null;
+  final relayCosts = (route.relayGas * gasPrice * ethRate) / math.pow(10, 9);
+  final minimum = math.pow(10, route.ethDecimals) * (relayCosts / rate);
+  if (!minimum.isFinite || minimum < 0) return null;
+  // The double's exact value, as JS's BigInt(number) takes it: past 2^63 a
+  // Dart int would clamp (DAI at 100 gwei is about 3.8 × 10^19 wei).
+  return BigInt.from(minimum.toDouble());
+}
+
+/// What the relayer reads from a BEAM-side amount of [groth]
+/// (`beam2eth_relay.js` `preprocessAmount`): padded with zeros when the
+/// Ethereum side has more decimals, its extra digits cut off when it has
+/// fewer (USDT).
+BigInt relayerReads(BridgeRoute route, BigInt groth) {
+  final d = route.ethDecimals - BridgeRoute.beamDecimals;
+  if (d > 0) return groth * BigInt.from(10).pow(d);
+  if (d < 0) return groth ~/ BigInt.from(10).pow(-d);
+  return groth;
+}
+
+/// The b2e relayer fee to lock, in groth: the least the relayer accepts at
+/// [margin] times its current minimum ([b2eRelayerMinimum]). With a
+/// margin of 1 it is exactly the relayer's minimum, rounded up only as far
+/// as the BEAM side's 8 decimals require. Always on the route's grid and
+/// never zero (a zero fee is never relayed). Null when a price is missing.
 BigInt? b2eRelayerFeeGroth(
   BridgeRoute route,
   BridgeRelayerGas gas,
   BridgePrices prices, {
   double margin = kBridgeFeeMargin,
 }) {
-  final ethUsd = prices.of('ethereum');
-  final assetUsd = prices.of(route.coingeckoId);
-  if (ethUsd == null || assetUsd == null) return null;
-  final costUsd = route.relayGas * gas.maxFeePerGas.toDouble() / 1e18 * ethUsd;
-  final groth = costUsd / assetUsd * 1e8 * margin;
-  if (!groth.isFinite || groth <= 0) return null;
-  return ceilToGrid(BigInt.from(groth.ceil()), route.beamGrid);
+  final minimum = b2eRelayerMinimum(route, gas, prices);
+  if (minimum == null || !margin.isFinite || margin < 1) return null;
+  // The margin in thousandths, rounded up, so it never undercuts.
+  final permille = BigInt.from((margin * 1000).ceil());
+  final thousand = BigInt.from(1000);
+  final target = (minimum * permille + thousand - BigInt.one) ~/ thousand;
+  final d = route.ethDecimals - BridgeRoute.beamDecimals;
+  BigInt groth;
+  if (d > 0) {
+    final unit = BigInt.from(10).pow(d);
+    groth = (target + unit - BigInt.one) ~/ unit;
+  } else if (d < 0) {
+    groth = target * BigInt.from(10).pow(-d);
+  } else {
+    groth = target;
+  }
+  if (groth < route.beamGrid) groth = route.beamGrid;
+  return groth;
+}
+
+/// [wei] in gwei as web3's `fromWei(…, 'gwei')` writes it: an exact decimal
+/// with no trailing zeros.
+String _weiAsGwei(BigInt wei) {
+  final unit = BigInt.from(1000000000);
+  final whole = wei ~/ unit;
+  final frac = (wei % unit)
+      .toString()
+      .padLeft(9, '0')
+      .replaceFirst(RegExp(r'0+$'), '');
+  return frac.isEmpty ? '$whole' : '$whole.$frac';
 }
 
 /// The e2b relayer fee in Ethereum units for [route] (0.02 BEAM worth),

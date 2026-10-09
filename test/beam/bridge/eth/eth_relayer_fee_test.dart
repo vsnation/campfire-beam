@@ -148,12 +148,16 @@ void main() {
       expect(sectionDGas.maxFeePerGas, BigInt.from(1832064250));
     });
 
+    // What the relayer's own code computes for these inputs (node, its
+    // eth_fee.js formula): its minimum truncates, so with no margin the fee
+    // is that minimum, rounded up only where BEAM's 8 decimals require (ETH
+    // and DAI have 18).
     final expected = {
-      'beam': BigInt.from(5582377613), // 55.82377613 BEAM, 96 000 gas
-      'eth': BigInt.from(21985),
-      'wbtc': BigInt.from(663),
-      'usdt': BigInt.from(54722100), // on USDT's 100-groth grid
-      'dai': BigInt.from(54686161),
+      'beam': BigInt.from(5582377612), // 55.82377612 BEAM, 96 000 gas
+      'eth': BigInt.from(21985), // relayer minimum 219 847 710 000 000 wei
+      'wbtc': BigInt.from(662),
+      'usdt': BigInt.from(54722000), // minimum 547 220 USDT units × 100
+      'dai': BigInt.from(54686161), // minimum 546 861 606 210 815 616 wei
     };
     for (final MapEntry(key: id, value: groth) in expected.entries) {
       test(id, () {
