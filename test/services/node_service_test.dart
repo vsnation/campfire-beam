@@ -20,8 +20,12 @@ void main() {
   final expectedDefaultNodeCount =
       expectedPrimaryDefaults.length +
       (AppConfig.coins.any((e) => e.identifier == 'firo') ? 4 : 0) +
-      // Campfire for BEAM lists every public BEAM node.
+      // Campfire for BEAM lists every public BEAM node and Ethereum RPC.
       AppConfig.coins.whereType<Beam>().fold<int>(
+        0,
+        (n, c) => n + c.alternateNodes.length,
+      ) +
+      AppConfig.coins.whereType<Ethereum>().fold<int>(
         0,
         (n, c) => n + c.alternateNodes.length,
       );

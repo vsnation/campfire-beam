@@ -26,6 +26,13 @@ import 'debug_info_dialog.dart';
 import 'desktop_manage_block_explorers_dialog.dart';
 import 'stack_privacy_dialog.dart';
 
+
+// Campfire for BEAM: "Toggle testnet coins" only where the build has a
+// testnet coin to show (BEAM + Ethereum has none: the switch did nothing).
+bool get _hasTestNetCoins =>
+    !AppConfig.isSingleCoinApp &&
+    AppConfig.coins.any((c) => c.network.isTestNet);
+
 class AdvancedSettings extends ConsumerStatefulWidget {
   const AdvancedSettings({super.key});
 
@@ -86,7 +93,7 @@ class _AdvancedSettings extends ConsumerState<AdvancedSettings> {
                         padding: EdgeInsets.all(10.0),
                         child: Divider(thickness: 0.5),
                       ),
-                      if (!AppConfig.isSingleCoinApp)
+                      if (_hasTestNetCoins)
                         Padding(
                           padding: const EdgeInsets.all(10),
                           child: Row(
@@ -123,7 +130,7 @@ class _AdvancedSettings extends ConsumerState<AdvancedSettings> {
                             ],
                           ),
                         ),
-                      if (!AppConfig.isSingleCoinApp)
+                      if (_hasTestNetCoins)
                         const Padding(
                           padding: EdgeInsets.all(10.0),
                           child: Divider(thickness: 0.5),

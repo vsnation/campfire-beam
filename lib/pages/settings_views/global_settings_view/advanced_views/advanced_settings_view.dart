@@ -27,6 +27,13 @@ import 'logging_settings_view.dart';
 import 'manage_coin_units/manage_coin_units_view.dart';
 import 'manage_explorer_view.dart';
 
+
+// Campfire for BEAM: "Toggle testnet coins" only where the build has a
+// testnet coin to show (BEAM + Ethereum has none: the switch did nothing).
+bool get _hasTestNetCoins =>
+    !AppConfig.isSingleCoinApp &&
+    AppConfig.coins.any((c) => c.network.isTestNet);
+
 class AdvancedSettingsView extends StatelessWidget {
   const AdvancedSettingsView({super.key});
 
@@ -84,8 +91,8 @@ class AdvancedSettingsView extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (!AppConfig.isSingleCoinApp) const SizedBox(height: 8),
-                if (!AppConfig.isSingleCoinApp)
+                if (_hasTestNetCoins) const SizedBox(height: 8),
+                if (_hasTestNetCoins)
                   RoundedWhiteContainer(
                     child: Consumer(
                       builder: (_, ref, __) {
