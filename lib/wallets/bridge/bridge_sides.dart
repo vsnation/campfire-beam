@@ -303,8 +303,9 @@ abstract class EthPipeSide {
   Future<BigInt> ethBalance();
 
   /// Prices the transactions locking [value] + [fee] in [route]'s pipe
-  /// for [receiverKey]. Refuses (badAmount) a value or fee that is zero,
-  /// off the grid, or would overflow either chain.
+  /// for [receiverKey]. Refuses (badAmount) a value that is zero, a value
+  /// or fee off the grid, or a sum that would overflow either chain. A
+  /// zero fee is allowed (the relayer does not check it going to BEAM).
   Future<EthPipeLockPlan> planLock(
     BridgeRoute route, {
     required BigInt value,

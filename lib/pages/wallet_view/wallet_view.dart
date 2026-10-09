@@ -70,6 +70,7 @@ import '../../widgets/background.dart';
 import '../../widgets/beam/wallet_home/beam_wallet_home.dart';
 import '../../wallets/wallet/impl/ethereum_wallet.dart';
 import '../../widgets/beam/wiring/beam_features.dart';
+import '../bridge/bridge_wiring.dart';
 import '../eth/uniswap/uniswap_wiring.dart';
 import '../../widgets/conditional_parent.dart';
 import '../../widgets/custom_buttons/app_bar_icon_button.dart';
@@ -1118,6 +1119,15 @@ class _WalletViewState extends ConsumerState<WalletView> {
                       icon: const ExchangeNavIcon(),
                       onTap: () =>
                           unawaited(openUniswapSwap(context, ref, wallet)),
+                    ),
+                  // …and Bridge: to and from the user's BEAM wallet.
+                  if (wallet is EthereumWallet &&
+                      !viewOnly &&
+                      bridgeAvailable)
+                    WalletNavigationBarItemData(
+                      label: "Bridge",
+                      icon: BeamNavIcon(asset: Assets.svg.arrowsTwoWay),
+                      onTap: () => unawaited(openBridge(context, wallet)),
                     ),
                   if (!viewOnly &&
                       Constants.enableExchange &&

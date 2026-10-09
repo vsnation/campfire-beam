@@ -37,6 +37,7 @@ import 'sidebar_harness.dart';
 const _beamOrder = [
   'My Campfire',
   'Swap',
+  'Bridge',
   'Assets',
   'Names',
   'dApps',

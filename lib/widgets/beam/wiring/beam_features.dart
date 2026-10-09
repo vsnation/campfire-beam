@@ -14,11 +14,13 @@
 //
 // Click budget (USER_PSYCHOLOGY §1.2), from opening the wallet:
 //   phone   Send, Receive, Swap, Assets: 1 tap (the bar).
-//           Names, dApps, Node & sync, Split coins: 2 (More → it).
+//           Names, dApps, Node & sync, Split coins, Bridge: 2 (More → it).
 //           Airdrops and Tokens: 3 (More → it → which task).
 //   desktop Send, Receive: 0 (the wallet's tabs); Assets: 0 (beside them).
 //           Swap, Names, dApps, Node & sync, Split coins: 1 (the feature
 //           row, or 2 when the window is narrow and it sits under More).
+//           Bridge: 1, the side menu's own item (a pair of wallets, not a
+//           feature of one).
 //           Airdrops and Tokens: 2 (it → which task).
 
 import 'dart:async';
@@ -35,6 +37,7 @@ import '../../../pages/beam/minter/beam_mint_token_view.dart';
 import '../../../pages/beam/minter/beam_my_tokens_view.dart';
 import '../../../pages/beam/names/beam_names_home_view.dart';
 import '../../../pages/beam/split/beam_split_view.dart';
+import '../../../pages/bridge/bridge_wiring.dart';
 import '../../../pages/token_view/my_tokens_view.dart';
 import '../../../pages_desktop_specific/beam/dex/desktop_beam_dex_view.dart';
 import '../../../pages_desktop_specific/my_stack_view/wallet_view/sub_widgets/desktop_wallet_features.dart';
@@ -62,7 +65,8 @@ enum BeamFeature {
   airdrops('Airdrops', 'Claim a code, or give some away'),
   tokens('Tokens', 'Create your own token on BEAM'),
   node('Node & sync', 'Which node you use, and how up to date'),
-  split('Split coins', 'Send several payments at once');
+  split('Split coins', 'Send several payments at once'),
+  bridge('Bridge', 'Move coins to and from Ethereum');
 
   const BeamFeature(this.label, this.description);
 
@@ -79,18 +83,31 @@ enum BeamFeature {
     BeamFeature.tokens => Assets.svg.circlePlus,
     BeamFeature.node => Assets.svg.node,
     BeamFeature.split => Assets.svg.splitCoins,
+    BeamFeature.bridge => Assets.svg.arrowsTwoWay,
   };
+
+  /// Whether this build offers it (the bridge needs both of its halves).
+  bool get available => this != bridge || bridgeAvailable;
 
   /// On the phone wallet's bottom bar, after Receive and Send.
   static const phoneBar = [swap, assets];
 
-  /// In the phone wallet's More sheet, most used first; Split coins last,
-  /// so every older row (and click path) keeps its place.
-  static const phoneMore = [names, dapps, airdrops, tokens, node, split];
+  /// In the phone wallet's More sheet, most used first; newer features
+  /// last (Split coins, then Bridge), so the older rows keep their order.
+  static const phoneMore = [
+    names,
+    dapps,
+    airdrops,
+    tokens,
+    node,
+    split,
+    bridge,
+  ];
 
   /// The desktop wallet's feature row, most used first (what does not fit
   /// moves under Campfire's "More"). Assets sit beside Send / Receive.
-  /// Split coins last, so the older buttons keep their places.
+  /// Split coins last, so the older buttons keep their places. Bridge is
+  /// the side menu's own item on desktop.
   static const desktopRow = [swap, names, dapps, airdrops, tokens, node, split];
 }
 
@@ -194,6 +211,8 @@ Future<void> openBeamFeature(
       await showBeamNodePanel(context, wallet.walletId);
     case BeamFeature.split:
       await openBeamSplit(context, wallet);
+    case BeamFeature.bridge:
+      await openBridge(context, wallet);
   }
 }
 
@@ -253,11 +272,12 @@ List<WalletNavigationBarItemData> beamWalletMoreItems(
   BeamWallet wallet,
 ) => [
   for (final f in BeamFeature.phoneMore)
-    WalletNavigationBarItemData(
-      label: f.label,
-      icon: BeamNavIcon(asset: f.icon),
-      onTap: () => unawaited(openBeamFeature(context, wallet, f)),
-    ),
+    if (f.available)
+      WalletNavigationBarItemData(
+        label: f.label,
+        icon: BeamNavIcon(asset: f.icon),
+        onTap: () => unawaited(openBeamFeature(context, wallet, f)),
+      ),
 ];
 
 /// A bottom bar icon in Campfire's size and colour.

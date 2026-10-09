@@ -20,7 +20,8 @@
 // Specs (USER_PSYCHOLOGY §6): Swap, Names and dApps are the wallet
 // screen's own pages (their specs are in desktop_beam_dex_view.dart,
 // beam_names_home_view.dart, dapp_store_view.dart), shown under the side
-// menu's header; Assets and the Airdrops / Tokens hubs are in this folder.
+// menu's header; Assets and the Airdrops / Tokens hubs are in this folder;
+// Bridge is `bridge_sidebar_page.dart` (a pair of wallets, not one).
 //
 // R11: nothing here waits for the wallet core. A wallet that is not running
 // is started in the background; the pages show what Campfire has cached and
@@ -45,6 +46,7 @@ import '../../../wallets/wallet/impl/ethereum_wallet.dart';
 import '../../../widgets/beam/sidebar/beam_sidebar.dart';
 import '../../../widgets/beam/sidebar/swap_sidebar_wallets.dart';
 import '../../../widgets/beam/wiring/beam_wallet_listenables.dart';
+import '../../bridge/bridge_sidebar_page.dart';
 import '../../eth/uniswap/desktop_uniswap_view.dart';
 import '../dex/desktop_beam_dex_view.dart';
 import 'beam_sidebar_assets_page.dart';
@@ -86,6 +88,8 @@ class BeamSidebarSection extends ConsumerStatefulWidget {
       ),
       BeamSidebarDestination.airdrops || BeamSidebarDestination.tokens =>
         BeamSidebarHubPage(destination: destination, wallet: wallet),
+      // Both wallets of a pair, not one: built in [build] instead.
+      BeamSidebarDestination.bridge => const BridgeSidebarPage(),
     };
   }
 
@@ -135,6 +139,8 @@ class _BeamSidebarSectionState extends ConsumerState<BeamSidebarSection> {
   @override
   Widget build(BuildContext context) {
     final d = widget.destination;
+    // A BEAM wallet and an Ethereum wallet, each picked on the page.
+    if (d == BeamSidebarDestination.bridge) return const BridgeSidebarPage();
     if (d == BeamSidebarDestination.swap && ref.watch(pSwapHasEthereum)) {
       // Swap also takes Ethereum wallets: Uniswap for those.
       final w = ref.watch(pSwapSidebarWallet).wallet;

@@ -308,13 +308,39 @@ void main() {
     await finishSidebar(tester);
   });
 
+  testWidgets('Bridge opens beside the menu; with no Ethereum wallet it '
+      'offers to add one', (tester) async {
+    final wallet = await openBeamWallet(tester, db, core: SidebarCore());
+    await pumpSidebar(tester, wallets: [wallet]);
+    await tapMenu(tester, BeamSidebarDestination.bridge.menuKey);
+    expect(_title(tester), 'Bridge');
+    expect(find.byKey(const Key('bridge-no-wallet')), findsOneWidget);
+    expect(find.text('Add an Ethereum wallet'), findsOneWidget);
+    expect(find.byKey(const Key('beamSidebarWalletChip')), findsNothing);
+    await expectLater(
+      find.byKey(goldenKey),
+      matchesGoldenFile('goldens/bridge_selected.png'),
+    );
+    await finishSidebar(tester);
+  });
+
   testWidgets('no BEAM wallet: one button, "Create a BEAM wallet"', (
     tester,
   ) async {
     await pumpSidebar(tester, wallets: const []);
     for (final d in BeamSidebarDestination.values) {
       await tapMenu(tester, d.menuKey);
-      expect(find.byKey(const Key('beamSidebarNoWallet')), findsOneWidget);
+      // The bridge says so in its own form (it needs a wallet of each).
+      expect(
+        find.byKey(
+          Key(
+            d == BeamSidebarDestination.bridge
+                ? 'bridge-no-wallet'
+                : 'beamSidebarNoWallet',
+          ),
+        ),
+        findsOneWidget,
+      );
       expect(_title(tester), d.label);
       expect(find.byKey(const Key('beamSidebarWalletChip')), findsNothing);
     }

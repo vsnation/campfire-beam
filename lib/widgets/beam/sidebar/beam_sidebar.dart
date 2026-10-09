@@ -20,7 +20,7 @@
 // lib/pages_desktop_specific/beam/sidebar/.
 //
 // Click budget (USER_PSYCHOLOGY §1.2), from opening the app on desktop:
-//   Swap, Assets, Names, dApps: 1 click (the menu).
+//   Swap, Bridge, Assets, Names, dApps: 1 click (the menu).
 //   Claim a code, My airdrops, Create codes, Create a token, My tokens,
 //   Burn: 2 (Airdrops / Tokens → the task).
 //   Node & sync: 1 (the node chip under the logo).
@@ -66,6 +66,7 @@ abstract final class BeamSidebar {
 /// The BEAM pages of the desktop menu, in menu order.
 enum BeamSidebarDestination {
   swap(BeamFeature.swap, DesktopMenuItemId.beamSwap),
+  bridge(BeamFeature.bridge, DesktopMenuItemId.beamBridge),
   assets(BeamFeature.assets, DesktopMenuItemId.beamAssets),
   names(BeamFeature.names, DesktopMenuItemId.beamNames),
   dapps(BeamFeature.dapps, DesktopMenuItemId.beamDapps),
@@ -73,6 +74,12 @@ enum BeamSidebarDestination {
   tokens(BeamFeature.tokens, DesktopMenuItemId.beamTokens);
 
   const BeamSidebarDestination(this.feature, this.menuId);
+
+  /// The pages this build's menu lists (Bridge only when it is wired).
+  static List<BeamSidebarDestination> get shown => [
+    for (final d in values)
+      if (d.feature.available) d,
+  ];
 
   /// The same feature the phone's bar and the wallet screen open.
   final BeamFeature feature;
@@ -88,6 +95,7 @@ enum BeamSidebarDestination {
   /// and size of My Campfire, Notifications and the rest.
   String get icon => switch (this) {
     swap => Assets.svg.exchangeDesktop,
+    bridge => Assets.svg.arrowsTwoWay,
     assets => Assets.svg.tokens,
     names => Assets.svg.robotHead,
     dapps => Assets.svg.boxAuto,

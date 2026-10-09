@@ -16,11 +16,11 @@
 //
 // Layout: Campfire's own pieces (living logo, app name, DesktopMenuItem
 // pills, Exit, minimize), with the Tor line replaced by the BEAM node chip
-// (Tor stays as an icon beside it). Twelve items plus Exit do not fit an
-// 800 px window at Campfire's 52 px rows, so the BEAM build uses 42 px rows
-// and a smaller logo: the whole menu is 779 px tall and never scrolls in
-// the 1280 × 800 window; a shorter window scrolls the items, never the logo
-// or Exit.
+// (Tor stays as an icon beside it). Thirteen items plus Exit do not fit an
+// 800 px window at Campfire's 52 px rows, so the BEAM build uses 40 px rows
+// 1 px apart and a smaller logo: the whole menu never scrolls in the
+// 1280 × 800 window (beam_sidebar_menu_test.dart measures it); a shorter
+// window scrolls the items, never the logo or Exit.
 //
 // Exit-intent (§1.7): a menu that scrolls, so Settings is hidden below the
 // fold (fits); icons that mean nothing once minimized (every item has a
@@ -68,7 +68,7 @@ class BeamSidebarMenu extends ConsumerStatefulWidget {
   final void Function(DesktopMenuItemId) onSelected;
 
   /// Item rows of the BEAM build (Campfire's are 52).
-  static const double itemHeight = 42;
+  static const double itemHeight = 40;
 
   @override
   ConsumerState<BeamSidebarMenu> createState() => _BeamSidebarMenuState();
@@ -121,7 +121,7 @@ class _BeamSidebarMenuState extends ConsumerState<BeamSidebarMenu> {
     // 16 px either side when expanded, 8 when minimized (Campfire's).
     final inner = expanded ? widget.width - 32 : widget.width - 16;
 
-    const gap = SizedBox(height: 2);
+    const gap = SizedBox(height: 1);
     final items = <Widget>[
       _item(
         'myStack',
@@ -129,7 +129,7 @@ class _BeamSidebarMenuState extends ConsumerState<BeamSidebarMenu> {
         'My ${AppConfig.prefix}',
         const DesktopMyStackIcon(),
       ),
-      for (final d in BeamSidebarDestination.values) ...[
+      for (final d in BeamSidebarDestination.shown) ...[
         gap,
         _item(
           d.menuKey.value,

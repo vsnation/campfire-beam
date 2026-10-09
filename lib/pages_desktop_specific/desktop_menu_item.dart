@@ -261,7 +261,7 @@ class DesktopMenuItem<T> extends ConsumerStatefulWidget {
   final DMIController? controller;
   final bool isExpandedInitially;
 
-  /// Campfire for BEAM: a 42 px row instead of 52, the same on every
+  /// Campfire for BEAM: a 40 px row instead of 52, the same on every
   /// platform, so the BEAM build's longer menu fits a 1280 × 800 window.
   final bool dense;
 
@@ -341,7 +341,7 @@ class _DesktopMenuItemState<T> extends ConsumerState<DesktopMenuItem<T>>
     if (widget.dense) {
       style = style?.copyWith(
         padding: WidgetStateProperty.all(EdgeInsets.zero),
-        minimumSize: WidgetStateProperty.all(const Size(40, 42)),
+        minimumSize: WidgetStateProperty.all(const Size(40, 40)),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         visualDensity: VisualDensity.standard,
       );
@@ -353,7 +353,7 @@ class _DesktopMenuItemState<T> extends ConsumerState<DesktopMenuItem<T>>
         onChanged(value);
       },
       child: Padding(
-        padding: EdgeInsets.symmetric(vertical: widget.dense ? 10 : 16),
+        padding: EdgeInsets.symmetric(vertical: widget.dense ? 9 : 16),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

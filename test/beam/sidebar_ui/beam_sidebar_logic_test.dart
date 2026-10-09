@@ -209,6 +209,7 @@ void main() {
     test('BEAM items in the owner\'s order, each with its own menu id', () {
       expect(BeamSidebarDestination.values.map((d) => d.label).toList(), [
         'Swap',
+        'Bridge',
         'Assets',
         'Names',
         'dApps',

@@ -44,6 +44,7 @@ const _more = [
   'Tokens',
   'Node & sync',
   'Split coins',
+  'Bridge',
 ];
 
 /// The bar's "More" label is cross-faded (two Texts): the first is enough.
@@ -118,9 +119,7 @@ void main() {
   });
 
   testWidgets('More lists Names, dApps, Airdrops, Tokens, Node & sync, Split '
-      'coins', (
-    tester,
-  ) async {
+      'coins, Bridge', (tester) async {
     final wallet = await openBeamWallet(tester, db);
     await pumpWiring(
       tester,

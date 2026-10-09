@@ -49,6 +49,7 @@ enum DesktopMenuItemId {
   beamDapps,
   beamAirdrops,
   beamTokens,
+  beamBridge,
 }
 
 class DesktopMenu extends ConsumerStatefulWidget {
