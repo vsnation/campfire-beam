@@ -24,9 +24,11 @@ import '../../../../utilities/default_eth_tokens.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../utilities/util.dart';
 import '../../../../widgets/app_icon.dart';
+import '../../../../widgets/beam/wbeam_icon.dart';
 import '../../../../widgets/conditional_parent.dart';
 import '../../../../widgets/custom_buttons/draggable_switch_button.dart';
 import '../../../../widgets/rounded_white_container.dart';
+import '../../../../widgets/tor_aware_network_image.dart';
 
 class AddTokenListElementData {
   AddTokenListElementData(this.token);
@@ -91,7 +93,11 @@ class _AddTokenListElementState extends ConsumerState<AddTokenListElement> {
         children: [
           Row(
             children: [
+              // Campfire for BEAM: WBEAM is BEAM on Ethereum.
               if (widget.data.token is EthContract &&
+                  isWbeam(widget.data.token.address))
+                WbeamIcon(size: iconSize)
+              else if (widget.data.token is EthContract &&
                   widget.data.token.address.toLowerCase() ==
                       DefaultTokens.rsFiro.address)
                 SvgPicture.asset(
@@ -101,12 +107,15 @@ class _AddTokenListElementState extends ConsumerState<AddTokenListElement> {
                 )
               else
                 currency != null
-                    ? SvgPicture.network(
+                    // Campfire for BEAM: through Tor when Tor is on
+                    // (SvgPicture.network always connects directly).
+                    ? TorAwareNetworkImage(
                         currency!.image,
+                        svg: true,
                         width: iconSize,
                         height: iconSize,
-                        placeholderBuilder: (_) =>
-                            AppIcon(width: iconSize, height: iconSize),
+                        placeholder: AppIcon(width: iconSize, height: iconSize),
+                        error: AppIcon(width: iconSize, height: iconSize),
                       )
                     : AppIcon(width: iconSize, height: iconSize),
               const SizedBox(width: 12),

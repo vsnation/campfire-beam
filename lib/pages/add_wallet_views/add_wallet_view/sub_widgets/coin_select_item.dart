@@ -30,6 +30,7 @@ import '../../../../utilities/default_eth_tokens.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../utilities/util.dart';
 import '../../../../widgets/app_icon.dart';
+import '../../../../widgets/beam/wbeam_icon.dart';
 import '../../../../widgets/tor_aware_network_image.dart';
 
 class CoinSelectItem extends ConsumerStatefulWidget {
@@ -139,7 +140,11 @@ class _CoinSelectItemState extends ConsumerState<CoinSelectItem> {
           constraints: BoxConstraints(minHeight: isDesktop ? 70 : 0),
           child: Row(
             children: [
+              // Campfire for BEAM: WBEAM is BEAM on Ethereum.
               if (widget.entity is EthTokenEntity &&
+                  isWbeam((widget.entity as EthTokenEntity).token.address))
+                const WbeamIcon(size: 26)
+              else if (widget.entity is EthTokenEntity &&
                   (widget.entity as EthTokenEntity).token.address
                           .toLowerCase() ==
                       DefaultTokens.rsFiro.address)

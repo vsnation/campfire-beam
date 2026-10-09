@@ -22,6 +22,7 @@ import '../../../themes/coin_icon_provider.dart';
 import '../../../themes/theme_providers.dart';
 import '../../../utilities/constants.dart';
 import '../../../wallets/crypto_currency/crypto_currency.dart';
+import '../../beam/wbeam_icon.dart';
 import '../../tor_aware_network_image.dart';
 
 class WalletInfoCoinIcon extends ConsumerStatefulWidget {
@@ -77,19 +78,24 @@ class _WalletInfoCoinIconState extends ConsumerState<WalletInfoCoinIcon> {
 
   @override
   Widget build(BuildContext context) {
+    // Campfire for BEAM: WBEAM is BEAM on Ethereum, so it looks like BEAM.
+    final wbeam = isWbeam(widget.contractAddress);
     return Container(
       width: widget.size,
       height: widget.size,
       decoration: BoxDecoration(
-        color: ref.watch(pCoinColor(widget.coin)).withOpacity(0.4),
+        color: ref
+            .watch(pCoinColor(wbeam ? wbeamCoin : widget.coin))
+            .withOpacity(0.4),
         borderRadius: BorderRadius.circular(
           Constants.size.circularBorderRadius,
         ),
       ),
       child: Padding(
         padding: EdgeInsets.all(widget.size / 5),
-        child:
-            imageUrl != null && imageUrl!.isNotEmpty
+        child: wbeam
+            ? const WbeamIcon(size: 20)
+            : imageUrl != null && imageUrl!.isNotEmpty
                 ? TorAwareNetworkImage(
                   imageUrl!,
                   svg: true,

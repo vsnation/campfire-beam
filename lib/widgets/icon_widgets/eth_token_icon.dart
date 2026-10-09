@@ -22,6 +22,7 @@ import '../../themes/coin_icon_provider.dart';
 import '../../utilities/assets.dart';
 import '../../utilities/default_eth_tokens.dart';
 import '../../wallets/crypto_currency/crypto_currency.dart';
+import '../beam/wbeam_icon.dart';
 import '../loading_indicator.dart';
 import '../tor_aware_network_image.dart';
 
@@ -47,7 +48,7 @@ class _EthTokenIconState extends ConsumerState<EthTokenIcon> {
   @override
   void initState() {
     super.initState();
-    if (_isRsFiro) return;
+    if (_isRsFiro || isWbeam(widget.contractAddress)) return;
 
     ExchangeDataLoadingService.instance.isar.then((isar) async {
       final currency = await isar.currencies
@@ -73,6 +74,8 @@ class _EthTokenIconState extends ConsumerState<EthTokenIcon> {
 
   @override
   Widget build(BuildContext context) {
+    // Campfire for BEAM: WBEAM is BEAM on Ethereum.
+    if (isWbeam(widget.contractAddress)) return WbeamIcon(size: widget.size);
     if (_isRsFiro) {
       return SvgPicture.asset(
         Assets.svg.rsFiro,

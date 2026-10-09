@@ -174,21 +174,29 @@ class _MyTokenSelectItemState extends ConsumerState<MyTokenSelectItem> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Campfire for BEAM: a long name ("Wrapped BEAM")
+                      // beside a long balance overflowed a 375 px phone;
+                      // the balance stays whole, the name gives way.
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            widget.token.name,
-                            style: isDesktop
-                                ? STextStyles.desktopTextExtraSmall(
-                                    context,
-                                  ).copyWith(
-                                    color: Theme.of(
+                          Flexible(
+                            child: Text(
+                              widget.token.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: isDesktop
+                                  ? STextStyles.desktopTextExtraSmall(
                                       context,
-                                    ).extension<StackColors>()!.textDark,
-                                  )
-                                : STextStyles.titleBold12(context),
+                                    ).copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).extension<StackColors>()!.textDark,
+                                    )
+                                  : STextStyles.titleBold12(context),
+                            ),
                           ),
-                          const Spacer(),
+                          const SizedBox(width: 8),
                           Text(
                             ref
                                 .watch(

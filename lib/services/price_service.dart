@@ -18,6 +18,7 @@ import '../db/isar/main_db.dart';
 import '../models/isar/models/isar_models.dart';
 import '../networking/http.dart';
 import '../wallets/crypto_currency/crypto_currency.dart';
+import '../wallets/ethereum/wbeam.dart';
 import 'price.dart';
 
 class PriceService extends ChangeNotifier {
@@ -61,6 +62,18 @@ class PriceService extends ChangeNotifier {
     }
 
     final _tokenContractAddressesToCheck = await tokenContractAddressesToCheck;
+
+    // Campfire for BEAM: WBEAM is worth what BEAM is worth (1:1), from the
+    // BEAM price above; no request of its own.
+    for (final map in pricesFromCoins(
+      _cachedPrices,
+      _tokenContractAddressesToCheck,
+    ).entries) {
+      if (_cachedTokenPrices[map.key] != map.value) {
+        _cachedTokenPrices[map.key] = map.value;
+        shouldNotify = true;
+      }
+    }
 
     if (_tokenContractAddressesToCheck.isNotEmpty) {
       final tokenPriceMap = await _priceAPI.getPricesAnd24hChangeForEthTokens(
