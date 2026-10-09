@@ -71,6 +71,8 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
 
 ![On a phone: pay with ZEC through NEAR Intents: a signed deposit address, then buy WBEAM with the ETH that arrived](docs/screenshots/phone-near-intents.png)
 
+![On a phone: move BEAM to your Ethereum wallet through BEAM's official bridge, check what arrives, and follow it block by block](docs/screenshots/phone-bridge.png)
+
 ## What works today
 
 - Create and restore BEAM wallets (12-word phrase, checksum-checked), Campfire's password, backups and themes.
@@ -111,10 +113,18 @@ certutil -hashfile BEAM-Campfire-<version>-windows-x86_64.zip SHA256   # Windows
   wallet or exchange to a deposit address that Campfire checks against NEAR Intents' signature, the ETH
   arrives in your Campfire wallet, and one tap buys WBEAM with it. NEAR Intents adds a 0.25% fee
   (included in the price shown).
+- **Bridge between your own BEAM and Ethereum wallets**, straight to BEAM's official bridge contracts on
+  both chains, with no website or exchange in between: BEAM ⇄ WBEAM, and bETH, bUSDT, bWBTC and bDAI ⇄ ETH,
+  USDT, WBTC and DAI. Before you confirm you see what arrives, what it costs and how long it takes; every
+  transaction is checked against what you asked for before it is signed, Ethereum approvals are for the
+  exact amount, and a crossing is followed to the end even if the app restarts. Coins arriving on BEAM
+  are collected with one tap, or automatically if you choose.
 
 Proven live on BEAM mainnet with small amounts: send/receive between wallets, DEX swap, airdrop create and
 claim, dApps. On Ethereum mainnet, through Tor: ETH ⇄ WBEAM, USDC → WBEAM across two pools, exact approvals
-with Permit2, and a NEAR Intents swap into ETH.
+with Permit2, and a NEAR Intents swap into ETH. Across BEAM's bridge, with the app's own bridge code:
+WBEAM → BEAM (collected 14 minutes after the lock) and BEAM → WBEAM (paid 61 blocks after the send), each
+exactly as quoted.
 
 ## Roadmap
 
@@ -135,7 +145,7 @@ with Permit2, and a NEAR Intents swap into ETH.
 - [x] Ethereum: ETH and ERC-20 tokens, with **WBEAM** as a default token
 - [x] Swap on Uniswap (v2, v3, v4) from the Ethereum wallet
 - [x] Any coin into ETH (and then WBEAM) through NEAR Intents
-- [ ] BEAM ↔ Ethereum bridge (deposit addresses)
+- [x] BEAM ↔ Ethereum bridge inside the wallet (BEAM's official bridge, all five routes)
 - [ ] Games (Fuddle, MemeClash) and atomic swaps
 
 ## Building
