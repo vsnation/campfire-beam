@@ -31,15 +31,16 @@ import deleteWallet from './screens/delete_wallet.js';
 import problem from './screens/problem.js';
 import install from './screens/install.js';
 import swap from './screens/swap.js';
+import dapps, { runnerStats } from './screens/dapps.js';
 import { installConsent } from './screens/consent.js';
 import { consentLog, contractsState } from './lib/contracts.js';
 
 const SCREENS = {
   welcome, backup, confirmWords, restore, importWallet, setPassword, passkeySetup, ipNotice, fastStart, unlock,
-  home, send, review, txStatus, receive, activity, settings, changePassword, about, deleteWallet, problem, install, swap,
+  home, send, review, txStatus, receive, activity, settings, changePassword, about, deleteWallet, problem, install, swap, dapps,
 };
 // Screens that need an unlocked, running wallet.
-const NEEDS_WALLET = new Set(['home', 'send', 'review', 'txStatus', 'receive', 'activity', 'settings', 'changePassword', 'about', 'swap']);
+const NEEDS_WALLET = new Set(['home', 'send', 'review', 'txStatus', 'receive', 'activity', 'settings', 'changePassword', 'about', 'swap', 'dapps']);
 
 const root = document.getElementById('app');
 
@@ -235,5 +236,7 @@ window.__campfire = Object.freeze({
   // Contract calls: the last consent decisions (amounts as the engine reported them) and counters.
   consents: () => consentLog(),
   contracts: () => contractsState(),
+  // Counters of the running dApp frames (requests, refused, dropped messages); nothing a dApp sent.
+  dapps: () => runnerStats(),
   record: () => (app.record ? { imported: Boolean(app.record.imported), restored: Boolean(app.record.restored), scan: app.record.scan !== false, setupDone: Boolean(app.record.setupDone), passkey: Boolean(app.record.envelopes && app.record.envelopes.passkey) } : null),
 });

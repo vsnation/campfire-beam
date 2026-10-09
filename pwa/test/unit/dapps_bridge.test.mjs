@@ -183,7 +183,7 @@ test('runner: messages posted to the wallet window, or malformed ones on the por
   const app = fakeApp();
   const r = new DappRunner({ entry: { guid: 'db851322f6674a6da3e84e9953db2ffd', needsEval: true }, manifest: { name: 'Beam DEX', startPath: 'app/index.html', apiVersion: '7.0' }, files: new Map([['app/index.html', new Uint8Array([60])]]), appApi: { ...app, close() {} }, confirmSign: async () => false });
   r.mount({ clientWidth: 390, appendChild() {} });
-  assert.equal(fakeFrame.src, 'dapp-run/e1r0/app/index.html');
+  assert.ok(fakeFrame.src.endsWith('/src/dapp-run/e1r0/app/index.html'), fakeFrame.src);
   assert.equal(fakeFrame.attrs.sandbox, undefined, 'no sandbox attribute before the first load (the service worker must serve it)');
   listeners.load();
   assert.equal(fakeFrame.attrs.sandbox, 'allow-scripts', 'sandboxed from the first load on');

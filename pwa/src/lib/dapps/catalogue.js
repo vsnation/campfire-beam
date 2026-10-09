@@ -10,6 +10,9 @@
 // remoteOrigins: https origins the bundle's own code fetches from (prices,
 // bridge fees). They are off unless the person turns them on for that dApp,
 // because each one sees the person's IP address.
+// desktopShape: always offer the desktop (Qt) wallet shape. The NFT Gallery
+// reads the chain through the wallet only in its desktop mode; in its mobile
+// mode it loads everything from its own web server instead.
 
 import { REMOTE_ORIGINS as FRAME_REMOTE_ORIGINS } from './frame_policy.js';
 

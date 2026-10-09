@@ -29,6 +29,9 @@ const P = {
   file: ['M14 3H6v18h12V7z', 'M14 3v4h4', 'M9 13h6', 'M9 17h4'],
   swap: ['M7 20V5', 'M3 9l4-4 4 4', 'M17 4v15', 'M13 15l4 4 4-4'],
   down: ['M6 9l6 6 6-6'],
+  apps: ['M4 4h6v6H4z', 'M14 4h6v6h-6z', 'M4 14h6v6H4z', 'M14 14h6v6h-6z'],
+  more: ['M6.5 12a1.5 1.5 0 1 1-3 0a1.5 1.5 0 1 1 3 0z', 'M13.5 12a1.5 1.5 0 1 1-3 0a1.5 1.5 0 1 1 3 0z', 'M20.5 12a1.5 1.5 0 1 1-3 0a1.5 1.5 0 1 1 3 0z'],
+  external: ['M14 4h6v6', 'M20 4l-9 9', 'M18 14v6H4V6h6'],
 };
 
 export function icon(name, cls) {

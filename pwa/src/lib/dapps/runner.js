@@ -63,7 +63,7 @@ async function frameShims() {
   if (!shimTexts) {
     shimTexts = Promise.all(
       FRAME_SHIMS.map(async (p) => {
-        const r = await fetch(new URL(p, document.baseURI), { cache: 'no-cache' });
+        const r = await fetch(new URL(`../../${p}`, import.meta.url), { cache: 'no-cache' });
         if (!r.ok) throw new Error(`${p}: ${r.status}`);
         return r.text();
       }),
@@ -75,9 +75,10 @@ async function frameShims() {
   return shimTexts;
 }
 
+/** The frame's address, in this app's scope (this file is lib/dapps/runner.js). */
 export function frameAddress(entry, startPath, { remoteOrigins = [] } = {}) {
   const seg = policySegment({ evalAllowed: entry.needsEval, remoteMask: remoteMaskFor(remoteOrigins) });
-  return `${FRAME_ROUTE}${seg}/${startPath.split('/').map(encodeURIComponent).join('/')}`;
+  return new URL(`../../${FRAME_ROUTE}${seg}/${startPath.split('/').map(encodeURIComponent).join('/')}`, import.meta.url).href;
 }
 
 const liveRunners = new Set();

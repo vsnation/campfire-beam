@@ -179,11 +179,20 @@ export default function home(app) {
   render(wallet.state);
   renderBanner();
 
+  const dappsRow = h(
+    'button',
+    { class: 'card row dapps-entry', onclick: () => app.go('dapps'), 'data-testid': 'open-dapps' },
+    h('span', { class: 'ico' }, icon('apps')),
+    h('span', { class: 'main' }, h('div', { class: 't', text: 'dApps' }), h('div', { class: 's', text: 'Beam DEX, NFT Gallery, names and more' })),
+    h('span', { class: 'chev' }, icon('chevron')),
+  );
+
   const el = screen(
     { brand: true, tabs: 'home', app, right: h('button', { class: 'icon-btn', 'aria-label': 'Lock', onclick: () => app.lock('manual'), 'data-testid': 'lock' }, icon('lock')) },
     bannerBox,
     balanceBox,
     actionsBox,
+    dappsRow,
     assetsBox,
     txBox,
   );
