@@ -9,14 +9,14 @@
 
 // The card under the Send screen's recipient field.
 //
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   1. Job: show, before anything is built, who a typed name pays — or why
 //      it can't be paid — so a name is never resolved silently.
 //   2. Primary CTA: none here (the screen's "Send"); "Try again" is a text
 //      link on a failed lookup only.
 //   3. Taps: 0 — it appears as the user types.
 //
-// Exit-intent (§1.7): "is this the right person?" → owner key fingerprint
+// Exit-intent: "is this the right person?" → owner key fingerprint
 // and expiry; "why can't I send?" → every not-payable state says what to do;
 // "is it stuck?" → a skeleton with the name being looked up.
 

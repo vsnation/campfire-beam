@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: show my names (and whether any needs renewing), and let me
 //    get one.
 // 2. Primary CTA: "Get a name".
@@ -19,7 +19,7 @@
 // Desktop: Campfire's two columns, as Spark Names had them (get a name |
 // my names).
 //
-// Exit-intent (§1.7) — what could make an impatient person leave:
+// Exit-intent — what could make an impatient person leave:
 // * "What is a name?" — the empty state says it in one sentence.
 // * "Am I about to lose my name?" — a renewal warning sits above the list
 //   with a one-tap Renew.

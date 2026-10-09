@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:  lock tokens into one-time codes to hand out.
 //   CTA:  "Create <n> codes" (then "Create <n> codes" again on the
 //         confirmation, which shows the amounts read back from the built
@@ -15,7 +15,7 @@
 //   Taps: open wallet → Airdrop → Create codes → amount → Create (→ confirm
 //         → PIN): 4 + confirm + PIN, BEAM and 10 codes pre-filled.
 //
-// Exit-intent (§1.7): "what will this cost?" → the locked total and the 1%
+// Exit-intent: "what will this cost?" → the locked total and the 1%
 // fee update as the user types, and the network fee is shown, exact,
 // before confirming; "what if I lose the codes?" → saved on this device
 // before anything is sent, and the next screen says how to keep a copy;

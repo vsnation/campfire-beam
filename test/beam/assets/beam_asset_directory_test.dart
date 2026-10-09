@@ -8,8 +8,8 @@
  */
 
 // BeamAssetDirectory: every asset the DEX lists gets its on-chain name from
-// one explorer read (the owner saw "#2", "#3", "#8" in the Create pool
-// picker because only held assets were ever looked up), cached, refreshed
+// one explorer read (the Create pool picker showed "#2", "#3", "#8"
+// because only held assets were ever looked up), cached, refreshed
 // rarely, with the core's get_asset_info as the fallback.
 //
 //   scripts/beam/host_test.sh --no-analyze test/beam/assets

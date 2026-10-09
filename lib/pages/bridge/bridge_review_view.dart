@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: show exactly what this move does — every amount leaving
 //    each wallet, every fee, what arrives where and when, and what is
 //    public — and start it only after Campfire's PIN / password.
@@ -21,7 +21,7 @@
 // so no signature comes as a surprise; collecting on BEAM later costs
 // 0.121 BEAM, said here, and is only automatic when ticked here.
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 // * "Is this a scam?" — the destination is your own wallet, named with its
 //   address; the contract is BEAM's official bridge, named with its id.
 // * A surprise fee — every fee is its own line, in the coin and dollars,

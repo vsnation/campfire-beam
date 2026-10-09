@@ -5,7 +5,7 @@ set -x -e
 # Configure files for Campfire with BEAM and Ethereum (ETH and ERC-20 tokens,
 # WBEAM first).
 
-# Campfire's logo and branding, named "BEAM Campfire" (owner, 2026-10-07): a
+# Campfire's logo and branding, named "BEAM Campfire": a
 # second "Campfire.app" would replace Firo's Campfire in /Applications. The
 # technical identifiers below (app id on every platform, iOS included; basic
 # name; _appDataDirName) are new too, so this build never opens, updates or

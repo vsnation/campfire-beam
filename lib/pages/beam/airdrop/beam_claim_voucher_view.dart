@@ -7,13 +7,13 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:  turn a voucher code into tokens in this wallet.
 //   CTA:  "Claim <amount> <ticker>" (or "Claim anyway" when the voucher is
 //         worth less than its network fee).
 //   Taps: open wallet → Claim a voucher → paste → Claim → PIN (3 + PIN).
 //
-// Exit-intent (§1.7), and what this screen does about each:
+// Exit-intent, and what this screen does about each:
 //   * "Is this a scam / what will it cost me?" → the value and the network
 //     fee decoded from the prepared transaction are on screen before the
 //     button is live; nothing is signed without the PIN.

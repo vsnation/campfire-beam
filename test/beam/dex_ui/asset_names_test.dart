@@ -7,7 +7,7 @@
  *
  */
 
-// The owner's report from the DMG test: Create a pool → "Second asset"
+// Found in a DMG test: Create a pool → "Second asset"
 // listed "#2 / Not verified · Asset #2", "#3", "#8"…, although every asset
 // has an on-chain name. Only assets the wallet held were ever looked up.
 // Now the DEX names every asset it lists from the explorer's /assets table

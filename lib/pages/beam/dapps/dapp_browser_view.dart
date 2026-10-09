@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. Job: use one dApp. Anything that would move money comes back to
 //    Campfire's approval sheet first.
 // 2. Primary CTA: the dApp's own page; Campfire adds one only when the dApp
@@ -15,7 +15,7 @@
 //    button).
 // 3. Taps from app open: wallet → dApps → Open = 3.
 //
-// Exit-intent (§1.7) — what would make an impatient person close the app:
+// Exit-intent — what would make an impatient person close the app:
 // * A wallet popup out of nowhere: every request first shows a banner. If
 //   the user just tapped the page (the request is probably theirs) the
 //   banner opens the review after a short visible delay; otherwise it waits

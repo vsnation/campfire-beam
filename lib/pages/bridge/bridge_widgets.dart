@@ -11,7 +11,7 @@
 // From / To wallet cards, what a crossing's state means in plain words,
 // and its steps.
 //
-// Words (USER_PSYCHOLOGY §1.5): the screens never say relayer, pipe,
+// Words: the screens never say relayer, pipe,
 // message, b2e or e2b. "The bridge" is BeamMW's official bridge; its fee
 // is "the bridge fee, paid to the bridge operator"; claiming on BEAM is
 // "collecting".

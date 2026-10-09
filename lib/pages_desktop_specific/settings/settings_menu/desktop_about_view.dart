@@ -78,7 +78,7 @@ class DesktopAboutView extends ConsumerWidget {
                                   style: STextStyles.label(context),
                                   children: [
                                     // This app has no terms of service of its own; Stack Wallet's did not
-                                    // apply to it (owner, 2026-10-08).
+                                    // apply to it.
                                     TextSpan(
                                       text:
                                           "${BeamAppIdentity.displayName} is free and open source. ",

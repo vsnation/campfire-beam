@@ -7,13 +7,13 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:  see the tokens this wallet created, and mint more of them.
 //   CTA:  "Create a token" (each token has its own "Mint more").
 //   Taps: open wallet → Tokens → My tokens (2–3); Mint more is 2 more +
 //         confirm + PIN.
 //
-// Exit-intent (§1.7): "where is my token?" → a token still waiting for the
+// Exit-intent: "where is my token?" → a token still waiting for the
 // network is explained in the empty state; "how much can I still mint?" →
 // minted and maximum are on each card with a bar.
 

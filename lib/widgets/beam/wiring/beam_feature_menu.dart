@@ -12,14 +12,14 @@
 // token / my tokens / burn). A bottom sheet on a phone, a dialog on desktop,
 // in the look of Campfire's "More features" dialog.
 //
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   1. Job: pick which of the three things to do.
 //   2. Primary CTA: the first row, the most common task ("Claim a code",
 //      "Create a token"); the other two rows sit under it. No other buttons.
 //   3. Taps from app open: wallet → More → Airdrops → Claim a code (3) on a
 //      phone; wallet → Airdrops → Claim a code (3) on desktop.
 //
-// Exit-intent (§1.7) — what would make an impatient person close it:
+// Exit-intent — what would make an impatient person close it:
 // * Jargon in the row names ("batch", "voucher", "minter"): rows say what
 //   the user gets ("Claim a code", "See who claimed your codes").
 // * Not knowing which row is theirs: every row has one plain line under it.

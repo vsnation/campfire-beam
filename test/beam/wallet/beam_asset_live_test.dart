@@ -7,7 +7,7 @@
  *
  */
 
-// LIVE, real funds (project rules R9: at most 0.01 BEAM per tx here, own
+// LIVE, real funds (at most 0.01 BEAM per tx here, own
 // wallets only, every tx logged in the project notes by the operator).
 //
 // TOKEN variant: the same throwaway wallet receives 0.01 BEAM + 0.01 FOMO and

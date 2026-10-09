@@ -10,8 +10,8 @@
 // What the user sees after pressing Send: the payment went out (with its
 // transaction id and the way to it in history), or it did not and why.
 //
-// Spec (USER_PSYCHOLOGY §6):
-//   1. Job: confirm the outcome at once (§1.6 "silence feels like failure")
+// Spec:
+//   1. Job: confirm the outcome at once (silence feels like failure)
 //      and say what happens next; on failure, say nothing was sent (when
 //      that is true) and the one thing to do.
 //   2. Primary CTA: "View in history" (sent) / "Back to the payment" or

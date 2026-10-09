@@ -169,7 +169,7 @@ class _TransactionsV2ListState extends ConsumerState<TransactionsV2List> {
           );
         }
         if (_transactions.isEmpty) {
-          // BEAM: an empty history offers the way in (USER_PSYCHOLOGY §1.4).
+          // BEAM: an empty history offers the way in (no dead ends).
           if (coin is Beam) {
             return BeamNoTransactions(walletId: widget.walletId);
           }

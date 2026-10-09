@@ -48,8 +48,8 @@ final class _LibBeamInterfaceImpl extends LibBeamInterface {
   @override
   bool get isAvailable => true;
 
-  /// The core runs inside the app, as BEAM's own wallets run it (owner,
-  /// 2026-10-07: no wallet-api or beam-node programs): iOS links it
+  /// The core runs inside the app, as BEAM's own wallets run it (no
+  /// wallet-api or beam-node programs): iOS links it
   /// statically; desktop and Android load `libbeam_core`, checked against
   /// its pinned SHA-256 (beam_core_location.dart). A platform with no pinned
   /// library yet keeps the child-process core.

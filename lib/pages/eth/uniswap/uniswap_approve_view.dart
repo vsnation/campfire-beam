@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: let Uniswap's Permit2 contract move this token, for exactly
 //    the amount being swapped unless the user asks for more, before the
 //    first swap of it.
@@ -15,7 +15,7 @@
 // 3. One extra step, once per token and amount: the swap form's button
 //    opens it, the PIN confirms it, then the swap review follows by itself.
 //
-// Exit-intent (§1.7): "Why another transaction?" is answered in one line;
+// Exit-intent: "Why another transaction?" is answered in one line;
 // "Is this unlimited?" — no, the exact amount is the default and named on
 // the button; USDT's two steps are said before they happen; the network
 // fee is shown before the PIN.

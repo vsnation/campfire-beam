@@ -17,9 +17,8 @@ import 'android_native_dir.dart';
 import 'beam_binaries.dart';
 import 'secret_file.dart';
 
-/// The BEAM core inside the app (owner, 2026-10-07: "people want to use the
-/// wallet without wallet-api or beam-node; it should be integrated inside",
-/// as BEAM's own desktop wallet does): `libbeam_core` from
+/// The BEAM core inside the app (no separate wallet-api or beam-node
+/// programs, as BEAM's own desktop wallet does it): `libbeam_core` from
 /// scripts/beam/core/lib, one shared library holding wallet-api and the node,
 /// loaded into the app's process. Its SHA-256 is pinned here per platform and
 /// checked before it is loaded; nothing is downloaded.

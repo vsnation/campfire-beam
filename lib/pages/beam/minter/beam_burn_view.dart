@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:  destroy some of a token for good (lower its supply in public).
 //   CTA:  "Burn <amount> <TICKER>" (the confirmation then asks to type the
 //         ticker and says "Burn <amount> <TICKER> forever").
 //   Taps: open wallet → Tokens → Burn → amount → Burn (→ type ticker →
 //         confirm → PIN). Deliberately not fast: it cannot be undone.
 //
-// Exit-intent (§1.7): "can I undo this?" → no, and the screen says so
+// Exit-intent: "can I undo this?" → no, and the screen says so
 // before anything else; "is BEAM at risk?" → BEAM is never offered and the
 // service refuses it.
 

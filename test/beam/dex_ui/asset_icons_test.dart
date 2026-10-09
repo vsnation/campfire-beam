@@ -7,7 +7,7 @@
  *
  */
 
-// Owner report 2026-10-07: "DEX Pools: icons are jumping and look weird":
+// Reported: the DEX pool icons jumped about and looked wrong.
 // NPH's logo is a bare triangle, so BEAM/NPH, bUSDT/NPH and bDAI/NPH looked
 // broken next to the round logos, and icons popped in as they loaded.
 //
@@ -32,7 +32,7 @@ import 'dex_ui_harness.dart';
 const _assetIds = [0, 4, 6, 7, 9, 36, 37, 38, 39, 47, 174, 186, 187, 3];
 const _lpIds = [175, 60, 73, 67];
 
-/// The pairs in the owner's screenshot, and a few more.
+/// The pairs from that report, and a few more.
 const _pairs = [
   (0, 47),
   (0, 36),

@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   1. Job: show exactly what the split does before it is signed (like a
 //      send's confirmation): the coins now, the coins after, the fee, and
 //      that nothing leaves the wallet.
 //   2. Primary CTA: "Split into 5 coins", then Campfire's PIN / password.
 //   3. Taps: reached from the split screen's button; 1 tap + PIN.
 //
-// Exit-intent (§1.7): "is money leaving?" → the first notice and the last
+// Exit-intent: "is money leaving?" → the first notice and the last
 // line both say only the fee does; "can I back out?" → the back arrow, and
 // nothing is signed until the PIN; "did it go?" → the split screen turns
 // into "Splitting into 5 coins" with when they are ready.

@@ -7,9 +7,9 @@
  *
  */
 
-// LIVE, real funds (project rules R9): one 0.05 BEAM → FOMO swap on the mainnet
+// LIVE, real funds: one 0.05 BEAM → FOMO swap on the mainnet
 // DEX through BeamDexService, the same service the swap screen uses, from
-// an owner test wallet. Checks the confirmation numbers (decoded from the
+// a test wallet. Checks the confirmation numbers (decoded from the
 // built transaction) against the quote, sends exactly once, waits for the
 // transaction to complete and for the FOMO to arrive.
 //

@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:  bring a BEAM wallet you already have as a wallet.db file (and its
 //         password) into BEAM Campfire — no recovery phrase needed.
 //   CTA:  "Import my wallet".
 //   Taps: My Campfire → Import wallet.db (1) → Choose the file (2) →
 //         password → Import my wallet (3).
 //
-// Exit-intent (§1.7): "will this change or break my original file?" → said
+// Exit-intent: "will this change or break my original file?" → said
 // first: it is copied, the original is only read; "which password?" → the
 // field says it is the one set in the BEAM wallet the file comes from;
 // "where is my wallet.db?" → the usual places are listed under the button;

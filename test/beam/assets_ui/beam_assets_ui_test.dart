@@ -175,7 +175,7 @@ void main() {
         scrollable: list,
       );
       // A pool share is named after its pair, with its fee tier and a
-      // pair icon (owner, 2026-10-07).
+      // pair icon.
       expect(find.text('BEAM/FOMO LP'), findsOneWidget);
       expect(find.text('Pool share · 1% fee'), findsWidgets);
       expect(find.text('0.46659234 LP'), findsOneWidget);

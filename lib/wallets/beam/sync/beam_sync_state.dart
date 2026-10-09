@@ -7,7 +7,7 @@
  *
  */
 
-/// The one place "synced" is decided for a BEAM wallet (project rules R5).
+/// The one place "synced" is decided for a BEAM wallet.
 ///
 /// "Synced" — and with it, permission to spend — requires all of:
 ///

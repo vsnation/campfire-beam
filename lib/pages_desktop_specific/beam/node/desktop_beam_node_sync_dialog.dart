@@ -7,14 +7,14 @@
  *
  */
 
-// 3-line spec (USER_PSYCHOLOGY §6):
+// 3-line spec:
 // 1. Job: the node and sync panel as a desktop dialog, sized like Campfire's
 //    "Network" dialog (580 wide).
 // 2. Primary CTA: the panel's own (only when the private node needs the
 //    user); closing is the dialog's X.
 // 3. Clicks from app open: 1 (the status chip).
 //
-// Exit-intent check (§1.7): see beam_node_sync_panel.dart.
+// Exit-intent check: see beam_node_sync_panel.dart.
 
 import 'package:flutter/material.dart';
 

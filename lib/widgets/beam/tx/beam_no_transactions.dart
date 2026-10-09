@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6, §1.4) — empty BEAM history:
+// Spec (no dead ends) — empty BEAM history:
 //   Job:  say the history is empty because nothing has happened yet, and
 //         get the first BEAM in.
 //   CTA:  "Receive BEAM".
@@ -33,7 +33,6 @@ import '../../../pages_desktop_specific/my_stack_view/wallet_view/sub_widgets/de
 import '../../../utilities/text_styles.dart';
 import '../../../utilities/util.dart';
 import '../../desktop/desktop_dialog.dart';
-import '../../desktop/custom_text_button.dart';
 import '../../desktop/desktop_dialog_close_button.dart';
 import '../../desktop/primary_button.dart';
 import '../../rounded_white_container.dart';

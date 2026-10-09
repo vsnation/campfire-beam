@@ -47,7 +47,7 @@ void main() {
     final wallet = await openBeamWallet(tester, db, core: SidebarCore());
     final container = await pumpSidebar(tester, wallets: [wallet]);
 
-    // My Campfire → the wallet → its dApps (as the owner's repro).
+    // My Campfire → the wallet → its dApps (as in the report).
     Future<void> openWalletAndDapps() async {
       Navigator.of(tester.element(find.byType(MyStackView)))
           .pushNamed(DesktopWalletView.routeName, arguments: wallet.walletId)

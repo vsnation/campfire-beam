@@ -7,7 +7,7 @@
  *
  */
 
-// The owner's reference lock (spec §9): tx 0x8596…0684, block 25 868 098,
+// A reference lock from mainnet: tx 0x8596…0684, block 25 868 098,
 // 2026-08-30, msgId 222, 105 WBEAM with a 0.02 WBEAM fee, into the BEAM
 // pipe. fixtures/receipt_0x8596_msg222.json is its
 // `eth_getTransactionReceipt`, fetched read-only through Tor from

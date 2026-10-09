@@ -33,7 +33,7 @@ bool campfireTorEnabled() =>
 /// off elsewhere (phones cannot run the node).
 ///
 /// **Tor.** With Campfire's Tor on, every connection goes through Tor or is
-/// not made (owner, 2026-10-07). The node talks to many BEAM peers, so with
+/// not made. The node talks to many BEAM peers, so with
 /// Tor on it runs only on a core that routes its peers through Tor's SOCKS5
 /// proxy ([nodeTorCapable], `kBeamCoreSupportsSocks`); on any other core it is
 /// off while Tor is on, whatever was chosen, and the node panel says why. No

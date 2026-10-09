@@ -15,7 +15,7 @@ import '../../../wallets/beam/sync/beam_sync_state.dart';
 import 'beam_blocks.dart';
 
 /// Rebuilds with the wallet's sync verdict. Money-moving buttons take
-/// `canSpend` from here and nowhere else (project rules R5: a wallet that is
+/// `canSpend` from here and nowhere else (a wallet that is
 /// behind says how far behind and refuses to send).
 class BeamSyncGate extends StatelessWidget {
   const BeamSyncGate({super.key, required this.sync, required this.builder});

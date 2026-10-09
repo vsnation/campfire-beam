@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: swap one asset for another; the pools sit beside the form
 //    the way Campfire's desktop exchange puts recent trades beside it.
 // 2. Primary CTA: "Swap now" (the pools column has only the secondary

@@ -37,7 +37,7 @@ typedef DappApprovalUi = Future<bool> Function(DappApprovalModel model);
 /// currency from the page that [attach]ed). Each lookup is bounded by
 /// [lookupTimeout]; a slow wallet makes the sheet show "Asset #id", no
 /// balance check and no fiat values, never a wrong number. While the sheet
-/// is open the wallet's node switch is held (project rules R11).
+/// is open the wallet's node switch is held.
 class DappApprovalPresenter implements DappConsentPolicy {
   DappApprovalPresenter(
     this.wallet, {

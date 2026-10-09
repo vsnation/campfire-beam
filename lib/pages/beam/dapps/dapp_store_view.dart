@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. Job: open a BEAM dApp, or install one of the checked dApps first.
 // 2. Primary action: "Open" on an installed dApp (the whole card opens it);
 //    "Install" on a bundled one. "Install from a file" is secondary.
 // 3. Taps from app open: wallet → dApps → Open = 3 (4 the first time,
 //    with Install).
 //
-// Exit-intent (§1.7) — what would make an impatient person close the app:
+// Exit-intent — what would make an impatient person close the app:
 // * "Is this safe?" The first line says a dApp cannot move money without
 //   asking; bundled dApps say they are checked against a pinned
 //   fingerprint; a dApp from a file says plainly that Campfire did not

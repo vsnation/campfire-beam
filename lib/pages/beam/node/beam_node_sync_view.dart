@@ -7,14 +7,14 @@
  *
  */
 
-// 3-line spec (USER_PSYCHOLOGY §6):
+// 3-line spec:
 // 1. Job: the node and sync panel on its own page, for the node status chip
 //    (the network settings page embeds the same panel).
 // 2. Primary CTA: the panel's own (only when the private node needs the
 //    user).
 // 3. Taps from app open: 1 (tap the status chip).
 //
-// Exit-intent check (§1.7): see beam_node_sync_panel.dart; this page adds
+// Exit-intent check: see beam_node_sync_panel.dart; this page adds
 // only Campfire's app bar and back arrow, so nothing new to leave over.
 
 import 'package:flutter/material.dart';

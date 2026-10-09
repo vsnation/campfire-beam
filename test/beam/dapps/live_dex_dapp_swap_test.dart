@@ -7,7 +7,7 @@
  *
  */
 
-// LIVE, real funds (project rules R9): the Beam DEX dApp, unmodified, swaps
+// LIVE, real funds: the Beam DEX dApp, unmodified, swaps
 // BEAM for FOMO through Campfire's approval flow.
 //
 // The dApp runs in headless Chrome and is driven through its own page

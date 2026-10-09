@@ -39,7 +39,7 @@ const int kNamesRenewSoonDays = 30;
 enum NamesNoticeKind { info, warning, error, success }
 
 /// A notice card: what happened, in plain words, and the one thing to do
-/// next. Used for empty states, errors and warnings (USER_PSYCHOLOGY §1.4).
+/// next. Used for empty states, errors and warnings (no dead ends).
 class NamesNotice extends StatelessWidget {
   const NamesNotice({
     super.key,
@@ -479,7 +479,7 @@ class NameStatusText {
 /// A Names screen in Campfire's two shapes: a full page with an app bar on
 /// mobile (like the send flow), a dialog body on desktop. The [bottom]
 /// (the primary button and its reason) is pinned, so the main action is on
-/// screen without scrolling at any height (USER_PSYCHOLOGY §1.3).
+/// screen without scrolling at any height.
 class NamesPage extends StatelessWidget {
   const NamesPage({
     super.key,
@@ -666,7 +666,7 @@ class NamesSecondaryAction extends StatelessWidget {
 }
 
 /// Plain words for a failure: what happened and what to do, never blaming
-/// the user (USER_PSYCHOLOGY §1.4).
+/// the user (no dead ends).
 String namesErrorText(Object e) => switch (e) {
   BansException() => e.message,
   BeamConnectionException() =>

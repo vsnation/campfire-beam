@@ -10,14 +10,14 @@
 // The BEAM body of Campfire's "Confirm transaction" screen
 // (ConfirmTransactionView keeps the PIN / password gate and the sending).
 //
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   1. Job: show exactly what will happen — who receives it, how much, in
 //      which asset, the network fee and the total — before anything is
-//      signed (R5, §5).
+//      signed.
 //   2. Primary CTA: "Send 1.5 BEAM" / "Send to alice.beam", then PIN.
 //   3. Taps from app open: wallet → Send → "Send" → this button (3), PIN.
 //
-// Exit-intent (§1.7): "is this the right person?" → full address on copy,
+// Exit-intent: "is this the right person?" → full address on copy,
 // owner key of a name; "what does it cost?" → fee decoded from the built
 // payment and a total; "can people see this?" → a name payment says the
 // amount is public.

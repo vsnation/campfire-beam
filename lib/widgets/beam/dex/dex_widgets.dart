@@ -46,7 +46,7 @@ const List<FontFeature> kAddressFontFeatures = [FontFeature.disable('calt')];
 enum DexNoticeKind { info, warning, error, success }
 
 /// A notice card: what happened, in plain words, and the one thing to do
-/// next. Used for empty states, errors and warnings (USER_PSYCHOLOGY §1.4).
+/// next. Used for empty states, errors and warnings (no dead ends).
 class DexNotice extends StatelessWidget {
   const DexNotice({
     super.key,
@@ -363,7 +363,7 @@ class DexChoiceChips<T> extends StatelessWidget {
 /// A DEX screen in Campfire's two shapes: a full page with an app bar on
 /// mobile (like the send flow), a dialog body on desktop. The [bottom]
 /// (the primary button and its reason) is pinned, so the main action is
-/// on screen without scrolling at any height (USER_PSYCHOLOGY §1.3).
+/// on screen without scrolling at any height.
 class DexPage extends StatelessWidget {
   const DexPage({
     super.key,

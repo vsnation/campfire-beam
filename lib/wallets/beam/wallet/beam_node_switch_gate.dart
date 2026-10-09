@@ -12,7 +12,7 @@ import 'dart:async';
 import '../host/beam_host.dart';
 import '../rpc/beam_transport.dart';
 
-/// "Busy" flag for node switches (project rules R11): while a send, swap, claim
+/// "Busy" flag for node switches: while a send, swap, claim
 /// or dApp approval is open, nothing may restart wallet-api under it.
 ///
 /// Money flows take a [BeamGateLease] for as long as they are open; every

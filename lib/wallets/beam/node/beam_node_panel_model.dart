@@ -11,7 +11,7 @@
 /// one pure place from the wallet's honest sync verdict and the private node
 /// status. No Flutter here, so every state is unit-tested.
 ///
-/// No jargon on purpose (USER_PSYCHOLOGY §1.5): no "explorer", "owner key",
+/// No jargon on purpose: no "explorer", "owner key",
 /// "fast sync", "RPC", "wallet-api" or "beam-node".
 library;
 

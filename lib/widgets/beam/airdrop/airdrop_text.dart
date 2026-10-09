@@ -14,7 +14,7 @@ import '../../../wallets/beam/rpc/beam_connection_exception.dart';
 import '../../../wallets/beam/rpc/beam_transport.dart';
 
 /// What went wrong, whose fault it is (never the user's) and the one thing
-/// that fixes it (USER_PSYCHOLOGY §1.4).
+/// that fixes it (no dead ends).
 class BeamProblem {
   const BeamProblem(this.title, this.message);
 

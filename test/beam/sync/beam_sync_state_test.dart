@@ -1,4 +1,4 @@
-// Table-driven tests for the honest "synced" predicate (project rules R5).
+// Table-driven tests for the honest "synced" predicate.
 //
 // Heights and times are realistic: on 2026-10-06 ~07:40 UTC the explorers
 // reported height ~4067900, and HF6 froze pre-7.5.14493 nodes at 3928665

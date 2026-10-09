@@ -14,13 +14,13 @@
 // states a page can be in before it has a wallet: none at all, or several
 // and none chosen.
 //
-// Specs (USER_PSYCHOLOGY §6):
+// Specs:
 //   No wallet — job: get a BEAM wallet; CTA: "Create a BEAM wallet";
 //     clicks from app open: the item (1) → the button (2).
 //   Several, none chosen — job: say which wallet; CTA: the wallet's card;
 //     clicks: the item (1) → the wallet (2), remembered after that.
 //
-// Exit-intent (USER_PSYCHOLOGY §1.7) answered here:
+// Exit-intent answered here:
 // * "Which wallet is this swapping from?" — the wallet's name is always in
 //   the header, beside the title.
 // * "I have no wallet, now what?" — one button: "Create a BEAM wallet".

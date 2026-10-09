@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: show exactly what this name transaction does — what leaves
 //    the wallet, the network fee, where the money goes, and for a transfer
 //    the new owner's key — and sign it only after Campfire's PIN/password.
@@ -23,7 +23,7 @@
 // if the BEAM price (or a seller's price, or the amount waiting) moved,
 // nothing is sent and the new total is shown for a fresh confirmation.
 //
-// Exit-intent (§1.7) — what could make an impatient person leave:
+// Exit-intent — what could make an impatient person leave:
 // * "Why is $10 1,162 BEAM?" — the dollar price sits next to the BEAM
 //   amount with one line saying who sets it and why it is paid in BEAM.
 // * A surprise fee — the network fee is its own line, from the built tx.

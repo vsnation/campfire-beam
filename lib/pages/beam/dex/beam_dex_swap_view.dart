@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: swap one asset for another.
 // 2. Primary CTA: the outcome, "Swap 0.02 BEAM" ("Swap" until an amount is
 //    typed).
 // 3. Taps from app open: wallet → Swap (2), type an amount, "Swap 0.02
 //    BEAM" (3); then the confirmation screen and Campfire's PIN.
 //
-// Exit-intent (§1.7) — what could make an impatient person leave:
+// Exit-intent — what could make an impatient person leave:
 // * A greyed-out button with no reason — every disabled state says why
 //   right above the button (not synced, not enough funds incl. the fee,
 //   no pool, amount too small).
@@ -54,8 +54,8 @@ import 'beam_dex_pool_detail_view.dart';
 import 'beam_dex_pools_view.dart';
 
 /// The asset a new swap receives when the caller names none: bETH (asset
-/// 36, the Beam Bridge's wrapped ETH), so the DEX opens on BEAM → bETH
-/// (owner, 2026-10-07). BEAM's DEX has a funded BEAM/bETH pool.
+/// 36, the Beam Bridge's wrapped ETH), so the DEX opens on BEAM → bETH.
+/// BEAM's DEX has a funded BEAM/bETH pool.
 const kDexDefaultReceiveAsset = 36;
 
 /// The swap button's state: its action (null: off), the reason shown above

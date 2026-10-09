@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: choose how much to move between your own BEAM wallet and
 //    your own Ethereum wallet, and see what arrives, what it costs and
 //    when, before anything is signed.
@@ -21,7 +21,7 @@
 // No address is ever typed: the other side is always the user's own other
 // wallet, named on its card (a picker when there are several).
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 // * "Where does it go?" — the To card names your own wallet and its
 //   address.
 // * "What does it cost?" — the bridge fee ("paid to the bridge
@@ -390,8 +390,8 @@ class _BridgeMoveViewState extends State<BridgeMoveView> {
       );
     }
     if (widget.embedded) {
-      // The button stays in sight in an 800 px window (USER_PSYCHOLOGY
-      // §1.3); the form scrolls above it.
+      // The button stays in sight in an 800 px window; the form scrolls
+      // above it.
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

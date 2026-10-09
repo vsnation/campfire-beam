@@ -7,13 +7,13 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:  show exactly what a prepared airdrop batch (or cancel) will do,
 //         from the transaction the core built, and send it after the PIN.
 //   CTA:  "Create <n> codes" / "Get back <amount>".
 //   Taps: reached from the create form or My batches; 1 tap + PIN here.
 //
-// Exit-intent (§1.7): "how much does this really cost?" → every amount and
+// Exit-intent: "how much does this really cost?" → every amount and
 // the network fee are read back from the built transaction; "what if I
 // lose the codes?" → said before confirming; "did it work?" → the next
 // screen says so, and says plainly when it could not be confirmed.

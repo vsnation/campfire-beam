@@ -34,7 +34,7 @@ import '../../../wallets/wallet/impl/beam_wallet.dart';
 /// fake, so every state (stalled, scanning, names waiting…) can be shown
 /// without a core.
 abstract class BeamHomeSource {
-  /// The honest sync verdict now (project rules R5). Synchronous: the home never
+  /// The honest sync verdict now. Synchronous: the home never
   /// waits for it.
   BeamSyncAssessment get syncAssessment;
 

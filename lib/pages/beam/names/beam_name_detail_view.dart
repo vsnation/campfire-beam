@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: keep this name — see until when it is yours and renew it.
 //    Transfer and selling are secondary.
 // 2. Primary CTA: "Renew alice for 1 year".
@@ -17,7 +17,7 @@
 // Dates, never block heights (a tap on the date shows the block). The
 // renewal is capped at what fits within 50 years, as the contract allows.
 //
-// Exit-intent (§1.7) — what could make an impatient person leave:
+// Exit-intent — what could make an impatient person leave:
 // * "When does it run out?" — the first line under the name.
 // * "Will I lose it if I miss the date?" — the 90-day grace is spelled
 //   out with its last day.

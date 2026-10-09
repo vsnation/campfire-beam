@@ -46,7 +46,7 @@ class BeamLayoutScope extends InheritedWidget {
 ///
 /// * phone: [Background] + [Scaffold] with Campfire's app bar and back
 ///   arrow, the content scrolling, and [bottom] pinned under it so the
-///   primary button is on screen without scrolling (USER_PSYCHOLOGY §1.3);
+///   primary button is on screen without scrolling;
 /// * desktop: [DesktopScaffold] + [DesktopAppBar], content centred at
 ///   [desktopMaxWidth], and [bottom] right under the content when it fits
 ///   (never a window-height gap between a field and its button), pinned

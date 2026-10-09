@@ -11,7 +11,7 @@
 /// wallet's state. The widgets only lay these out, so the wording is tested
 /// without pumping anything.
 ///
-/// Rules (USER_PSYCHOLOGY §1.4, §1.5, project rules R5): no jargon ("explorer",
+/// Rules: no jargon ("explorer",
 /// "UTXO", "shader", "vault"), numbers with units, a problem always names
 /// the next step and never blames the user, and anything that stops the
 /// user from sending says so.

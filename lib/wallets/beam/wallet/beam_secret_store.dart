@@ -24,7 +24,7 @@ abstract final class BeamSecretKeys {
       'BEAM_WALLET_PASSWORD_${walletId.toUpperCase()}';
 
   /// The wallet's owner (viewer) key, exported while the wallet was closed
-  /// anyway (project rules R11). A privacy secret: it reveals the whole
+  /// anyway. A privacy secret: it reveals the whole
   /// transaction history. Same protection as the password.
   static String ownerKey(String walletId) =>
       'BEAM_OWNER_KEY_${walletId.toUpperCase()}';

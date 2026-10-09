@@ -95,7 +95,7 @@ class BeamWalletDappLink implements DappWalletLink {
   void Function() holdForApproval(String reason) =>
       wallet.holdNodeSwitch(reason, maxHold: maxApprovalHold).release;
 
-  /// From the wallet's honest sync verdict (project rules R5) and the core's
+  /// From the wallet's honest sync verdict and the core's
   /// start-up problem, the same state the wallet home's banner shows.
   @override
   DappWalletWait? get walletWait {

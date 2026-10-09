@@ -715,7 +715,7 @@ void main() {
     });
 
     test('ready must hold for readyHoldFor before the wallet moves '
-        '(owner: a new wallet sat on a node that was not ready)', () async {
+        '(a new wallet once sat on a node that was not ready)', () async {
       final h = Harness(readyHoldFor: const Duration(milliseconds: 400));
       await h.startDownloading();
       h.node.ready(behind: 3);

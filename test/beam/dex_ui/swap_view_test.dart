@@ -183,8 +183,8 @@ void main() {
     // 11% of the swap: no fee warning.
     expect(find.byKey(const Key('dex-fee-warning')), findsNothing);
 
-    // USER_PSYCHOLOGY §1.3: the primary CTA is on a 375 px phone screen
-    // without scrolling, and names the outcome.
+    // The primary button is on a 375 px phone screen without scrolling,
+    // and names the outcome.
     expectOnScreen(tester, const Key('dex-swap-cta'), phone);
     expect(find.text('Swap 0.1 BEAM'), findsOneWidget);
 
@@ -418,7 +418,7 @@ void main() {
     tester,
   ) async {
     // The contract unlocks more BEAM than the call costs, so the core
-    // selects no BEAM coins at all (project rules, gasless contract calls).
+    // selects no BEAM coins at all (gasless contract calls).
     await openSwap(
       tester,
       pay: 174,
@@ -655,7 +655,7 @@ void main() {
     testWidgets('0.02 BEAM: "more than half", with the numbers', (
       tester,
     ) async {
-      // The owner's live swap: 0.02 BEAM for 0.1607 FOMO, 0.011 BEAM fee.
+      // A live swap: 0.02 BEAM for 0.1607 FOMO, 0.011 BEAM fee.
       await openSwap(
         tester,
         fiat: realUsd,

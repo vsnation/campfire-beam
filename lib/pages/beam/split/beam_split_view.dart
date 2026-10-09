@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   1. Job: let the wallet send several payments at once, by splitting the
 //      coin(s) its BEAM (or one asset) sits in into several equal coins.
 //   2. Primary CTA: the outcome, "Split into 5 coins" (the count picked;
@@ -19,7 +19,7 @@
 //      coins" → "Split into 5 coins" + password (3–4 + password). From a
 //      payment that waits on busy coins: "Split coins for next time" (1).
 //
-// Exit-intent (§1.7) — what would make an impatient person leave, and the
+// Exit-intent — what would make an impatient person leave, and the
 // answer to each:
 //   * "Is this sending my money somewhere?" → the first lines say nothing
 //     leaves the wallet, and the review says it again with the fee.

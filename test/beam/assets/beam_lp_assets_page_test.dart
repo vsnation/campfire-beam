@@ -7,7 +7,7 @@
  *
  */
 
-// Owner report 2026-10-07: "Assets page: LP pairs are parsed incorrectly".
+// Reported: LP pairs were parsed incorrectly on the Assets page.
 //
 // The fixture wallet holds four DEX liquidity (LP) tokens: 50 (BEAM/BEAMX),
 // 175 (BEAM/FOMO), 188 (BEAM/CHAD) and 189 (BEAM/GIGA). Their pools are the
@@ -50,7 +50,7 @@ BeamCachedAssetTotals _totals(int id, BigInt available) =>
 BeamPool _poolOf(List<BeamPool> pools, int lp) =>
     pools.firstWhere((p) => p.lpToken == lp);
 
-/// [lpAmount] of [pool]'s LP token at spot, the owner's formula:
+/// [lpAmount] of [pool]'s LP token at spot:
 /// (lpAmount / ctl) × (tok1·price1 + tok2·price2), each price in groth per
 /// smallest unit from the asset's deepest BEAM pool (BEAM is 1). Exact
 /// rationals, rounded down once at the end.

@@ -8,10 +8,9 @@
  */
 
 // LIVE, LONG (hours), no funds: the integrated private node end to end, the
-// way the app runs it (owner, 2026-10-07: "make sure the integrated node
-// works well"). A NEW wallet is created and opened through the Dart API with
-// the core as a library inside this process (InProcessHost + libbeam_core),
-// the private node on (BeamInProcessNode). Then:
+// way the app runs it. A NEW wallet is created and opened through the Dart
+// API with the core as a library inside this process (InProcessHost +
+// libbeam_core), the private node on (BeamInProcessNode). Then:
 //
 //   1. the wallet can send on a PUBLIC node within a minute (it never waits
 //      for the node);

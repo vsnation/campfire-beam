@@ -9,13 +9,13 @@
 
 // The wallet's own BEAM addresses (Campfire's "Wallet addresses").
 //
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:     see which addresses can still be paid, and tidy them up.
 //   Primary: none while there are addresses (copy, label and delete are
 //            per address); "Get my address" when there are none.
 //   Taps:    2 from the wallet (Receive → list).
 //
-// Exit risks (§1.7): a wall of dead addresses (expired ones are folded
+// Exit risks: a wall of dead addresses (expired ones are folded
 // behind a count); deleting by accident (a confirmation says what deleting
 // means); an empty or failed list (each says what to do, with a button).
 

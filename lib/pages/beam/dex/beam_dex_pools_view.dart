@@ -7,13 +7,13 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: find a pool to put coins into (or take them out of).
 // 2. Primary action: tap a pool. The only button is the secondary "Create a
 //    pool"; the pool cards are the main targets.
 // 3. Taps from app open: wallet → Swap → Pools (3) → a pool (4).
 //
-// Exit-intent (§1.7) — what could make an impatient person leave:
+// Exit-intent — what could make an impatient person leave:
 // * 75 pools of unknown tokens — the user's own pools come first, then
 //   pools ordered by how much BEAM they hold; a search box filters by
 //   name, ticker or #id.

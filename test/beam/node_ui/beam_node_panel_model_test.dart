@@ -9,7 +9,7 @@
 
 // The panel's wording, decided in one pure place, over every private node
 // phase × issue × wallet sync state: plain words only, a title always, the
-// owner's phrases where he gave them, disk numbers up front.
+// agreed phrases, disk numbers up front.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stackwallet/wallets/beam/node/beam_node_panel_model.dart';
@@ -81,7 +81,7 @@ void main() {
     }
   });
 
-  test("the owner's phrases", () {
+  test("the agreed phrases", () {
     String title(BeamPrivateNodeStatus st) =>
         BeamNodePanelModel.describe(snap(privateNode: st)).privateTitle;
     expect(

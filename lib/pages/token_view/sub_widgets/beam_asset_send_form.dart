@@ -7,13 +7,13 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6) — send an asset:
+// Spec — send an asset:
 //   Job:  say who gets how much of this asset.
 //   CTA:  "Review payment" (nothing is sent from here; the confirm screen
 //         shows asset, amount, fee and destination first).
 //   Taps: asset page → Send → paste → amount → Review: 3 from the asset.
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 //   * "Why can't I send my FOMO?" → the BEAM fee is stated before the user
 //     types anything, and a wallet without enough BEAM is told how much to
 //     add, with one tap to receive BEAM — not a failure at the end.

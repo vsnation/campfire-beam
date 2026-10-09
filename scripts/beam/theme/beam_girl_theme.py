@@ -56,7 +56,7 @@ def main() -> None:
         assets[key] = f'png/beam_girl/{sticker}.png'
     assets['coins']['images']['beam'] = f'png/beam_girl/{COIN_IMAGE}.png'
     assets['coins']['secondaries']['beam'] = f'png/beam_girl/{COIN_IMAGE}.png'
-    # Owner, 2026-10-06: keep Campfire's own look. BEAM's brand teal clashed with
+    # Keep Campfire's own look. BEAM's brand teal clashed with
     # Campfire's warm palette on the balance card and everything else tinted by
     # the coin colour, so BEAM takes the colour Campfire gives its own coin.
     theme['colors']['coin']['beam'] = theme['colors']['coin']['firo']

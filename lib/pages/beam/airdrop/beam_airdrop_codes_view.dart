@@ -7,13 +7,13 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:  hand out a batch's codes, and keep a copy of them.
 //   CTA:  "Copy all codes".
 //   Taps: right after creating a batch (0 taps), or My batches → Show
 //         codes (2 from the airdrop menu).
 //
-// Exit-intent (§1.7): "where are my codes / are they safe?" → they are on
+// Exit-intent: "where are my codes / are they safe?" → they are on
 // screen at once, with a plain warning that they are the only key to the
 // funds and are not in the wallet backup; "how do I send them?" → copy one,
 // copy all, share, or export a file; "did the batch work?" → the status

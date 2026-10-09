@@ -7,16 +7,16 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6) — claim what was sent to my names:
+// Spec — claim what was sent to my names:
 //   1. Job: show exactly what claiming does (what arrives, the network fee,
 //      who pays it) and do it after the user confirms with their PIN.
 //   2. Primary CTA: "Claim 2.5 BEAM" (the outcome).
 //   3. Taps from app open: Claim on the home (1), the CTA (2), PIN (3).
 //
-// Exit-intent check (§1.7):
+// Exit-intent check:
 //   * A fee that changes after confirming: the sheet shows the fee of the
-//     transaction the core actually built before the button turns on
-//     (project rules R6), not a constant.
+//     transaction the core actually built before the button turns on,
+//     not a constant.
 //   * A claim that silently costs more than it returns: said in plain words
 //     before confirming, not forbidden.
 //   * Silence after confirming: the sheet shows sending, then done or what

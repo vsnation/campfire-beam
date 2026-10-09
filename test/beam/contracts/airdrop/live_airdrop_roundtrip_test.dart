@@ -7,9 +7,9 @@
  *
  */
 
-// LIVE, real funds (project rules R9): one airdrop round trip on mainnet
+// LIVE, real funds: one airdrop round trip on mainnet
 // through BeamAirdropService, the service the airdrop screens use, between
-// two owner test wallets:
+// two test wallets:
 //
 //   1. the creator makes a batch of ONE voucher worth 0.01 BEAM
 //      (fee 0.121 BEAM + the 1% creation fee);

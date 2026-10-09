@@ -11,7 +11,7 @@
 // honestly which node the wallet uses and whether it keeps up, and opens
 // Node & sync. Campfire's Tor indicator sits beside it.
 //
-// Exit-intent (USER_PSYCHOLOGY §1.7): a green "Connected" while nothing is
+// Exit-intent: a green "Connected" while nothing is
 // connected would be a lie the user finds out at the worst moment (a send
 // that will not go). So the chip only says "Public node" / "Private node"
 // when the core is up and following the chain; "Catching up" while it is

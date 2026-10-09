@@ -10,7 +10,7 @@
 // EthPipeService against Ethereum mainnet and CoinGecko, read-only and
 // through Tor: the freeze checks of all five routes, the relayer's gas,
 // the prices, the fees they give, the paid flags verified in research note
-// 06, and the owner's reference lock read back from its receipt. Nothing
+// 06, and a reference lock read back from its receipt. Nothing
 // is signed or sent (the signer refuses).
 //
 //   BEAM_LIVE_BRIDGE_ETH=1 \

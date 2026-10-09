@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: put this name up for sale at a price, knowing that anyone can
 //    then buy it at once.
 // 2. Primary CTA: "List alice for 500 BEAM".
 // 3. Taps from app open: Names (1) → alice (2) → Sell (3) → price →
 //    List alice (4) → List alice for sale (5) → PIN.
 //
-// Exit-intent (§1.7) — what could make an impatient person leave:
+// Exit-intent — what could make an impatient person leave:
 // * "Will I have to approve each buyer?" — no; said before listing.
 // * "Where does the money go?" — into the BEAM vault under this wallet's
 //   key, claimed on the Names screen; said before listing.

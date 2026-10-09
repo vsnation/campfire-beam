@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: show exactly what this DEX transaction does — what leaves the
 //    wallet, what arrives, the network fee and where it goes — and send it
 //    only after Campfire's PIN / password.
@@ -20,7 +20,7 @@
 // sends (`BeamPreparedDexCall`), never from the earlier quote, except the
 // pool fee, which the kernel does not carry: it is labelled as included.
 //
-// Exit-intent (§1.7) — what could make an impatient person leave:
+// Exit-intent — what could make an impatient person leave:
 // * "Is this a scam?" — the destination is the DEX contract, named and
 //   shortened, and the total leaving the wallet is in one coloured box.
 // * "Is this the real FOMO?" — an asset Campfire does not vouch for is

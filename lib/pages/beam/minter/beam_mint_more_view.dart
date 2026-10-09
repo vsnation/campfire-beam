@@ -7,12 +7,12 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:  mint more of a token this wallet created.
 //   CTA:  "Mint <amount> <TICKER>".
 //   Taps: My tokens → Mint more → amount → Mint (→ confirm → PIN).
 //
-// Exit-intent (§1.7): "how much can I mint?" → the remaining amount is
+// Exit-intent: "how much can I mint?" → the remaining amount is
 // shown, with a one-tap "Most"; "what does it cost?" → the confirmation
 // shows the exact network fee.
 

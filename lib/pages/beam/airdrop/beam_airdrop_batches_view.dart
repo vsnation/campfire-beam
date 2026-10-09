@@ -7,13 +7,13 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:  see which codes were claimed, and take back what nobody claimed.
 //   CTA:  "Create new codes" (each batch has its own "Show codes" and
 //         "Take back <n> unclaimed" actions).
 //   Taps: open wallet → Airdrop → My batches (2–3).
 //
-// Exit-intent (§1.7): "where did my money go?" → every batch says how many
+// Exit-intent: "where did my money go?" → every batch says how many
 // codes were claimed and how many still wait; "can I get it back?" → the
 // take-back action is on the batch, with its exact fee shown before
 // confirming; "is the list stale?" → it shows the saved list at once and

@@ -15,7 +15,7 @@
 // It is rebuilt when a BEAM or Ethereum wallet is added or removed, so
 // "Add an Ethereum wallet" leads back to a working bridge.
 //
-// Spec (USER_PSYCHOLOGY §6): as `desktop_bridge_view.dart`. Clicks from
+// Spec: as `desktop_bridge_view.dart`. Clicks from
 // app open: Bridge (1), the button (2).
 
 import 'dart:async';

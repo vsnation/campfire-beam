@@ -11,13 +11,13 @@
 // worth, laid out like the wallet screen (a card on the left, the list on
 // the right).
 //
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   1. Job: see every asset of value and what it is worth; open one.
 //   2. Primary CTA: the rows themselves (open the asset: Send / Receive).
 //      "Receive assets" is the one secondary button.
 //   3. Clicks from app open: Assets (1) → an asset (2) → its Send tab.
 //
-// Exit-intent (§1.7) and how this page answers it:
+// Exit-intent and how this page answers it:
 // * "Is that total real?" — it says what it is: today's DEX prices, how old
 //   they are, and which assets have no price (never counted as zero).
 // * "Spam tokens bury what I hold" — like the wallet's dashboard, only BEAM,
@@ -187,7 +187,7 @@ class _BeamSidebarAssetsPageState extends ConsumerState<BeamSidebarAssetsPage> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<StackColors>()!;
     final campfire = ref.watch(pBeamHomeFormat(_walletId));
-    // Rounded to what a person reads (§1.5); each asset's page shows every
+    // Rounded to what a person reads; each asset's page shows every
     // digit.
     final format = BeamHomeFormat(
       formatBeam: (a) => '${BeamDashboardModel.shortAmount(a.raw)} BEAM',

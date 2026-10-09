@@ -224,7 +224,7 @@ enum BeamNoticeKind { info, warning, danger, success }
 
 /// A coloured box with an icon and plain-language text: warnings, errors
 /// and "what happens next". Every error names the next step
-/// (USER_PSYCHOLOGY §1.4).
+/// (no dead ends).
 class BeamNotice extends StatelessWidget {
   const BeamNotice({
     super.key,
@@ -544,7 +544,7 @@ class BeamEmptyState extends StatelessWidget {
 }
 
 /// A progress line with text, for loads that can take more than a second
-/// (USER_PSYCHOLOGY §1.4).
+/// (no dead ends).
 class BeamWorking extends StatelessWidget {
   const BeamWorking(this.text, {super.key});
 

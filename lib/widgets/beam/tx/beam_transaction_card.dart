@@ -7,13 +7,13 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6) — one history entry:
+// Spec — one history entry:
 //   Job:  say what happened to this payment, how much, and whether it is
 //         still moving — at a glance, without opening it.
 //   CTA:  the whole entry opens its details (no buttons in a list).
 //   Taps: open wallet → entry (1).
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 //   * "Is my payment stuck?" → an unfinished entry says why in plain words
 //     ("Waiting for the receiver's wallet to come online").
 //   * "Did I lose money?" → failed entries say "Nothing was sent".

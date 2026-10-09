@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sends a message to the owner's Telegram. Credentials are read from
+# Sends a progress message to Telegram. Credentials are read from
 # ~/.config/campfire-beam/telegram.env (mode 0600, never in this repo):
 #   TELEGRAM_BOT_TOKEN=...
 #   TELEGRAM_CHAT_ID=...

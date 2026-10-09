@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §1):
+// Spec:
 // 1. ONE job: stop a desktop quit that would interrupt a swap the chain is
 //    still confirming, and say what quitting would do.
 // 2. Primary CTA: "Wait" (keeps Campfire open). Secondary: "Quit anyway".

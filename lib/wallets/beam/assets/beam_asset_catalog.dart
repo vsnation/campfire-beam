@@ -194,7 +194,7 @@ abstract final class BeamAssetCatalog {
     ),
     // The Beam Bridge's wrapped Ethereum assets. Each is owned on chain by
     // its bridge asset contract (acefc4bed7… ETH, d455975164… USDT,
-    // 8a09b19c37… WBTC, 041710c647… DAI), as in the owner's bridge route
+    // 8a09b19c37… WBTC, 041710c647… DAI), as in the bridge's route
     // registry; names from their metadata (explorer `/assets`,
     // 2026-10-07). No bundled icons yet: the generic icon for the id.
     36: BeamKnownAsset(

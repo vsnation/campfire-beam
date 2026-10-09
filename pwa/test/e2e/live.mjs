@@ -4,7 +4,7 @@
 //
 // Two BEAM Campfire wallets in two browser contexts, open at the same time
 // (BEAM regular payments are interactive: both wallets must be online):
-//   A = the owner's test wallet FUNDER2, restored from its 12 words through the
+//   A = test wallet FUNDER2, restored from its 12 words through the
 //       real Restore screen and the recovery snapshot. The words are read from
 //       ~/.config/campfire-beam/test_wallets.env (FUNDER2_WALLET_SEED) at run
 //       time and are never printed or screenshotted.

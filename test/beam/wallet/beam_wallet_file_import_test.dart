@@ -7,8 +7,8 @@
  *
  */
 
-// Import wallet.db (owner, 2026-10-07: "I don't have seed phrases, but I
-// have wallet.db files"): a wallet from its file and password, with no
+// Import wallet.db (for people who have wallet.db files but no recovery
+// phrases): a wallet from its file and password, with no
 // recovery phrase stored and none made up; nothing left behind on failure;
 // the original file never changed; rescan (which would delete the file to
 // rebuild it from a phrase) refused.

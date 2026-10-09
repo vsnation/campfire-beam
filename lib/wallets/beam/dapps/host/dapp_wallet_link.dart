@@ -44,12 +44,12 @@ abstract class DappWalletLink {
 
   /// Null when the wallet may spend now; otherwise why not, in plain words
   /// (the wallet is behind the network, or not connected). An approval is
-  /// disabled while this is set (project rules R5: a wallet that is behind
+  /// disabled while this is set (a wallet that is behind
   /// refuses to send).
   String? get spendBlockedReason;
 
   /// Marks the wallet busy while an approval is on screen, so no node
-  /// switch restarts wallet-api under it (project rules R11). Returns the
+  /// switch restarts wallet-api under it. Returns the
   /// function that ends the hold; calling it twice is harmless.
   void Function() holdForApproval(String reason);
 

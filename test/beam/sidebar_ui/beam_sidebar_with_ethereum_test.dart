@@ -12,8 +12,7 @@
 // picked up at once (Campfire announces wallet changes only in single-coin
 // builds upstream; the BEAM build keeps announcing them), and having an
 // Ethereum wallet open in My Campfire changes nothing for the BEAM pages.
-// Swap is the exception the owner asked for (2026-10-09: "When selected ETH
-// wallet, you show DEX that is from uniswap"): it lists BEAM and Ethereum
+// Swap is the exception: it lists BEAM and Ethereum
 // wallets and shows Uniswap for an Ethereum one.
 
 import 'package:flutter/material.dart';

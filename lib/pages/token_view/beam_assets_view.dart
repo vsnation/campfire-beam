@@ -7,13 +7,13 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6) — "My assets", Campfire's token list for BEAM:
+// Spec — "My assets", Campfire's token list for BEAM:
 //   Job:  see every asset this wallet holds and what it is roughly worth;
 //         open one.
 //   CTA:  the rows themselves (tap an asset). Empty list: "Receive assets".
 //   Taps: open wallet → Assets → asset: 2 (3 to its Send).
 //
-// Exit-intent (§1.7) and how this screen answers it:
+// Exit-intent and how this screen answers it:
 //   * "Is this FOMO real?" → copycats of verified assets carry a red
 //     "Not the verified FOMO (#174)" in the row; unverified ones show #id.
 //   * "Why is my total smaller than I think?" → the total says it is a DEX

@@ -10,9 +10,8 @@
 // LIVE, no funds. A NEW wallet, created through the Dart API exactly as the
 // app does (Wallet.create + init + open) with the real ProcessHost and the
 // pinned HF6 binaries, must be usable on a PUBLIC node at once: connected,
-// synced and able to send within a minute of its first open. Owner report,
-// 2026-10-07: a new wallet was "not connected to a public node from the first
-// time ... doesn't allow to send anything until the chain is synced".
+// synced and able to send within a minute of its first open (a new wallet
+// once waited for a full sync before it could send anything).
 //
 //   BEAM_WALLET_IT=1 BEAM_BIN_DIR=<dir with the pinned binaries> \
 //       flutter test --no-pub test/beam/wallet/beam_wallet_first_open_live_test.dart

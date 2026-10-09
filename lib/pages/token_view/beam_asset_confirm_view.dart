@@ -7,13 +7,13 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6) — confirm an asset payment:
+// Spec — confirm an asset payment:
 //   Job:  show exactly what will happen before it happens: which asset, how
 //         much, the BEAM fee, where it goes, how it arrives.
 //   CTA:  "Send 12.5 FOMO" (the outcome), behind Campfire's PIN / password.
 //   Taps: … Review → Send: 1 more, plus the PIN.
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 //   * "Am I sending the right token?" → the amount, the asset row and the
 //     button name an unverified asset with its number ("250 FOMO #999"),
 //     and a copycat is flagged in red right here.

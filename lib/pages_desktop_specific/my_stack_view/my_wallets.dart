@@ -110,8 +110,7 @@ class _MyWalletsState extends ConsumerState<MyWallets> {
           ),
           Expanded(
             // Campfire for BEAM: every wallet in one list, BEAM and
-            // Ethereum alike, each with its balance (owner, 2026-10-09:
-            // Ethereum "visible like multiwallets").
+            // Ethereum alike, each with its balance.
             child:
                 AppConfig.isSingleCoinApp ||
                     AppConfig.coins.any((c) => c is Beam)

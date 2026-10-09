@@ -8,7 +8,7 @@
  */
 
 /// How long one open of a BEAM wallet took to reach each R11 milestone
-/// (project rules R11: cached view <= 300 ms, live data <= 3 s, able to send
+/// (cached view <= 300 ms, live data <= 3 s, able to send
 /// <= 10 s on a recently opened wallet). Measured from the moment `open()`
 /// was called; null until the milestone is reached.
 class BeamOpenTimings {

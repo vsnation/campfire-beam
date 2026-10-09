@@ -7,9 +7,9 @@
  *
  */
 
-// LIVE, real funds (project rules R9): Split coins (B-UTXO-1) through the app's
+// LIVE, real funds: Split coins (B-UTXO-1) through the app's
 // own path — BeamWallet.prepareSplit / confirmSplit on the in-process core —
-// in ONE of the owner's test wallets: 0.05 BEAM into 3 coins of 0.01666666.
+// in ONE test wallet: 0.05 BEAM into 3 coins of 0.01666666.
 // Nothing leaves the wallet but the fee; nothing is sent to any address.
 // The operator logs the tx id in the project notes.
 //
@@ -87,7 +87,7 @@ String _rand(int n) {
   return List.generate(n, (_) => chars[r.nextInt(chars.length)]).join();
 }
 
-/// `KEY=value` lines of the owner's 0600 file; a later line wins. Values
+/// `KEY=value` lines of the 0600 secrets file; a later line wins. Values
 /// are never printed.
 Map<String, String> _testWallets(String home) {
   final f = File(p.join(home, '.config/campfire-beam/test_wallets.env'));
@@ -174,7 +174,7 @@ void main() {
         mnemonicPassphrase: '',
       ) as BeamWallet;
 
-      // The owner's wallet directory, linked in place (never copied).
+      // The test wallet's directory, linked in place (never copied).
       final walletsDir = Directory(p.join(beamRoot, 'wallets'))
         ..createSync(recursive: true);
       final link = Link(p.join(walletsDir.path, wallet.walletId));
@@ -290,7 +290,7 @@ void main() {
         expect(BeamTxText.title(row), 'Split into coins');
       } finally {
         await wallet.exit();
-        // The link only; the owner's directory stays as it is.
+        // The link only; the wallet's directory stays as it is.
         if (await link.exists()) await link.delete();
         await isar.close(deleteFromDisk: true);
         await Directory(root).delete(recursive: true);

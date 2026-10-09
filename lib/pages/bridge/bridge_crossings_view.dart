@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: find any crossing and see where it is; the ones still on
 //    their way first.
 // 2. Primary CTA: none (a row opens its crossing); with none yet, "Move
@@ -15,7 +15,7 @@
 // 3. Taps from app open: Bridge → History (phone: 3); beside the form on
 //    desktop (1).
 //
-// Exit-intent (§1.7): an empty list with nothing to do (it says what the
+// Exit-intent: an empty list with nothing to do (it says what the
 // bridge does and offers to move); a row that only says "pending" (each
 // says what it waits for: "34 blocks to go", "Collect").
 

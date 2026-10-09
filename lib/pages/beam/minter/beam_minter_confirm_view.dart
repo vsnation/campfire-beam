@@ -7,13 +7,13 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:  show what creating (or minting) a token costs and does, from the
 //         transaction the core built, and send it after the PIN.
 //   CTA:  "Create <TICKER> for <total>" / "Mint <amount>".
 //   Taps: reached from the token form or My tokens; 1 tap + PIN here.
 //
-// Exit-intent (§1.7): "60 BEAM for what?" → each part is named, and that it
+// Exit-intent: "60 BEAM for what?" → each part is named, and that it
 // never comes back is said before confirming; "what exactly is signed?" →
 // the metadata stored on chain can be shown in full.
 

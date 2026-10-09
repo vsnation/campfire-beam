@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: give this name to another wallet, to exactly the key its
 //    owner showed you.
 // 2. Primary CTA: "Transfer alice" (then the confirmation, a tick that the
@@ -15,9 +15,9 @@
 // 3. Taps from app open: Names (1) → alice (2) → Transfer (3) → paste (4)
 //    → Transfer alice (5) → tick + Transfer alice (6) → PIN. Long on
 //    purpose: it gives away a name worth $10–$320 a year and cannot be
-//    undone (§1.2 allows a confirmation step for that).
+//    undone, which is when a confirmation step is worth it.
 //
-// Exit-intent (§1.7) — what could make an impatient person leave:
+// Exit-intent — what could make an impatient person leave:
 // * "Where do I get the key?" — the first line says where the receiving
 //   wallet shows it.
 // * "Did I paste the right thing?" — 16 characters of the key (64 bits,

@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:  create a new token of your own on BEAM.
 //   CTA:  "Create <TICKER>" (the confirmation then says "Create <TICKER>
 //         for <total>").
 //   Taps: open wallet → Tokens → Create a token → name, ticker, supply →
 //         Create (→ confirm → PIN): 3 + typing + confirm + PIN.
 //
-// Exit-intent (§1.7): "how much is this going to cost me?" → the cost is
+// Exit-intent: "how much is this going to cost me?" → the cost is
 // the first thing on the screen, split into what goes where, before any
 // field; "what do these fields mean?" → three fields matter, the rest are
 // optional or under "More details"; "I typed something wrong" → each field

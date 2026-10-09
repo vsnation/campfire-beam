@@ -54,8 +54,8 @@ bool isLoopbackHost(String host) {
   return ip != null && ip.isLoopback;
 }
 
-/// Campfire's rule, read at every request (the user's Tor switch, owner
-/// 2026-10-09: "When the user turns Tor on, it must proxy ALL requests"):
+/// Campfire's rule, read at every request (the user's Tor switch: when it
+/// is on, every request goes through Tor):
 /// * Tor off, or a build without Tor: direct.
 /// * Tor on and connected: through Tor's SOCKS5 proxy, which also resolves
 ///   the host name.

@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: show exactly what this swap does — what leaves the wallet,
 //    what arrives (and the least that may), the network fee, the contract
 //    it goes to — and send it only after Campfire's PIN / password.
@@ -20,7 +20,7 @@
 // would need more gas than shown here, this screen shows the new numbers
 // instead of sending.
 //
-// Exit-intent (§1.7): "Is this a scam?" — the contract is Uniswap's
+// Exit-intent: "Is this a scam?" — the contract is Uniswap's
 // Universal Router, named with its address; "What if the price moves?" —
 // the least you receive is on the screen and Ethereum enforces it; "Did it
 // work?" — the screen waits for Ethereum and says what actually arrived.

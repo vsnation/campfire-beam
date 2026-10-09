@@ -13,7 +13,7 @@
 // look native in every Campfire theme. beam_wallet_home.dart connects them
 // to the wallet.
 //
-// Spec (USER_PSYCHOLOGY §6) — the wallet home:
+// Spec — the wallet home:
 //   1. Job: show what the user has (spendable BEAM, what is arriving, what
 //      waits for their names) and whether it is safe to send right now.
 //   2. Primary CTA: Send (Campfire's bottom bar). "Claim" on the names line
@@ -21,7 +21,7 @@
 //   3. Taps from app open: 0 to see the balance; Send 1; Claim 1 (+ confirm
 //      + PIN, because it moves money).
 //
-// Exit-intent check (§1.7) — what would make an impatient person close it:
+// Exit-intent check — what would make an impatient person close it:
 //   * A spinner over the balance, or a balance that jumps when live data
 //     lands: the balance renders from Campfire's cache at once and the lines
 //     under it keep their slots (R11).

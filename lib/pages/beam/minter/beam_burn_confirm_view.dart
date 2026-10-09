@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:  make sure the user means to destroy these tokens, then do it.
 //   CTA:  "Burn <amount> <TICKER> forever", live only once the ticker is
 //         typed.
 //   Taps: reached from the burn form; type the ticker + 1 tap + PIN.
 //
-// This is the one screen that is slow on purpose (USER_PSYCHOLOGY §1.2:
-// add a step only when the action is destructive). Exit-intent (§1.7):
+// This is the one screen that is slow on purpose (a step is added only
+// when the action is destructive). Exit-intent:
 // "what exactly is destroyed?" → the amount and the fee, read back from the
 // built transaction, and the warning in full before the button.
 

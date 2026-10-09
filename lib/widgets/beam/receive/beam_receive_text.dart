@@ -18,7 +18,7 @@ import 'beam_private_receive.dart';
 
 /// Every word the BEAM receive screens show, in one place.
 ///
-/// Plain language only (USER_PSYCHOLOGY §1.5): never "SBBS", "voucher",
+/// Plain language only: never "SBBS", "voucher",
 /// "Lelantus", "shielded" or "token". Each address type is described by
 /// what it does for the person being paid.
 abstract final class BeamReceiveText {

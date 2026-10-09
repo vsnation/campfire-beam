@@ -10,14 +10,14 @@
 // Campfire's Send screen for a BEAM wallet (phone: the SendView route;
 // desktop: the Send tab of the wallet view).
 //
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   1. Job: pay someone BEAM (or a BEAM asset) — to an address or to a name
 //      typed straight into the recipient field.
 //   2. Primary CTA: "Send" (pinned on a phone, visible at 375 px without
 //      scrolling); it opens Campfire's confirmation with the exact numbers.
 //   3. Taps from app open: wallet → Send → "Send" → "Send …" + PIN (3 + PIN).
 //
-// Exit-intent (§1.7), and the answer to each:
+// Exit-intent, and the answer to each:
 //   * "Did that name resolve to the right person?" → a visible card with
 //     the owner key and expiry; never resolved silently.
 //   * "Why is Send grey?" → every block says why under its field, and the

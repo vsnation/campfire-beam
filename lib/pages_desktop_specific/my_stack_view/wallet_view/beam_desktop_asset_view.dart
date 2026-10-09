@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6) — one asset on desktop (Campfire's
+// Spec — one asset on desktop (Campfire's
 // DesktopTokenView for BEAM):
 //   Job:  this asset's balance and value, its history, and moving it — all
 //         on one screen, as Campfire's desktop token page.
 //   CTA:  "Review payment" in the Send tab (Receive is the other tab).
 //   Clicks: wallet → asset: 1 from the wallet's asset list.
 //
-// Exit-intent (§1.7): see lib/pages/token_view/beam_asset_view.dart; the
+// Exit-intent: see lib/pages/token_view/beam_asset_view.dart; the
 // desktop page says the same things in the same places.
 
 import 'package:flutter/material.dart';

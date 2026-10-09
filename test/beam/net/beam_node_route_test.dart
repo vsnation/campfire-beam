@@ -7,8 +7,8 @@
  *
  */
 
-// With Tor on, every BEAM connection goes through Tor or is not made (owner,
-// 2026-10-07): node names are resolved inside Tor (SOCKS5 RESOLVE), wallet-api
+// With Tor on, every BEAM connection goes through Tor or is not made:
+// node names are resolved inside Tor (SOCKS5 RESOLVE), wallet-api
 // gets ip:port plus the proxy, and every failure stops instead of falling
 // back to a direct connection.
 

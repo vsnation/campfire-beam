@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6) — one asset (Campfire's token page for BEAM):
+// Spec — one asset (Campfire's token page for BEAM):
 //   Job:  how much of this asset do I have, what is it worth, what happened
 //         to it — and move it.
 //   CTA:  Send / Receive, Campfire's two token buttons (R4: kept as a pair,
 //         the same weight they have on every Campfire token page).
 //   Taps: open wallet → Assets → asset: 2; Send: 3.
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 //   * "Is this the real FOMO?" → unverified assets say so under the balance,
 //     copycats in red with the verified asset's number.
 //   * "What is it worth?" → the DEX estimate, labelled as one; "No price"

@@ -7,12 +7,12 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6) — receive an asset:
+// Spec — receive an asset:
 //   Job:  give the sender the address this asset arrives at.
 //   CTA:  "Copy address" (the QR is right above it for in-person sends).
 //   Taps: open wallet → Assets → asset → Receive: 3.
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 //   * "Do I need a special FOMO address?" → the first line says FOMO
 //     arrives at the same BEAM address.
 //   * "No address shown" → it says why (the wallet is still connecting)

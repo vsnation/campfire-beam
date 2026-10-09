@@ -7,14 +7,14 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: put coins into this pool, or take yours out.
 // 2. Primary CTA: "Add liquidity" (or "Withdraw" when that tab is chosen);
 //    only one is ever shown.
 // 3. Taps from app open: wallet → Swap → Pools → pool (4), amount,
 //    "Add liquidity" (5); then the confirmation and the PIN.
 //
-// Exit-intent (§1.7) — what could make an impatient person leave:
+// Exit-intent — what could make an impatient person leave:
 // * Having to work out the second amount — type one side, the pool's
 //   shader computes the other (it is never guessed in the app).
 // * Not knowing what the position is worth — "Your share of the pool" and

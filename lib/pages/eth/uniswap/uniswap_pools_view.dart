@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: show every Uniswap pool between the two tokens of the swap —
 //    which version, its fee, whether it has a hook, its price and how deep
 //    it is next to the others — so "is this the best place to swap?" has a

@@ -7,7 +7,7 @@
  *
  */
 
-// B-NODE-2b: the private node never gets in the way (project rules R11).
+// B-NODE-2b: the private node never gets in the way.
 //
 // * A stored owner key: zero exports, no session closed, no pause.
 // * whenIdle: no switch (bring-up pause, handover, move back to public)

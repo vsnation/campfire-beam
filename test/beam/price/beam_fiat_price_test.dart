@@ -10,7 +10,7 @@
 // BEAM's fiat price as every BEAM screen reads it (pBeamFiatPrice): from
 // Campfire's price service, in the currency chosen in Settings, never a
 // zero price; and the price service keeps refreshing after the currency is
-// changed (it stopped before: the owner's "update coingecko").
+// changed (it used to stop).
 
 import 'package:decimal/decimal.dart';
 import 'package:flutter/foundation.dart';

@@ -24,8 +24,8 @@ import 'beam_node_progress.dart';
 /// the coordinator never keeps it in a field.
 typedef BeamPasswordProvider = Future<String> Function();
 
-/// Reads the owner key the wallet stored while it was closed anyway
-/// (project rules R11), or null when there is none.
+/// Reads the owner key the wallet stored while it was closed anyway, or
+/// null when there is none.
 typedef BeamOwnerKeyProvider = Future<String?> Function();
 
 /// Completes once no send, swap, claim or dApp approval is open.
@@ -300,8 +300,8 @@ class BeamPrivateNodeStatus {
 ///    `Tx replication is ON` after its last fast-sync line, is not in a
 ///    long step ("Raising Fossil"), **and** its newest `My Tip:` is within
 ///    [readyWithinBlocks] of a fresh explorer height — continuously for
-///    [readyHoldFor] (owner, 2026-10-07: a new wallet sat "syncing", unable
-///    to send, on a node that was not ready yet). No explorer, no handover.
+///    [readyHoldFor] (otherwise a new wallet can sit "syncing", unable to
+///    send, on a node that is not ready yet). No explorer, no handover.
 /// 4. After the move, `ev_connection_changed.own_node == true` must arrive
 ///    within [ownNodeTimeout], or the wallet goes back to a public node.
 ///    [BeamPrivateNodeStatus.privateReceiveAvailable] is true only while it

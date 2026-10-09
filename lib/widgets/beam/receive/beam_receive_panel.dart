@@ -10,12 +10,12 @@
 // BEAM Receive, phone and desktop (Campfire's ReceiveView / DesktopReceive
 // show it for a BEAM wallet).
 //
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   Job:     give someone a way to pay you.
 //   Primary: "Copy address" (QR beside it for in-person payments).
 //   Taps:    1 from the wallet (Receive); the address is already there.
 //
-// What would make an impatient person close it (§1.7), and the answer:
+// What would make an impatient person close it, and the answer:
 // - Waiting for an address: the cached one shows at once; a new wallet
 //   sees "Getting your address…" and, after 3 s, why it takes a moment.
 // - Not knowing if a payment will arrive: one line says the regular

@@ -29,7 +29,7 @@ import 'node_ui_harness.dart';
 typedef Phase = BeamPrivateNodePhase;
 typedef Issue = BeamPrivateNodeIssue;
 
-/// The states the owner asked to see, by golden name.
+/// The states to see, by golden name.
 final Map<String, BeamNodePanelSnapshot> states = {
   'downloading': snap(
     privateNode: BeamPrivateNodeStatus(
@@ -96,7 +96,7 @@ final Map<String, BeamNodePanelSnapshot> states = {
   'phone_without_private_node': snap(supported: false, enabled: false),
 };
 
-/// What each state must say (the owner's wording where there is one).
+/// What each state must say (the agreed wording where there is one).
 final Map<String, List<String>> mustSay = {
   'downloading': ['Downloading 43%', 'eu-nodes.mainnet.beam.mw:8100'],
   'finishing_setup': ['Finishing setup (37%)', '5–10 minutes'],

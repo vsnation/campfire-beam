@@ -7,7 +7,7 @@
  *
  */
 
-// 3-line spec (USER_PSYCHOLOGY §6):
+// 3-line spec:
 // 1. Job: show which node the wallet uses and whether it is up to date, and
 //    let the user run their own private node.
 // 2. Primary CTA: none while all is well (a status panel); when the private
@@ -16,7 +16,7 @@
 // 3. Taps from app open: wallet → network status (1) on phone and desktop;
 //    the status chip opens it from any screen that shows one (1).
 //
-// Exit-intent check (§1.7) — what would make an impatient person leave:
+// Exit-intent check — what would make an impatient person leave:
 // * A spinner with no words: every state has a sentence; the download shows
 //   a percentage and how long it takes.
 // * Fear the wallet is broken while the node downloads: "The wallet uses a

@@ -7,8 +7,8 @@
  *
  */
 
-// Owner, 2026-10-09: "NO IP address of user can be exposed. When the user
-// turns Tor on, it must proxy ALL requests." These tests run Ethereum's
+// No IP address of the user may be exposed: with Tor on, every request
+// goes through Tor. These tests run Ethereum's
 // JSON-RPC client (the one every web3dart call and "Test connection" use)
 // against a local SOCKS5 proxy standing in for Tor and a local RPC:
 // * Tor on: the request goes through the proxy, and the proxy gets the

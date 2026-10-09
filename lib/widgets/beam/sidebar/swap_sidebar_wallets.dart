@@ -9,8 +9,7 @@
 
 // Which wallet the side menu's Swap page acts on. Unlike the other BEAM
 // pages it also takes Ethereum wallets: a BEAM wallet swaps on BEAM's DEX,
-// an Ethereum wallet on Uniswap (owner, 2026-10-09: "When selected ETH
-// wallet, you show DEX that is from uniswap").
+// an Ethereum wallet on Uniswap.
 //
 // The rule is the BEAM pages' rule (`resolveBeamSidebarWallet`): the
 // wallet open in My Campfire or picked here (remembered between runs);

@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: pick the token to pay with or to receive.
 // 2. Primary action: tap a token.
 // 3. One tap from the swap form's token button.

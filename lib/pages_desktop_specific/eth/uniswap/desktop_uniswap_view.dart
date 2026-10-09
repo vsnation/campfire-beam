@@ -11,7 +11,7 @@
 // (`desktop_beam_dex_view.dart`): the swap form on the left, every
 // Uniswap pool between the two tokens on the right.
 //
-// Spec (USER_PSYCHOLOGY §6): as `uniswap_swap_view.dart`; on desktop the
+// Spec: as `uniswap_swap_view.dart`; on desktop the
 // pools are beside the form instead of one tap away.
 
 import 'package:flutter/material.dart';

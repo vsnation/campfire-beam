@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: find a name that is free and get it, knowing the price in
 //    dollars and in BEAM before committing.
 // 2. Primary CTA: "Get alice for 1 year" (or "Buy alice for 100,000 BEAM"
@@ -19,7 +19,7 @@
 // typing stops, on the wallet's own node, and only the newest answer is
 // shown. Prices per length are visible before typing (honest anchoring).
 //
-// Exit-intent (§1.7) — what could make an impatient person leave:
+// Exit-intent — what could make an impatient person leave:
 // * "$10 a year is 1,162 BEAM?!" — dollars first, BEAM second, and one
 //   line on why it is paid in BEAM; 3- and 4-letter prices shown up front.
 // * Typing a name that turns out taken — said at once, with when it could

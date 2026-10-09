@@ -7,8 +7,8 @@
  *
  */
 
-// The private node and Campfire's Tor setting (owner, 2026-10-07: with Tor
-// on, every request goes through Tor): the node runs with Tor on only on a
+// The private node and Campfire's Tor setting (with Tor on, every request
+// goes through Tor): the node runs with Tor on only on a
 // core that routes its peers through Tor, never outside it, and the node
 // panel says why it is off otherwise.
 

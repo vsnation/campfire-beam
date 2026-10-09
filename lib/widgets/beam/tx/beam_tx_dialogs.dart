@@ -167,7 +167,7 @@ class _ProofFrame extends StatelessWidget {
   }
 }
 
-// Spec (USER_PSYCHOLOGY §6) — payment proof (export):
+// Spec — payment proof (export):
 //   Job:  give the payer something the receiver can check.
 //   CTA:  "Copy proof".
 //   Taps: entry → Get payment proof → Copy proof (from the details: 2).
@@ -249,7 +249,7 @@ class BeamProofExportDialog extends ConsumerWidget {
   }
 }
 
-// Spec (USER_PSYCHOLOGY §6) — payment proof (check):
+// Spec — payment proof (check):
 //   Job:  tell whether a proof someone sent really shows a payment.
 //   CTA:  "Check proof".
 //   Taps: entry → Check a payment proof → paste → Check proof (3).

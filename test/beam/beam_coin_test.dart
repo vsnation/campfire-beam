@@ -323,7 +323,7 @@ void main() {
         utf8.decode(archive.findFile('theme.json')!.content),
       ) as Map).cast<String, Object?>();
       final colors = (theme['colors']! as Map)['coin']! as Map;
-      // Campfire's own coin colour (the owner kept Campfire's look).
+      // Campfire's own coin colour (Campfire's look is kept).
       expect(colors['beam'], colors['firo']);
 
       final coins = (theme['assets']! as Map)['coins']! as Map;

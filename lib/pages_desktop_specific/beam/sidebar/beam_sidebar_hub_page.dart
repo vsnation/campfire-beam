@@ -10,14 +10,14 @@
 // Airdrops and Tokens in the desktop side menu: three tasks each, one card
 // per task, the most common first.
 //
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 //   1. Job: pick what to do with airdrops (claim a code / see mine / create
 //      codes) or tokens (create one / mine / burn).
 //   2. Primary CTA: the first card ("Claim a code", "Create a token"),
 //      marked by its filled icon; the other two are quieter.
 //   3. Clicks from app open: Airdrops (1) → Claim a code (2).
 //
-// Exit-intent (§1.7): jargon ("batch", "voucher", "minter") — the cards say
+// Exit-intent: jargon ("batch", "voucher", "minter") — the cards say
 // what the user gets; not knowing which card is theirs — one plain line
 // each; a dead end after a task — every task page's back arrow and "Done"
 // come back here.

@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. Job: show exactly what this dApp will take from and give to the
 //    wallet, before anything happens, and let the user decide.
 // 2. Primary CTA: the outcome, "Approve swap" / "Approve payment" /
@@ -18,7 +18,7 @@
 //    after the sheet appears or its layout changes, so a tap aimed at the
 //    dApp page cannot land on it; biometrics never start by themselves.
 //
-// Exit-intent (§1.7) — what would make an impatient person close the app:
+// Exit-intent — what would make an impatient person close the app:
 // * A popup they did not expect. The dApp page shows a banner instead of
 //   this sheet unless the user touched the page in the last seconds.
 // * Not understanding what they sign: amounts are signed and coloured per
@@ -28,7 +28,7 @@
 //   core may rebuild what is approved, the sheet says so first, with the
 //   worst it may sign; when the code that would rebuild it is not BEAM's
 //   own DEX, the warning is in the warning colour and Approve needs an
-//   explicit "I understand" tick (USER_PSYCHOLOGY §5: never surprise-sign).
+//   explicit "I understand" tick (never surprise-sign).
 // * A dead end when funds are short: the sheet says what is missing and
 //   what to do, and Reject stays available.
 // * Not knowing whether more prompts are coming: "2 more requests waiting".

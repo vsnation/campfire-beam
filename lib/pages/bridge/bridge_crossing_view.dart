@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: know where the money is now, and what happens next.
 // 2. Primary CTA: none while it travels ("Done" closes; it carries on);
 //    "Collect 0.5 bETH" once it is on BEAM and not collected
@@ -15,7 +15,7 @@
 // 3. Taps from app open: it opens by itself after the review; later,
 //    Bridge → the crossing at the top, or History → it.
 //
-// Exit-intent (§1.7):
+// Exit-intent:
 // * "Is it stuck?" — the step under way is marked, with what it waits for
 //   in words ("34 BEAM blocks to go", "waiting for Ethereum gas to come
 //   down to the fee you paid"), and slow is said to be normal when it is.

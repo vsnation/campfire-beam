@@ -72,8 +72,8 @@ class SupportView extends StatelessWidget {
         children: [
           RoundedWhiteContainer(
             child: Text(
-              // BEAM's official channels, as listed on beam.mw (owner,
-              // 2026-10-08). Bugs in this app go to its GitHub issues.
+              // BEAM's official channels, as listed on beam.mw. Bugs in
+              // this app go to its GitHub issues.
               "Questions about BEAM or your wallet: BEAM's support team and "
               "community are on these channels. Found a bug in this app? "
               "Tell us on GitHub.",

@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6) — BEAM transaction details:
+// Spec — BEAM transaction details:
 //   Job:  show exactly what happened to one payment, and offer the one
 //         thing that can still be done about it.
 //   CTA:  while a payment can still be stopped: "Cancel payment" (pinned,
@@ -15,7 +15,7 @@
 //         are secondary.
 //   Taps: open wallet → entry (1) → Cancel payment → confirm (3).
 //
-// Exit-intent (§1.7), and what this screen does about each:
+// Exit-intent, and what this screen does about each:
 //   * "Is my money gone?" → the status says it in words; failed and
 //     cancelled payments say "Nothing was sent".
 //   * "What is this hex?" → the only ID shown is the one the explorer uses,

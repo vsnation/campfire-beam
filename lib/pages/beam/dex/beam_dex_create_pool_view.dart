@@ -7,7 +7,7 @@
  *
  */
 
-// Spec (USER_PSYCHOLOGY §6):
+// Spec:
 // 1. ONE job: create a new, empty pool for two assets.
 // 2. Primary CTA: "Create pool".
 // 3. Taps from app open: wallet → Swap → Pools → "Create a pool" (4),
@@ -16,7 +16,7 @@
 //    4–5 tap budget is exceeded by the asset choice; the first asset is
 //    pre-filled with BEAM and the fee tier with the usual 1%.
 //
-// Exit-intent (§1.7) — what could make an impatient person leave:
+// Exit-intent — what could make an impatient person leave:
 // * Discovering the 10 BEAM deposit late — it is stated on this screen
 //   before anything is pressed, and again on the confirmation.
 // * Creating a pool that exists — the screen says so and offers to open it.

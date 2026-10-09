@@ -11,8 +11,8 @@
 // list, stop selling — plus buying a listed name (recorded: nephrite, the
 // one name for sale on mainnet when the fixtures were taken).
 //
-// Renew, transfer and list kernels are synthetic (no recording exists: the
-// owner deferred live name transactions). They are serialised by the same
+// Renew, transfer and list kernels are synthetic (no recording exists:
+// live name transactions were deferred). They are serialised by the same
 // builder that reproduces the recorded register kernel byte for byte
 // (names_register_test.dart), and the real BeamBansService decodes and
 // checks them exactly as it would a core's.

@@ -12,7 +12,7 @@
 // on the right, so the one under way is always in sight. The review, a
 // crossing and the wallet pickers open as dialogs.
 //
-// Spec (USER_PSYCHOLOGY §6): as `bridge_move_view.dart` and
+// Spec: as `bridge_move_view.dart` and
 // `bridge_crossings_view.dart`; on desktop the history is beside the form
 // instead of one click away. Clicks from app open: the side menu's Bridge
 // (1), the button (2).
