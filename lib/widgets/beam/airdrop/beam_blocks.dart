@@ -168,24 +168,55 @@ class BeamTotalRow extends StatelessWidget {
       color: confirm ? colors.snackBarBackSuccess : colors.popupBG,
       padding: const EdgeInsets.all(12),
       child: LayoutBuilder(
-        builder: (context, box) => Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: Text(label, style: style)),
-            const SizedBox(width: 12),
-            ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: box.maxWidth * 0.6),
-              child: Text(
+        builder: (context, box) {
+          // One line when label and value both fit; otherwise the value
+          // goes under the label, so neither wraps a lone word onto a line
+          // of its own ("Your balance changes" / "by").
+          final scaler = MediaQuery.textScalerOf(context);
+          // Measured in the font the Text will draw with (the inherited
+          // family), not the platform default.
+          final drawn = DefaultTextStyle.of(context).style.merge(style);
+          final need =
+              _width(label, drawn, scaler) + 12 + _width(value, drawn, scaler);
+          final fits = need <= box.maxWidth;
+          if (!fits) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: style),
+                const SizedBox(height: 4),
+                Text(value, key: valueKey, style: style),
+              ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: Text(label, style: style)),
+              const SizedBox(width: 12),
+              Text(
                 value,
                 key: valueKey,
                 textAlign: TextAlign.right,
                 style: style,
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
+  }
+
+  static double _width(String text, TextStyle style, TextScaler scaler) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final width = painter.width;
+    painter.dispose();
+    return width;
   }
 }
 

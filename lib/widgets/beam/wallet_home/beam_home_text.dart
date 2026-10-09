@@ -155,6 +155,7 @@ class BeamClaimText {
     required this.headline,
     required this.receive,
     required this.fee,
+    required this.balanceChange,
     required this.cta,
     this.from,
     this.feeNote,
@@ -173,6 +174,10 @@ class BeamClaimText {
 
   /// "0.011 BEAM".
   final String fee;
+
+  /// What the balance actually gains once the claim confirms, the fee
+  /// taken out: "+2.489 BEAM", or "+1,000 FOMO, −0.011 BEAM".
+  final String balanceChange;
 
   /// Where the fee comes from.
   final String? feeNote;
@@ -371,6 +376,15 @@ abstract final class BeamHomeText {
     final fee = withUnit(0, feeGroth);
     final beamWaiting = summary.totalsByAsset[0] ?? BigInt.zero;
 
+    // The fee comes out of BEAM, so the BEAM line is net; gains first.
+    final beamNet = (receiveTotals[0] ?? BigInt.zero) - feeGroth;
+    final change = [
+      if (beamNet > BigInt.zero) '+${withUnit(0, beamNet)}',
+      for (final id in ids)
+        if (id != 0) '+${withUnit(id, receiveTotals[id]!)}',
+      if (beamNet.isNegative) '−${withUnit(0, -beamNet)}',
+    ];
+
     String? feeNote;
     if (beamWaiting >= feeGroth) {
       feeNote =
@@ -424,6 +438,9 @@ abstract final class BeamHomeText {
       receive: receive,
       from: names.isEmpty ? null : names.join(', '),
       fee: fee,
+      balanceChange: change.isEmpty
+          ? withUnit(0, BigInt.zero)
+          : change.join(', '),
       feeNote: feeNote,
       warning: warning,
       blocker: blocker,

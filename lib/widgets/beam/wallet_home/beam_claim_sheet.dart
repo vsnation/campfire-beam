@@ -36,6 +36,8 @@ import '../../../wallets/beam/rpc/beam_transport.dart';
 import '../../desktop/primary_button.dart';
 import '../../desktop/secondary_button.dart';
 import '../../rounded_container.dart';
+import '../airdrop/beam_blocks.dart';
+import '../airdrop/beam_layout.dart';
 import '../stickers/beam_sticker.dart';
 import 'beam_home_controller.dart';
 import 'beam_home_text.dart';
@@ -240,8 +242,8 @@ class _BeamClaimSheetState extends State<BeamClaimSheet> {
           isDesktop: desktop,
           title: 'Claim sent',
           message:
-              '${text.receive.join(' + ')} will be in your balance once '
-              'the network confirms it, usually within a few minutes.',
+              'Your balance changes by ${text.balanceChange} once the '
+              'network confirms it, usually within a few minutes.',
           primary: 'Done',
           onPrimary: _close,
           sticker: BeamAnimatedStickerView(
@@ -291,10 +293,10 @@ class _BeamClaimSheetState extends State<BeamClaimSheet> {
             flex: 2,
             child: Column(
               key: key,
-              crossAxisAlignment: CrossAxisAlignment.end,
+              // Aligned like the one-line values in the other rows.
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final v in values)
-                  SelectableText(v, style: value, textAlign: TextAlign.end),
+                for (final v in values) SelectableText(v, style: value),
               ],
             ),
           ),
@@ -355,6 +357,16 @@ class _BeamClaimSheetState extends State<BeamClaimSheet> {
                   text.fee,
                 ], key: const Key('beamClaimFee')),
               ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          BeamLayoutScope(
+            desktop: desktop,
+            child: BeamTotalRow(
+              label: 'Your balance changes by',
+              value: text.balanceChange,
+              valueKey: const Key('beamClaimBalanceChange'),
+              confirm: false,
             ),
           ),
           if (text.feeNote != null) ...[

@@ -354,6 +354,8 @@ void main() {
       );
       expect(t.receive, ['2.5 BEAM']);
       expect(t.fee, '0.011 BEAM');
+      // The balance gains the claim minus its fee, not the whole 2.5.
+      expect(t.balanceChange, '+2.489 BEAM');
       expect(t.feeNote, startsWith('Pays its own fee'));
       expect(t.blocker, isNull);
       expect(t.warning, isNull);
@@ -370,6 +372,7 @@ void main() {
         canSpend: true,
       );
       expect(t.blocker, contains('You need 0.011 BEAM in this wallet'));
+      expect(t.balanceChange, '+1,000 FOMO, −0.011 BEAM');
     });
 
     test('BEAM-only worth no more than the fee: warned, not forbidden', () {
@@ -380,6 +383,7 @@ void main() {
       final t = BeamHomeText.claim(summary: s, advice: advice, canSpend: true);
       expect(advice.canClaim, isTrue);
       expect(t.warning, contains('gains you nothing'));
+      expect(t.balanceChange, '−0.006 BEAM');
       expect(t.blocker, isNull);
     });
 
@@ -400,6 +404,7 @@ void main() {
         built: built,
       );
       expect(t.fee, '0.0125 BEAM');
+      expect(t.balanceChange, '+2.4875 BEAM');
     });
 
     test('not synced: claiming is paused', () {

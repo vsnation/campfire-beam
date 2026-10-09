@@ -483,7 +483,9 @@ void showBeamClaimSheet(
         context: context,
         builder: (_) => DesktopDialog(
           maxWidth: 580,
-          maxHeight: double.infinity,
+          // The window's height less a margin, so a short window scrolls
+          // the sheet instead of cutting off its buttons.
+          maxHeight: null,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

@@ -403,6 +403,13 @@ void main() {
       expect(_text('Pays its own fee'), findsOneWidget);
       expect(find.text('Network fee'), findsOneWidget);
       expect(find.text('0.011 BEAM'), findsOneWidget);
+      expect(find.text('Your balance changes by'), findsOneWidget);
+      expect(find.text('+2.489 BEAM'), findsOneWidget);
+      // One line each: the label never leaves "by" on a line of its own.
+      expect(
+        tester.getSize(find.text('Your balance changes by')).height,
+        tester.getSize(find.text('+2.489 BEAM')).height,
+      );
       await expectLater(
         find.byKey(_golden),
         matchesGoldenFile('goldens/mobile_claim_sheet.png'),
@@ -430,6 +437,10 @@ void main() {
       expect(source.inboxReads, 2);
       expect(find.byKey(const Key('beamClaimDoneSticker')), findsOneWidget);
       expect(_text('Claim sent'), findsOneWidget);
+      expect(
+        _text('Your balance changes by +2.489 BEAM once'),
+        findsOneWidget,
+      );
       // Let the Beam girl finish her one-shot celebration.
       await tester.pump(const Duration(seconds: 5));
       await settleImages(tester);
@@ -557,6 +568,40 @@ void main() {
         find.byKey(_golden),
         matchesGoldenFile('goldens/desktop_stalled_hf6.png'),
       );
+      await _done(tester);
+    });
+
+    testWidgets('claim dialog: what the balance really gains, the fee '
+        'taken out of the BEAM', (tester) async {
+      final source = FakeHomeSource(
+        inbox: inboxOf({
+          'alice': {0: g(2.5)},
+          'bob': {174: g(1000)},
+        }),
+      );
+      await _desktop(tester, source, auth: FakeAuth());
+      await tester.tap(find.byKey(const Key('beamHomeClaim')));
+      await tester.pumpAndSettle();
+      expect(find.text('Your balance changes by'), findsOneWidget);
+      expect(find.text('+2.489 BEAM, +1,000 FOMO'), findsOneWidget);
+      // A short window (this one is 460 px) scrolls the sheet rather than
+      // overflowing it; the claim button is reachable.
+      await tester.ensureVisible(find.byKey(const Key('beamClaimConfirm')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(find.byKey(const Key('beamClaimConfirm'))).bottom,
+        lessThanOrEqualTo(desktopSize.height),
+      );
+      // The picture at the usual 1280 x 800.
+      useWindow(tester, const Size(1280, 800), dpr: 1.5);
+      await tester.pumpAndSettle();
+      await expectLater(
+        find.byKey(_golden),
+        matchesGoldenFile('goldens/desktop_claim_dialog.png'),
+      );
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(source.executed, isEmpty);
       await _done(tester);
     });
   });
