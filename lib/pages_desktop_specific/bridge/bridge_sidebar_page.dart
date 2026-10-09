@@ -42,6 +42,7 @@ class _BridgeSidebarPageState extends ConsumerState<BridgeSidebarPage> {
   Future<BridgeDeps>? _deps;
   String? _walletsKey;
   BridgeDirection _direction = BridgeDirection.toEthereum;
+  BridgeRoute? _route;
 
   @override
   void dispose() {
@@ -58,8 +59,9 @@ class _BridgeSidebarPageState extends ConsumerState<BridgeSidebarPage> {
     // is already up.
     if (key != _walletsKey || BridgeOpenIntent.walletId != null) {
       _walletsKey = key;
-      final (walletId, direction) = BridgeOpenIntent.take();
+      final (walletId, direction, route) = BridgeOpenIntent.take();
       if (direction != null) _direction = direction;
+      _route = route;
       final old = _deps;
       _deps = bridgeDepsFor(
         context,
@@ -82,6 +84,7 @@ class _BridgeSidebarPageState extends ConsumerState<BridgeSidebarPage> {
             deps: deps,
             showHeader: false,
             initialDirection: _direction,
+            initialRoute: _route,
           );
         },
       ),

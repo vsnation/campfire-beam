@@ -89,12 +89,17 @@ class BeamAssetSummary extends ConsumerWidget {
     required this.asset,
     required this.onReceive,
     required this.onSend,
+    this.onBridge,
   });
 
   final String walletId;
   final BeamAssetContract asset;
   final VoidCallback onReceive;
   final VoidCallback onSend;
+
+  /// Opens the bridge with this asset's route; null for an asset the
+  /// bridge does not carry.
+  final VoidCallback? onBridge;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -208,6 +213,15 @@ class BeamAssetSummary extends ConsumerWidget {
                 subLabel: "Send",
                 iconAssetPathSVG: Assets.svg.arrowUpRight,
               ),
+              if (onBridge != null) ...[
+                const SizedBox(width: 16),
+                TokenOptionsButton(
+                  key: const Key('beamAssetBridgeButton'),
+                  onPressed: onBridge!,
+                  subLabel: "Bridge",
+                  iconAssetPathSVG: Assets.svg.arrowsTwoWay,
+                ),
+              ],
             ],
           ),
         ],

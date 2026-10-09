@@ -143,11 +143,13 @@ abstract final class BridgePairMemory {
 abstract final class BridgeOpenIntent {
   static String? walletId;
   static BridgeDirection? direction;
+  static BridgeRoute? route;
 
-  static (String?, BridgeDirection?) take() {
-    final r = (walletId, direction);
+  static (String?, BridgeDirection?, BridgeRoute?) take() {
+    final r = (walletId, direction, route);
     walletId = null;
     direction = null;
+    route = null;
     return r;
   }
 }
@@ -350,6 +352,7 @@ Future<void> openBridge(
   if (BeamSidebar.enabled && Util.isDesktop) {
     BridgeOpenIntent.walletId = from.walletId;
     BridgeOpenIntent.direction = direction;
+    BridgeOpenIntent.route = route;
     selectBeamSidebarDestination(
       ProviderScope.containerOf(context, listen: false),
       BeamSidebarDestination.bridge,

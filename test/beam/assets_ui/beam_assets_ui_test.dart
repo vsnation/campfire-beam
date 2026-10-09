@@ -26,6 +26,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:isar_community/isar.dart';
 import 'package:stackwallet/models/isar/models/beam/beam_asset_contract.dart';
 import 'package:stackwallet/models/isar/models/blockchain_data/address.dart';
+import 'package:stackwallet/pages/bridge/bridge_wiring.dart';
 import 'package:stackwallet/pages/token_view/beam_asset_confirm_view.dart';
 import 'package:stackwallet/pages/token_view/beam_asset_receive_view.dart';
 import 'package:stackwallet/pages/token_view/beam_asset_send_view.dart';
@@ -404,7 +405,39 @@ void main() {
       expect(find.text('Send'), findsOneWidget);
       expect(find.text('Receive'), findsOneWidget);
       expect(find.byKey(const Key('beamAssetNoTransactions')), findsNothing);
+      // The bridge does not carry FOMO.
+      expect(find.byKey(const Key('beamAssetBridgeButton')), findsNothing);
       await _golden('asset_page_fomo_phone');
+    });
+
+    testWidgets('phone: a bridged asset (bETH) offers Bridge beside Send', (
+      tester,
+    ) async {
+      BridgeSides.debugAvailable = true;
+      addTearDown(() => BridgeSides.debugAvailable = null);
+      final beth = BeamAssetWallet.load(
+        parent: wallet,
+        asset: BeamAssetContract(
+          address: 'beamAsset:36',
+          assetId: 36,
+          name: 'bETH',
+          symbol: 'bETH',
+          decimals: 8,
+          verified: true,
+          metadataKnown: true,
+        ),
+      );
+      await pumpAssets(
+        tester,
+        BeamAssetView(walletId: wallet.walletId),
+        wallet: wallet,
+        desktop: false,
+        market: market,
+        assetWallet: beth,
+      );
+      expect(find.byKey(const Key('beamAssetBridgeButton')), findsOneWidget);
+      expect(find.text('Bridge'), findsOneWidget);
+      await _golden('asset_page_beth_phone');
     });
 
     testWidgets('phone: a copycat says so under its balance; no price', (

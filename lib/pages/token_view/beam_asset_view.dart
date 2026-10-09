@@ -12,7 +12,9 @@
 //         to it — and move it.
 //   CTA:  Send / Receive, Campfire's two token buttons (R4: kept as a pair,
 //         the same weight they have on every Campfire token page).
-//   Taps: open wallet → Assets → asset: 2; Send: 3.
+//   Taps: open wallet → Assets → asset: 2; Send: 3. A bridged asset (bETH,
+//         bUSDT, bWBTC, bDAI) adds Bridge beside them: 3 taps to move it to
+//         the user's Ethereum wallet.
 //
 // Exit-intent:
 //   * "Is this the real FOMO?" → unverified assets say so under the balance,
@@ -29,9 +31,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/isar/models/beam/beam_asset_contract.dart';
 import '../../themes/stack_colors.dart';
 import '../../utilities/text_styles.dart';
+import '../../wallets/bridge/bridge_routes.dart';
 import '../../wallets/isar/providers/beam/current_beam_asset_wallet_provider.dart';
 import '../../widgets/background.dart';
 import '../../widgets/custom_buttons/app_bar_icon_button.dart';
+import '../bridge/bridge_wiring.dart';
 import 'beam_asset_navigation.dart';
 import 'beam_asset_receive_view.dart';
 import 'sub_widgets/beam_asset_icon.dart';
@@ -51,6 +55,9 @@ class BeamAssetView extends ConsumerWidget {
     final assetWallet = ref.watch(pCurrentBeamAssetWallet);
     if (assetWallet == null) return const SizedBox.shrink();
     final asset = assetWallet.asset;
+    final route = bridgeAvailable
+        ? bridgeRouteForBeamAsset(asset.assetId)
+        : null;
 
     return Background(
       child: Scaffold(
@@ -97,6 +104,11 @@ class BeamAssetView extends ConsumerWidget {
                     ),
                   ),
                   onSend: () => unawaited(openBeamAssetSend(context, walletId)),
+                  onBridge: route == null
+                      ? null
+                      : () => unawaited(
+                          openBridge(context, assetWallet.parent, route: route),
+                        ),
                 ),
               ),
               const SizedBox(height: 20),
