@@ -176,6 +176,7 @@ class BeamNodePanelView {
     this.primaryAction,
     this.secondaryActions = const [],
     this.moment,
+    this.showFallbackNote = true,
     required this.chipLabel,
     required this.chipTone,
   });
@@ -213,6 +214,10 @@ class BeamNodePanelView {
 
   /// [diskLine] says the private node cannot set up in the space there is.
   final bool diskShort;
+
+  /// "If it ever stops: back on a public node…" fits; not while the node
+  /// serves another wallet (it is not this wallet's to stop).
+  final bool showFallbackNote;
 
   /// The panel's one primary button, when something needs doing.
   final BeamNodePanelAction? primaryAction;
@@ -308,6 +313,8 @@ abstract final class BeamNodePanelModel {
       primaryAction: private.primary,
       secondaryActions: private.secondary,
       moment: private.moment,
+      showFallbackNote:
+          s.privateNode?.issue != BeamPrivateNodeIssue.servingOtherWallet,
       chipLabel: _chipLabel(s, onPrivate),
       chipTone: problem != null ? BeamNodeTone.problem : _syncTone(a),
     );

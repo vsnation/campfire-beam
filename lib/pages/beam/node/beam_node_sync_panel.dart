@@ -476,7 +476,9 @@ class _PrivateNodeCard extends StatelessWidget {
                 ],
               ),
             ],
-            if (view.toggleValue && view.privateTone != BeamNodeTone.problem)
+            if (view.toggleValue &&
+                view.privateTone != BeamNodeTone.problem &&
+                view.showFallbackNote)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
                 child: Text(
