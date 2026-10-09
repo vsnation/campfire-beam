@@ -1095,7 +1095,17 @@ class Prefs extends ChangeNotifier {
   final Map<String, int> _amountDecimals = {};
 
   int maxDecimals(CryptoCurrency coin) =>
-      _amountDecimals[coin.identifier] ?? coin.fractionDigits;
+      _amountDecimals[coin.identifier] ?? defaultMaxDecimals(coin);
+
+  /// Decimal places a coin's amounts show until the user picks others
+  /// (Settings › Units). Campfire for BEAM shows Ethereum like BEAM, with 8
+  /// (owner, 2026-10-09: "ETH should have good decimals"), not ETH's 18
+  /// ("0.250000000000000000 ETH"); its tokens follow, at most 8.
+  static int defaultMaxDecimals(CryptoCurrency coin) {
+    if (coin is Ethereum && AppConfig.coins.any((c) => c is Beam)) return 8;
+    // use some sane max rather than up to 30 that nano uses
+    return coin.fractionDigits > 18 ? 18 : coin.fractionDigits;
+  }
 
   void updateMaxDecimals({
     required CryptoCurrency coin,
@@ -1120,8 +1130,7 @@ class Prefs extends ChangeNotifier {
                 key: "maxDecimalsFor${coin.identifier}",
               )
               as int? ??
-          (coin.fractionDigits > 18 ? 18 : coin.fractionDigits);
-      // use some sane max rather than up to 30 that nano uses
+          defaultMaxDecimals(coin);
       _amountDecimals[coin.identifier] = decimals;
     }
   }

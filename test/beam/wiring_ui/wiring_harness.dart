@@ -342,7 +342,7 @@ class TestPrefs extends ChangeNotifier implements Prefs {
   AmountUnit amountUnit(CryptoCurrency coin) => AmountUnit.normal;
 
   @override
-  int maxDecimals(CryptoCurrency coin) => coin.fractionDigits;
+  int maxDecimals(CryptoCurrency coin) => Prefs.defaultMaxDecimals(coin);
 
   @override
   bool get hideBlockExplorerWarning => true;
