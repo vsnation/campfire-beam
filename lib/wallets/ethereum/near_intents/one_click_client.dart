@@ -35,6 +35,8 @@ import 'package:dart_bs58/dart_bs58.dart';
 import 'package:http/http.dart' as http;
 import 'package:pinenacl/ed25519.dart' as nacl;
 
+import '../../../utilities/coin_chains.dart';
+
 const kOneClickBaseUrl = 'https://1click.chaindefuser.com';
 
 /// 1Click's quote-signing key ("ONE_CLICK_MANAGER_PUB_KEY").
@@ -106,41 +108,8 @@ class OneClickToken {
   int get hashCode => assetId.hashCode;
 }
 
-/// Chain names people know.
-const Map<String, String> kOneClickChainNames = {
-  'btc': 'Bitcoin',
-  'zec': 'Zcash',
-  'ltc': 'Litecoin',
-  'eth': 'Ethereum',
-  'sol': 'Solana',
-  'tron': 'Tron',
-  'bsc': 'BNB Chain',
-  'xrp': 'XRP Ledger',
-  'doge': 'Dogecoin',
-  'ton': 'TON',
-  'bch': 'Bitcoin Cash',
-  'dash': 'Dash',
-  'cardano': 'Cardano',
-  'sui': 'Sui',
-  'avax': 'Avalanche',
-  'pol': 'Polygon',
-  'near': 'NEAR',
-  'arb': 'Arbitrum',
-  'base': 'Base',
-  'op': 'Optimism',
-  'gnosis': 'Gnosis',
-  'stellar': 'Stellar',
-  'aptos': 'Aptos',
-  'bera': 'Berachain',
-  'starknet': 'Starknet',
-  'scroll': 'Scroll',
-  'monad': 'Monad',
-  'xlayer': 'X Layer',
-  'movement': 'Movement',
-  'plasma': 'Plasma',
-  'aleo': 'Aleo',
-  'hypercore': 'Hyperliquid',
-};
+/// Chain names people know (shared with every other coin list).
+const Map<String, String> kOneClickChainNames = kChainNames;
 
 /// The coins people bring most, first (owner, 2026-10-09: "Prioritize
 /// BTC/ZEC/LTC and other main by traffic tokens"), as (symbol, chain).
@@ -173,24 +142,14 @@ const List<(String, String)> kOneClickPopular = [
 
 /// [tokens] in the order the picker shows them: [kOneClickPopular] first,
 /// then each chain's own coin, then everything else, by chain and symbol.
-List<OneClickToken> sortOneClickTokens(Iterable<OneClickToken> tokens) {
-  int rank(OneClickToken t) {
-    final i = kOneClickPopular.indexWhere(
-      (p) => p.$1 == t.symbol && p.$2 == t.blockchain,
+List<OneClickToken> sortOneClickTokens(Iterable<OneClickToken> tokens) =>
+    tokens.toList()..sort(
+      (a, b) => compareByPopularity(
+        popular: kOneClickPopular,
+        a: (a.symbol, a.blockchain, a.chainName, a.isNative),
+        b: (b.symbol, b.blockchain, b.chainName, b.isNative),
+      ),
     );
-    if (i >= 0) return i;
-    return kOneClickPopular.length + (t.isNative ? 0 : 1000);
-  }
-
-  final list = tokens.toList()
-    ..sort((a, b) {
-      final r = rank(a).compareTo(rank(b));
-      if (r != 0) return r;
-      final c = a.chainName.compareTo(b.chainName);
-      return c != 0 ? c : a.symbol.compareTo(b.symbol);
-    });
-  return list;
-}
 
 /// What 1Click quoted, with everything it signed.
 class OneClickQuote {
