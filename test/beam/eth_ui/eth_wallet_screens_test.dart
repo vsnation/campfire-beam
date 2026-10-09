@@ -311,7 +311,8 @@ void main() {
       Util.debugIsDesktop = null;
       BridgeSides.debugAvailable = null;
     });
-    final wallet = await _ethWithTokens(tester);
+    // No wallet needed: the button depends on the token alone (and making
+    // one here can wait on the Isar lock a previous test's refresh holds).
     for (final (token, bridged) in [
       (DefaultTokens.wbeam, true),
       (DefaultTokens.usdt, true),
@@ -322,7 +323,7 @@ void main() {
         _phone(
           Center(
             child: TokenWalletOptions(
-              walletId: wallet.walletId,
+              walletId: 'no-wallet',
               tokenContract: token,
             ),
           ),
