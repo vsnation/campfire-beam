@@ -49,9 +49,16 @@ class WalletsOverview extends ConsumerStatefulWidget {
     required this.coin,
     this.navigatorState,
     this.overrideSimpleWalletCardPopPreviousValueWith,
+    this.allCoins = false,
   });
 
   final CryptoCurrency coin;
+
+  /// Campfire for BEAM: every wallet of every coin in one list (BEAM
+  /// wallets with their balance, Ethereum wallets with their tokens), as
+  /// the single-coin build listed its BEAM wallets. [coin] is then only
+  /// the first coin's.
+  final bool allCoins;
   final NavigatorState? navigatorState;
   final bool? overrideSimpleWalletCardPopPreviousValueWith;
 
@@ -87,7 +94,7 @@ class _EthWalletsOverviewState extends ConsumerState<WalletsOverview> {
 
     if (searchTerm.isEmpty) {
       return wallets.values.toList()
-        ..sort((a, b) => a.wallet.info.name.compareTo(b.wallet.info.name));
+        ..sort(_byCoinThenName);
     }
 
     final Map<String, WalletListItemData> results = {};
@@ -120,7 +127,16 @@ class _EthWalletsOverviewState extends ConsumerState<WalletsOverview> {
     }
 
     return results.values.toList()
-      ..sort((a, b) => a.wallet.info.name.compareTo(b.wallet.info.name));
+      ..sort(_byCoinThenName);
+  }
+
+  /// The build's coins in their order (BEAM first), then by name.
+  static int _byCoinThenName(WalletListItemData a, WalletListItemData b) {
+    int rank(WalletListItemData d) => AppConfig.coins.indexWhere(
+      (c) => c.identifier == d.wallet.info.coin.identifier,
+    );
+    final r = rank(a).compareTo(rank(b));
+    return r != 0 ? r : a.wallet.info.name.compareTo(b.wallet.info.name);
   }
 
   bool _elementContains(String element, String term) {
@@ -130,70 +146,33 @@ class _EthWalletsOverviewState extends ConsumerState<WalletsOverview> {
   void updateWallets() {
     final walletsData = ref.read(pAllWalletsInfo).toList();
 
-    walletsData.removeWhere((e) => e.coin != widget.coin);
+    if (!widget.allCoins) {
+      walletsData.removeWhere((e) => e.coin != widget.coin);
+    }
 
-    if (widget.coin is Ethereum) {
-      for (final data in walletsData) {
-        final List<Contract> contracts = [];
-        final contractAddresses = ref.read(
-          pWalletTokenAddresses(data.walletId),
-        );
-
-        // fetch each contract
-        for (final contractAddress in contractAddresses) {
-          final contract = ref
-              .read(mainDBProvider)
-              .getEthContractSync(contractAddress);
-
+    for (final data in walletsData) {
+      final List<Contract> contracts = [];
+      if (data.coin is Ethereum) {
+        for (final address in ref.read(pWalletTokenAddresses(data.walletId))) {
           // add it to list if it exists in DB
-          if (contract != null) {
-            contracts.add(contract);
-          }
+          final contract = ref.read(mainDBProvider).getEthContractSync(address);
+          if (contract != null) contracts.add(contract);
         }
-
-        // add tuple to list
+      } else if (data.coin is Solana) {
+        for (final address in ref.read(pWalletTokenAddresses(data.walletId))) {
+          final token = ref.read(mainDBProvider).getSolContractSync(address);
+          if (token != null) contracts.add(token);
+        }
+      }
+      // desktop single coin apps may cause issues so lets just ignore the
+      // error and move on
+      try {
         wallets[data.walletId] = (
           wallet: ref.read(pWallets).getWallet(data.walletId),
           contracts: contracts,
         );
-      }
-    } else if (widget.coin is Solana) {
-      for (final data in walletsData) {
-        final List<Contract> contracts = [];
-        final tokenMintAddresses = ref.read(
-          pWalletTokenAddresses(data.walletId),
-        );
-
-        // fetch each token
-        for (final tokenAddress in tokenMintAddresses) {
-          final token = ref
-              .read(mainDBProvider)
-              .getSolContractSync(tokenAddress);
-
-          // add it to list if it exists in DB
-          if (token != null) {
-            contracts.add(token);
-          }
-        }
-
-        // add tuple to list
-        wallets[data.walletId] = (
-          wallet: ref.read(pWallets).getWallet(data.walletId),
-          contracts: contracts,
-        );
-      }
-    } else {
-      // add non token wallet tuple to list
-      for (final data in walletsData) {
-        // desktop single coin apps may cause issues so lets just ignore the error and move on
-        try {
-          wallets[data.walletId] = (
-            wallet: ref.read(pWallets).getWallet(data.walletId),
-            contracts: [],
-          );
-        } catch (_) {
-          // lol bandaid for single coin based apps
-        }
+      } catch (_) {
+        // lol bandaid for single coin based apps
       }
     }
   }
@@ -205,7 +184,7 @@ class _EthWalletsOverviewState extends ConsumerState<WalletsOverview> {
 
     updateWallets();
 
-    if (AppConfig.isSingleCoinApp) {
+    if (AppConfig.isSingleCoinApp || widget.allCoins) {
       // Cancelled in dispose: a wallet added after this list is gone must
       // not reach it (it reads providers through a dead element).
       _walletsChanged = GlobalEventBus.instance
@@ -235,7 +214,7 @@ class _EthWalletsOverviewState extends ConsumerState<WalletsOverview> {
   @override
   Widget build(BuildContext context) {
     return ConditionalParent(
-      condition: !isDesktop && !AppConfig.isSingleCoinApp,
+      condition: !isDesktop && !AppConfig.isSingleCoinApp && !widget.allCoins,
       builder: (child) => Background(
         child: Scaffold(
           backgroundColor: Theme.of(

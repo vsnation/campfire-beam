@@ -49,7 +49,9 @@ final pAllWalletsInfoByCoin = Provider((ref) {
 _WalletInfoWatcher? _globalInstance;
 
 final _pAllWalletsInfo = ChangeNotifierProvider((ref) {
-  if (_globalInstance == null) {
+  // A container that is disposed disposes its notifier; the next one (only
+  // ever in tests: the app has one container) needs a live watcher.
+  if (_globalInstance == null || _globalInstance!._disposed) {
     final isar = ref.watch(mainDBProvider).isar;
 
     _globalInstance = _WalletInfoWatcher(
@@ -88,14 +90,19 @@ class _WalletInfoWatcher extends ChangeNotifier {
               )
               .findAll()
               .then((value) {
+                // A query that finishes after dispose has no one to tell.
+                if (_disposed) return;
                 _value = value;
                 notifyListeners();
               });
         });
   }
 
+  bool _disposed = false;
+
   @override
   void dispose() {
+    _disposed = true;
     _streamSubscription.cancel();
     super.dispose();
   }

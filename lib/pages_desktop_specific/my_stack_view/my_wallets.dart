@@ -109,11 +109,17 @@ class _MyWalletsState extends ConsumerState<MyWallets> {
             height: 20,
           ),
           Expanded(
-            child: AppConfig.isSingleCoinApp
+            // Campfire for BEAM: every wallet in one list, BEAM and
+            // Ethereum alike, each with its balance (owner, 2026-10-09:
+            // Ethereum "visible like multiwallets").
+            child:
+                AppConfig.isSingleCoinApp ||
+                    AppConfig.coins.any((c) => c is Beam)
                 ? WalletsOverview(
                     coin: AppConfig.coins.first,
                     navigatorState: Navigator.of(context),
                     overrideSimpleWalletCardPopPreviousValueWith: false,
+                    allCoins: !AppConfig.isSingleCoinApp,
                   )
                 : const WalletSummaryTable(),
           ),

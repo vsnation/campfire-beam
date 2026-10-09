@@ -85,6 +85,15 @@ class AllWallets extends StatelessWidget {
                   coin: AppConfig.coins.first,
                 );
               }
+              // Campfire for BEAM: every wallet in one list, BEAM and
+              // Ethereum alike, each with its balance.
+              if (AppConfig.coins.any((c) => c is Beam) &&
+                  walletsByCoin.isNotEmpty) {
+                return WalletsOverview(
+                  coin: AppConfig.coins.first,
+                  allCoins: true,
+                );
+              }
 
               return ListView.builder(
                 itemCount: walletsByCoin.length,
