@@ -34,6 +34,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
+import '../../utilities/logger.dart';
+
 import 'bridge_crossing.dart';
 import 'bridge_fees.dart';
 import 'bridge_routes.dart';
@@ -507,6 +509,7 @@ class BridgeController extends ChangeNotifier {
           receiverKey: key,
         );
       } on BridgeException catch (e) {
+        Logging.instance.w('Bridge: pricing the lock failed: $e');
         block = switch (e.code) {
           BridgeErrorCode.badAmount => BridgeBlock(
             BridgeBlockCode.badAmount,
@@ -525,7 +528,8 @@ class BridgeController extends ChangeNotifier {
             '${e.message} Nothing was sent.',
           ),
         };
-      } catch (_) {
+      } catch (e) {
+        Logging.instance.w('Bridge: pricing the lock failed: $e');
         block = const BridgeBlock(
           BridgeBlockCode.network,
           "Couldn't price the Ethereum network fee",
