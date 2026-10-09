@@ -199,9 +199,182 @@ jobs:
           name: app-windows-x86_64
           path: dist/*.zip
 
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.2
+          channel: stable
+          cache: true
+
+      - name: BEAM core library from ${{ inputs.lib_tag }}
+        run: |
+          out="$RUNNER_TEMP/out/lib-macos-arm64" && mkdir -p "$out" && cd "$out"
+          gh release download "${{ inputs.lib_tag }}" -R "$GITHUB_REPOSITORY" -p 'macos-arm64-libbeam_core.dylib' -p SHA256SUMS.txt
+          grep -E '[ *]macos-arm64-libbeam_core.dylib$' SHA256SUMS.txt | shasum -a 256 -c -
+          want=$(python3 -c "import json;print(json.load(open('$GITHUB_WORKSPACE/scripts/beam/core/lib/manifest.json'))['macos-arm64']['sha256'])")
+          echo "$want  macos-arm64-libbeam_core.dylib" | shasum -a 256 -c -
+          mv macos-arm64-libbeam_core.dylib libbeam_core.dylib
+          echo "BEAM_CORE_LIB_OUT=$RUNNER_TEMP/out" >> "$GITHUB_ENV"
+
+      - name: Configure BEAM Campfire
+        run: |
+          cd scripts
+          echo "yes" | ./build_app.sh -v "${{ inputs.version }}" -b "${{ inputs.build_number }}" -p macos -a campfire -d
+          ./prebuild.sh
+
+      - name: The core inside the app, live on mainnet (direct, two wallets)
+        env:
+          BEAM_LIB_IT: '1'
+          BEAM_CORE_LIB: ${{ runner.temp }}/out/lib-macos-arm64/libbeam_core.dylib
+        run: flutter test test/beam/host/in_process_lib_integration_test.dart
+
+      - name: Build
+        run: flutter build macos --release
+
+      # As scripts/beam/release/build_macos_dmg.sh: strip, sign ad hoc without
+      # the sandbox, put the pinned core in Frameworks, check, package.
+      - name: Package
+        run: |
+          set -euo pipefail
+          APP="build/macos/Build/Products/Release/BEAM Campfire.app"
+          ENT=scripts/beam/release/campfire_beam_unsandboxed.entitlements
+          EXE="$APP/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Contents/Info.plist")"
+          LIB="$APP/Contents/Frameworks/libbeam_core.dylib"
+          PIN=$(grep -A1 "'macos-arm64':" lib/wallets/beam/host/beam_core_location.dart | grep -o '[0-9a-f]\{64\}' | sed -n 1p)
+          links_before="$(otool -L "$EXE" | tail -n +2)"
+          rm -f "$LIB"
+          while IFS= read -r -d '' f; do
+            if [[ "$(file -b "$f")" == Mach-O* ]]; then strip -S "$f" 2>/dev/null || true; fi
+          done < <(find "$APP/Contents/MacOS" "$APP/Contents/Frameworks" -type f -print0)
+          codesign --force --deep --sign - --entitlements "$ENT" "$APP"
+          scripts/beam/core/lib/stage_lib.sh macos "$APP/Contents/Frameworks"
+          [[ "$(shasum -a 256 "$LIB" | cut -d' ' -f1)" == "$PIN" ]] || { echo "libbeam_core.dylib is not the app's pin"; exit 1; }
+          codesign --force --sign - --entitlements "$ENT" "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          [[ "$(otool -L "$EXE" | tail -n +2)" == "$links_before" ]] || { echo "linked libraries changed"; exit 1; }
+          found="$(find "$APP" -type f \( -name wallet-api -o -name beam-node -o -name beam-wallet \))"
+          [[ -z "$found" ]] || { echo "BEAM executables in the app: $found"; exit 1; }
+          if LC_ALL=C grep -rlaF -e "/Users/runner/" "$APP" | head -3 | grep -q .; then echo "the runner's home path is inside the app"; exit 1; fi
+          name="BEAM-Campfire-${{ inputs.version }}-macos-arm64"
+          mkdir -p dist/stage && cp -R "$APP" dist/stage/ && ln -s /Applications dist/stage/Applications
+          hdiutil create -quiet -volname "BEAM Campfire" -srcfolder dist/stage -ov -format UDZO "dist/$name.dmg"
+          rm -rf dist/stage
+          shasum -a 256 dist/*.dmg
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: app-macos-arm64
+          path: dist/*.dmg
+
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      GH_TOKEN: ${{ github.token }}
+      # Release signing, from encrypted repository secrets (never in the repo).
+      KS_B64: ${{ secrets.ANDROID_RELEASE_KEYSTORE_B64 }}
+      KS_PROPS: ${{ secrets.ANDROID_RELEASE_KEY_PROPERTIES }}
+    steps:
+      - name: Release key present?
+        id: key
+        run: |
+          if [[ -z "$KS_B64" || -z "$KS_PROPS" ]]; then
+            echo "::notice::No Android release key in this repository's secrets: no APK is built."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v6
+        if: steps.key.outputs.ok == 'true'
+
+      - uses: actions/setup-java@v5
+        if: steps.key.outputs.ok == 'true'
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        if: steps.key.outputs.ok == 'true'
+        with:
+          flutter-version: 3.47.2
+          channel: stable
+          cache: true
+
+      - name: BEAM core libraries from ${{ inputs.lib_tag }}
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          gh release download "${{ inputs.lib_tag }}" -R "$GITHUB_REPOSITORY" -p 'android-*-libbeam_core.so' -p SHA256SUMS.txt
+          for key in android-arm64 android-x86_64; do
+            f="$key-libbeam_core.so"
+            grep -E "[ *]$f\$" SHA256SUMS.txt | sha256sum -c -
+            want=$(python3 -c "import json;print(json.load(open('$GITHUB_WORKSPACE/scripts/beam/core/lib/manifest.json'))['$key']['sha256'])")
+            echo "$want  $f" | sha256sum -c -
+            mkdir -p "out/lib-$key" && mv "$f" "out/lib-$key/libbeam_core.so"
+          done
+          echo "BEAM_CORE_LIB_OUT=$RUNNER_TEMP/out" >> "$GITHUB_ENV"
+
+      - name: Release key
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          umask 077
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.p12"
+          # The stored properties name a local path; point storeFile at this copy.
+          echo "$KS_PROPS" | grep -v '^storeFile=' > "$RUNNER_TEMP/key.properties"
+          echo "storeFile=$RUNNER_TEMP/release.p12" >> "$RUNNER_TEMP/key.properties"
+          echo "CAMPFIRE_ANDROID_KEY_PROPERTIES=$RUNNER_TEMP/key.properties" >> "$GITHUB_ENV"
+
+      - name: Configure BEAM Campfire
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          cd scripts
+          echo "yes" | ./build_app.sh -v "${{ inputs.version }}" -b "${{ inputs.build_number }}" -p android -a campfire -d
+          ./prebuild.sh
+
+      - name: Build
+        if: steps.key.outputs.ok == 'true'
+        run: flutter build apk --release --split-per-abi --target-platform android-arm64,android-x64
+
+      # As scripts/beam/release/build_android_apk.sh: the pinned core in each
+      # APK, the version, and the release certificate.
+      - name: Check and package
+        if: steps.key.outputs.ok == 'true'
+        run: |
+          set -euo pipefail
+          CERT=a6d8817eabd6a519f4778870540a0d9672a1ba466b447e7e06c511b0adc0e99f
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          mkdir -p dist
+          for t in arm64-v8a:android-arm64:2000 x86_64:android-x86_64:4000; do
+            IFS=: read -r abi key offset <<<"$t"
+            APK="build/app/outputs/flutter-apk/app-$abi-release.apk"
+            pin=$(grep -A1 "'$key':" lib/wallets/beam/host/beam_core_location.dart | grep -o '[0-9a-f]\{64\}' | sed -n 1p)
+            [[ "$(unzip -p "$APK" "lib/$abi/libbeam_core.so" | sha256sum | cut -d' ' -f1)" == "$pin" ]] || { echo "$APK: core is not the pin"; exit 1; }
+            "$BT/aapt2" dump badging "$APK" | sed -n 1p | grep -q "versionCode='$((offset + ${{ inputs.build_number }}))' versionName='${{ inputs.version }}'" || { echo "$APK: wrong version"; exit 1; }
+            got=$("$BT/apksigner" verify --print-certs "$APK" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            [[ "$got" == "$CERT" ]] || { echo "$APK is signed by $got, not the release key"; exit 1; }
+            cp "$APK" "dist/BEAM-Campfire-${{ inputs.version }}-android-$( [[ $abi == arm64-v8a ]] && echo arm64 || echo x86_64 ).apk"
+          done
+          rm -f "$RUNNER_TEMP/release.p12" "$RUNNER_TEMP/key.properties"
+          sha256sum dist/*.apk
+
+      - uses: actions/upload-artifact@v7
+        if: steps.key.outputs.ok == 'true'
+        with:
+          name: app-android
+          path: dist/*.apk
+
   publish:
     if: inputs.release_tag != ''
-    needs: [linux, windows]
+    needs: [linux, windows, macos, android]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -217,7 +390,13 @@ jobs:
       - name: Add to ${{ inputs.release_tag }}
         run: |
           cd dist
-          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p SHA256SUMS.txt
+          # A release that does not exist yet is made as a DRAFT: nothing is
+          # public until someone presses Publish.
+          if ! gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --draft --target "$GITHUB_SHA" \
+              --title "BEAM Campfire ${{ inputs.version }} (beta)" --notes "Draft: notes to come."
+          fi
+          gh release download "$TAG" -R "$GITHUB_REPOSITORY" -p SHA256SUMS.txt || : > SHA256SUMS.txt
           for f in BEAM-Campfire-*; do
             grep -v " $f\$" SHA256SUMS.txt > s.tmp || true
             sha256sum "$f" >> s.tmp
