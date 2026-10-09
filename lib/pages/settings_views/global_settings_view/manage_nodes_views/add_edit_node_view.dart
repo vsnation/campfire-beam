@@ -26,10 +26,12 @@ import '../../../../utilities/assets.dart';
 import '../../../../utilities/barcode_scanner_interface.dart';
 import '../../../../utilities/constants.dart';
 import '../../../../utilities/enums/sync_type_enum.dart';
+import '../../../../utilities/eth_rpc_url.dart';
 import '../../../../utilities/flutter_secure_storage_interface.dart';
 import '../../../../utilities/logger.dart';
 import '../../../../utilities/node_uri_util.dart';
 import '../../../../utilities/test_beam_node_connection.dart';
+import '../../../../utilities/test_eth_node_connection.dart';
 import '../../../../utilities/test_node_connection.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../utilities/tor_plain_net_option_enum.dart';
@@ -122,6 +124,40 @@ class _AddEditNodeViewState extends ConsumerState<AddEditNodeView> {
     );
   }
 
+  /// Ethereum: the RPC test (through Tor when on, chain id 1, block number,
+  /// at most 20 s). The button says "Testing…" meanwhile.
+  bool _testingEthNode = false;
+
+  Future<EthNodeTestResult> _runEthTest() async {
+    final url = (ref.read(nodeFormDataProvider).host ?? '').trim();
+    setState(() => _testingEthNode = true);
+    try {
+      return await ref.read(testEthNodeConnectionProvider)(url);
+    } catch (_) {
+      return const EthNodeTestResult(EthNodeTestStatus.noAnswer);
+    } finally {
+      if (mounted) setState(() => _testingEthNode = false);
+    }
+  }
+
+  void _showEthTestResult(EthNodeTestResult result) {
+    unawaited(
+      showFloatingFlushBar(
+        type: result.ok ? FlushBarType.success : FlushBarType.warning,
+        message: ethNodeTestMessage(
+          result,
+          ref.read(nodeFormDataProvider).host ?? '',
+        ),
+        context: context,
+      ),
+    );
+  }
+
+  Future<void> _testEthNode() async {
+    final result = await _runEthTest();
+    if (mounted) _showEthTestResult(result);
+  }
+
   void _onTestSuccess(NodeFormData data) {
     if (coin is Epiccash) {
       ref.read(nodeFormDataProvider).host = data.host;
@@ -137,12 +173,26 @@ class _AddEditNodeViewState extends ConsumerState<AddEditNodeView> {
   }
 
   Future<void> attemptSave() async {
-    final canConnect = await ref.read(testNodeConnectionProvider)(
-      context: context,
-      onSuccess: _onTestSuccess,
-      cryptoCurrency: coin,
-      nodeFormData: ref.read(nodeFormDataProvider),
-    );
+    final bool canConnect;
+    if (coin is Ethereum) {
+      // An RPC on another chain is never saved: the wallet would sign for
+      // that chain. Unreachable ones may be saved anyway, as for any coin.
+      final result = await _runEthTest();
+      if (!mounted) return;
+      if (result.status == EthNodeTestStatus.wrongChain ||
+          result.status == EthNodeTestStatus.invalidUrl) {
+        _showEthTestResult(result);
+        return;
+      }
+      canConnect = result.ok;
+    } else {
+      canConnect = await ref.read(testNodeConnectionProvider)(
+        context: context,
+        onSuccess: _onTestSuccess,
+        cryptoCurrency: coin,
+        nodeFormData: ref.read(nodeFormDataProvider),
+      );
+    }
 
     bool? shouldSave;
 
@@ -265,7 +315,7 @@ class _AddEditNodeViewState extends ConsumerState<AddEditNodeView> {
 
     // strip unused path
     String address = formData.host!;
-    if (coin is Beam) {
+    if (coin is Beam || coin is Ethereum) {
       address = address.trim();
     }
     if (coin is CryptonoteCurrency) {
@@ -723,15 +773,25 @@ class _AddEditNodeViewState extends ConsumerState<AddEditNodeView> {
               children: [
                 Expanded(
                   child: SecondaryButton(
-                    label: _testingBeamNode
+                    label: _testingBeamNode || _testingEthNode
                         ? "Testing…"
                         : "Test connection",
-                    enabled: testConnectionEnabled && !_testingBeamNode,
+                    enabled:
+                        testConnectionEnabled &&
+                        !_testingBeamNode &&
+                        !_testingEthNode,
                     buttonHeight: isDesktop ? ButtonHeight.l : null,
-                    onPressed: testConnectionEnabled && !_testingBeamNode
+                    onPressed:
+                        testConnectionEnabled &&
+                            !_testingBeamNode &&
+                            !_testingEthNode
                         ? () async {
                             if (coin is Beam) {
                               await _testBeamNode();
+                              return;
+                            }
+                            if (coin is Ethereum) {
+                              await _testEthNode();
                               return;
                             }
                             final testPassed =
@@ -769,9 +829,11 @@ class _AddEditNodeViewState extends ConsumerState<AddEditNodeView> {
                   Expanded(
                     child: PrimaryButton(
                       label: "Save",
-                      enabled: saveEnabled,
+                      enabled: saveEnabled && !_testingEthNode,
                       buttonHeight: ButtonHeight.l,
-                      onPressed: saveEnabled ? attemptSave : null,
+                      onPressed: saveEnabled && !_testingEthNode
+                          ? attemptSave
+                          : null,
                     ),
                   ),
               ],
@@ -779,14 +841,16 @@ class _AddEditNodeViewState extends ConsumerState<AddEditNodeView> {
             if (!isDesktop) const SizedBox(height: 16),
             if (!isDesktop)
               TextButton(
-                style: saveEnabled
+                style: saveEnabled && !_testingEthNode
                     ? Theme.of(context)
                           .extension<StackColors>()!
                           .getPrimaryEnabledButtonStyle(context)
                     : Theme.of(context)
                           .extension<StackColors>()!
                           .getPrimaryDisabledButtonStyle(context),
-                onPressed: saveEnabled ? attemptSave : null,
+                onPressed: saveEnabled && !_testingEthNode
+                    ? attemptSave
+                    : null,
                 child: Text("Save", style: STextStyles.button(context)),
               ),
           ],
@@ -866,8 +930,9 @@ class _NodeFormState extends ConsumerState<NodeForm> {
 
   bool _checkShouldEnableAuthFields(CryptoCurrency coin) {
     // TODO: which coin servers can have username and password?
+    // Campfire for BEAM: not Ethereum. Its RPC calls never sent them; an
+    // RPC that needs a key takes it in the URL.
     switch (coin) {
-      case Ethereum():
       case CryptonoteCurrency():
         return true;
 
@@ -881,6 +946,9 @@ class _NodeFormState extends ConsumerState<NodeForm> {
   }
 
   bool get canTestConnection {
+    if (widget.coin is Ethereum) {
+      return EthRpcUrl.problem(_hostController.text) == null;
+    }
     if (widget.coin is Beam) {
       return BeamNodeAddress.hostProblem(_hostController.text) == null &&
           isValidNodePort(port);
@@ -900,7 +968,13 @@ class _NodeFormState extends ConsumerState<NodeForm> {
       widget.readOnly || widget.node?.isDefault == true;
 
   void _updateState() {
-    port = int.tryParse(_portController.text);
+    if (widget.coin is Ethereum) {
+      // An RPC is one URL: the port and SSL follow from it.
+      port = EthRpcUrl.portOf(_hostController.text);
+      _useSSL = EthRpcUrl.usesTls(_hostController.text);
+    } else {
+      port = int.tryParse(_portController.text);
+    }
     onChanged?.call(canSave, canTestConnection);
     ref.read(nodeFormDataProvider).name = _nameController.text;
     ref.read(nodeFormDataProvider).host = _hostController.text;
@@ -1081,12 +1155,15 @@ class _NodeFormState extends ConsumerState<NodeForm> {
                 standardInputDecoration(
                   widget.coin is Beam
                       ? "Node address"
+                      : widget.coin is Ethereum
+                      ? "RPC URL"
                       : (widget.coin is! CryptonoteCurrency)
                       ? "IP address"
                       : "Url",
                   _hostFocusNode,
                   context,
                 ).copyWith(
+                  hintText: widget.coin is Ethereum ? "https://" : null,
                   suffixIcon:
                       !shouldBeReadOnly && _hostController.text.isNotEmpty
                       ? Padding(
@@ -1108,6 +1185,12 @@ class _NodeFormState extends ConsumerState<NodeForm> {
                       : null,
                 ),
             onChanged: (newValue) {
+              if (widget.coin is Ethereum) {
+                // The URL as typed, path and port included.
+                _updateState();
+                setState(() {});
+                return;
+              }
               if (widget.coin is Beam) {
                 // host:port, not a URL: "eu-nodes.mainnet.beam.mw:8100"
                 // pasted in one go fills both fields. Only on a paste, so
@@ -1206,7 +1289,22 @@ class _NodeFormState extends ConsumerState<NodeForm> {
               ),
             ),
           ),
+        if (widget.coin is Ethereum &&
+            _hostController.text.isNotEmpty &&
+            EthRpcUrl.problem(_hostController.text) != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                EthRpcUrl.problem(_hostController.text)!,
+                key: const Key("addCustomNodeEthUrlProblem"),
+                style: STextStyles.errorSmall(context),
+              ),
+            ),
+          ),
         const SizedBox(height: 8),
+        if (widget.coin is! Ethereum)
         ClipRRect(
           borderRadius: BorderRadius.circular(
             Constants.size.circularBorderRadius,
@@ -1250,7 +1348,7 @@ class _NodeFormState extends ConsumerState<NodeForm> {
             },
           ),
         ),
-        const SizedBox(height: 8),
+        if (widget.coin is! Ethereum) const SizedBox(height: 8),
         if (enableAuthFields)
           ClipRRect(
             borderRadius: BorderRadius.circular(
@@ -1392,7 +1490,9 @@ class _NodeFormState extends ConsumerState<NodeForm> {
             ),
           ),
         if (widget.coin is Mimblewimblecoin) const SizedBox(height: 8),
-        if (widget.coin is! CryptonoteCurrency && widget.coin is! Beam)
+        if (widget.coin is! CryptonoteCurrency &&
+            widget.coin is! Beam &&
+            widget.coin is! Ethereum)
           Row(
             children: [
               GestureDetector(
@@ -1497,12 +1597,16 @@ class _NodeFormState extends ConsumerState<NodeForm> {
         if (widget.coin is! CryptonoteCurrency &&
             widget.coin is! Epiccash &&
             widget.coin is! Mimblewimblecoin &&
-            widget.coin is! Beam)
+            widget.coin is! Beam &&
+            // Nothing reads failover for Ethereum.
+            widget.coin is! Ethereum)
           const SizedBox(height: 8),
         if (widget.coin is! CryptonoteCurrency &&
             widget.coin is! Epiccash &&
             widget.coin is! Mimblewimblecoin &&
-            widget.coin is! Beam)
+            widget.coin is! Beam &&
+            // Nothing reads failover for Ethereum.
+            widget.coin is! Ethereum)
           Row(
             children: [
               GestureDetector(

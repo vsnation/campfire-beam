@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:tuple/tuple.dart';
 
+import '../notifications/show_flush_bar.dart';
 import '../pages/settings_views/global_settings_view/manage_nodes_views/add_edit_node_view.dart';
 import '../pages/settings_views/global_settings_view/manage_nodes_views/node_details_view.dart';
 import '../providers/global/active_wallet_provider.dart';
@@ -25,6 +26,7 @@ import '../utilities/assets.dart';
 import '../utilities/constants.dart';
 import '../utilities/default_nodes.dart';
 import '../utilities/enums/sync_type_enum.dart';
+import '../utilities/test_eth_node_connection.dart';
 import '../utilities/test_node_connection.dart';
 import '../utilities/text_styles.dart';
 import '../utilities/tor_plain_net_option_enum.dart';
@@ -257,24 +259,45 @@ class NodeOptionsSheet extends ConsumerWidget {
                                   } else {
                                     netOption = TorPlainNetworkOption.both;
                                   }
+                                  // Campfire for BEAM: an RPC that is not
+                                  // used says why, instead of nothing.
+                                  final ethResult = coin is Ethereum
+                                      ? await ref.read(
+                                          testEthNodeConnectionProvider,
+                                        )(node.host)
+                                      : null;
                                   final canConnect =
-                                      await ref.read(
-                                        testNodeConnectionProvider,
-                                      )(
-                                        context: context,
-                                        nodeFormData: NodeFormData()
-                                          ..name = node.name
-                                          ..host = node.host
-                                          ..login = node.loginName
-                                          ..password = pw
-                                          ..port = node.port
-                                          ..useSSL = node.useSSL
-                                          ..isFailover = node.isFailover
-                                          ..netOption = netOption
-                                          ..trusted = node.trusted,
-                                        cryptoCurrency: coin,
-                                      );
+                                      ethResult?.ok ??
+                                      (context.mounted &&
+                                          await ref.read(
+                                            testNodeConnectionProvider,
+                                          )(
+                                            context: context,
+                                            nodeFormData: NodeFormData()
+                                              ..name = node.name
+                                              ..host = node.host
+                                              ..login = node.loginName
+                                              ..password = pw
+                                              ..port = node.port
+                                              ..useSSL = node.useSSL
+                                              ..isFailover = node.isFailover
+                                              ..netOption = netOption
+                                              ..trusted = node.trusted,
+                                            cryptoCurrency: coin,
+                                          ));
                                   if (!canConnect) {
+                                    if (ethResult != null && context.mounted) {
+                                      unawaited(
+                                        showFloatingFlushBar(
+                                          type: FlushBarType.warning,
+                                          message: ethNodeTestMessage(
+                                            ethResult,
+                                            node.host,
+                                          ),
+                                          context: context,
+                                        ),
+                                      );
+                                    }
                                     return;
                                   }
 

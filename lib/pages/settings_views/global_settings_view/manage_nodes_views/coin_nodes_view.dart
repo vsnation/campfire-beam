@@ -26,6 +26,7 @@ import '../../../../widgets/custom_buttons/app_bar_icon_button.dart';
 import '../../../../widgets/custom_buttons/blue_text_button.dart';
 import '../../../../widgets/desktop/desktop_dialog.dart';
 import '../../../../widgets/desktop/desktop_dialog_close_button.dart';
+import '../../../../widgets/ethereum/eth_index_note.dart';
 import '../../sub_widgets/nodes_list.dart';
 import 'add_edit_node_view.dart';
 
@@ -130,6 +131,15 @@ class _CoinNodesViewState extends ConsumerState<CoinNodesView> {
                 ],
               ),
             ),
+            // Campfire for BEAM: where else Ethereum data comes from.
+            if (widget.coin is Ethereum)
+              const Padding(
+                padding: EdgeInsets.only(left: 32, right: 32, top: 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: EthIndexNote(),
+                ),
+              ),
             const SizedBox(
               width: 12,
             ),
@@ -208,9 +218,20 @@ class _CoinNodesViewState extends ConsumerState<CoinNodesView> {
               right: 12,
             ),
             child: SingleChildScrollView(
-              child: NodesList(
-                coin: widget.coin,
-                popBackToRoute: CoinNodesView.routeName,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  NodesList(
+                    coin: widget.coin,
+                    popBackToRoute: CoinNodesView.routeName,
+                  ),
+                  // Campfire for BEAM: where else Ethereum data comes from.
+                  if (widget.coin is Ethereum)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(4, 8, 4, 16),
+                      child: EthIndexNote(),
+                    ),
+                ],
               ),
             ),
           ),

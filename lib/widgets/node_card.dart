@@ -26,6 +26,7 @@ import '../utilities/assets.dart';
 import '../utilities/constants.dart';
 import '../utilities/default_nodes.dart';
 import '../utilities/enums/sync_type_enum.dart';
+import '../utilities/test_eth_node_connection.dart';
 import '../utilities/test_node_connection.dart';
 import '../utilities/text_styles.dart';
 import '../utilities/tor_plain_net_option_enum.dart';
@@ -190,20 +191,32 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                         );
 
                         if (context.mounted) {
+                          // Campfire for BEAM: an RPC on another chain, or
+                          // Tor not connected yet, says so.
+                          final ethResult = widget.coin is Ethereum
+                              ? await ref.read(testEthNodeConnectionProvider)(
+                                  _node.host,
+                                )
+                              : null;
                           final canConnect =
-                              await ref.read(testNodeConnectionProvider)(
-                                context: context,
-                                nodeFormData: nodeFormData,
-                                cryptoCurrency: widget.coin,
-                              );
+                              ethResult?.ok ??
+                              (context.mounted &&
+                                  await ref.read(testNodeConnectionProvider)(
+                                    context: context,
+                                    nodeFormData: nodeFormData,
+                                    cryptoCurrency: widget.coin,
+                                  ));
 
                           if (!canConnect) {
+                            final message = ethResult == null
+                                ? "Could not connect to node"
+                                : ethNodeTestMessage(ethResult, _node.host);
                             if (context.mounted) {
                               unawaited(
                                 showFloatingFlushBar(
                                   type: FlushBarType.warning,
                                   iconAsset: Assets.svg.circleAlert,
-                                  message: "Could not connect to node",
+                                  message: message,
                                   context: context,
                                 ),
                               );
@@ -283,9 +296,10 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                     Text(_node.name, style: STextStyles.titleBold12(context)),
                     const SizedBox(height: 2),
                     Text(
-                      // BEAM: whether the wallet uses it; "Disconnected"
-                      // read as broken for nodes that are just not chosen.
-                      widget.coin is Beam
+                      // BEAM, Ethereum: whether the wallet uses it;
+                      // "Disconnected" read as broken for nodes that are
+                      // just not chosen.
+                      widget.coin is Beam || widget.coin is Ethereum
                           ? (_status == "Connected" ? "In use" : "Not in use")
                           : _status,
                       style: STextStyles.label(context),

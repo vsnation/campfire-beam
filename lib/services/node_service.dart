@@ -126,21 +126,29 @@ class NodeService extends ChangeNotifier {
           key: old.id,
         );
       }
-      for (final node in coin.alternateNodes) {
-        if (DB.instance.get<NodeModel>(
-              boxName: DB.boxNameNodeModels,
-              key: node.id,
-            ) ==
-            null) {
-          await DB.instance.put<NodeModel>(
-            boxName: DB.boxNameNodeModels,
-            key: node.id,
-            value: node,
-          );
-        }
-      }
+      await _addAlternates(coin.alternateNodes);
+    }
+    // The same for Ethereum's public RPCs.
+    for (final coin in AppConfig.coins.whereType<Ethereum>()) {
+      await _addAlternates(coin.alternateNodes);
     }
 
+  }
+
+  Future<void> _addAlternates(List<NodeModel> nodes) async {
+    for (final node in nodes) {
+      if (DB.instance.get<NodeModel>(
+            boxName: DB.boxNameNodeModels,
+            key: node.id,
+          ) ==
+          null) {
+        await DB.instance.put<NodeModel>(
+          boxName: DB.boxNameNodeModels,
+          key: node.id,
+          value: node,
+        );
+      }
+    }
   }
 
   Future<void> setPrimaryNodeFor({
@@ -230,6 +238,18 @@ class NodeService extends ChangeNotifier {
       }
 
       return [...list]..sort((a, b) => rank(a).compareTo(rank(b)));
+    }
+    // Ethereum likewise: Stack Wallet's (the default), the public RPCs in
+    // their listed order, then the user's own.
+    if (coin is Ethereum) {
+      final order = [
+        coin.defaultNode(isPrimary: false).id,
+        for (final n in coin.alternateNodes) n.id,
+      ];
+      return [
+        for (final id in order) ...list.where((n) => n.id == id),
+        ...list.reversed.where((n) => !order.contains(n.id)),
+      ];
     }
 
     // return reversed list so default node appears at beginning

@@ -23,6 +23,7 @@ import '../../../../themes/stack_colors.dart';
 import '../../../../utilities/assets.dart';
 import '../../../../utilities/enums/sync_type_enum.dart';
 import '../../../../utilities/flutter_secure_storage_interface.dart';
+import '../../../../utilities/test_eth_node_connection.dart';
 import '../../../../utilities/test_node_connection.dart';
 import '../../../../utilities/text_styles.dart';
 import '../../../../utilities/tor_plain_net_option_enum.dart';
@@ -282,6 +283,26 @@ class _NodeDetailsViewState extends ConsumerState<NodeDetailsView> {
                       final node = ref
                           .read(nodeServiceChangeNotifierProvider)
                           .getNodeById(id: nodeId)!;
+
+                      // Campfire for BEAM: say what the RPC test found
+                      // (e.g. another chain), not just "unreachable".
+                      if (coin is Ethereum) {
+                        final result = await ref.read(
+                          testEthNodeConnectionProvider,
+                        )(node.host);
+                        if (context.mounted) {
+                          unawaited(
+                            showFloatingFlushBar(
+                              type: result.ok
+                                  ? FlushBarType.success
+                                  : FlushBarType.warning,
+                              message: ethNodeTestMessage(result, node.host),
+                              context: context,
+                            ),
+                          );
+                        }
+                        return;
+                      }
 
                       final TorPlainNetworkOption netOption;
                       if (ref.read(nodeFormDataProvider).netOption != null) {
