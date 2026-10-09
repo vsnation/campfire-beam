@@ -15,58 +15,20 @@
 //
 // Hard limits: refuses any payment above 0.02 BEAM; refuses to start if A
 // has less than 0.012 BEAM.
-import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 import { startServer, launch, recordedPage, shot, waitScreen, sleep, foreignHosts } from './harness.mjs';
 import { createWallet, waitHome, waitSynced } from './flows.mjs';
+import { tid, log, funderWords as readFunderWords, restoreFunder as restore, total, waitTx } from './live_common.mjs';
 
 const MAX_GROTH = 2000000n; // 0.02 BEAM, per payment
 const SEND_GROTH = 1000000n; // 0.01 BEAM
-const tid = (id) => `[data-testid="${id}"]`;
 const PORT = 8792;
-
-function readEnv(path) {
-  const out = {};
-  for (const line of readFileSync(path, 'utf8').split('\n')) {
-    const t = line.trim();
-    if (!t || t.startsWith('#') || !t.includes('=')) continue;
-    const i = t.indexOf('=');
-    out[t.slice(0, i)] = t.slice(i + 1).trim().replace(/^["']|["']$/g, '');
-  }
-  return out;
-}
-
-const env = readEnv(join(homedir(), '.config', 'campfire-beam', 'test_wallets.env'));
-const funderWords = (env.FUNDER2_WALLET_SEED || '').split(/[\s;]+/).filter(Boolean);
-if (funderWords.length !== 12) throw new Error('FUNDER2_WALLET_SEED is missing or not 12 words (not printed)');
+const funderWords = readFunderWords();
 
 const pwA = `live-a-${Math.random().toString(36).slice(2, 10)}`;
 const pwB = `live-b-${Math.random().toString(36).slice(2, 10)}`;
-const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
-async function restoreFunder(page) {
-  await waitScreen(page, 'welcome', 60000);
-  await page.click(tid('restore'));
-  await waitScreen(page, 'restore');
-  await shot(page, 'live-A-01-restore-empty'); // before any word is typed
-  await page.fill(tid('word-1'), funderWords.join(' '));
-  await page.waitForFunction(() => !document.querySelector('[data-testid="restore-submit"]').disabled, null, { timeout: 30000 });
-  await page.click(tid('restore-submit'));
-  await waitScreen(page, 'setPassword');
-  await page.fill(tid('pw1'), pwA);
-  await page.fill(tid('pw2'), pwA);
-  await page.click(tid('save-password'));
-  await page.waitForFunction(() => ['passkeySetup', 'ipNotice'].includes(document.getElementById('app').dataset.screen), null, { timeout: 30000 });
-  if ((await page.evaluate(() => document.getElementById('app').dataset.screen)) === 'passkeySetup') await page.click(tid('passkey-skip'));
-  await waitScreen(page, 'ipNotice');
-  await page.click(tid('ip-connect'));
-  await waitScreen(page, 'fastStart');
-  await shot(page, 'live-A-02-fast-start-restore');
-  await page.click(tid('fast-download'));
-}
-
-const beam = (page) => page.evaluate(() => window.__campfire.totals()[0] || { available: '0', receiving: '0', sending: '0' });
+const restoreFunder = (page) => restore(page, funderWords, pwA);
+const beam = (page) => total(page, 0);
 
 async function pay(page, who, address, amountText, password) {
   await page.evaluate(() => window.__campfire.go('send'));
@@ -98,18 +60,6 @@ async function pay(page, who, address, amountText, password) {
   await waitScreen(page, 'txStatus', 60000);
   await shot(page, `live-${who}-status-pending`);
   return summary;
-}
-
-async function waitTx(page, pred, label, timeoutMs = 20 * 60000) {
-  const t0 = Date.now();
-  while (Date.now() - t0 < timeoutMs) {
-    const txs = await page.evaluate(() => window.__campfire.txs());
-    const t = txs.find(pred);
-    if (t && Number(t.status) === 3) return t;
-    if (t && (Number(t.status) === 4 || Number(t.status) === 2)) throw new Error(`${label}: status ${t.status}`);
-    await sleep(5000);
-  }
-  throw new Error(`${label}: not completed in time`);
 }
 
 const extra = process.env.BEAM_RECOVERY_FILE ? ['--recovery-file', process.env.BEAM_RECOVERY_FILE] : [];
