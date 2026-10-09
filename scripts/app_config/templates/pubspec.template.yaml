@@ -197,6 +197,8 @@ dependencies:
   share_plus: ^12.0.2
   emojis: ^0.9.9
   pointycastle: ^4.0.0
+  # NEAR Intents: checks 1Click's ed25519 signature on each deposit address.
+  pinenacl: ^0.6.0
   package_info_plus: ^8.0.2
   lottie: ^3.3.2
   file_picker: ^10.3.3
