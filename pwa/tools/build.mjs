@@ -9,6 +9,9 @@
 //    content-addressed name, sw-<first 16 hex of its SHA-256>.js, and that
 //    name goes into lib/version.js (LOADER). It carries nothing per-release,
 //    so the name only changes when the loader's code does.
+//    The app shaders (assets/beam/shaders/) go into shaders/, only when their
+//    bytes match the pins in lib/shaders.js and the desktop's Dart pins
+//    (tools/shader_check.mjs).
 // 3. Writes manifest.json (every file with size and SHA-256), release.json
 //    (version, manifest hash) and release.sig (ECDSA P-256 / SHA-256 over
 //    release.json, base64 of r||s).
@@ -21,6 +24,8 @@ import { homedir } from 'node:os';
 import { join, dirname, relative, sep, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SECURITY_HEADERS, MIME } from './headers.mjs';
+import { SHADER_DIR } from '../src/lib/shaders.js';
+import { checkShaders } from './shader_check.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -113,6 +118,10 @@ for (const f of await walk(srcDir)) {
 }
 await mkdir(join(out, 'vendor', 'engine'), { recursive: true });
 for (const name of Object.keys(lock.files)) await copyFile(join(root, 'vendor', 'engine', name), join(out, 'vendor', 'engine', name));
+
+// ---- app shaders: pinned bytes only (src/lib/shaders.js), the same pins as the desktop app
+await mkdir(join(out, SHADER_DIR), { recursive: true });
+for (const s of await checkShaders()) await writeFile(join(out, SHADER_DIR, s.file), s.bytes);
 
 // ---- manifest, release, signature
 const files = [];
