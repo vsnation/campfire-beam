@@ -89,7 +89,9 @@ class DesktopWalletSummaryRow extends ConsumerStatefulWidget {
 
 class _DesktopWalletSummaryRowState
     extends ConsumerState<DesktopWalletSummaryRow> {
-  Future<void> _checkTor() async {
+  /// False when the user cancelled the Tor warning: the wallet does not
+  /// open.
+  Future<bool> _checkTor() async {
     if (ref.read(prefsChangeNotifierProvider).useTor) {
       // ... and if the coin supports Tor.
       if (!widget.coin.torSupport) {
@@ -101,10 +103,11 @@ class _DesktopWalletSummaryRowState
             ) ??
             false;
         if (!shouldContinue) {
-          return;
+          return false;
         }
       }
     }
+    return true;
   }
 
   bool get goStraightIntoWallet =>
@@ -115,7 +118,7 @@ class _DesktopWalletSummaryRowState
     if (_buttonLock) return;
     _buttonLock = true;
     try {
-      await _checkTor();
+      if (!await _checkTor()) return;
 
       if (mounted) {
         final wallet = ref
@@ -169,7 +172,7 @@ class _DesktopWalletSummaryRowState
     _buttonLock = true;
     try {
       // Check if Tor is enabled...
-      await _checkTor();
+      if (!await _checkTor()) return;
 
       if (mounted) {
         await showDialog<void>(

@@ -422,13 +422,16 @@ void tolerateKnownOverflows() {
 
 /// Pumps [home] as the app shows it: [desktop] (1280 × 800) or a 375 × 667
 /// phone, Campfire's theme, Wallets with the test wallet, and the app's own
-/// routes. Returns the provider container.
+/// routes. Returns the provider container. [overrides] are added to the
+/// container's own; [prefs] replaces the default [TestPrefs].
 Future<ProviderContainer> pumpWiring(
   WidgetTester tester,
   Widget home, {
   required bool desktop,
   Size? size,
   bool frame = true,
+  List<Override> overrides = const [],
+  TestPrefs? prefs,
 }) async {
   await loadFonts(tester);
   tolerateKnownOverflows();
@@ -442,13 +445,14 @@ Future<ProviderContainer> pumpWiring(
   final colors = StackColors.fromStackColorTheme(campfireLight);
   final container = ProviderContainer(
     overrides: [
-      prefsChangeNotifierProvider.overrideWithValue(TestPrefs()),
+      prefsChangeNotifierProvider.overrideWithValue(prefs ?? TestPrefs()),
       tradesServiceProvider.overrideWithValue(NoTrades()),
       notificationsProvider.overrideWithValue(NoNotifications()),
       pWallets.overrideWithValue(Wallets.sharedInstance),
       themeProvider.overrideWithProvider(
         StateProvider<StackTheme>((ref) => campfireLight),
       ),
+      ...overrides,
     ],
   );
   _disposeContainer();

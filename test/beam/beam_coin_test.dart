@@ -55,7 +55,7 @@ void main() {
       expect(beam.hasMnemonicPassphraseSupport, isFalse);
       expect(beam.hasBuySupport, isFalse);
       expect(beam.hasTokenSupport, isFalse);
-      expect(beam.torSupport, isFalse);
+      expect(beam.torSupport, isTrue);
       expect(beam.targetBlockTimeSeconds, 60);
       expect(beam.minConfirms, 1);
       expect(beam.minCoinbaseConfirms, 240);

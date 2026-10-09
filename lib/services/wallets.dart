@@ -13,6 +13,7 @@ import 'dart:io';
 
 import 'package:compat/compat.dart' as lib_monero_compat;
 import 'package:isar_community/isar.dart';
+import 'package:meta/meta.dart';
 
 import '../app_config.dart';
 import '../db/hive/db.dart';
@@ -63,6 +64,13 @@ class Wallets {
     }
   }
 
+  /// Single-coin builds list their wallets from this event. Campfire for
+  /// BEAM's desktop menu does too (`pBeamSidebarWallets`), with any number
+  /// of coins.
+  @visibleForTesting
+  static bool get firesWalletsChanged =>
+      AppConfig.isSingleCoinApp || AppConfig.coins.any((c) => c is Beam);
+
   void addWallet(Wallet wallet) {
     if (_wallets[wallet.walletId] != null) {
       throw Exception(
@@ -70,7 +78,7 @@ class Wallets {
       );
     }
     _wallets[wallet.walletId] = wallet;
-    if (AppConfig.isSingleCoinApp) {
+    if (firesWalletsChanged) {
       GlobalEventBus.instance.fire(WalletsChangedEvent());
     }
   }
@@ -206,7 +214,7 @@ class Wallets {
       await mainDB.isar.walletInfo.deleteByWalletId(walletId);
     });
 
-    if (AppConfig.isSingleCoinApp) {
+    if (firesWalletsChanged) {
       GlobalEventBus.instance.fire(WalletsChangedEvent());
     }
   }

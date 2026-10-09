@@ -96,10 +96,12 @@ class Beam extends Bip39Currency {
   @override
   String get ticker => _ticker;
 
-  // Node traffic does not go through Campfire's Tor proxy yet, so this stays
-  // false and Campfire shows its IP-leak warning while Tor is on.
+  // With Tor on, BEAM connects through Tor or not at all (BeamNodeRouter;
+  // a core without proxy support is never started under Tor), so Campfire's
+  // "not compatible with Tor, leaks your IP" warning would be false. It
+  // shows on My Campfire's coin list once the build has a second coin.
   @override
-  bool get torSupport => false;
+  bool get torSupport => true;
 
   @override
   String get genesisHash => "not used in beam";

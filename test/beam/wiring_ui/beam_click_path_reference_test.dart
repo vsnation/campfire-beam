@@ -103,9 +103,9 @@ void main() {
       find.byKey(goldenKey),
       matchesGoldenFile('goldens/desktop_my_campfire_one_wallet.png'),
     );
-    // The tour's only wallet: the first row of "All wallets".
-    expect(find.text('Savings'), findsOneWidget);
-    final open = find.text('Open wallet', findRichText: true);
+    // With Ethereum in the build, "All wallets" lists coins: the tour's
+    // only wallet opens from the Beam row (one wallet: straight in).
+    final open = find.byKey(const Key('DesktopWalletSummaryRow_key_beam'));
     expect(open, findsOneWidget);
     _point(tester, 'openWallet', open);
     await finish(tester);

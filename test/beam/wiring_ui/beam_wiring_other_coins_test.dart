@@ -7,24 +7,33 @@
  *
  */
 
-// The owner will add Ethereum (ETH, ERC-20, WBEAM) to this app with Stack
-// Wallet's own Ethereum code. Every wiring change must therefore be a BEAM
-// branch that leaves the Ethereum paths exactly as upstream has them: the
-// token list with "Edit tokens" on desktop, the "Tokens" row in the phone's
-// More, the ETH Transactions tab, the swap / buy entries, `hasTokenSupport`.
+// The app has Ethereum (ETH, ERC-20, WBEAM) from Stack Wallet's own
+// Ethereum code. Every wiring change must therefore be a BEAM branch that
+// leaves the Ethereum paths exactly as upstream has them: the token list
+// with "Edit tokens" on desktop, the "Tokens" row in the phone's More, the
+// ETH Transactions tab, the swap / buy entries, `hasTokenSupport`.
 //
-// An Ethereum wallet cannot be built in this test: Campfire is configured
-// BEAM-only, and `WalletInfo` asserts that its coin is in `AppConfig.coins`
-// (and `WalletInfo.coin` looks it up there). So this checks the menu code
-// itself: every BEAM entry point sits behind a `BeamWallet` guard, and every
-// Ethereum expression the menus had is still there, unchanged. The BEAM
-// wallet's own menus are checked by running them in the other files here.
+// The first tests check the menu code itself: every BEAM entry point sits
+// behind a `BeamWallet` guard, and every Ethereum expression the menus had
+// is still there, unchanged. The last ones open a real Ethereum wallet (now
+// that the build lists Ethereum, `WalletInfo` accepts one) and look at its
+// screens: Ethereum's own, with none of BEAM's.
 
 import 'dart:io';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:stackwallet/pages/wallet_view/wallet_view.dart';
+import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/desktop_wallet_view.dart';
 import 'package:stackwallet/pages_desktop_specific/my_stack_view/wallet_view/sub_widgets/desktop_wallet_features.dart';
+import 'package:stackwallet/providers/global/node_service_provider.dart';
+import 'package:stackwallet/providers/global/price_provider.dart';
+import 'package:stackwallet/utilities/util.dart';
 import 'package:stackwallet/widgets/beam/wiring/beam_features.dart';
+import 'package:stackwallet/widgets/wallet_navigation_bar/components/wallet_navigation_bar_item.dart';
+
+import '../eth_ui/eth_ui_harness.dart';
+import 'wiring_harness.dart';
 
 /// [path]'s source with all whitespace collapsed to single spaces, so the
 /// checks do not depend on line breaks or the formatter.
@@ -51,6 +60,16 @@ const _wob =
 const _rg = 'lib/route_generator.dart';
 
 void main() {
+  final db = WiringDb();
+  setUpAll(() async {
+    await db.open();
+    await openNodeHive();
+  });
+  tearDownAll(() async {
+    await closeNodeHive();
+    await db.close();
+  });
+
   test('phone wallet bar: BEAM items only behind a BeamWallet guard; '
       'Ethereum keeps Tokens in More, Swap and Buy', () {
     final s = _src(_wv);
@@ -202,5 +221,80 @@ void main() {
       case MyTokensView.routeName: if (args is String) { return getRoute(
       shouldUseMaterialRoute: useMaterialPageRoute, builder: (_) =>
       MyTokensView(walletId: args),''', 'MyTokensView (Ethereum) route');
+  });
+
+  testWidgets('a real Ethereum wallet on desktop: "Tokens" with "Edit", '
+      'none of the BEAM features', (tester) async {
+    Util.debugIsDesktop = true;
+    addTearDown(() => Util.debugIsDesktop = null);
+    final eth = await openEthWallet(tester);
+    await pumpWiring(
+      tester,
+      DesktopWalletView(walletId: eth.walletId),
+      desktop: true,
+      overrides: [
+        priceAnd24hChangeNotifierProvider.overrideWithValue(NoPrices()),
+        nodeServiceChangeNotifierProvider.overrideWithValue(testNodeService()),
+      ],
+    );
+    expect(find.text('Tokens'), findsOneWidget);
+    // "Edit" beside "Tokens" (the send form's fee has one too).
+    final tokensY = tester.getCenter(find.text('Tokens')).dy;
+    double centreY(Element e) {
+      final box = e.renderObject! as RenderBox;
+      return box.localToGlobal(box.size.center(Offset.zero)).dy;
+    }
+
+    expect(
+      find
+          .text('Edit', findRichText: true)
+          .evaluate()
+          .where((e) => (centreY(e) - tokensY).abs() < 6),
+      hasLength(1),
+    );
+    expect(find.text('Assets'), findsNothing);
+    // BEAM's "Tokens" (its minter) shares the word with Ethereum's header.
+    final beamOnly = kBeamWalletFeatures.keys.where((f) => f.label != 'Tokens');
+    for (final f in beamOnly) {
+      expect(find.text(f.label), findsNothing, reason: f.label);
+    }
+    await drainWork(tester);
+    await finish(tester);
+  });
+
+  testWidgets("a real Ethereum wallet on a phone: More keeps Ethereum's "
+      '"Tokens" and has none of the BEAM rows', (tester) async {
+    Util.debugIsDesktop = false;
+    addTearDown(() => Util.debugIsDesktop = null);
+    final eth = await openEthWallet(tester);
+    await pumpWiring(
+      tester,
+      WalletView(walletId: eth.walletId),
+      desktop: false,
+      overrides: [
+        priceAnd24hChangeNotifierProvider.overrideWithValue(NoPrices()),
+        nodeServiceChangeNotifierProvider.overrideWithValue(testNodeService()),
+      ],
+    );
+    final more = find
+        .descendant(
+          of: find.byType(WalletNavigationBarItem),
+          matching: find.text('More'),
+        )
+        .first;
+    await tester.tap(more);
+    await settle(tester, rounds: 1);
+    final labels = [
+      for (final w in tester.widgetList<WalletNavigationBarMoreItem>(
+        find.byType(WalletNavigationBarMoreItem),
+      ))
+        w.data.label,
+    ];
+    expect(labels, contains('Tokens'));
+    for (final beamOnly in ['Names', 'dApps', 'Airdrops', 'Node & sync']) {
+      expect(labels, isNot(contains(beamOnly)), reason: beamOnly);
+    }
+    await drainWork(tester);
+    await finish(tester);
   });
 }

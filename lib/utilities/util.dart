@@ -83,7 +83,14 @@ abstract class Util {
     });
   }
 
+  /// Forces [isDesktop] in widget tests, which run on a desktop host
+  /// (null: decided by the platform).
+  @visibleForTesting
+  static bool? debugIsDesktop;
+
   static bool get isDesktop {
+    if (debugIsDesktop != null) return debugIsDesktop!;
+
     // special check for running on linux based phones
     if (Platform.isLinux && screenWidth != null && screenWidth! < 800) {
       return false;
