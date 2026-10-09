@@ -53,6 +53,10 @@ abstract final class BeamPrivateNodeMessages {
         BeamPrivateNodePhase.stopped
             when s.issue == BeamPrivateNodeIssue.stoppedByUser =>
           BeamPrivateNodeAction.start,
+        // Nothing to try: it takes the node by itself once it is free.
+        BeamPrivateNodePhase.failed
+            when s.issue == BeamPrivateNodeIssue.servingOtherWallet =>
+          BeamPrivateNodeAction.none,
         BeamPrivateNodePhase.failed ||
         BeamPrivateNodePhase.stopped ||
         BeamPrivateNodePhase.ownNodeUnconfirmed ||
@@ -74,8 +78,7 @@ abstract final class BeamPrivateNodeMessages {
 
   static BeamSyncMessage describe(BeamPrivateNodeStatus s) {
     final m = _describe(s);
-    if (!s.waitingForWallet ||
-        s.phase == BeamPrivateNodePhase.switching) {
+    if (!s.waitingForWallet || s.phase == BeamPrivateNodePhase.switching) {
       return m;
     }
     return BeamSyncMessage(
@@ -181,8 +184,7 @@ abstract final class BeamPrivateNodeMessages {
         return s.privateReceiveAvailable
             ? const BeamSyncMessage(
                 title: 'Switched to your private node',
-                detail:
-                    'Offline and max-privacy payments can now reach you.',
+                detail: 'Offline and max-privacy payments can now reach you.',
               )
             : const BeamSyncMessage(
                 title: 'Reconnecting to your private node',
@@ -259,7 +261,8 @@ abstract final class BeamPrivateNodeMessages {
           ? ''
           : ' Only ${formatBeamDiskSize(d.space.freeBytes)} is free.';
       return BeamSyncMessage(
-        title: 'Your private node stopped: this computer is almost out of '
+        title:
+            'Your private node stopped: this computer is almost out of '
             'space',
         detail:
             'It was stopped before the disk filled up.$free Free up some '
@@ -303,7 +306,9 @@ abstract final class BeamPrivateNodeMessages {
       "Your private node couldn't use this wallet's key — staying on a "
           'public node',
     BeamPrivateNodeIssue.nodeInUse =>
-      'Your private node is already running in another window',
+      'Your private node is already running in another copy of the app',
+    BeamPrivateNodeIssue.servingOtherWallet =>
+      'Your private node is serving another of your wallets',
     BeamPrivateNodeIssue.binaryProblem =>
       "Your private node didn't pass a safety check — staying on a public "
           'node',
@@ -314,8 +319,11 @@ abstract final class BeamPrivateNodeMessages {
     BeamPrivateNodeIssue.keyRejected =>
       'It was stopped rather than run without the key. Offline and '
           'max-privacy payments stay off.',
-    BeamPrivateNodeIssue.nodeInUse =>
-      'Close the other window, then try again.',
+    BeamPrivateNodeIssue.nodeInUse => 'Close the other copy, then try again.',
+    BeamPrivateNodeIssue.servingOtherWallet =>
+      'One private node serves one wallet at a time. This wallet uses a '
+          'public node meanwhile and moves to your node by itself when that '
+          'wallet closes.',
     BeamPrivateNodeIssue.binaryProblem =>
       'Its program file is not the one this app was built with, so it was '
           'not run. Reinstall the app, then try again.',

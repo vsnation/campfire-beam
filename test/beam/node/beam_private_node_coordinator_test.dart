@@ -257,6 +257,17 @@ class FakeNode implements BeamPrivateNode {
   }
 }
 
+/// The app's one node, as the in-process node is: busy while [busy] says
+/// another wallet has it.
+class SharedFakeNode extends FakeNode implements BeamSharedNode {
+  SharedFakeNode(this.busy);
+
+  final bool Function() busy;
+
+  @override
+  bool get servesAnotherWallet => busy();
+}
+
 class FakeExplorer implements BeamNetworkTipSource {
   int height = _networkHeight;
   bool down = false;
@@ -307,6 +318,7 @@ class Harness {
     Duration readyHoldFor = Duration.zero,
     Duration walletReadyTimeout = const Duration(minutes: 2),
     Duration retryAfterNotServing = const Duration(minutes: 10),
+    Duration takeOverCheck = const Duration(minutes: 1),
     bool Function()? walletCanSend,
   }) {
     initial = FakeSession(host, _eu, FakeTransport());
@@ -337,6 +349,7 @@ class Harness {
       readyHoldFor: readyHoldFor,
       walletReadyTimeout: walletReadyTimeout,
       retryAfterNotServing: retryAfterNotServing,
+      takeOverCheck: takeOverCheck,
       walletCanSend: walletCanSend,
     );
     coordinator.statuses.listen(statuses.add);
@@ -399,6 +412,58 @@ String _title(BeamPrivateNodeStatus s) =>
     BeamPrivateNodeMessages.describe(s).title;
 
 void main() {
+  group("the app's one node, busy with another wallet", () {
+    test('this wallet is not paused, says so calmly, and takes the node '
+        'once it is free', () async {
+      var busy = true;
+      final made = <SharedFakeNode>[];
+      final h = Harness(
+        takeOverCheck: const Duration(milliseconds: 100),
+        nodeFactory: () {
+          final n = SharedFakeNode(() => busy);
+          made.add(n);
+          return n;
+        },
+      );
+      await h.coordinator.start();
+      expect(h.status.phase, Phase.failed);
+      expect(h.status.issue, BeamPrivateNodeIssue.servingOtherWallet);
+      // Never paused to read the key for a node it cannot have.
+      expect(h.host.calls, isNot(contains('export')));
+      expect(made.single.keyReceived, isNull);
+      expect(h.coordinator.session, same(h.initial));
+      final m = BeamPrivateNodeMessages.describe(h.status);
+      expect(m.title, 'Your private node is serving another of your wallets');
+      expect(m.detail, contains('moves to your node by itself'));
+      expect(m.actionLabel, isNull);
+      expect(m.title, isNot(contains('window')));
+
+      busy = false;
+      await until(
+        () => made.length >= 2 && made.last.keyReceived != null,
+        reason: 'took the node once the other wallet let it go',
+      );
+      expect(h.status.issue, isNot(BeamPrivateNodeIssue.servingOtherWallet));
+      await h.dispose();
+    });
+
+    test('a start refused because another wallet has the node: the same '
+        'calm state, never "another window"', () async {
+      final h = Harness(
+        takeOverCheck: const Duration(hours: 1),
+        startError: const BeamNodeException(
+          BeamNodeError.servingOtherWallet,
+          "This app's private node already serves another wallet",
+        ),
+      );
+      await h.coordinator.start();
+      expect(h.status.phase, Phase.failed);
+      expect(h.status.issue, BeamPrivateNodeIssue.servingOtherWallet);
+      expect(_title(h.status), isNot(contains('window')));
+      await h.dispose();
+    });
+  });
+
   group('bring-up', () {
     test('the setting defaults to on for desktop', () async {
       expect(

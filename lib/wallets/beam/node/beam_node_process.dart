@@ -47,6 +47,15 @@ class BeamNodeException implements Exception {
   String toString() => 'BeamNodeException(${kind.name}): $message';
 }
 
+/// A node that is one per app, shared by its wallets (the in-process
+/// node): only one wallet's key can be in it at a time.
+abstract interface class BeamSharedNode {
+  /// The app's node runs already, started for another wallet. Checked
+  /// before anything else happens, so a wallet that cannot have the node
+  /// is not paused to read its key.
+  bool get servesAnotherWallet;
+}
+
 /// A private node that keeps its storage in a directory (the coordinator
 /// measures that directory's disk).
 abstract interface class BeamNodeStorage {

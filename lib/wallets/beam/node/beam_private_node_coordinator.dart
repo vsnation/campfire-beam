@@ -144,6 +144,10 @@ enum BeamPrivateNodeIssue {
   /// Another app instance runs a node on the same storage.
   nodeInUse,
 
+  /// This app's one node runs for another of its wallets; this wallet stays
+  /// on a public node and takes the node when it is free.
+  servingOtherWallet,
+
   /// The beam-node binary failed verification.
   binaryProblem,
 
@@ -353,6 +357,7 @@ class BeamPrivateNodeCoordinator {
     this.readyHoldFor = const Duration(seconds: 60),
     this.walletReadyTimeout = const Duration(minutes: 2),
     this.retryAfterNotServing = const Duration(minutes: 10),
+    this.takeOverCheck = const Duration(minutes: 1),
     this._walletCanSend,
     DateTime Function()? now,
   }) : setting = setting ?? BeamFixedPrivateNodeSetting.platformDefault(),
@@ -386,7 +391,8 @@ class BeamPrivateNodeCoordinator {
     if (!_registryChanges.isClosed) _registryChanges.add(null);
   }
 
-  static bool Function() _constantly(bool value) => () => value;
+  static bool Function() _constantly(bool value) =>
+      () => value;
 
   final BeamHost host;
   final String walletDir;
@@ -428,6 +434,10 @@ class BeamPrivateNodeCoordinator {
   /// After a node did not serve the wallet, how long until the next switch.
   final Duration retryAfterNotServing;
 
+  /// While the app's node serves another wallet, how often this wallet
+  /// looks whether it is free to take.
+  final Duration takeOverCheck;
+
   /// Whether the wallet can send now (its honest sync verdict). Null: not
   /// checked.
   final bool Function()? _walletCanSend;
@@ -457,6 +467,7 @@ class BeamPrivateNodeCoordinator {
   Timer? _timer;
   Timer? _ownNodeGrace;
   Timer? _walletReadyTimer;
+  Timer? _takeOverTimer;
   DateTime? _readySince;
   DateTime? _noSwitchBefore;
   bool _checkQueued = false;
@@ -602,6 +613,7 @@ class BeamPrivateNodeCoordinator {
     _timer?.cancel();
     _ownNodeGrace?.cancel();
     _walletReadyTimer?.cancel();
+    _takeOverTimer?.cancel();
     await _ownNodeSub?.cancel();
     // An operation in flight (e.g. waiting for own_node) sees _disposed at
     // its next step; do not hold app shutdown for it.
@@ -622,6 +634,14 @@ class BeamPrivateNodeCoordinator {
     _set(_Phase.preparing, issue: null);
     // Not started yet, so nothing to clean up if this goes no further.
     final node = _nodeFactory();
+
+    // 0. The app's one node, busy with another wallet's key: nothing to
+    // start, and no reason to pause this wallet for its key.
+    if (node is BeamSharedNode &&
+        (node as BeamSharedNode).servesAnotherWallet) {
+      _servingOtherWallet();
+      return;
+    }
 
     // 1. Room on disk, before anything else happens.
     _nodeDiskProbe =
@@ -692,7 +712,11 @@ class BeamPrivateNodeCoordinator {
     } on BeamNodeException catch (e) {
       _log('Private node did not start: $e');
       await _quietStop(node);
-      _set(_Phase.failed, issue: _issueFor(e.kind));
+      if (e.kind == BeamNodeError.servingOtherWallet) {
+        _servingOtherWallet();
+      } else {
+        _set(_Phase.failed, issue: _issueFor(e.kind));
+      }
       return;
     } on BeamHostException catch (e) {
       _log('Private node did not start: $e');
@@ -805,9 +829,31 @@ class BeamPrivateNodeCoordinator {
     return true;
   }
 
+  /// The app's node serves another wallet: this one stays on its public
+  /// node, says so, and looks again every [takeOverCheck] (it takes the
+  /// node once that wallet closes).
+  void _servingOtherWallet() {
+    _log(
+      "The app's private node serves another wallet; this wallet stays on "
+      'a public node and checks again in ${takeOverCheck.inSeconds} s',
+    );
+    _set(_Phase.failed, issue: BeamPrivateNodeIssue.servingOtherWallet);
+    _takeOverTimer?.cancel();
+    _takeOverTimer = Timer(takeOverCheck, () {
+      _takeOverTimer = null;
+      if (_disposed ||
+          _status.phase != _Phase.failed ||
+          _status.issue != BeamPrivateNodeIssue.servingOtherWallet) {
+        return;
+      }
+      unawaited(retry());
+    });
+  }
+
   static BeamPrivateNodeIssue _issueFor(BeamNodeError kind) => switch (kind) {
     BeamNodeError.ownerKeyRejected => BeamPrivateNodeIssue.keyRejected,
     BeamNodeError.nodeInUse => BeamPrivateNodeIssue.nodeInUse,
+    BeamNodeError.servingOtherWallet => BeamPrivateNodeIssue.servingOtherWallet,
     _ => BeamPrivateNodeIssue.nodeStartFailed,
   };
 
@@ -1350,11 +1396,12 @@ class BeamPrivateNodeCoordinator {
   /// user actions never interleave. Never throws: an unexpected error is
   /// logged and the status keeps its last value.
   Future<void> _serial(Future<void> Function() op) {
-    return _queue = _queue
-        .then((_) => _disposed ? null : op())
-        .catchError((Object e, StackTrace s) {
-          _log('Private node coordinator error: ${_describe(e)}\n$s');
-        });
+    return _queue = _queue.then((_) => _disposed ? null : op()).catchError((
+      Object e,
+      StackTrace s,
+    ) {
+      _log('Private node coordinator error: ${_describe(e)}\n$s');
+    });
   }
 
   /// Error text for logs. Host and node exceptions never carry a secret;

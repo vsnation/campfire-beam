@@ -81,6 +81,10 @@ enum BeamNodeError {
   /// Another app instance is running a node on the same storage.
   nodeInUse,
 
+  /// This app's one node is already running for another of its wallets
+  /// (a node serves one wallet's key at a time).
+  servingOtherWallet,
+
   /// Its database is corrupted.
   corrupted,
 

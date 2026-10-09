@@ -547,6 +547,15 @@ abstract final class BeamNodePanelModel {
           primary: _actionFor(st),
           moment: byUser ? null : BeamNodeMoment.fellBack,
         );
+      case BeamPrivateNodePhase.failed
+          when st.issue == BeamPrivateNodeIssue.servingOtherWallet:
+        // Nothing is wrong: the node is busy with another wallet's key.
+        return _Private(
+          title: message.title,
+          detail: message.detail,
+          tone: BeamNodeTone.neutral,
+          primary: _actionFor(st),
+        );
       case BeamPrivateNodePhase.failed:
       case BeamPrivateNodePhase.ownNodeUnconfirmed:
       case BeamPrivateNodePhase.walletClosed:

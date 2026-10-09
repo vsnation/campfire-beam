@@ -88,6 +88,14 @@ final Map<String, BeamNodePanelSnapshot> states = {
     ),
     diskCheck: disk(30, nodeGiB: 7.6),
   ),
+  // Another open wallet has the app's one node: calm, no button.
+  'serving_other_wallet': snap(
+    privateNode: const BeamPrivateNodeStatus(
+      phase: Phase.failed,
+      issue: Issue.servingOtherWallet,
+    ),
+    diskCheck: disk(44, nodeGiB: 7.7),
+  ),
   'off': snap(enabled: false),
   'wallet_catching_up': snap(
     assessment: walletBehind,
@@ -111,6 +119,10 @@ final Map<String, List<String>> mustSay = {
   'fell_back_to_public': [
     'Your private node stopped — back on a public node',
     'Try again',
+  ],
+  'serving_other_wallet': [
+    'Your private node is serving another of your wallets',
+    'moves to your node by itself when that wallet closes',
   ],
   'off': [BeamNodePanelText.toggleLabel, BeamNodePanelText.toggleExplainer],
   'wallet_catching_up': ['Catching up with the network', 'Starting soon'],

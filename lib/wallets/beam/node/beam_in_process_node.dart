@@ -35,8 +35,11 @@ import 'beam_node_progress.dart';
 /// * Progress is the library's status, polled every [pollInterval] — no log
 ///   parsing.
 ///
-/// One node per process: a second start while one runs is refused.
-class BeamInProcessNode implements BeamPrivateNode, BeamNodeStorage {
+/// One node per process: a second start while one runs is refused with
+/// [BeamNodeError.servingOtherWallet], and that refused node never stops
+/// the one that runs.
+class BeamInProcessNode
+    implements BeamPrivateNode, BeamNodeStorage, BeamSharedNode {
   BeamInProcessNode({
     required String rootDir,
     required this.core,
@@ -80,6 +83,18 @@ class BeamInProcessNode implements BeamPrivateNode, BeamNodeStorage {
   bool _started = false;
   bool _stopRequested = false;
 
+  /// Whether this object started the process's node: only then may [stop]
+  /// stop it.
+  bool _ownsCoreNode = false;
+
+  @override
+  bool get servesAnotherWallet {
+    final state = core.nodeStatus().state;
+    return !_ownsCoreNode &&
+        (state == BeamCoreNodeState.starting ||
+            state == BeamCoreNodeState.running);
+  }
+
   @override
   int? get port => _port;
 
@@ -102,13 +117,25 @@ class BeamInProcessNode implements BeamPrivateNode, BeamNodeStorage {
         'A private node needs the owner key and the wallet password',
       );
     }
-    final current = core.nodeStatus();
-    if (current.state == BeamCoreNodeState.starting ||
-        current.state == BeamCoreNodeState.running ||
-        current.state == BeamCoreNodeState.stopping) {
+    // A node of this app that is still stopping (a restart right after a
+    // stop) is waited for; one that runs serves another wallet's key.
+    final settle = DateTime.now().add(stopGrace);
+    while (core.nodeStatus().state == BeamCoreNodeState.stopping &&
+        DateTime.now().isBefore(settle)) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    final current = core.nodeStatus().state;
+    if (current == BeamCoreNodeState.starting ||
+        current == BeamCoreNodeState.running) {
       throw const BeamNodeException(
-        BeamNodeError.nodeInUse,
-        'A private node already runs in this app',
+        BeamNodeError.servingOtherWallet,
+        "This app's private node already serves another wallet",
+      );
+    }
+    if (current == BeamCoreNodeState.stopping) {
+      throw const BeamNodeException(
+        BeamNodeError.exited,
+        'The private node is still stopping',
       );
     }
     await ensurePrivateDir(nodeDir);
@@ -150,10 +177,12 @@ class BeamInProcessNode implements BeamPrivateNode, BeamNodeStorage {
     if (rc != BeamCoreNodeError.ok) {
       throw BeamNodeException(switch (rc) {
         BeamCoreNodeError.badOwnerKey => BeamNodeError.ownerKeyRejected,
-        BeamCoreNodeError.alreadyRunning => BeamNodeError.nodeInUse,
+        // The core's one node: started by another wallet in this app.
+        BeamCoreNodeError.alreadyRunning => BeamNodeError.servingOtherWallet,
         _ => BeamNodeError.exited,
       }, 'The private node did not start (core result $rc)');
     }
+    _ownsCoreNode = true;
     _port = port;
     _live.add(this);
     _log(
@@ -234,6 +263,8 @@ class BeamInProcessNode implements BeamPrivateNode, BeamNodeStorage {
     if (!_started || _stopRequested) return;
     _stopRequested = true;
     _live.remove(this);
+    // Never the node another wallet started: this one never ran.
+    if (!_ownsCoreNode) return;
     core.stopNode();
     final deadline = DateTime.now().add(stopGrace);
     while (!core.nodeStatus().isEnded) {
