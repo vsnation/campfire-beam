@@ -414,6 +414,9 @@ class BeamTransactionRow extends ConsumerWidget {
                   ],
                 ),
               ),
+              // A gutter, so a long reason ("Failed: the coins were…")
+              // never runs into the date.
+              const SizedBox(width: 16),
               Expanded(
                 flex: 3,
                 child: Text(
