@@ -89,11 +89,10 @@ class BridgeRelayerGas {
 
   BigInt get maxFeePerGas => baseFee * BigInt.two + tip;
 
-  static BigInt _median(List<BigInt> sorted) {
-    final n = sorted.length;
-    if (n.isOdd) return sorted[n ~/ 2];
-    return (sorted[n ~/ 2 - 1] + sorted[n ~/ 2]) ~/ BigInt.two;
-  }
+  /// The relayer's median: the upper of the two middle values when there
+  /// are an even number (`sorted[Math.floor(n / 2)]`, eth_gas.js), never
+  /// their average, which would quote below the relayer's minimum.
+  static BigInt _median(List<BigInt> sorted) => sorted[sorted.length ~/ 2];
 }
 
 /// USD prices by CoinGecko id, and when they were read.

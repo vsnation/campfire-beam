@@ -42,7 +42,14 @@ abstract class UniSwapSigner {
 }
 
 /// What one transaction does, for the wallet's history.
-enum UniTxKind { approve, approveReset, swap }
+enum UniTxKind {
+  approve,
+  approveReset,
+  swap,
+
+  /// `sendFunds` into a BEAM bridge pipe (`EthPipeService`).
+  bridgeLock,
+}
 
 /// A transaction ready to sign.
 class UniTxRequest {
@@ -229,6 +236,47 @@ class UniTxOutcome {
   BigInt get gasCost => gasUsed * effectiveGasPrice;
 }
 
+/// EIP-1559 fees for a transaction the wallet sends, from [rpc]'s own fee
+/// history: the next block's base fee and the median tip of the last few
+/// blocks (at least 0.01 gwei), with room for the base fee to double
+/// before the transaction is mined. Shared by the swap and the bridge.
+Future<UniFees> walletFees(EthRpc rpc) async {
+  final r = await rpc.call('eth_feeHistory', [
+    '0x5',
+    'latest',
+    [50],
+  ]);
+  final m = r! as Map<String, dynamic>;
+  final bases = [
+    for (final b in m['baseFeePerGas'] as List) _hexWei(b as String),
+  ];
+  final next = bases.last;
+  final tips = <BigInt>[
+    for (final row in (m['reward'] as List?) ?? const [])
+      if ((row as List).isNotEmpty) _hexWei(row.first as String),
+  ]..sort();
+  final floor = BigInt.from(10000000); // 0.01 gwei
+  var tip = tips.isEmpty ? floor : tips[tips.length ~/ 2];
+  if (tip < floor) tip = floor;
+  return UniFees(
+    baseFee: next,
+    maxPriorityFeePerGas: tip,
+    maxFeePerGas: next * BigInt.two + tip,
+  );
+}
+
+/// A gas limit for an [estimate]d transaction: a quarter more, and at
+/// least 20 000 more, for state that changes before it is mined.
+BigInt gasWithHeadroom(BigInt estimate) {
+  final more = estimate * BigInt.from(125) ~/ BigInt.from(100);
+  return more - estimate < BigInt.from(20000)
+      ? estimate + BigInt.from(20000)
+      : more;
+}
+
+BigInt _hexWei(String h) =>
+    h == '0x' ? BigInt.zero : BigInt.parse(h.substring(2), radix: 16);
+
 class UniswapService {
   UniswapService({
     required this.rpc,
@@ -328,34 +376,8 @@ class UniswapService {
     );
   }
 
-  /// EIP-1559 fees from the RPC's own fee history: the next block's base
-  /// fee and the median tip of the last few blocks (at least 0.01 gwei),
-  /// with room for the base fee to double before the transaction is
-  /// mined.
-  Future<UniFees> fees() async {
-    final r = await rpc.call('eth_feeHistory', [
-      '0x5',
-      'latest',
-      [50],
-    ]);
-    final m = r! as Map<String, dynamic>;
-    final bases = [
-      for (final b in m['baseFeePerGas'] as List) _hex(b as String),
-    ];
-    final next = bases.last;
-    final tips = <BigInt>[
-      for (final row in (m['reward'] as List?) ?? const [])
-        if ((row as List).isNotEmpty) _hex(row.first as String),
-    ]..sort();
-    final floor = BigInt.from(10000000); // 0.01 gwei
-    var tip = tips.isEmpty ? floor : tips[tips.length ~/ 2];
-    if (tip < floor) tip = floor;
-    return UniFees(
-      baseFee: next,
-      maxPriorityFeePerGas: tip,
-      maxFeePerGas: next * BigInt.two + tip,
-    );
-  }
+  /// EIP-1559 fees from the RPC's own fee history ([walletFees]).
+  Future<UniFees> fees() => walletFees(rpc);
 
   // ------------------------------------------------------------- approval
 
@@ -416,7 +438,7 @@ class UniswapService {
       to: token.address,
       data: data,
       value: BigInt.zero,
-      gasLimit: _withHeadroom(gas),
+      gasLimit: gasWithHeadroom(gas),
       fees: f,
     );
   }
@@ -478,7 +500,7 @@ class UniswapService {
       minimumOut: minimumOut,
       deadline: dl,
       needsPermit: needsPermit,
-      gasLimit: _withHeadroom(gas),
+      gasLimit: gasWithHeadroom(gas),
       fees: f,
       priceMoved: moved,
     );
@@ -526,7 +548,7 @@ class UniswapService {
       if (other == null) rethrow;
       throw UniRouteChanged(other);
     }
-    if (gas > review.gasLimit) throw UniGasChanged(_withHeadroom(gas));
+    if (gas > review.gasLimit) throw UniGasChanged(gasWithHeadroom(gas));
     return UniPreparedSwap(
       quote: q,
       tx: UniTxRequest(
@@ -713,11 +735,6 @@ class UniswapService {
   }
 
   // --------------------------------------------------------------- private
-
-  static BigInt _withHeadroom(BigInt gas) {
-    final more = gas * BigInt.from(125) ~/ BigInt.from(100);
-    return more - gas < BigInt.from(20000) ? gas + BigInt.from(20000) : more;
-  }
 
   static BigInt _hex(String h) =>
       h == '0x' ? BigInt.zero : BigInt.parse(h.substring(2), radix: 16);
