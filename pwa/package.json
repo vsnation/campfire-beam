@@ -42,7 +42,8 @@
     "e2e:back": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/back.test.mjs",
     "e2e:stop-race": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/stop_race.test.mjs",
     "e2e:live:native": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live_native_receive.mjs",
-    "e2e:live:rescan": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live_rescan.mjs"
+    "e2e:live:rescan": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live_rescan.mjs",
+    "e2e:cloud-backup": "node tools/stage_engine.mjs && node --test --test-concurrency=1 test/e2e/cloud_backup.test.mjs"
   },
   "devDependencies": {
     "jsqr": "1.4.0",
