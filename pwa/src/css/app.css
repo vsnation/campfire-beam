@@ -413,6 +413,17 @@ body.dapp-open { overflow: hidden; }
 .chain-switch { display: flex; background: var(--surface-2); border-radius: 10px; padding: 3px; gap: 3px; }
 .chain-opt { flex: 1; border: 0; background: none; border-radius: 8px; min-height: 36px; font-weight: 600; font-size: 15px; color: var(--muted); cursor: pointer; }
 .chain-opt.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow); cursor: default; }
+@media (prefers-color-scheme: dark) {
+  .chain-switch { background: rgba(0, 0, 0, 0.28); }
+  .chain-opt.on { background: var(--surface-2); }
+}
+.row .main .s.addr { font-feature-settings: 'calt' 0; white-space: normal; }
+.mono.addr-groups { word-break: normal; overflow-wrap: anywhere; }
+.nowrap { white-space: nowrap; }
+/* Inter's contextual alternates turn the x of "0x1f" into a multiplication sign. */
+.sheet .lead { font-feature-settings: 'calt' 0; }
+.row.field-row { flex-wrap: wrap; cursor: default; }
+.row.field-row select.inline { flex: 1 1 100%; max-width: none; margin-left: 48px; padding: 10px 8px; }
 .asset-badge.eth { background: #eef0f8; }
 .asset-badge.eth img { width: 22px; height: 22px; }
 .eth-hero img { width: 56px; height: 56px; }

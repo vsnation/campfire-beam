@@ -17,7 +17,7 @@ import { groupedAddress } from './eth_ui.js';
 
 export default function ethReceive(app) {
   const qrBox = h('div', { class: 'qr' }, h('div', { class: 'spinner' }));
-  const addrText = h('p', { class: 'mono', 'data-testid': 'eth-receive-address' });
+  const addrText = h('p', { class: 'mono addr-groups', 'data-testid': 'eth-receive-address' });
   const canShare = typeof navigator.share === 'function';
   const shareBtn = primary(h('span', {}, canShare ? 'Share address' : 'Copy address'), () => (canShare ? share() : copy()), { disabled: true, 'data-testid': 'eth-share' });
   shareBtn.prepend(icon(canShare ? 'share' : 'copy'));

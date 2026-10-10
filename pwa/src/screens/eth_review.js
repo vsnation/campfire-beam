@@ -14,7 +14,7 @@ import { openSheet, notice } from '../lib/ui.js';
 import { confirmIdentity } from '../lib/auth_ui.js';
 import { prepareSend, signAndSend, costRose, SendError } from '../lib/eth/send.js';
 import { ETH } from '../lib/eth/tokens.js';
-import { amountText, exactText, ethText, groupedAddress } from './eth_ui.js';
+import { amountText, exactText, ethText, ethMaxText, groupedAddress } from './eth_ui.js';
 
 /** Re-checked before signing when the review is older than this. */
 const FRESH_MS = 60000;
@@ -28,8 +28,8 @@ export function openEthReview(app, w, first) {
     const isEth = p.asset === ETH;
     const label = `Send ${amountText(p.amount, p.asset, { approx: false })}`;
     const total = isEth
-      ? [h('span', { 'data-testid': 'eth-review-total', text: `about ${ethText(p.amount + p.fees.likely)}` }), h('div', { class: 'small', text: `at most ${ethText(p.amount + p.fees.upTo)}` })]
-      : [h('span', { 'data-testid': 'eth-review-total', text: `${amountText(p.amount, p.asset, { approx: false })} + about ${ethText(p.fees.likely)}` }), h('div', { class: 'small', text: `fee at most ${ethText(p.fees.upTo)}` })];
+      ? [h('span', { 'data-testid': 'eth-review-total', text: `about ${ethText(p.amount + p.fees.likely)}` }), h('div', { class: 'small', text: `at most ${ethMaxText(p.amount + p.fees.upTo)}` })]
+      : [h('span', { 'data-testid': 'eth-review-total', text: `${amountText(p.amount, p.asset, { approx: false })} + about ${ethText(p.fees.likely)}` }), h('div', { class: 'small', text: `fee at most ${ethMaxText(p.fees.upTo)}` })];
 
     const confirm = async () => {
       if (busy) return;
@@ -72,9 +72,9 @@ export function openEthReview(app, w, first) {
       h(
         'div',
         { class: 'card' },
-        h('div', { class: 'kv kv-stack' }, h('span', { class: 'k', text: 'To' }), h('span', { class: 'v mono', 'data-testid': 'eth-review-to', 'data-address': p.recipient, text: groupedAddress(p.recipient) })),
+        h('div', { class: 'kv kv-stack' }, h('span', { class: 'k', text: 'To' }), h('span', { class: 'v mono addr-groups', 'data-testid': 'eth-review-to', 'data-address': p.recipient, text: groupedAddress(p.recipient) })),
         h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Network' }), h('span', { class: 'v', text: 'Ethereum' })),
-        h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Network fee' }), h('span', { class: 'v' }, h('span', { 'data-testid': 'eth-review-fee', text: `about ${ethText(p.fees.likely)}` }), h('div', { class: 'small', 'data-testid': 'eth-review-fee-max', text: `at most ${ethText(p.fees.upTo)}` }))),
+        h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Network fee' }), h('span', { class: 'v' }, h('span', { 'data-testid': 'eth-review-fee', text: `about ${ethText(p.fees.likely)}` }), h('div', { class: 'small', 'data-testid': 'eth-review-fee-max', text: `at most ${ethMaxText(p.fees.upTo)}` }))),
         h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Total' }), h('span', { class: 'v' }, ...total)),
       ),
       notice('info', 'Ethereum payments cannot be cancelled or undone once sent, and anyone can see them.'),

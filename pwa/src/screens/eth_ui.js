@@ -3,7 +3,7 @@
 import { h, shorten, fmtDate } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { assetBadge, notice } from '../lib/ui.js';
-import { formatUnits, isRoundedDown } from '../lib/eth/units.js';
+import { formatUnits, isRoundedDown, DISPLAY_DECIMALS } from '../lib/eth/units.js';
 import { ETH } from '../lib/eth/tokens.js';
 import { ETH_RPC_HOSTS, DEFAULT_ETH_RPC } from '../lib/eth/hosts.js';
 import { ethPrefs } from '../lib/eth/wallet.js';
@@ -29,8 +29,17 @@ export function exactText(value, asset) {
   return `${formatUnits(value, asset.decimals, { maxDecimals: asset.decimals })} ${asset.symbol}`;
 }
 
+/** A fee "about" this much: rounded down, no "≈" (the word says it). */
 export function ethText(wei) {
-  return amountText(wei, ETH);
+  return `${formatUnits(wei, ETH.decimals)} ETH`;
+}
+
+/** An "at most" figure: rounded UP at the shown precision, so the limit is never understated. */
+export function ethMaxText(wei) {
+  const v = BigInt(wei);
+  const cut = 10n ** BigInt(ETH.decimals - DISPLAY_DECIMALS);
+  const up = v % cut === 0n ? v : v + (cut - (v % cut));
+  return `${formatUnits(up, ETH.decimals)} ETH`;
 }
 
 /** The address in groups of four, so it can be read out and compared. */
@@ -39,7 +48,7 @@ export function groupedAddress(address) {
 }
 
 export function shortAddress(address) {
-  return shorten(address, 8, 6);
+  return shorten(address, 6, 4);
 }
 
 /**
@@ -50,9 +59,10 @@ export function shortAddress(address) {
 export function serverProblem(app, error, { retry, switched }) {
   const cur = ethPrefs(app).host;
   const alt = ETH_RPC_HOSTS.find((x) => x.id === (cur.id === DEFAULT_ETH_RPC ? 'publicnode' : DEFAULT_ETH_RPC));
+  // The server's own words (HTTP codes and the like) stay out of sight, for whoever debugs it.
   return h(
     'div',
-    { 'data-testid': 'eth-server-problem' },
+    { 'data-testid': 'eth-server-problem', title: error && error.message ? error.message : '' },
     notice(
       'error',
       h('strong', { text: `${cur.name}'s Ethereum server didn't answer. ` }),
@@ -71,7 +81,6 @@ export function serverProblem(app, error, { retry, switched }) {
         }, `Use ${alt.name} instead`),
       ),
     ),
-    error && error.message ? h('p', { class: 'small', text: error.message }) : null,
   );
 }
 
@@ -91,13 +100,15 @@ export function activityRow(item, onclick) {
   const title =
     STATE_TEXT[item.state] ||
     (item.direction === 'in' ? `Received ${item.asset.symbol}` : item.direction === 'self' ? `Sent ${item.asset.symbol} to yourself` : `Sent ${item.asset.symbol}`);
-  const sub = [item.at ? fmtDate(Math.floor(item.at / 1000)) : null, item.counterparty ? `${item.direction === 'in' ? 'from' : 'to'} ${shortAddress(item.counterparty)}` : null].filter(Boolean).join(' · ');
+  const when = item.at ? fmtDate(Math.floor(item.at / 1000)) : null;
+  const who = item.counterparty ? h('span', { class: 'nowrap', text: `${item.direction === 'in' ? 'from' : 'to'} ${shortAddress(item.counterparty)}` }) : null;
+  const sub = [when, when && who ? ' · ' : null, who].filter(Boolean);
   const sign = item.direction === 'in' ? '+' : '−';
   return h(
     'button',
     { class: 'row', onclick, 'data-testid': 'eth-activity-row', 'data-hash': item.hash, 'data-state': item.state },
     h('span', { class: `ico ${bad ? 'fail' : item.direction === 'in' ? 'in' : 'out'}` }, icon(open ? 'clock' : item.direction === 'in' ? 'receive' : 'send')),
-    h('span', { class: 'main' }, h('div', { class: 't', text: title }), h('div', { class: 's', text: sub })),
+    h('span', { class: 'main' }, h('div', { class: 't', text: title }), h('div', { class: 's addr' }, ...sub)),
     h('span', { class: `end${item.direction === 'in' && !bad ? ' in' : ''}`, text: `${sign}${amountText(item.amount, item.asset)}` }),
   );
 }

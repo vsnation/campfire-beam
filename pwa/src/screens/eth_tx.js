@@ -18,7 +18,7 @@ import { ethWallet } from '../lib/eth/wallet.js';
 import { entryFee } from '../lib/eth/send.js';
 import { txExplorerUrl } from '../lib/eth/hosts.js';
 import { tokenBySymbol, ETH } from '../lib/eth/tokens.js';
-import { amountText, ethText, groupedAddress } from './eth_ui.js';
+import { amountText, ethText, ethMaxText, groupedAddress } from './eth_ui.js';
 
 const FOLLOW_MS = 4000;
 
@@ -68,9 +68,9 @@ export default function ethTx(app, p = {}) {
       h(
         'div',
         { class: 'card' },
-        to ? h('div', { class: 'kv kv-stack' }, h('span', { class: 'k', text: 'To' }), h('span', { class: 'v mono', text: groupedAddress(to.startsWith('0x') ? to : `0x${to}`) })) : null,
-        from ? h('div', { class: 'kv kv-stack' }, h('span', { class: 'k', text: 'From' }), h('span', { class: 'v mono', text: groupedAddress(from) })) : null,
-        fee ? h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Network fee' }), h('span', { class: 'v', 'data-testid': 'eth-tx-fee', 'data-wei': String(fee.wei), text: fee.final ? ethText(fee.wei) : `at most ${ethText(fee.wei)}` })) : null,
+        to ? h('div', { class: 'kv kv-stack' }, h('span', { class: 'k', text: 'To' }), h('span', { class: 'v mono addr-groups', text: groupedAddress(to.startsWith('0x') ? to : `0x${to}`) })) : null,
+        from ? h('div', { class: 'kv kv-stack' }, h('span', { class: 'k', text: 'From' }), h('span', { class: 'v mono addr-groups', text: groupedAddress(from) })) : null,
+        fee ? h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Network fee' }), h('span', { class: 'v', 'data-testid': 'eth-tx-fee', 'data-wei': String(fee.wei), text: fee.final ? ethText(fee.wei) : `at most ${ethMaxText(fee.wei)}` })) : null,
         block ? h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Block' }), h('span', { class: 'v', 'data-testid': 'eth-tx-block', text: block.toLocaleString('en-US') })) : null,
         entry ? h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Sent' }), h('span', { class: 'v', text: fmtDate(Math.floor(entry.createdAt / 1000)) })) : null,
         h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Transaction' }), h('button', { class: 'v mono btn-text', 'data-testid': 'eth-tx-hash', 'data-hash': p.hash, onclick: () => copyText(p.hash, 'Transaction hash copied'), text: shorten(p.hash, 10, 8) })),

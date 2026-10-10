@@ -44,12 +44,12 @@ export default function ethSettings(app) {
       h(
         'div',
         { class: 'card list' },
-        h('div', { class: 'row' }, h('span', { class: 'ico' }, icon('globe')), h('span', { class: 'main' }, h('div', { class: 't', text: 'Ethereum server' }), h('div', { class: 's', text: 'Sees your IP with your address. Only this one is used.' })), sel),
+        h('div', { class: 'row field-row' }, h('span', { class: 'ico' }, icon('globe')), h('span', { class: 'main' }, h('div', { class: 't', text: 'Ethereum server' }), h('div', { class: 's wrap', text: 'Sees your IP with your address. Only this one is used.' })), sel),
         h(
           'label',
           { class: 'row' },
           h('span', { class: 'ico' }, icon('activity')),
-          h('span', { class: 'main' }, h('div', { class: 't', text: 'History from Stack Wallet' }), h('div', { class: 's wrap', text: "Shows past payments by asking Stack Wallet's index about this address, whichever server is picked. Off: only what this device sent." })),
+          h('span', { class: 'main' }, h('div', { class: 't', text: 'History from Stack Wallet' }), h('div', { class: 's wrap', text: "Asks Stack Wallet's index for this address's past payments. Off: only what this device sent." })),
           hist,
         ),
         row('shield', 'Ethereum privacy', 'What Ethereum and its server can see', () => app.go('ethPrivacy'), { 'data-testid': 'eth-privacy-row' }),

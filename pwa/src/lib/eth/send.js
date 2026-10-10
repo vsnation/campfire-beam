@@ -26,6 +26,12 @@ import { ETH, TOKENS, tokenByAddress } from './tokens.js';
 import { formatUnits } from './units.js';
 import { ROUTES } from '../bridge/routes.js';
 
+/** wei as ETH for an "up to" figure: rounded up at 8 places, never understated. */
+function ethUp(wei) {
+  const cut = 10n ** 10n;
+  return formatUnits(wei % cut === 0n ? wei : wei + (cut - (wei % cut)), 18);
+}
+
 /** A plain ETH payment to an account without code always uses exactly this. */
 export const ETH_TRANSFER_GAS = 21000n;
 const ZERO = '0x0000000000000000000000000000000000000000';
@@ -118,9 +124,9 @@ export async function prepareSend(rpc, { from, asset, recipient, amount, balance
   const eth = balances.eth ?? 0n;
   if (isEth && amount + upTo > eth) {
     const max = eth > upTo ? eth - upTo : 0n;
-    throw new SendError('not_enough', `With the network fee (up to ${formatUnits(upTo, 18)} ETH) that's more than you have. You can send up to ${formatUnits(max, 18)} ETH.`);
+    throw new SendError('not_enough', `With the network fee (up to ${ethUp(upTo)} ETH) that's more than you have. You can send up to ${formatUnits(max, 18)} ETH.`);
   }
-  if (!isEth && upTo > eth) throw new SendError('no_gas', `The network fee is paid in ETH: up to ${formatUnits(upTo, 18)} ETH, and this wallet has ${formatUnits(eth, 18)} ETH.`);
+  if (!isEth && upTo > eth) throw new SendError('no_gas', `The network fee is paid in ETH: up to ${ethUp(upTo)} ETH, and this wallet has ${formatUnits(eth, 18)} ETH.`);
   return {
     asset,
     recipient: toChecksumAddress(recipient),
