@@ -8,6 +8,7 @@ import { assessNodeHealth, hopAllowed } from './node_health.js';
 import { toGroth, REGULAR_FEE, OFFLINE_FEE, toJsonNumber } from './amount.js';
 import { assetLabel } from './meta.js';
 import { bindSession, unbindSession } from './contracts.js';
+import { ROUTES } from './bridge/routes.js';
 
 const STATUS_EVERY_MS = 5000;
 const TXS_EVERY_MS = 20000;
@@ -83,6 +84,66 @@ const DEX_CONTRACT = '729fe098d9fd2b57705db1a05a74103dd4b891f535aef2ae69b47bcfde
 
 export function isContractTx(tx) {
   return Number(tx.tx_type) === CONTRACT_TX;
+}
+
+// The contracts BEAM Campfire knows by id (lib/widgets/beam/tx/beam_tx_view.dart, BeamContractKind).
+const CONTRACT_KINDS = {
+  [DEX_CONTRACT]: 'dex',
+  af4550f1f8a6051ffeffea06e0cb978f8076fdfc2101d2273d4e62c86540bc5e: 'names',
+  '8737e0d39575d7015fdea259fa091e41fc293e6c3d54e80d529033c349b5b18e': 'airdrop',
+  '295fe749dc12c55213d1bd16ced174dc8780c020f59cb17749e900bb0c15d868': 'minter',
+  '5ab408982b148210e88f180114f10222a2235eafeede0a3a224fda0e523e17b7': 'burn',
+};
+
+// BEAM's bridge to Ethereum: one pipe contract per asset (lib/bridge/routes.js).
+const BRIDGE_PIPES = new Set(ROUTES.map((r) => r.beamPipeCid));
+
+/** Which known contract a contract call talked to: dex, names, airdrop, minter, burn, bridge, or other. */
+export function contractKind(tx) {
+  for (const d of (tx && tx.invoke_data) || []) {
+    const k = d && (CONTRACT_KINDS[d.contract_id] || (BRIDGE_PIPES.has(d.contract_id) ? 'bridge' : null));
+    if (k) return k;
+  }
+  return 'other';
+}
+
+/**
+ * What a contract call was, as BEAM Campfire titles it (BeamTxText.contractLabel): a swap, a
+ * pool move, a claim... An unknown contract shows the dApp that made it, else "Contract call".
+ */
+export function contractLabel(tx) {
+  const { spends, receives } = contractMoves(tx);
+  const out = spends.length;
+  const inn = receives.length;
+  switch (contractKind(tx)) {
+    case 'dex':
+      if (out === 1 && inn === 1) return 'DEX swap';
+      if (out >= 2 && inn <= 1) return 'Added to a DEX pool';
+      if (inn >= 2 && out <= 1) return 'Taken from a DEX pool';
+      return 'DEX';
+    case 'names':
+      return 'Name payment';
+    case 'airdrop':
+      if (inn > 0 && out === 0) return 'Airdrop claim';
+      if (out > 0 && inn === 0) return 'Airdrop created';
+      return 'Airdrop';
+    case 'minter':
+      return 'Token minter';
+    case 'burn':
+      return 'Burn';
+    case 'bridge':
+      // Into the pipe: on its way to Ethereum; out of it: arrived from Ethereum.
+      if (out > 0 && inn === 0) return 'Moved to Ethereum';
+      if (inn > 0 && out === 0) return 'Moved from Ethereum';
+      return 'Bridge';
+    default:
+      return tx && tx.appname && tx.appname !== ADDRESS_COMMENT ? tx.appname : 'Contract call';
+  }
+}
+
+/** A contract call's state under its title: "Completed", or what is still happening. */
+export function contractStatusText(tx) {
+  return Number(tx.status) === 3 ? 'Completed' : txStatusText(tx);
 }
 
 /** A contract call on BEAM's DEX. */
@@ -201,6 +262,20 @@ export class Wallet {
 
   label(assetId) {
     return this.assetMeta.get(Number(assetId)) || assetLabel(assetId);
+  }
+
+  /**
+   * The asset's ticker where assets are picked by it, with its number when another asset this
+   * wallet holds has the same ticker: two different CHADs (#187, #190) must not look alike in Send.
+   */
+  distinctUnit(assetId) {
+    const id = Number(assetId);
+    const unit = this.label(id).unit;
+    if (/#\d+$/.test(unit)) return unit;
+    for (const other of this.state.totals.keys()) {
+      if (other !== id && this.label(other).unit === unit) return `${unit} #${id}`;
+    }
+    return unit;
   }
 
   /**

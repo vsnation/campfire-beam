@@ -20,7 +20,7 @@ import { h, fmtDate, put } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { screen, notice, primary, secondary, assetBadge } from '../lib/ui.js';
 import { formatAmount } from '../lib/amount.js';
-import { wallet, txStatusText, isPendingTx, isContractTx, contractMoves } from '../lib/wallet.js';
+import { wallet, txStatusText, isPendingTx, isContractTx, contractMoves, contractLabel, contractStatusText } from '../lib/wallet.js';
 import { needsBackupPrompt } from '../lib/session.js';
 import { copyAt } from '../lib/update.js';
 import { applyUpdate } from '../lib/update_ui.js';
@@ -43,12 +43,14 @@ function contractRow(app, tx, onclick) {
   const get = m.receives[0];
   const pay = m.spends[0];
   const amt = (a, sign) => `${sign}${formatAmount(a.amount)} ${app.wallet.label(a.assetId).unit}`;
-  const app2 = tx.appname && tx.appname !== 'BEAM Campfire' ? ` · ${tx.appname}` : '';
+  const title = contractLabel(tx);
+  const app2 = tx.appname && tx.appname !== 'BEAM Campfire' && tx.appname !== title ? ` · ${tx.appname}` : '';
+  const state = Number(tx.status) === 3 ? '' : `${contractStatusText(tx)} · `;
   return h(
     'button',
     { class: 'row', onclick, 'data-txid': tx.txId },
     h('span', { class: `ico ${failed ? 'fail' : 'swap'}` }, icon(isPendingTx(tx) ? 'clock' : 'swap')),
-    h('span', { class: 'main' }, h('div', { class: 't', text: txStatusText(tx) }), h('div', { class: 's', text: `${fmtDate(tx.create_time)}${app2}` })),
+    h('span', { class: 'main' }, h('div', { class: 't', text: title }), h('div', { class: 's', text: `${state}${fmtDate(tx.create_time)}${app2}` })),
     h(
       'span',
       { class: 'end' },
@@ -145,6 +147,9 @@ export default function home(app) {
                 if (t.sending > 0n) pending.push(`−${formatAmount(t.sending)} outgoing`);
                 if (t.maturing > 0n) pending.push(`${formatAmount(t.maturing)} maturing`);
                 const warning = copyWarning(l);
+                // Two held assets with one ticker (CHAD #187 and #190) show their numbers.
+                const sub = tokenSubtitle(l);
+                const shownSub = app.wallet.distinctUnit(id) !== l.unit && !sub.includes(`#${id}`) ? `${sub} · #${id}` : sub;
                 return h(
                   'div',
                   { class: 'row asset-row', 'data-testid': 'token-row', 'data-asset-id': String(id) },
@@ -153,7 +158,7 @@ export default function home(app) {
                     'span',
                     { class: 'main' },
                     h('div', { class: 't', 'data-testid': 'token-name', text: l.name }),
-                    h('div', { class: 's', 'data-testid': 'token-sub', text: tokenSubtitle(l) }),
+                    h('div', { class: 's', 'data-testid': 'token-sub', text: shownSub }),
                     warning ? h('div', { class: 'warn-line', 'data-testid': 'token-warning', text: warning }) : null,
                   ),
                   h('span', { class: 'end' }, h('div', { 'data-testid': 'token-balance', text: `${formatAmount(t.available)} ${l.pool ? 'LP' : l.symbol}` }), pending.length ? h('div', { class: 'small', text: pending.join(' · ') }) : null),

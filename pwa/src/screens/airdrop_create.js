@@ -45,7 +45,7 @@ export default function airdropCreate(app) {
 
   function fillAssets() {
     const list = assets();
-    put(assetSel, ...list.map((id) => h('option', { value: String(id), text: `${wallet.label(id).unit} (${formatAmount(wallet.available(id))} available)` })));
+    put(assetSel, ...list.map((id) => h('option', { value: String(id), text: `${wallet.distinctUnit(id)} (${formatAmount(wallet.available(id))} available)` })));
     assetSel.value = list.includes(Number(draft.assetId)) ? String(draft.assetId) : '0';
     draft.assetId = Number(assetSel.value);
   }

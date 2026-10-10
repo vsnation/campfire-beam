@@ -12,7 +12,7 @@ import { h, shorten, fmtDate, put } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { screen, openSheet, primary, secondary, notice, copyText } from '../lib/ui.js';
 import { formatAmount } from '../lib/amount.js';
-import { wallet, txStatusText, isContractTx, contractMoves } from '../lib/wallet.js';
+import { wallet, txStatusText, isContractTx, contractMoves, contractLabel, contractStatusText } from '../lib/wallet.js';
 import { txRow } from './home.js';
 
 export default function activity(app, params = {}) {
@@ -94,12 +94,12 @@ function contractDetail(t, close) {
   const amt = (a) => `${formatAmount(a.amount)} ${wallet.label(a.assetId).unit}`;
   const head = m.receives[0] ? `+${amt(m.receives[0])}` : m.spends[0] ? `−${amt(m.spends[0])}` : `−${formatAmount(BigInt(t.fee || 0))} BEAM`;
   return [
-    h('h2', { 'data-testid': 'tx-detail-title', text: txStatusText(t) }),
+    h('h2', { 'data-testid': 'tx-detail-title', text: contractLabel(t) }),
     h('div', { class: 'big-amount', text: head }),
     h(
       'div',
       { class: 'card' },
-      kv('Status', txStatusText(t)),
+      kv('Status', contractStatusText(t)),
       kv('Date', fmtDate(t.create_time)),
       ...m.spends.map((a) => kv('You paid', amt(a))),
       ...m.receives.map((a) => kv('You got', amt(a))),

@@ -52,7 +52,7 @@ export default function send(app) {
   function fillAssets() {
     const list = assets();
     const cur = String(draft.assetId);
-    put(assetSel, ...list.map(([id, t]) => h('option', { value: String(id), text: `${wallet.label(id).unit} (${formatAmount(t.available)} available)` })));
+    put(assetSel, ...list.map(([id, t]) => h('option', { value: String(id), text: `${wallet.distinctUnit(id)} (${formatAmount(t.available)} available)` })));
     assetSel.value = list.some(([id]) => String(id) === cur) ? cur : '0';
     draft.assetId = Number(assetSel.value);
     assetField.classList.toggle('hidden', list.length < 2);
