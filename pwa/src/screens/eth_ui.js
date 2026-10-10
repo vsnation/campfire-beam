@@ -25,6 +25,18 @@ export function amountText(value, asset, { approx = true } = {}) {
   return approx && isRoundedDown(value, asset.decimals) ? `≈${t}` : t;
 }
 
+/**
+ * A short balance for a list row, rounded as the activity rows and the desktop
+ * round (compactUnits); "≈" when digits are hidden. The exact figure goes in
+ * the row's title.
+ */
+export function compactAmountText(value, asset) {
+  const v = BigInt(value);
+  const shown = compactUnits(v, asset.decimals);
+  const exact = formatUnits(v, asset.decimals, { maxDecimals: asset.decimals });
+  return `${shown === exact ? '' : '≈'}${shown} ${asset.symbol}`;
+}
+
 /** The exact figure, every decimal: for the review and on tap. */
 export function exactText(value, asset) {
   return `${formatUnits(value, asset.decimals, { maxDecimals: asset.decimals })} ${asset.symbol}`;

@@ -19,7 +19,7 @@ import { ethWallet, ethPrefs } from '../lib/eth/wallet.js';
 import { TOKENS } from '../lib/eth/tokens.js';
 import { formatUnits } from '../lib/eth/units.js';
 import { chainSwitch } from './eth_screens.js';
-import { ethBadge, amountText, serverProblem, activityRow } from './eth_ui.js';
+import { ethBadge, compactAmountText, exactText, serverProblem, activityRow } from './eth_ui.js';
 
 const REFRESH_MS = 30000;
 const FOLLOW_MS = 4000;
@@ -82,7 +82,7 @@ export default function ethHome(app, params = {}) {
                   { class: 'row asset-row', 'data-testid': 'eth-token-row', 'data-symbol': t.symbol },
                   ethBadge(t),
                   h('span', { class: 'main' }, h('div', { class: 't', text: t.name }), h('div', { class: 's', text: t.symbol === 'WBEAM' ? 'BEAM on Ethereum' : t.symbol })),
-                  h('span', { class: 'end', 'data-testid': 'eth-token-balance', 'data-units': String(v), text: amountText(v, t) }),
+                  h('span', { class: 'end', 'data-testid': 'eth-token-balance', 'data-units': String(v), title: exactText(v, t), text: compactAmountText(v, t) }),
                 ),
               ),
             ),
