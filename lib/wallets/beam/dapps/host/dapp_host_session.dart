@@ -58,6 +58,8 @@ class DappHostSession {
     required this.bundled,
     required this._token,
     required this._allowed,
+    required this._reachable,
+    required this._savedReachable,
     this.onActivity,
     this.onAskToReach,
     this.scopeStore,
@@ -71,7 +73,9 @@ class DappHostSession {
   /// own traffic does not go through Campfire's Tor proxy, so callers pass
   /// false while Tor is on: those hosts would see the user's IP address.
   /// A dApp from a file reaches the servers the person allowed for it,
-  /// each asked by name with that warning.
+  /// each asked by name. With [allowRemoteOrigins] false (Tor on) it starts
+  /// with none of them: a server allowed while Tor was off is reached only
+  /// after the person allows it again, asked with the Tor warning.
   static Future<DappHostSession> start({
     required DappInstallation installation,
     required DappInstaller installer,
@@ -90,8 +94,11 @@ class DappHostSession {
     final allowed = bundled == null
         ? await installer.allowedOrigins(installation.guid)
         : const <String>[];
+    final reachable = bundled != null || allowRemoteOrigins
+        ? allowed
+        : const <String>[];
     final csp = bundled == null
-        ? DappCsp.fromFile(allowed)
+        ? DappCsp.fromFile(reachable)
         : DappCsp(
             allowEval: bundled.needsEval,
             remoteOrigins: allowRemoteOrigins
@@ -126,6 +133,8 @@ class DappHostSession {
       bundled: bundled,
       token: token,
       allowed: allowed,
+      reachable: reachable,
+      savedReachable: allowRemoteOrigins,
       onActivity: onActivity,
       onAskToReach: onAskToReach,
       scopeStore: scopeStore,
@@ -169,6 +178,13 @@ class DappHostSession {
   bool _closed = false;
   List<String> _allowed;
 
+  /// What the page may reach now: [_allowed], or with Tor on only what the
+  /// person allowed while this dApp is open (see [start]).
+  List<String> _reachable;
+
+  /// False while Tor is on: saved servers are not reached until allowed again.
+  final bool _savedReachable;
+
   /// Origins offered to [onAskToReach] while this dApp is open: each is
   /// asked about once ("Not now" lasts until the dApp is closed).
   final _offered = <String>{};
@@ -176,7 +192,9 @@ class DappHostSession {
   /// Installed from a file (not a bundled package byte for byte).
   bool get fromFile => bundled == null;
 
-  /// The servers this dApp from a file may reach; empty for a bundled one.
+  /// The servers saved for this dApp from a file (what More lists, and may
+  /// take back); empty for a bundled one. With Tor on, the page reaches only
+  /// those allowed again while it is open.
   List<String> get allowedOrigins => List.unmodifiable(_allowed);
 
   String get origin => server.origin;
@@ -232,7 +250,7 @@ class DappHostSession {
 
   void _blocked(String origin) {
     if (_closed || !fromFile || dappRemoteOriginFor(origin) != origin) return;
-    if (_allowed.contains(origin) || _offered.contains(origin)) return;
+    if (_reachable.contains(origin) || _offered.contains(origin)) return;
     if (_offered.length >= dappMaxFileOrigins) return;
     _offered.add(origin);
     onAskToReach?.call(origin);
@@ -245,7 +263,10 @@ class DappHostSession {
     if (!fromFile) throw StateError('a bundled dApp keeps its servers');
     try {
       _allowed = await installer.allowOrigin(installation.guid, origin);
-      server.csp = DappCsp.fromFile(_allowed);
+      _reachable = _savedReachable
+          ? _allowed
+          : [..._reachable.where((o) => o != origin), origin];
+      server.csp = DappCsp.fromFile(_reachable);
     } catch (_) {
       _offered.remove(origin);
       rethrow;
@@ -257,7 +278,8 @@ class DappHostSession {
   Future<void> revokeOrigin(String origin) async {
     if (!fromFile) throw StateError('a bundled dApp keeps its servers');
     _allowed = await installer.revokeOrigin(installation.guid, origin);
-    server.csp = DappCsp.fromFile(_allowed);
+    _reachable = [..._reachable.where((o) => o != origin)];
+    server.csp = DappCsp.fromFile(_reachable);
     _offered.remove(origin);
   }
 

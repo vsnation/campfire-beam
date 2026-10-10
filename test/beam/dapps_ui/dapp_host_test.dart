@@ -457,8 +457,8 @@ void main() {
       expect(page.csp, contains("img-src 'self' data: blob: $explorer;"));
       await s.close();
 
-      // The next visit starts with it.
-      final again = await start(asked);
+      // The next visit (Tor off) starts with it.
+      final again = await start(asked, allowRemoteOrigins: true);
       expect(again.allowedOrigins, [explorer]);
       expect(
         (await load(again)).csp,
@@ -475,6 +475,38 @@ void main() {
       await again.onMessage(refused(page.token, explorer));
       expect(asked, [explorer, explorer]);
       await again.close();
+    });
+
+    test('with Tor on, a server allowed earlier is not reached until it is '
+        'allowed again, and only that one', () async {
+      const img = 'https://img.example.com';
+      await installer.allowOrigin(testGuid, explorer);
+      await installer.allowOrigin(testGuid, img);
+      final asked = <String>[];
+      final s = await start(asked);
+      // Still listed, so More can take it back.
+      expect(s.allowedOrigins, [explorer, img]);
+      var page = await load(s);
+      expect(page.csp, const DappCsp.fromFile([]).header);
+      s.pageStarted('${s.origin}/app/index.html', (_) async {});
+      await s.onMessage(refused(page.token, explorer));
+      expect(asked, [explorer], reason: 'asked again, with the Tor note');
+
+      await s.allowOrigin(explorer);
+      page = await load(s);
+      expect(page.csp, const DappCsp.fromFile([explorer]).header);
+      expect(page.csp, isNot(contains('img.example.com')));
+      expect(await installer.allowedOrigins(testGuid), [explorer, img]);
+
+      await s.revokeOrigin(explorer);
+      expect(s.allowedOrigins, [img]);
+      expect((await load(s)).csp, const DappCsp.fromFile([]).header);
+      await s.close();
+
+      // Tor off: what is saved is reached from the start.
+      final off = await start(asked, allowRemoteOrigins: true);
+      expect((await load(off)).csp, const DappCsp.fromFile([img]).header);
+      await off.close();
     });
 
     test('a server that cannot be saved is not allowed, and may be asked '
