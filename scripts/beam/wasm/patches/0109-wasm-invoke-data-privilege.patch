@@ -1,0 +1,50 @@
+Campfire wasm patch 0109: process_invoke_data never raises an app's privilege.
+
+process_invoke_data takes invoke data back from the client. When the data
+carries an app invocation to re-run later (dependent transactions, flag
+SaveAppInvoke), ContractTransaction re-runs that app body at the privilege
+stored in the data (contract_transaction.cpp: aex.set_Privilege(
+vData.m_AppInvoke.m_Privilege)). Stock honours whatever the client wrote, so
+a dApp could hand back data with privilege 1 or more and its own app body,
+and that body would derive keys from the master KDF (get_PkEx, get_BlindSk,
+SetKernelAdv without a foreign signature).
+
+The desktop's wallet-api refuses this in its PrivilegeRoutingShadersManager
+(core patch 0002). The wasm client does not use wallet-api's server, so its
+app APIs (createAppAPI) reached the stock ShadersManager unguarded; the web
+wallet refused such data only in JavaScript (pwa/src/lib/dapps/policy.js).
+This puts the same rule in the engine: ShadersManager::ProcessTxData refuses
+invoke data whose app privilege is above the manager's own. Data the manager
+produced itself carries exactly its privilege and is unaffected; every
+manager the web wallet creates is at privilege 0.
+
+Only in the wasm build: the desktop applies 0002, whose privilege-1 manager
+hands allowlisted dependent data to a privilege-0 one.
+
+Applies after the core patches and wasm patches 0101-0108, to tag
+beam-7.5.14493, with patch -p1.
+
+--- a/wallet/core/contracts/shaders_manager.cpp
++++ b/wallet/core/contracts/shaders_manager.cpp
+@@ -342,6 +342,21 @@ namespace beam::wallet {
+                 throw std::runtime_error("failed to deserialize invoke data");
+             }
+ 
++            // Campfire (wasm patch 0109): invoke data comes back from the client,
++            // and when it carries an app invocation to re-run (dependent
++            // transactions), ContractTransaction re-runs that app body at the
++            // privilege stored in the data (contract_transaction.cpp,
++            // set_Privilege(m_AppInvoke.m_Privilege)). A client could ask for any
++            // privilege with any body and derive keys from the master KDF. Never
++            // more than this manager was created with: what it produced itself
++            // carries exactly that.
++            if (invokeData.m_AppInvoke.m_Privilege > m_Privilege)
++            {
++                BEAM_LOG_WARNING() << "ShadersManager::ProcessTxData refused: invoke data asks for app privilege "
++                                   << invokeData.m_AppInvoke.m_Privilege << ", this manager has " << m_Privilege;
++                throw std::runtime_error("invoke data requests a shader privilege that was not granted");
++            }
++
+             std::string sComment = invokeData.get_FullComment();
+             ByteBuffer msg(sComment.begin(), sComment.end());
+ 
