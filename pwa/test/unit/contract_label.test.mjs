@@ -44,3 +44,9 @@ test('the bridge: a move to Ethereum and one from it', () => {
   assert.equal(contractLabel(tx(PIPE, [[0, 100000000]])), 'Moved to Ethereum');
   assert.equal(contractLabel(tx(PIPE, [[0, -100000000]])), 'Moved from Ethereum');
 });
+
+test('the bridge pipes named in Activity are exactly the bridge routes', async () => {
+  const { ROUTES } = await import('../../src/lib/bridge/routes.js');
+  const { BRIDGE_PIPES } = await import('../../src/lib/wallet.js');
+  assert.deepEqual([...BRIDGE_PIPES].sort(), ROUTES.map((r) => r.beamPipeCid).sort());
+});

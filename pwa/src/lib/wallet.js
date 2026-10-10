@@ -8,7 +8,6 @@ import { assessNodeHealth, hopAllowed } from './node_health.js';
 import { toGroth, REGULAR_FEE, OFFLINE_FEE, toJsonNumber } from './amount.js';
 import { assetLabel } from './meta.js';
 import { bindSession, unbindSession } from './contracts.js';
-import { ROUTES } from './bridge/routes.js';
 
 const STATUS_EVERY_MS = 5000;
 const TXS_EVERY_MS = 20000;
@@ -95,8 +94,16 @@ const CONTRACT_KINDS = {
   '5ab408982b148210e88f180114f10222a2235eafeede0a3a224fda0e523e17b7': 'burn',
 };
 
-// BEAM's bridge to Ethereum: one pipe contract per asset (lib/bridge/routes.js).
-const BRIDGE_PIPES = new Set(ROUTES.map((r) => r.beamPipeCid));
+// BEAM's bridge to Ethereum: one pipe contract per asset. The same ids as lib/bridge/routes.js
+// (a unit test keeps them equal); not imported from there, so the bridge code loads only when
+// the bridge is opened.
+export const BRIDGE_PIPES = new Set([
+  'e63bd26ca5b226558686dd191122a8e5d6861a97597db9f40bda48aef6dbe835',
+  '8872509d36a8e2aa7a60839a1828c372af47c0a5309f3f6186379cddec847369',
+  '7c66181ba4625202aae6e46afe89acbf1f839523344b0b371fc7988ac2e8c056',
+  '8af23fe6338e3e67574f4548c9acf3d269756ae9b25ab025fd4268a07b8a3c29',
+  '02fb908e55a59ab5acc5bf6f1707a8dcdb70a944d6f2a7bff3c7af18c8e278da',
+]);
 
 /** Which known contract a contract call talked to: dex, names, airdrop, minter, burn, bridge, or other. */
 export function contractKind(tx) {
