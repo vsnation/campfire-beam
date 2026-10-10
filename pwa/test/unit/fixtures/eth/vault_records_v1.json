@@ -1,0 +1,58 @@
+{
+  "note": "Ethereum wallet records written by the code before private-key import (65dc84b9d). Public test phrases; never fund.",
+  "records": [
+    {
+      "wallet": {
+        "walletId": "w-fixture-created",
+        "imported": false,
+        "dbPass": "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"
+      },
+      "address": "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
+      "record": {
+        "v": 1,
+        "id": "e6819a8565ad5a67",
+        "createdAt": 1791615096371,
+        "words": 12,
+        "passphrase": false,
+        "path": "m/44'/60'/0'/0/0",
+        "envelope": {
+          "v": 1,
+          "kind": "eth-key",
+          "walletId": "w-fixture-created",
+          "ethId": "e6819a8565ad5a67",
+          "kdf": "hkdf-sha256",
+          "salt": "ZubeKIIaLM+l2dDaLUptmQ==",
+          "iv": "ZZlCUncnCVRKdx49",
+          "ct": "FRRQ2QoKf4SMkIPTyBqQXLSoMiWx9eQKcpy1CCzQSftEfguMsIVbQmGi6IGf2kuRfXJfbuRREuRZ8oXSILvwmJd86yM="
+        }
+      }
+    },
+    {
+      "wallet": {
+        "walletId": "w-fixture-imported",
+        "imported": true,
+        "dbPass": "fixture wallet.db password"
+      },
+      "address": "0x2b5D7A0E9d3EC34D629D07c6bDE5c41fb613c655",
+      "record": {
+        "v": 1,
+        "id": "6dae4cf4a9b9778a",
+        "createdAt": 1791615096461,
+        "words": 24,
+        "passphrase": true,
+        "path": "m/44'/60'/0'/0/0",
+        "envelope": {
+          "v": 1,
+          "kind": "eth-key",
+          "walletId": "w-fixture-imported",
+          "ethId": "6dae4cf4a9b9778a",
+          "kdf": "pbkdf2-sha256",
+          "salt": "7s0uEAj0JhJd/KhZ2GKegw==",
+          "iterations": 600000,
+          "iv": "fjOVtbi3MKUoyQqZ",
+          "ct": "xuagfQYLpa79eQd7hHQo68sUaNDKGr4G9Xgrv3af4nGSbsAn8/Ng+LCWSAJlB30RKq0wBq0HseQ1xcLWU0WFhHocNOI="
+        }
+      }
+    }
+  ]
+}

@@ -115,7 +115,8 @@ test('adapter: stored next to the wallet record, opened only while unlocked, key
   const app = { record: { id: 'w1', imported: false }, dbPass: newDbPassword() };
   const { sk, address } = await ethKeyFromMnemonic(JUNK);
   const record = await saveEthKey(app, { sk, address, words: 12, passphrase: false }, { kv });
-  assert.deepEqual(Object.keys(record).sort(), ['createdAt', 'envelope', 'id', 'passphrase', 'path', 'v', 'words']);
+  assert.deepEqual(Object.keys(record).sort(), ['createdAt', 'envelope', 'id', 'kind', 'passphrase', 'path', 'v', 'words']);
+  assert.equal(record.kind, 'words');
   assert.equal(record.path, ETH_PATH);
   assert.equal(record.id, record.envelope.ethId);
   assert.deepEqual([...kv.m.keys()], [ETH_RECORD_KEY]);

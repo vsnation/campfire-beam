@@ -129,10 +129,9 @@ test('phrases: new ones are valid, wrong ones say why', () => {
   assert.deepEqual(mnemonicProblem('test test test'), { code: 'length', words: 3 });
   assert.deepEqual(mnemonicProblem(JUNK.replace('junk', 'junkk')), { code: 'word', position: 12 });
   assert.deepEqual(mnemonicProblem(JUNK.replace('junk', 'test')), { code: 'checksum' });
-  // 18 words are BIP39 but not something this wallet asks for.
-  const eighteen = TREZOR.english.find((v) => v[1].split(' ').length === 18)[1];
-  assert.equal(mnemonicProblem(eighteen).code, 'length');
-  assert.equal(mnemonicProblem(eighteen, ALL_LENGTHS), null);
+  // Every BIP39 length imports (as in MetaMask); only 12 are made here.
+  for (const n of ALL_LENGTHS) assert.equal(mnemonicProblem(entropyToMnemonic(new Uint8Array((n / 3) * 4).fill(0x7f), BIP39_ENGLISH)), null, `${n} words`);
+  assert.deepEqual(mnemonicProblem(`${JUNK} test`), { code: 'length', words: 13 });
   return assert.rejects(ethKeyFromMnemonic(JUNK.replace('junk', 'test')), (e) => e.code === 'mnemonic');
 });
 

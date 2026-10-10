@@ -17,13 +17,22 @@
 // balances checked on the fork. Screenshots of every Ethereum screen at
 // 390x844 and 1280x800, light and dark, into $CAMPFIRE_SHOTS. Never a
 // screenshot of revealed words.
+//
+// Then a wallet imported from a fresh random private key (never printed):
+// the one import box tells it is a key, says what is wrong with a bad one,
+// shows the address before anything is saved; Home opens that address; the
+// Backup shows the key only after the password, and locking leaves it nowhere
+// in the page (DOM and JS heap). Those screens at 375 px, light and dark,
+// into $CAMPFIRE_ETHKEY_SHOTS, with every key painted over.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import jsQR from 'jsqr';
+import { join } from 'node:path';
 import { startServer, launch, recordedPage, shot, waitScreen, foreignHosts, sleep, SHOTS } from './harness.mjs';
 import { createWallet, waitHome, unlockWithPassword } from './flows.mjs';
 import { ANVIL, JUNK, ACCOUNT0, raw, anvilProblem, withFork, setBalance, sendAs, erc20Balance, freshAddress, mined } from '../fork/fork_support.mjs';
-import { ethKeyFromMnemonic, wipe, toChecksumAddress } from '../../src/lib/eth/crypto.js';
+import { ethKeyFromMnemonic, wipe, toChecksumAddress, privateKeyToAddress } from '../../src/lib/eth/crypto.js';
+import { bytesToHex, hexToBytes } from '../../src/lib/eth/hex.js';
 import { encodeCall } from '../../src/lib/eth/abi.js';
 import { ETH_RPC_HOSTS } from '../../src/lib/eth/hosts.js';
 import { WBEAM } from '../../src/lib/eth/tokens.js';
@@ -36,6 +45,9 @@ const STACK = 'eth2.stackwallet.com';
 const ETHER = 10n ** 18n;
 const tid = (id) => `[data-testid="${id}"]`;
 const skip = await anvilProblem();
+const KEY_SHOTS = process.env.CAMPFIRE_ETHKEY_SHOTS || join(SHOTS, 'ethkey');
+const SECP_N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141n;
+const KEY_WARNING = 'This wallet has no recovery words. The private key is the only way back to it: keep it somewhere safe and never share it.';
 
 let srv, browser, ctx, page, rec;
 let mode = 'fork'; // 'fork' | 'down'
@@ -80,6 +92,99 @@ async function shots4(name) {
   }
   await page.emulateMedia({ colorScheme: 'light' });
   await page.setViewportSize({ width: 390, height: 844 });
+}
+
+/**
+ * One state at 375 px, light and dark, into KEY_SHOTS. `masks`: selectors of
+ * anything that shows a key (typed or revealed), painted over in the picture.
+ * `focus`: scrolled into view first.
+ */
+async function keyShots(name, { masks = [], focus = null } = {}) {
+  await page.evaluate(() => document.querySelectorAll('.toast').forEach((t) => t.remove()));
+  const { mkdir } = await import('node:fs/promises');
+  await mkdir(KEY_SHOTS, { recursive: true });
+  for (const scheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.setViewportSize({ width: 375, height: 812 });
+    if (focus) await page.locator(focus).first().scrollIntoViewIfNeeded();
+    await sleep(150);
+    await page.screenshot({ path: join(KEY_SHOTS, `ethkey-${name}-375-${scheme}.png`), mask: masks.map((m) => page.locator(m)), maskColor: '#8a8f98' });
+  }
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.setViewportSize({ width: 390, height: 844 });
+}
+
+/** A random valid secp256k1 key, 64 lowercase hex: only ever typed into the page, never printed. */
+function randomKeyHex() {
+  for (;;) {
+    const b = new Uint8Array(32);
+    globalThis.crypto.getRandomValues(b);
+    const hex = bytesToHex(b, false);
+    wipe(b);
+    const k = BigInt(`0x${hex}`);
+    if (k > 0n && k < SECP_N) return hex;
+  }
+}
+
+/**
+ * How many of `needles` occur in the page's JS heap, after a full garbage
+ * collection. A string built with += is a "(concatenated string)" in a heap
+ * snapshot, its text only in the pieces, so those are joined again from their
+ * first/second edges; a sliced string counts as its whole parent.
+ */
+async function inHeap(needles) {
+  const cdp = await page.context().newCDPSession(page);
+  let snap;
+  try {
+    await cdp.send('HeapProfiler.enable');
+    await cdp.send('HeapProfiler.collectGarbage');
+    await cdp.send('HeapProfiler.collectGarbage');
+    const chunks = [];
+    cdp.on('HeapProfiler.addHeapSnapshotChunk', (e) => chunks.push(e.chunk));
+    await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false });
+    snap = JSON.parse(chunks.join(''));
+  } finally {
+    await cdp.detach().catch(() => {});
+  }
+  const { meta } = snap.snapshot;
+  const NF = meta.node_fields.length;
+  const EF = meta.edge_fields.length;
+  const [nType, nName, nEdges] = ['type', 'name', 'edge_count'].map((f) => meta.node_fields.indexOf(f));
+  const [eType, eName, eTo] = ['type', 'name_or_index', 'to_node'].map((f) => meta.edge_fields.indexOf(f));
+  const types = meta.node_types[0];
+  const edgeTypes = meta.edge_types[0];
+  const { nodes, edges, strings } = snap;
+  const count = nodes.length / NF;
+  const firstEdge = new Uint32Array(count + 1);
+  for (let i = 0; i < count; i++) firstEdge[i + 1] = firstEdge[i] + nodes[i * NF + nEdges] * EF;
+  const memo = new Map();
+  const CAP = 4096;
+  const text = (i, depth = 0) => {
+    if (memo.has(i)) return memo.get(i);
+    const type = types[nodes[i * NF + nType]];
+    let out = '';
+    if (type === 'string') out = strings[nodes[i * NF + nName]];
+    else if ((type === 'concatenated string' || type === 'sliced string') && depth < 4000) {
+      const parts = {};
+      for (let e = firstEdge[i]; e < firstEdge[i + 1]; e += EF) {
+        if (edgeTypes[edges[e + eType]] !== 'internal') continue;
+        parts[strings[edges[e + eName]]] = edges[e + eTo] / NF;
+      }
+      if (type === 'sliced string') out = parts.parent !== undefined ? text(parts.parent, depth + 1) : '';
+      else out = `${parts.first !== undefined ? text(parts.first, depth + 1) : ''}${parts.second !== undefined ? text(parts.second, depth + 1) : ''}`;
+    }
+    out = out.length > CAP ? out.slice(0, CAP) : out;
+    memo.set(i, out);
+    return out;
+  };
+  const found = new Set();
+  for (let i = 0; i < count && found.size < needles.length; i++) {
+    const type = types[nodes[i * NF + nType]];
+    if (type !== 'string' && type !== 'concatenated string' && type !== 'sliced string') continue;
+    const t = text(i);
+    needles.forEach((n, j) => t.includes(n) && found.add(j));
+  }
+  return found.size;
 }
 
 async function ethHomeReady() {
@@ -168,7 +273,11 @@ test('create an Ethereum wallet: 12 new words, 3 checked, the privacy notice, th
     const { store } = await import('./lib/store.js');
     return JSON.stringify(await store.get('eth'));
   });
-  for (const w of new Set(words)) assert.ok(!stored.includes(`"${w}"`), 'no word in storage');
+  // Values only: key names such as "path" and "kind" are BIP39 words too.
+  const values = [];
+  JSON.parse(stored, (k, v) => (typeof v === 'string' && values.push(v), v));
+  for (const w of new Set(words)) assert.ok(!values.includes(w), 'no word in storage');
+  assert.ok(!stored.includes(words.join(' ')), 'nor the phrase');
   assert.ok(!stored.toLowerCase().includes(address.slice(2).toLowerCase()), 'the address only inside the sealed envelope');
   await page.waitForSelector(tid('eth-activity'));
   await shots4('07-home-empty');
@@ -380,6 +489,183 @@ test('lock forgets the Ethereum wallet; unlocking opens it again', { skip: skip 
   await page.click(tid('chain-eth'));
   await ethHomeReady();
   assert.equal(await page.getAttribute(tid('eth-address'), 'data-address'), ACCOUNT0);
+});
+
+test('a words wallet: "Show private key" in Backup, behind the password', { skip: skip || false, timeout: 2 * 60000 }, async () => {
+  const junk = await ethKeyFromMnemonic(JUNK);
+  const junkHex = bytesToHex(junk.sk, false);
+  wipe(junk.sk);
+  await page.evaluate(() => window.__campfire.go('ethSettings'));
+  await waitScreen(page, 'ethSettings');
+  await page.waitForSelector(tid('eth-show-key'));
+  assert.equal(await page.getAttribute(tid('eth-backup'), 'data-kind'), 'words');
+  assert.match(await page.textContent(tid('eth-backup')), /Your Ethereum words are your backup/, 'the words backup is unchanged');
+  await keyShots('01-words-backup', { focus: tid('eth-show-key') });
+  await page.click(tid('eth-show-key'));
+  await page.waitForSelector(tid('auth-pw'));
+  assert.match(await page.textContent('.sheet h2'), /Show the private key/);
+  await page.click(tid('auth-cancel'));
+  assert.equal(await page.$(tid('eth-key-text')), null, 'cancelled: nothing opened');
+  await page.click(tid('eth-show-key'));
+  await page.fill(tid('auth-pw'), PASSWORD);
+  await page.click(tid('auth-submit'));
+  await page.waitForSelector(`${tid('eth-key-box')}[data-state="shown"]`);
+  assert.equal(await page.textContent(tid('eth-key-text')), junkHex, 'the key of the words (m/44\'/60\'/0\'/0/0)');
+  assert.match(await page.textContent(tid('eth-key-card')), /never share it/);
+  await keyShots('02-words-show-private-key', { masks: [tid('eth-key-text')], focus: tid('eth-key-card') });
+  await page.click(tid('eth-key-hide'));
+  await page.waitForSelector(tid('eth-show-key'));
+  assert.equal(await page.$(tid('eth-key-text')), null, 'hidden again');
+});
+
+test('import by private key: one box knows it is a key, shows the address first; Backup shows it behind the password; lock wipes it', { skip: skip || false, timeout: 5 * 60000 }, async () => {
+  const key = randomKeyHex();
+  const keyBytes = hexToBytes(key);
+  const address = privateKeyToAddress(keyBytes);
+  wipe(keyBytes);
+  const box = tid('eth-words-input');
+  const hint = tid('eth-words-hint');
+
+  // The words wallet goes first: one Ethereum wallet per device.
+  await page.click(tid('eth-remove'));
+  await page.click(tid('eth-remove-confirm'));
+  await page.fill(tid('auth-pw'), PASSWORD);
+  await page.click(tid('auth-submit'));
+  await waitScreen(page, 'settings');
+
+  await page.evaluate(() => window.__campfire.go('home'));
+  await waitScreen(page, 'home');
+  await page.click(tid('chain-eth'));
+  await waitScreen(page, 'ethStart');
+  assert.equal(await page.textContent(tid('eth-import')), 'Import words or private key');
+  await page.click(tid('eth-import'));
+  await waitScreen(page, 'ethImport');
+  await page.waitForSelector(box);
+  assert.equal(await page.getAttribute(box, 'aria-label'), 'Recovery words or private key');
+  assert.match(await page.textContent('label.field .banner'), /Recovery words or private key/);
+  await keyShots('03-import-empty');
+
+  // Still typing is not an error; a wrong character or length is, in words.
+  await page.fill(box, `0x${key.slice(0, 63)}`);
+  assert.equal(await page.textContent(hint), '63 of 64 characters so far.');
+  assert.equal(await page.getAttribute(hint, 'class'), 'hint');
+  assert.equal(await page.getAttribute(hint, 'data-kind'), 'key');
+  assert.equal(await page.isDisabled(tid('eth-import-submit')), true);
+  assert.equal(await page.isVisible(tid('eth-advanced')), false, 'no passphrase for a key');
+  await keyShots('04-import-key-typing', { masks: [box] });
+  await page.fill(box, `0x${key.slice(0, 63)}g`);
+  assert.equal(await page.textContent(hint), "That isn't a private key: it needs 64 characters, 0–9 and a–f.");
+  assert.equal(await page.getAttribute(hint, 'class'), 'hint bad');
+  await keyShots('05-import-key-invalid', { masks: [box] });
+  await page.fill(box, `${key}0`);
+  assert.equal(await page.textContent(hint), "That isn't a private key: it needs 64 characters, 0–9 and a–f.", '65 characters');
+  await page.fill(box, `0x${'0'.repeat(64)}`);
+  assert.equal(await page.textContent(hint), 'That private key is not valid. Copy it again from the wallet it came from.');
+  await keyShots('06-import-key-zero', { masks: [box] });
+  await page.fill(box, SECP_N.toString(16));
+  assert.match(await page.textContent(hint), /not valid/, 'n itself');
+  assert.equal(await page.isDisabled(tid('eth-import-submit')), true);
+  // Words still go the words way.
+  await page.fill(box, 'abandon add face');
+  assert.equal(await page.getAttribute(hint, 'data-kind'), 'words');
+  assert.equal(await page.textContent(hint), '3 of 12 words so far.');
+  assert.equal(await page.isVisible(tid('eth-advanced')), true);
+
+  // Pasted as people paste: 0X, capitals, spaces around. The address it opens, before anything is saved.
+  await page.fill(box, `  0X${key.toUpperCase()}\n`);
+  assert.equal(await page.textContent(hint), `This opens ${address.slice(0, 6)}…${address.slice(-4)}. Check it's the account you expect.`);
+  assert.equal(await page.getAttribute(hint, 'class'), 'hint good');
+  assert.equal(await page.getAttribute(hint, 'data-address'), address);
+  assert.equal(await page.isDisabled(tid('eth-import-submit')), false);
+  assert.equal(await page.textContent(tid('eth-import-submit')), 'Import Ethereum wallet');
+  assert.equal(await page.evaluate(async () => (await (await import('./lib/store.js')).store.get('eth')) ?? null), null, 'nothing saved yet');
+  await keyShots('07-import-address-check', { masks: [box] });
+
+  await page.click(tid('eth-import-submit'));
+  await waitScreen(page, 'ethPrivacy');
+  await page.waitForSelector(tid('eth-connect'));
+  assert.match(await page.textContent('.step'), /Step 2 of 2/);
+  await page.click(tid('eth-connect'));
+  await ethHomeReady();
+  assert.equal(await page.getAttribute(tid('eth-address'), 'data-address'), address, 'Home opens the address of the key');
+  const stored = await page.evaluate(async () => JSON.stringify(await (await import('./lib/store.js')).store.get('eth')));
+  const rec = JSON.parse(stored);
+  assert.equal(rec.kind, 'key');
+  assert.deepEqual(Object.keys(rec).sort(), ['createdAt', 'envelope', 'id', 'kind', 'v']);
+  assert.ok(!stored.toLowerCase().includes(key), 'the key only inside the sealed envelope');
+  assert.ok(!stored.toLowerCase().includes(address.slice(2).toLowerCase()), 'the address too');
+
+  // Backup: the key, blurred dots until the password; then Copy and Hide.
+  await page.evaluate(() => window.__campfire.go('ethSettings'));
+  await waitScreen(page, 'ethSettings');
+  await page.waitForSelector(tid('eth-key-reveal'));
+  assert.equal(await page.getAttribute(tid('eth-backup'), 'data-kind'), 'key');
+  assert.ok((await page.textContent(tid('eth-backup'))).includes(KEY_WARNING));
+  assert.equal(await page.getAttribute(tid('eth-key-box'), 'data-state'), 'masked');
+  assert.match(await page.textContent(tid('eth-key-text')), /^•{64}$/, 'dots under the blur, not the key');
+  assert.equal(await page.$(tid('eth-show-key')), null, 'the backup is the key itself');
+  await keyShots('08-key-backup-masked', { focus: tid('eth-backup') });
+  await page.click(tid('eth-key-reveal'));
+  await page.waitForSelector(tid('auth-pw'));
+  await page.fill(tid('auth-pw'), 'not the password');
+  await page.click(tid('auth-submit'));
+  await page.waitForSelector('.sheet .notice.error');
+  assert.equal(await page.getAttribute(tid('eth-key-box'), 'data-state'), 'masked', 'a wrong password shows nothing');
+  await page.fill(tid('auth-pw'), PASSWORD);
+  await page.click(tid('auth-submit'));
+  await page.waitForSelector(`${tid('eth-key-box')}[data-state="shown"]`);
+  assert.equal(await page.textContent(tid('eth-key-text')), key);
+  await keyShots('09-key-backup-shown', { masks: [tid('eth-key-text')], focus: tid('eth-backup') });
+  // Copy, without touching this machine's clipboard.
+  await page.evaluate(() => {
+    navigator.clipboard.writeText = async (t) => {
+      window.__copied = t;
+    };
+  });
+  await page.click(tid('eth-key-copy'));
+  assert.equal(await page.evaluate(() => window.__copied === undefined ? 'none' : 'copied'), 'copied');
+  assert.equal(await page.evaluate((k) => window.__copied === k, key), true, 'Copy gives the key');
+  await page.evaluate(() => delete window.__copied);
+  await page.waitForSelector('.toast');
+  assert.equal(await page.textContent('.toast'), 'Private key copied');
+  await page.click(tid('eth-key-hide'));
+  assert.equal(await page.getAttribute(tid('eth-key-box'), 'data-state'), 'masked');
+  assert.match(await page.textContent(tid('eth-key-text')), /^•{64}$/);
+
+  // Remove and Delete name the key, not words.
+  await page.click(tid('eth-remove'));
+  await page.waitForSelector(tid('eth-remove-confirm'));
+  assert.match(await page.textContent('.sheet'), /Only its private key can bring it back/);
+  await keyShots('10-key-remove-sheet');
+  await page.click('.sheet .btn-text');
+  await page.evaluate(() => window.__campfire.go('deleteWallet'));
+  await page.waitForSelector(`${tid('delete-eth-words')}[data-kind="key"]`);
+  assert.match(await page.textContent(tid('delete-eth-words')), /Its private key brings it back/);
+  await keyShots('11-key-delete-wallet', { focus: tid('delete-eth-words') });
+
+  // Shown at lock time: afterwards it is nowhere in the page.
+  await page.evaluate(() => window.__campfire.go('ethSettings'));
+  await page.waitForSelector(tid('eth-key-reveal'));
+  await page.click(tid('eth-key-reveal'));
+  await page.fill(tid('auth-pw'), PASSWORD);
+  await page.click(tid('auth-submit'));
+  await page.waitForSelector(`${tid('eth-key-box')}[data-state="shown"]`);
+  assert.equal(await inHeap([key]), 1, 'the heap search finds the key while it is shown (so its "0" below means something)');
+  await page.evaluate(() => window.__campfire.go('settings'));
+  await page.click(tid('lock-now'));
+  await waitScreen(page, 'unlock');
+  assert.equal(await page.evaluate((k) => document.documentElement.outerHTML.toLowerCase().includes(k), key), false, 'not in the DOM');
+  assert.equal(await inHeap([key, key.toUpperCase(), `0x${key}`]), 0, 'not in the JS heap');
+
+  // Unlocking opens the same wallet; the key is blurred again.
+  await unlockWithPassword(page, PASSWORD);
+  await waitScreen(page, 'home', 60000);
+  await page.click(tid('chain-eth'));
+  await ethHomeReady();
+  assert.equal(await page.getAttribute(tid('eth-address'), 'data-address'), address);
+  await page.evaluate(() => window.__campfire.go('ethSettings'));
+  await page.waitForSelector(tid('eth-key-reveal'));
+  assert.equal(await page.getAttribute(tid('eth-key-box'), 'data-state'), 'masked');
 });
 
 test('IP privacy: only this origin, the BEAM node and the chosen Ethereum server; no CSP violation', { skip: skip || false }, async () => {

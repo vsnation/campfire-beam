@@ -428,6 +428,13 @@ body.dapp-open { overflow: hidden; }
 .eth-hero img { width: 56px; height: 56px; }
 .addr-chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 4px 10px; border-radius: 999px; border: 0; background: var(--surface-2); color: var(--text-2); cursor: pointer; }
 .addr-chip svg { width: 14px; height: 14px; }
+/* Settings -> Ethereum wallet: the private key, blurred dots until it is opened. */
+.key-box { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; margin-top: 10px; }
+.key-box .mono { font-size: 14px; line-height: 1.5; word-break: normal; overflow-wrap: anywhere; font-feature-settings: 'calt' 0; }
+.key-box.masked .mono { filter: blur(5px); user-select: none; }
+.key-actions { margin-top: 10px; justify-content: flex-start; }
+.key-actions .btn { flex: none; }
+.addr-inline { font-feature-settings: 'calt' 0; white-space: nowrap; }
 .addr-chip .mono { font-size: 13px; }
 .kv.kv-stack { flex-direction: column; gap: 4px; }
 .kv.kv-stack .v { text-align: left; font-weight: 500; }
