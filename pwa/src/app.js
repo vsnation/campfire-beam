@@ -33,14 +33,16 @@ import install from './screens/install.js';
 import swap from './screens/swap.js';
 import dapps, { runnerStats } from './screens/dapps.js';
 import { installConsent } from './screens/consent.js';
+import { ETH_SCREENS } from './screens/eth_screens.js';
 import { consentLog, contractsState } from './lib/contracts.js';
 
 const SCREENS = {
   welcome, backup, confirmWords, restore, importWallet, setPassword, passkeySetup, ipNotice, fastStart, unlock,
   home, send, review, txStatus, receive, activity, settings, changePassword, about, deleteWallet, problem, install, swap, dapps,
+  ...ETH_SCREENS,
 };
 // Screens that need an unlocked, running wallet.
-const NEEDS_WALLET = new Set(['home', 'send', 'review', 'txStatus', 'receive', 'activity', 'settings', 'changePassword', 'about', 'swap', 'dapps']);
+const NEEDS_WALLET = new Set(['home', 'send', 'review', 'txStatus', 'receive', 'activity', 'settings', 'changePassword', 'about', 'swap', 'dapps', ...Object.keys(ETH_SCREENS)]);
 
 const root = document.getElementById('app');
 
@@ -57,6 +59,18 @@ export const app = {
   wallet,
   updates,
   persisted: null,
+  // Run on lock and on the tripwire, to forget what a feature kept in memory (the Ethereum screens add one).
+  lockHooks: new Set(),
+
+  runLockHooks() {
+    for (const f of this.lockHooks) {
+      try {
+        f();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  },
 
   go(name, params = {}) {
     if (!SCREENS[name]) throw new Error(`no screen ${name}`);
@@ -99,6 +113,7 @@ export const app = {
     const wasOpen = Boolean(this.dbPass);
     this.dbPass = null;
     if (this.setup) this.setup = null;
+    this.runLockHooks();
     await wallet.stop();
     if (wasOpen || this.currentName !== 'unlock') this.go('unlock', { reason });
   },
@@ -114,6 +129,7 @@ export const app = {
     console.warn('[campfire] tripwire:', this.intrusion);
     this.dbPass = null;
     this.setup = null;
+    this.runLockHooks();
     this.go('problem', { kind: 'tripwire', detail: this.intrusion });
     await wallet.stop().catch(() => {});
   },

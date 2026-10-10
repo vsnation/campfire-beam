@@ -10,42 +10,10 @@
 // a small python3 child) and puts the fork back with evm_snapshot/evm_revert.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { EthRpc, walletFees, gasWithHeadroom } from '../../src/lib/eth/rpc.js';
 import { ethKeyFromMnemonic, wipe } from '../../src/lib/eth/crypto.js';
 import { signTransaction, parseSignedTransaction } from '../../src/lib/eth/tx.js';
-
-const ANVIL = 'http://127.0.0.1:8545';
-const JUNK = 'test test test test test test test test test test test junk';
-
-async function raw(method, params = []) {
-  const r = await fetch(ANVIL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }), signal: AbortSignal.timeout(3000) });
-  const j = await r.json();
-  if (j.error) throw new Error(j.error.message);
-  return j.result;
-}
-
-async function anvilProblem() {
-  try {
-    if ((await raw('eth_chainId')) !== '0x1') return 'the node on 8545 is not chain 1';
-    if (!/anvil/i.test(await raw('web3_clientVersion'))) return 'the node on 8545 is not anvil';
-    return null;
-  } catch {
-    return 'no anvil on 127.0.0.1:8545';
-  }
-}
-
-function takeLock() {
-  const file = join(tmpdir(), 'campfire-eth-fork.lock');
-  const py = 'import fcntl,sys\nf=open(sys.argv[1],"a+")\nfcntl.lockf(f,fcntl.LOCK_EX)\nprint("locked",flush=True)\nsys.stdin.read()\n';
-  const child = spawn('python3', ['-I', '-c', py, file], { stdio: ['pipe', 'pipe', 'inherit'] });
-  return new Promise((resolve, reject) => {
-    child.stdout.once('data', () => resolve(() => child.stdin.end()));
-    child.once('exit', (code) => reject(new Error(`lock helper exited ${code}`)));
-  });
-}
+import { ANVIL, JUNK, raw, anvilProblem, takeLock } from './fork_support.mjs';
 
 const skip = await anvilProblem();
 

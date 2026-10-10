@@ -18,6 +18,7 @@ import { screen, notice, primary, secondary, assetBadge } from '../lib/ui.js';
 import { formatAmount } from '../lib/amount.js';
 import { wallet, txStatusText, isPendingTx, isContractTx, contractMoves } from '../lib/wallet.js';
 import { needsBackupPrompt } from '../lib/session.js';
+import { chainSwitch } from './eth_screens.js';
 
 export function syncLine(sync) {
   const cls = sync.state === 'synced' ? 'ok' : sync.state === 'offline' || sync.state === 'stalled' || sync.state === 'behind' ? 'bad' : 'wait';
@@ -189,6 +190,7 @@ export default function home(app) {
 
   const el = screen(
     { brand: true, tabs: 'home', app, right: h('button', { class: 'icon-btn', 'aria-label': 'Lock', onclick: () => app.lock('manual'), 'data-testid': 'lock' }, icon('lock')) },
+    chainSwitch(app, 'beam'),
     bannerBox,
     balanceBox,
     actionsBox,
