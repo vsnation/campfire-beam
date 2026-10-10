@@ -1,6 +1,6 @@
 {
   "name": "beam-campfire-pwa",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "BEAM Campfire: an iOS-first web wallet for BEAM Privacy built on BEAM's own WebAssembly wallet engine.",
   "license": "GPL-3.0-only",
