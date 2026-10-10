@@ -17,6 +17,9 @@ export const DEX_CALL_FEE = 1100000n;
  */
 export const PROTECTION_BPS = 100n;
 
+/** The protections offered, as on the desktop: only stricter than BEAM's own 1% make sense. */
+export const PROTECTIONS = Object.freeze([100n, 50n, 10n]);
+
 /** From this price change (3%) the swap screen warns. */
 export const IMPACT_WARN_BPS = 300n;
 
@@ -263,6 +266,33 @@ export function rateText(q, format) {
   return format((q.receive * 100000000n) / q.pay);
 }
 
+/** 1 BEAM: the least a pool must hold to price a verified asset. */
+export const MIN_PRICING_RESERVE = 100000000n;
+/** 1,000 BEAM: the least a pool must hold to value an asset this wallet does not vouch for. */
+export const MIN_UNVERIFIED_PRICING_RESERVE = 1000n * 100000000n;
+
+/**
+ * What `amount` of `assetId` is worth in groth, from its deepest BEAM pool, as
+ * the desktop's BeamAssetPricer values it (LP tokens aside): a verified asset
+ * at that pool's spot price; any other only from a pool holding 1,000 BEAM, at
+ * what the pool would pay for it (tok1 * a / (tok2 + a)), so a spam asset in a
+ * thin pool cannot look valuable. Null when no pool prices it.
+ */
+export function valueInBeam(pools, assetId, amount, isVerified) {
+  const a = BigInt(amount);
+  if (a <= 0n) return 0n;
+  if (assetId === 0) return a;
+  const verified = Boolean(isVerified(assetId));
+  const min = verified ? MIN_PRICING_RESERVE : MIN_UNVERIFIED_PRICING_RESERVE;
+  let best = null;
+  for (const p of pools || []) {
+    if (p.aid1 !== 0 || p.aid2 !== assetId || !isLive(p) || p.tok1 < min) continue;
+    if (!best || p.tok1 > best.tok1) best = p;
+  }
+  if (!best) return null;
+  return verified ? (best.tok1 * a) / best.tok2 : (best.tok1 * a) / (best.tok2 + a);
+}
+
 /** The BEAM value of the swap when one side is BEAM, else null. */
 export function beamValue(q) {
   if (q.payAsset === 0) return q.pay;
@@ -270,16 +300,32 @@ export function beamValue(q) {
   return null;
 }
 
-/** True when the 0.011 BEAM network fee is a quarter or more of the swap's BEAM value. */
-export function feeIsLarge(q, fee = DEX_CALL_FEE) {
+/**
+ * What the swap is worth in BEAM for the fee warning: the paid side, or the
+ * received side when only that has a price (as the desktop). Null when
+ * neither side can be valued.
+ */
+export function swapValue(q, pools, isVerified) {
   const v = beamValue(q);
-  return v != null && v > 0n && fee * 10000n >= v * FEE_SHARE_WARN_BPS;
+  if (v != null) return v;
+  return valueInBeam(pools, q.payAsset, q.pay, isVerified) ?? valueInBeam(pools, q.receiveAsset, q.receive, isVerified);
+}
+
+/** The network fee's share of `value`, in basis points; null when value is unknown or zero. */
+export function feeShareBps(value, fee = DEX_CALL_FEE) {
+  if (value == null || value <= 0n) return null;
+  return (fee * 10000n) / value;
+}
+
+/** True when the 0.011 BEAM network fee is a quarter or more of the swap's value in BEAM. */
+export function feeIsLarge(q, fee = DEX_CALL_FEE, value = beamValue(q)) {
+  return value != null && value > 0n && fee * 10000n >= value * FEE_SHARE_WARN_BPS;
 }
 
 /**
  * The check the engine's consent request must pass before the person sees it:
  * it pays only the asset asked for and no more than quoted, and receives only
- * the asset asked for, at most 1% below the quote. Returns null when it passes,
+ * the asset asked for, at most `bps` (1% unless stricter) below the quote. Returns null when it passes,
  * or {code, message} - which refuses the request without showing it.
  */
 export function swapExpectation(q, bps = PROTECTION_BPS) {
@@ -296,7 +342,7 @@ export function swapExpectation(q, bps = PROTECTION_BPS) {
     }
     if (gets[0].amount < floor) {
       const moved = q.receive > 0n ? ((q.receive - gets[0].amount) * 10000n) / q.receive : 0n;
-      return { code: 'priceMoved', message: `The price moved ${bpsText(moved)} since the quote, more than the 1% this swap allows. Nothing was sent.`, moved };
+      return { code: 'priceMoved', message: `The price moved ${bpsText(moved)} since the quote, more than the ${bpsText(bps)} this swap allows. Nothing was sent.`, moved };
     }
     return null;
   };

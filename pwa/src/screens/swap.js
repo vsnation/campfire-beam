@@ -6,7 +6,7 @@
  *   - "What will I get?" -> a live price 0.5 s after typing stops, from every pool for the pair; the best wins.
  *   - "What does it cost?" -> the pool's fee and the 0.011 BEAM network fee are on screen before anything.
  *   - "Why is the button grey?" -> the reason is written right above it.
- *   - "What if the price moves?" -> more than 1% worse and the swap stops before it is shown; nothing is sent.
+ *   - "What if the price moves?" -> more than the chosen protection (1% unless stricter) worse and the swap stops before it is shown; nothing is sent.
  *   - "A small swap eaten by the fee" -> a warning when the network fee is a quarter or more of the swap.
  */
 import { h, put } from '../lib/dom.js';
@@ -16,7 +16,7 @@ import { parseAmount, formatAmount, toInputString } from '../lib/amount.js';
 import { wallet } from '../lib/wallet.js';
 import { nativeApp } from '../lib/contracts.js';
 import { loadShader } from '../lib/shaders.js';
-import { DEX_CALL_FEE, DEFAULT_RECEIVE, KINDS, poolsViewArgs, parsePools, receivable, tradable, bestQuote, tradeArgs, swapExpectation, priceImpactBps, IMPACT_WARN_BPS, feeIsLarge, bpsText, DexError } from '../lib/dex.js';
+import { DEX_CALL_FEE, DEFAULT_RECEIVE, KINDS, PROTECTION_BPS, PROTECTIONS, poolsViewArgs, parsePools, receivable, tradable, bestQuote, tradeArgs, swapExpectation, priceImpactBps, IMPACT_WARN_BPS, feeIsLarge, swapValue, feeShareBps, bpsText, DexError } from '../lib/dex.js';
 import { shortAmount } from './consent.js';
 
 const POOLS_TTL_MS = 30000;
@@ -48,7 +48,8 @@ function problemText(e, payUnit, getUnit) {
 }
 
 export default function swap(app) {
-  const draft = (app.swapDraft = app.swapDraft || { pay: 0, receive: null, amount: '' });
+  const draft = (app.swapDraft = app.swapDraft || { pay: 0, receive: null, amount: '', protection: Number(PROTECTION_BPS) });
+  const protection = () => BigInt(draft.protection ?? Number(PROTECTION_BPS));
   let pools = null;
   let poolsError = null;
   let quote = null;
@@ -148,6 +149,14 @@ export default function swap(app) {
       rows.push(h('div', { class: 'kv' }, h('span', { class: 'k', text: `Pool fee (${KINDS[quote.kind].percent})` }), h('span', { class: 'v', 'data-testid': 'swap-pool-fee', text: `${formatAmount(quote.fee)} ${payU}` })));
     }
     rows.push(h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Network fee' }), h('span', { class: 'v', 'data-testid': 'swap-fee', text: `${formatAmount(DEX_CALL_FEE)} BEAM` })));
+    rows.push(
+      h(
+        'div',
+        { class: 'kv' },
+        h('span', { class: 'k', text: 'Price protection' }),
+        h('button', { class: 'v', type: 'button', 'data-testid': 'swap-protection', 'aria-label': `Price protection ${bpsText(protection())}, change`, onclick: pickProtection }, bpsText(protection())),
+      ),
+    );
     put(details, ...rows);
 
     const n = [];
@@ -164,9 +173,10 @@ export default function swap(app) {
     if (quote && !quoting) {
       const impact = priceImpactBps(quote);
       if (impact >= IMPACT_WARN_BPS) n.push(notice('warn', `This swap moves the price by ${bpsText(impact)}: you get noticeably less than the current rate. A smaller amount gets a better price.`));
-      if (feeIsLarge(quote)) n.push(notice('warn', `The ${formatAmount(DEX_CALL_FEE)} BEAM network fee is a large part of this small swap.`));
+      const value = swapValue(quote, pools, (id) => wallet.label(id).verified);
+      if (feeIsLarge(quote, DEX_CALL_FEE, value)) n.push(feeWarning(quote, value));
     }
-    if (!n.length) n.push(h('p', { class: 'small', text: 'If the price gets more than 1% worse before you approve, the swap stops and nothing is sent.' }));
+    if (!n.length) n.push(h('p', { class: 'small', text: `If the price gets more than ${bpsText(protection())} worse before you approve, the swap stops and nothing is sent.` }));
     put(notes, ...n);
 
     const st = ctaState();
@@ -249,6 +259,41 @@ export default function swap(app) {
     requoteSoon(0);
   }
 
+  /** "The network fee is 55% of what you swap", as the desktop words it. */
+  function feeWarning(q, value) {
+    const share = feeShareBps(value);
+    const pct = bpsText(share);
+    const title = share > 10000n ? 'The network fee is more than what you swap' : share > 5000n ? 'The network fee is more than half of what you swap' : `The network fee is ${pct} of what you swap`;
+    const swapped = q.payAsset === 0 ? `the ${formatAmount(q.pay)} BEAM you swap` : `what you swap (worth about ${shortAmount(value)} BEAM)`;
+    const el = notice('warn', h('strong', { text: `${title}. ` }), `Every swap costs ${formatAmount(DEX_CALL_FEE)} BEAM in network fees, whatever the amount. Here that is ${pct} of ${swapped}. A larger swap pays the same fee.`);
+    el.dataset.testid = 'swap-fee-warning';
+    return el;
+  }
+
+  function pickProtection() {
+    const label = (b) => (b === 100n ? '1% — the most BEAM allows' : b === 10n ? '0.1% — strict; fails more often when others trade' : bpsText(b));
+    openSheet(
+      (close) => [
+        h('h2', { text: 'Price protection' }),
+        h('p', { text: 'If the price moves against you by more than this before your swap is built, BEAM Campfire stops and shows you the new price. Nothing is sent.' }),
+        h('p', { class: 'small', text: 'After you approve, BEAM itself never accepts a result more than 1% worse: if someone trades first, it redoes your swap within 1% or cancels it. (Also called slippage tolerance.)' }),
+        h(
+          'div',
+          { class: 'card list' },
+          ...PROTECTIONS.map((b) =>
+            h('button', { class: `row${b === protection() ? ' on' : ''}`, type: 'button', 'data-testid': `swap-protection-${b}`, 'aria-pressed': String(b === protection()), onclick: () => close(b) }, h('span', { class: 'main' }, h('div', { class: 't', text: label(b) }))),
+          ),
+        ),
+        h('button', { class: 'btn btn-text', onclick: () => close() }, 'Close'),
+      ],
+      { label: 'Price protection' },
+    ).then((b) => {
+      if (b == null || !alive) return;
+      draft.protection = Number(b);
+      render();
+    });
+  }
+
   function pick(paySide) {
     if (!pools) return;
     const lpFree = tradable(pools);
@@ -320,7 +365,7 @@ export default function swap(app) {
     try {
       const { app: dex, shader } = await dexApp();
       const args = tradeArgs({ payAsset: q.payAsset, receiveAsset: q.receiveAsset, kind: q.kind, payAmount: q.pay, predictOnly: false });
-      const txId = await dex.transact(args, shader, { expect: swapExpectation(q), intent: { action: 'swap', payAsset: q.payAsset, receiveAsset: q.receiveAsset } });
+      const txId = await dex.transact(args, shader, { expect: swapExpectation(q, protection()), intent: { action: 'swap', payAsset: q.payAsset, receiveAsset: q.receiveAsset } });
       if (!alive) return;
       app.swapDraft = null;
       wallet.refreshTxs();

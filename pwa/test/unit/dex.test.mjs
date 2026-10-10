@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEX_CID, tradeFee, tradeArgs, poolsViewArgs, parsePools, parseQuote, bestQuote, receivable, tradable, swapExpectation, minReceive, priceImpactBps, feeIsLarge, bpsText, DexError } from '../../src/lib/dex.js';
+import { DEX_CID, tradeFee, tradeArgs, poolsViewArgs, parsePools, parseQuote, bestQuote, receivable, tradable, swapExpectation, minReceive, priceImpactBps, feeIsLarge, bpsText, DexError, PROTECTIONS, valueInBeam, swapValue, feeShareBps } from '../../src/lib/dex.js';
 import { approveLabel, shortfall, shortAmount, spentUnits } from '../../src/screens/consent.js';
 
 const pool = (aid1, aid2, kind, tok1, tok2, lp = 900 + kind, ctl = 1000n) => ({ aid1, aid2, kind, tok1: BigInt(tok1), tok2: BigInt(tok2), ctl: BigInt(ctl), lpToken: lp });
@@ -112,6 +112,45 @@ test('price protection: the built swap may receive at most 1% less, pay no more,
   assert.equal(check({ ...req(1000000n, 37176133894n), receives: [{ assetId: 175, amount: 37176133894n }] }).code, 'unexpected');
   assert.equal(check({ ...req(1000000n, 37176133894n), spends: [{ assetId: 0, amount: 1n }, { assetId: 7, amount: 1n }] }).code, 'unexpected');
   assert.equal(check({ ...req(1000000n, 37176133894n), kind: 'send' }).code, 'unexpected');
+});
+
+test('a stricter price protection: 0.5% and 0.1%, named in the refusal', () => {
+  assert.deepEqual(PROTECTIONS, [100n, 50n, 10n]);
+  const q = { payAsset: 0, receiveAsset: 174, pay: 1000000n, receive: 1000000000n };
+  const req = (get) => ({ kind: 'contract', spends: [{ assetId: 0, amount: 1000000n }], receives: [{ assetId: 174, amount: get }] });
+  const strict = swapExpectation(q, 10n);
+  assert.equal(strict(req(999000000n)), null, 'exactly 0.1% less is allowed');
+  const moved = strict(req(998999999n));
+  assert.equal(moved.code, 'priceMoved');
+  assert.match(moved.message, /more than the 0\.1% this swap allows/);
+  assert.equal(swapExpectation(q, 50n)(req(995000000n)), null);
+  assert.equal(swapExpectation(q, 50n)(req(994999999n)).code, 'priceMoved');
+});
+
+test('valuing a swap with no BEAM side: verified at spot, others only from a 1,000-BEAM pool at what it would pay', () => {
+  const B = 100000000n;
+  const verified = (id) => id === 36;
+  const pools = [
+    pool(0, 36, 2, 50n * B, 1n * B), // 1 bETH = 50 BEAM (verified, 50 BEAM deep)
+    pool(0, 36, 0, 10n * B, 1n * B), // shallower: ignored
+    pool(0, 900, 2, 999n * B, 1000n * B), // unverified, under 1,000 BEAM: never values
+    pool(0, 901, 2, 2000n * B, 1000n * B), // unverified, 2,000 BEAM deep
+  ];
+  assert.equal(valueInBeam(pools, 0, 5n, verified), 5n);
+  assert.equal(valueInBeam(pools, 36, B / 10n, verified), 5n * B, '0.1 bETH at the deepest pool');
+  assert.equal(valueInBeam(pools, 900, B, verified), null);
+  assert.equal(valueInBeam(pools, 901, 1000n * B, verified), 1000n * B, 'sold into the pool: 2000*1000/(1000+1000)');
+  assert.equal(valueInBeam(pools, 777, B, verified), null);
+  // bETH -> asset 901: valued from the paid side; 0.0001 bETH = 0.005 BEAM, so the fee is 220%.
+  const q = { payAsset: 36, receiveAsset: 901, pay: 10000n, receive: 1n };
+  const v = swapValue(q, pools, verified);
+  assert.equal(v, 500000n);
+  assert.equal(feeIsLarge(q, undefined, v), true);
+  assert.equal(feeShareBps(v), 22000n);
+  assert.equal(feeShareBps(null), null);
+  // Only the received side has a price.
+  assert.equal(swapValue({ payAsset: 777, receiveAsset: 36, pay: 5n, receive: B }, pools, verified), 50n * B);
+  assert.equal(swapValue({ payAsset: 777, receiveAsset: 778, pay: 5n, receive: 5n }, pools, verified), null);
 });
 
 test('price impact and the small-swap fee warning', () => {

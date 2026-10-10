@@ -79,6 +79,19 @@ test('swap BEAM -> FOMO: live quote, the consent sheet shows what the engine rep
   const shaderLoads = await page.evaluate(() => performance.getEntriesByType('resource').filter((e) => e.name.endsWith('/shaders/amm_app.wasm')).length);
   assert.equal(shaderLoads, 1, 'the DEX shader loads once, when the swap screen needs it');
   await shot(page, 'swap-01-quote');
+  // 0.011 BEAM on a 0.01 BEAM swap: the desktop's wording, with the share.
+  assert.match(await page.textContent(tid('swap-fee-warning')), /^The network fee is more than what you swap\. .*110% of the 0\.01 BEAM you swap/);
+  // Price protection: 1% by default; stricter choices only.
+  assert.equal(await page.textContent(tid('swap-protection')), '1%');
+  await page.click(tid('swap-protection'));
+  await page.waitForSelector(tid('swap-protection-10'));
+  assert.equal(await page.$$eval('[data-testid^="swap-protection-"]', (els) => els.length), 3);
+  await shot(page, 'swap-01b-protection');
+  await page.click(tid('swap-protection-10'));
+  await page.waitForFunction(() => document.querySelector('[data-testid="swap-protection"]').textContent === '0.1%');
+  await page.click(tid('swap-protection'));
+  await page.click(tid('swap-protection-100'));
+  await page.waitForFunction(() => document.querySelector('[data-testid="swap-protection"]').textContent === '1%');
 
   await page.click(tid('swap-cta'));
   await page.waitForSelector(tid('consent'), { timeout: 60000 });
