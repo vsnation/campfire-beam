@@ -294,6 +294,20 @@ test('inspect reads the built bytes before the engine sees them again; null lets
   assert.deepEqual(pid.map((q) => q.params.data), [[1, 2, 3]]);
 });
 
+test("inspect also gets the shader's parsed answer, large integers kept exact", async () => {
+  const fallback = engine.respond;
+  engine.respond = (req, api) => (req.method === 'invoke_contract' ? api.reply(req.id, { output: '{"res": {"batch": 18446744073709551615, "n": 2}}', raw_data: [4, 5] }) : fallback(req, api));
+  unset = setConsentPresenter(async () => true);
+  const app = await nativeApp();
+  const got = [];
+  await app.transact('action=create', [0], {
+    inspect: (bytes, output) => {
+      got.push({ bytes: [...bytes], output });
+    },
+  });
+  assert.deepEqual(got, [{ bytes: [4, 5], output: { res: { batch: '18446744073709551615', n: 2 } } }]);
+});
+
 test('an inspect refusal (returned or thrown) sends nothing and shows nothing', async () => {
   let shown = 0;
   unset = setConsentPresenter(async () => {
