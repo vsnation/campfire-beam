@@ -27,6 +27,7 @@ class DappBridge {
     required this.session,
     required this.token,
     required this.evaluate,
+    this.onBlocked,
   }) {
     _notifications = session.notifications.listen(
       (n) => unawaited(_run(deliverScript(n))),
@@ -40,6 +41,11 @@ class DappBridge {
 
   /// Runs JavaScript in the dApp page.
   final Future<void> Function(String javascript) evaluate;
+
+  /// The page reported a request its CSP refused: [origin] is what the
+  /// page says, checked only for shape here (the host session decides
+  /// whether to ask about it).
+  final void Function(String origin)? onBlocked;
 
   late final StreamSubscription<String> _notifications;
   bool _closed = false;
@@ -96,6 +102,17 @@ class DappBridge {
               : null,
         );
         await _run(handshakeScript(ok));
+      case 'blocked':
+        final b = msg['payload'];
+        if (b is! Map<String, Object?>) return;
+        final origin = b['origin'];
+        final directive = b['directive'];
+        if (origin is! String ||
+            origin.length > 300 ||
+            (directive != 'connect-src' && directive != 'img-src')) {
+          return;
+        }
+        onBlocked?.call(origin);
     }
   }
 

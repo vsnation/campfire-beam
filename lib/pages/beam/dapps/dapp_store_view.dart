@@ -40,6 +40,7 @@ import '../../../utilities/text_styles.dart';
 import '../../../utilities/util.dart';
 import '../../../wallets/beam/dapps/dapp_installer.dart';
 import '../../../wallets/beam/dapps/dapp_package.dart';
+import '../../../wallets/beam/dapps/dapp_remote_origins.dart';
 import '../../../wallets/beam/dapps/host/dapp_host.dart';
 import '../../../wallets/beam/dapps/host/dapp_store_controller.dart';
 import '../../../widgets/background.dart';
@@ -218,10 +219,20 @@ class _DappStoreViewState extends ConsumerState<DappStoreView> {
     }
     if (!mounted) return;
     final existing = c.existingFor(package);
+    var keeps = const <String>[];
+    if (existing != null) {
+      try {
+        keeps = await c.installer.allowedOrigins(existing.guid);
+      } catch (_) {
+        // Not shown; the servers are kept either way.
+      }
+      if (!mounted) return;
+    }
     final ok = await _confirmFromFile(
       package,
       existing,
       copies: c.bundledNameCopiedBy(package),
+      keeps: keeps,
     );
     if (ok != true || !mounted) return;
     try {
@@ -277,14 +288,19 @@ class _DappStoreViewState extends ConsumerState<DappStoreView> {
     DappPackage package,
     DappInstallation? existing, {
     String? copies,
+    List<String> keeps = const [],
   }) {
     final m = package.manifest;
+    final kept = keeps.isEmpty
+        ? ""
+        : " It keeps the servers you let it reach: "
+              "${keeps.map(dappOriginHost).join(", ")}.";
     final lines = [
       "Version ${m.version ?? "not given"} · "
           "${m.publisher == null ? "unknown publisher" : "by ${m.publisher}"}",
       if (existing != null)
         "Replaces the installed version "
-            "${existing.manifest.version ?? "(no version)"}.",
+            "${existing.manifest.version ?? "(no version)"}.$kept",
       if (copies != null)
         "Its name matches $copies, one of the dApps Campfire checks, but it "
             "is a different app.",

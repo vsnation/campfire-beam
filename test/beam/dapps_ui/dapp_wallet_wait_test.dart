@@ -28,7 +28,7 @@ import 'package:stackwallet/wallets/beam/dapps/dapp_installer.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_manifest.dart';
 import 'package:stackwallet/wallets/beam/dapps/host/dapp_wallet_link.dart';
 
-import 'dapp_store_view_test.dart' show dexGuid, hostFor, link;
+import 'dapp_store_view_test.dart' show dexGuid, dexSha256, hostFor, link;
 import 'dapp_ui_harness.dart';
 
 const _strip = Key('dappWalletNotReady');
@@ -53,7 +53,8 @@ void main() {
       version: '1.0.0',
     ),
     apiVersion: DappApiVersion.v7_0,
-    packageSha256: '00' * 32,
+    // The pinned package: a bundled dApp (no More, no servers to ask).
+    packageSha256: dexSha256,
     // Not on disk: the page stays on "Opening…" in a widget test.
     directory: '${root.path}/dapps/$dexGuid/1.0.0',
     installedAt: DateTime.utc(2026, 10, 8),
@@ -65,10 +66,7 @@ void main() {
     required bool desktop,
   }) async {
     await loadCampfireFonts(tester);
-    setSurface(
-      tester,
-      desktop ? const Size(1055, 772) : const Size(375, 812),
-    );
+    setSurface(tester, desktop ? const Size(1055, 772) : const Size(375, 812));
     final l = link(root)..wait = wait;
     await tester.pumpWidget(
       campfireApp(

@@ -18,6 +18,7 @@ import '../dapp_catalogue.dart';
 import '../dapp_consent.dart';
 import '../dapp_identity.dart';
 import '../dapp_installer.dart';
+import '../dapp_remote_origins.dart';
 import '../dapp_scope.dart';
 import '../dapp_server.dart';
 import '../dapp_session.dart';
@@ -31,6 +32,14 @@ import 'dapp_wallet_link.dart';
 /// [DappSession] (so a reload drops the previous page's pending approvals,
 /// which answer -32021, as the Qt wallet does) on a new transport from the
 /// wallet.
+///
+/// A dApp installed from a file starts with no servers to reach (its CSP
+/// allows eval and inline scripts, [DappCsp.fromFile]). When its page
+/// reports a request the CSP refused, [onAskToReach] is told the origin,
+/// once per open dApp; the person's answer comes back as [allowOrigin],
+/// which saves it with the dApp and gives the server the wider policy for
+/// the next page load. Bundled dApps are never asked about: their servers
+/// are the catalogue's.
 ///
 /// The bridge token is per open dApp, not per page load: the server bakes
 /// it into the bridge script it serves for its whole life, and a webview
@@ -48,7 +57,9 @@ class DappHostSession {
     required this.identity,
     required this.bundled,
     required this._token,
+    required this._allowed,
     this.onActivity,
+    this.onAskToReach,
     this.scopeStore,
   });
 
@@ -59,6 +70,8 @@ class DappHostSession {
   /// the catalogue lists for it (price and bridge-fee APIs). The webview's
   /// own traffic does not go through Campfire's Tor proxy, so callers pass
   /// false while Tor is on: those hosts would see the user's IP address.
+  /// A dApp from a file reaches the servers the person allowed for it,
+  /// each asked by name with that warning.
   static Future<DappHostSession> start({
     required DappInstallation installation,
     required DappInstaller installer,
@@ -67,12 +80,18 @@ class DappHostSession {
     bool allowRemoteOrigins = false,
     Map<String, Object> style = dappDefaultStyle,
     void Function(DappActivity activity)? onActivity,
+    void Function(String origin)? onAskToReach,
     DappScopeStore? scopeStore,
+    @visibleForTesting
+    List<DappCatalogueEntry> catalogue = dappBundledCatalogue,
   }) async {
     final token = DappBridge.newToken();
-    final bundled = bundledEntryFor(installation);
+    final bundled = bundledEntryFor(installation, catalogue: catalogue);
+    final allowed = bundled == null
+        ? await installer.allowedOrigins(installation.guid)
+        : const <String>[];
     final csp = bundled == null
-        ? const DappCsp()
+        ? DappCsp.fromFile(allowed)
         : DappCsp(
             allowEval: bundled.needsEval,
             remoteOrigins: allowRemoteOrigins
@@ -106,15 +125,20 @@ class DappHostSession {
       ),
       bundled: bundled,
       token: token,
+      allowed: allowed,
       onActivity: onActivity,
+      onAskToReach: onAskToReach,
       scopeStore: scopeStore,
     );
   }
 
   /// The catalogue entry [installation] was installed from, byte for byte;
   /// null for any other package (including a modified bundled one).
-  static DappCatalogueEntry? bundledEntryFor(DappInstallation installation) {
-    for (final e in dappBundledCatalogue) {
+  static DappCatalogueEntry? bundledEntryFor(
+    DappInstallation installation, {
+    List<DappCatalogueEntry> catalogue = dappBundledCatalogue,
+  }) {
+    for (final e in catalogue) {
       if (e.guid == installation.guid &&
           e.sha256 == installation.packageSha256) {
         return e;
@@ -132,6 +156,10 @@ class DappHostSession {
   final DappCatalogueEntry? bundled;
   final void Function(DappActivity activity)? onActivity;
 
+  /// A dApp from a file tried to reach [origin] (an https origin
+  /// [dappRemoteOriginFor] accepts, not allowed yet): ask the person.
+  final void Function(String origin)? onAskToReach;
+
   /// Calls the open page has made to the wallet that have not answered yet.
   final ValueNotifier<int> callsInFlight = ValueNotifier(0);
   final DappScopeStore? scopeStore;
@@ -139,6 +167,17 @@ class DappHostSession {
 
   _Page? _page;
   bool _closed = false;
+  List<String> _allowed;
+
+  /// Origins offered to [onAskToReach] while this dApp is open: each is
+  /// asked about once ("Not now" lasts until the dApp is closed).
+  final _offered = <String>{};
+
+  /// Installed from a file (not a bundled package byte for byte).
+  bool get fromFile => bundled == null;
+
+  /// The servers this dApp from a file may reach; empty for a bundled one.
+  List<String> get allowedOrigins => List.unmodifiable(_allowed);
 
   String get origin => server.origin;
   Uri get startUri => server.startUri;
@@ -176,14 +215,50 @@ class DappHostSession {
           scopeStore ??
           FileDappScopeStore(installer.dataDirectory(installation.guid)),
       onActivity: onActivity,
-      onCallBusy: (d) => callsInFlight.value =
-          (callsInFlight.value + d).clamp(0, 1 << 20),
+      onCallBusy: (d) =>
+          callsInFlight.value = (callsInFlight.value + d).clamp(0, 1 << 20),
     );
     _page = _Page(
       transport,
       session,
-      DappBridge(session: session, token: _token, evaluate: evaluate),
+      DappBridge(
+        session: session,
+        token: _token,
+        evaluate: evaluate,
+        onBlocked: _blocked,
+      ),
     );
+  }
+
+  void _blocked(String origin) {
+    if (_closed || !fromFile || dappRemoteOriginFor(origin) != origin) return;
+    if (_allowed.contains(origin) || _offered.contains(origin)) return;
+    if (_offered.length >= dappMaxFileOrigins) return;
+    _offered.add(origin);
+    onAskToReach?.call(origin);
+  }
+
+  /// The person let this dApp reach [origin]: it is saved with the dApp,
+  /// and the next page load has it. Reload the page. Throws when it could
+  /// not be saved (the dApp may then ask about it again).
+  Future<void> allowOrigin(String origin) async {
+    if (!fromFile) throw StateError('a bundled dApp keeps its servers');
+    try {
+      _allowed = await installer.allowOrigin(installation.guid, origin);
+      server.csp = DappCsp.fromFile(_allowed);
+    } catch (_) {
+      _offered.remove(origin);
+      rethrow;
+    }
+  }
+
+  /// This dApp may no longer reach [origin], from its next page load on
+  /// (reload the page). It may ask about it again.
+  Future<void> revokeOrigin(String origin) async {
+    if (!fromFile) throw StateError('a bundled dApp keeps its servers');
+    _allowed = await installer.revokeOrigin(installation.guid, origin);
+    server.csp = DappCsp.fromFile(_allowed);
+    _offered.remove(origin);
   }
 
   /// One message from the webview's [dappBridgeChannelName] channel.

@@ -29,7 +29,7 @@ import 'package:stackwallet/wallets/beam/dapps/host/dapp_wallet_link.dart';
 import 'package:stackwallet/widgets/beam/dapps/dapp_avatar.dart';
 import 'package:stackwallet/widgets/beam/dapps/dapp_surface.dart';
 
-import 'dapp_store_view_test.dart' show dexGuid, hostFor, link;
+import 'dapp_store_view_test.dart' show dexGuid, dexSha256, hostFor, link;
 import 'dapp_ui_harness.dart';
 
 const _dappBlue = Color(0xff042548);
@@ -74,7 +74,8 @@ void main() {
       version: '1.0.0',
     ),
     apiVersion: DappApiVersion.v7_0,
-    packageSha256: '00' * 32,
+    // The pinned package: a bundled dApp (no More, no servers to ask).
+    packageSha256: dexSha256,
     // Not on disk: the page never gets past "Opening…" in a widget test.
     directory: '${root.path}/dapps/$dexGuid/1.0.0',
     installedAt: DateTime.utc(2026, 10, 7),

@@ -34,8 +34,10 @@ import 'dart:convert';
 ///   posts `'apiInjected'`, or posts `'rejected'`.
 ///
 /// Every request leaves through `post()` as `{v, token, type, payload}`:
-/// `type` `rpc` with the JSON-RPC request string, or `hello` with the
-/// handshake. The wallet answers by evaluating
+/// `type` `rpc` with the JSON-RPC request string, `hello` with the
+/// handshake, or `blocked` with `{origin, directive}`: the https origin of
+/// a `connect-src` or `img-src` request the page's CSP refused (each
+/// origin once, 16 at most per page). The wallet answers by evaluating
 /// `window.__campfireBeam.deliver(json)` or `.handshake(ok)`. The token is
 /// per page load; a message without it is dropped, so a page from another
 /// origin that ends up in the same webview cannot speak for the dApp.
@@ -91,9 +93,12 @@ const String _template = r'''
   var CHANNEL = __CAMPFIRE_CHANNEL__;
   var QRC = 'qrc:///qtwebchannel/qwebchannel.js';
   var QRC_SHIM = __CAMPFIRE_QRC_SHIM__;
+  // Taken before the page's own scripts run, so it cannot replace them.
+  var stringify = JSON.stringify;
+  var NativeURL = window.URL;
 
   function post(type, payload) {
-    var msg = JSON.stringify(
+    var msg = stringify(
         {v: 1, token: TOKEN, type: type, payload: payload});
     var w = window;
     if (w.flutter_inappwebview &&
@@ -193,6 +198,34 @@ const String _template = r'''
     }
     window.postMessage(ok ? 'apiInjected' : 'rejected', window.origin);
   }
+
+  // A request the page's policy refused, as its https origin: once each,
+  // 16 at most. The wallet may ask the person whether a dApp installed
+  // from a file may reach it (DappHostSession). On window, capturing, and
+  // added before any script of the page runs, so the page can neither
+  // remove it nor stop the event before it; trusted events only. A page
+  // posting such a report itself gains nothing: it can make a real refused
+  // request to any host, and only the person can allow one.
+  var blockedSeen = Object.create(null);
+  var blockedCount = 0;
+  window.addEventListener('securitypolicyviolation', function (e) {
+    if (!e.isTrusted) return;
+    var d = String(e.effectiveDirective || e.violatedDirective || '')
+        .split(' ')[0];
+    if (d !== 'connect-src' && d !== 'img-src') return;
+    var origin;
+    try {
+      var u = new NativeURL(String(e.blockedURI));
+      if (u.protocol !== 'https:') return;
+      origin = u.origin;
+    } catch (err) {
+      return;
+    }
+    if (blockedSeen[origin] || blockedCount >= 16) return;
+    blockedSeen[origin] = 1;
+    blockedCount++;
+    post('blocked', {origin: origin, directive: d});
+  }, true);
 
   Object.defineProperty(window, '__campfireBeam', {
     value: Object.freeze({deliver: deliver, handshake: handshake}),

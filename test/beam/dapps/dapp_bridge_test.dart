@@ -107,6 +107,56 @@ void main() {
       expect(scripts, hasLength(n));
     });
 
+    test('a refused request reaches the host as an origin; anything else '
+        'is dropped', () async {
+      final heard = <String>[];
+      final b = DappBridge(
+        session: testSession(t, ScriptedPolicy()),
+        token: token,
+        evaluate: (js) async => scripts.add(js),
+        onBlocked: heard.add,
+      );
+      for (final m in [
+        envelope('blocked', {
+          'origin': 'https://explorer.0xmx.net',
+          'directive': 'connect-src',
+        }),
+        envelope('blocked', {
+          'origin': 'https://img.example.com',
+          'directive': 'img-src',
+        }),
+        // Dropped: wrong token, directive or shape, or far too long.
+        envelope('blocked', {
+          'origin': 'https://a.example.com',
+          'directive': 'connect-src',
+        }, tok: DappBridge.newToken()),
+        envelope('blocked', {
+          'origin': 'https://a.example.com',
+          'directive': 'script-src',
+        }),
+        envelope('blocked', {'origin': 42, 'directive': 'img-src'}),
+        envelope('blocked', 'https://a.example.com'),
+        envelope('blocked', {
+          'origin': 'https://${'a' * 300}.com',
+          'directive': 'img-src',
+        }),
+      ]) {
+        await b.onMessage(m);
+      }
+      // The host session checks what the origin may be (DappHostSession).
+      expect(heard, ['https://explorer.0xmx.net', 'https://img.example.com']);
+      expect(scripts, isEmpty);
+      expect(t.calls, isEmpty);
+      // A bridge nobody listens on drops it.
+      await bridge.onMessage(
+        envelope('blocked', {
+          'origin': 'https://explorer.0xmx.net',
+          'directive': 'connect-src',
+        }),
+      );
+      expect(scripts, isEmpty);
+    });
+
     test('delivery survives line separators and quotes', () {
       final tricky = 'a${String.fromCharCode(0x2028)}b"</script>\\';
       final js = DappBridge.deliverScript(tricky);
@@ -194,6 +244,28 @@ void main() {
         expect(rejected['windowMessages'], contains('rejected'));
         expect(rejected['beamApi'], isFalse);
 
+        // Refused requests: trusted events of connect-src and img-src,
+        // https only, each origin once, 16 at most, unchanged by a page
+        // that replaces JSON.stringify or URL after the bridge loaded.
+        final blocked = out['blocked']! as Map;
+        expect(blocked['capture'], [true]);
+        expect(blocked['posted'], [
+          for (final (o, d) in [
+            ('https://explorer.0xmx.net', 'connect-src'),
+            ('https://img.example.com', 'img-src'),
+            ('https://old.example.com:8443', 'connect-src'),
+            ('https://after.example.com', 'connect-src'),
+            for (var i = 0; i < 12; i++)
+              ('https://h$i.example.com', 'connect-src'),
+          ])
+            {
+              'v': 1,
+              'token': token,
+              'type': 'blocked',
+              'payload': {'origin': o, 'directive': d},
+            },
+        ]);
+
         expect(out['idempotent'], isTrue);
         expect(out['frozen'], isTrue);
         expect(out['ignoresForeignMessages'], isTrue);
@@ -218,6 +290,7 @@ function env(ua) {
   const events = [];
   const windowMessages = [];
   const listeners = {};
+  const capture = {};
   const docListeners = {};
   class CustomEvent {
     constructor(type, init) {
@@ -248,7 +321,11 @@ function env(ua) {
     navigator: { userAgent: ua },
     document, CustomEvent, HTMLScriptElement, setTimeout,
     CampfireBeam: { postMessage(m) { posted.push(JSON.parse(m)); } },
-    addEventListener(t, f) { (listeners[t] = listeners[t] || []).push(f); },
+    URL,
+    addEventListener(t, f, c) {
+      (listeners[t] = listeners[t] || []).push(f);
+      (capture[t] = capture[t] || []).push(c === true);
+    },
     postMessage(data, origin, source) {
       windowMessages.push(data);
       // In a page, ev.source is the window itself: the context's global.
@@ -260,7 +337,9 @@ function env(ua) {
   vm.createContext(w);
   const inner = vm.runInContext('this', w);
   vm.runInContext(src, w);
-  return { w, posted, events, windowMessages, HTMLScriptElement };
+  return {
+    w, posted, events, windowMessages, HTMLScriptElement, listeners, capture,
+  };
 }
 
 (async () => {
@@ -332,6 +411,39 @@ function env(ua) {
     const e = env('Mozilla/5.0 (Windows NT 10.0)');
     e.w.__campfireBeam.handshake(false);
     out.rejected = { windowMessages: e.windowMessages, beamApi: !!e.w.BeamApi };
+  }
+
+  // Refused requests (securitypolicyviolation, as the browser fires it).
+  {
+    const e = env('Mozilla/5.0 (Macintosh)');
+    const fire = (ev) =>
+      (e.listeners.securitypolicyviolation || []).forEach((f) => f(ev));
+    const v = (d, uri, more) =>
+      Object.assign({ isTrusted: true, effectiveDirective: d,
+        blockedURI: uri }, more);
+    fire(v('connect-src', 'https://fake.example.com/', { isTrusted: false }));
+    fire(v('connect-src', 'https://explorer.0xmx.net/api/status'));
+    fire(v('connect-src', 'https://explorer.0xmx.net/api/hdrs?nMax=5'));
+    fire(v('img-src', 'https://IMG.example.com:443/a.png'));
+    fire({ isTrusted: true, violatedDirective: 'connect-src',
+      blockedURI: 'https://old.example.com:8443/x' });
+    fire(v('script-src-elem', 'https://cdn.example.com/x.js'));
+    fire(v('style-src-elem', 'https://fonts.googleapis.com/css'));
+    fire(v('connect-src', 'http://plain.example.com/'));
+    fire(v('connect-src', 'wss://socket.example.com/'));
+    fire(v('script-src', 'inline'));
+    fire(v('img-src', 'data'));
+    vm.runInContext(
+        'JSON.stringify = function () { return "{}"; };' +
+        'URL = function () { throw new Error("no"); };', e.w);
+    fire(v('connect-src', 'https://after.example.com/'));
+    for (let i = 0; i < 20; i++) {
+      fire(v('connect-src', `https://h${i}.example.com/`));
+    }
+    out.blocked = {
+      capture: e.capture.securitypolicyviolation,
+      posted: e.posted.filter((m) => m.type === 'blocked'),
+    };
   }
 
   // Loading twice changes nothing; the delivery object cannot be replaced.

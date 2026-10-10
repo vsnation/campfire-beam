@@ -237,4 +237,99 @@ void main() {
     expect(await installer.savedPort(testGuid), isNull);
     expect(() => installer.savePort(testGuid, 70000), throwsArgumentError);
   });
+
+  group('servers a dApp may reach', () {
+    const explorer = 'https://explorer.0xmx.net';
+    const node = 'https://beamsmart.net:8000';
+    String file() =>
+        p.join(installer.dataDirectory(testGuid), 'remote_origins.json');
+
+    test('round trip: allowed in order, kept once, taken back', () async {
+      await installer.install(DappPackage.read(testPackage()));
+      expect(await installer.allowedOrigins(testGuid), isEmpty);
+      expect(await installer.allowOrigin(testGuid, explorer), [explorer]);
+      expect(await installer.allowOrigin(testGuid, node), [explorer, node]);
+      expect(await installer.allowOrigin(testGuid, explorer), [explorer, node]);
+      // A new installer reads what the last one wrote.
+      expect(await DappInstaller(tmp.path).allowedOrigins(testGuid), [
+        explorer,
+        node,
+      ]);
+      expect(jsonDecode(File(file()).readAsStringSync()), {
+        'format': 1,
+        'origins': [explorer, node],
+      });
+      expect(await installer.revokeOrigin(testGuid, explorer), [node]);
+      expect(await installer.allowedOrigins(testGuid), [node]);
+      expect(await installer.revokeOrigin(testGuid, explorer), [node]);
+      expect(File('${file()}.part').existsSync(), isFalse);
+    });
+
+    test('kept through a replace, deleted with the dApp', () async {
+      await installer.install(DappPackage.read(testPackage()));
+      await installer.allowOrigin(testGuid, explorer);
+      await installer.install(
+        DappPackage.read(testPackage(manifest: {'version': '1.2.4'})),
+        replace: true,
+      );
+      expect(await installer.allowedOrigins(testGuid), [explorer]);
+      expect(await installer.uninstall(testGuid), isTrue);
+      expect(await installer.allowedOrigins(testGuid), isEmpty);
+      await installer.install(DappPackage.read(testPackage()));
+      expect(await installer.allowedOrigins(testGuid), isEmpty);
+    });
+
+    test('refuses what a dApp may not reach, a dApp that is not '
+        'installed, and a 17th server', () async {
+      await expectLater(
+        installer.allowOrigin(testGuid, explorer),
+        throwsA(isA<StateError>()),
+      );
+      await installer.install(DappPackage.read(testPackage()));
+      for (final bad in [
+        'https://localhost',
+        'https://192.168.1.10',
+        'http://explorer.0xmx.net',
+        'https://explorer.0xmx.net:443',
+        'https://*.0xmx.net',
+      ]) {
+        await expectLater(
+          installer.allowOrigin(testGuid, bad),
+          throwsArgumentError,
+          reason: bad,
+        );
+      }
+      for (var i = 0; i < 16; i++) {
+        await installer.allowOrigin(testGuid, 'https://h$i.example.com');
+      }
+      await expectLater(
+        installer.allowOrigin(testGuid, explorer),
+        throwsA(isA<StateError>()),
+      );
+      expect(await installer.allowedOrigins(testGuid), hasLength(16));
+      await expectLater(installer.allowedOrigins('../x'), throwsArgumentError);
+    });
+
+    test('a damaged or edited file gives only valid servers', () async {
+      await installer.install(DappPackage.read(testPackage()));
+      File(file()).writeAsStringSync('{not json');
+      expect(await installer.allowedOrigins(testGuid), isEmpty);
+      File(file()).writeAsStringSync(
+        jsonEncode({
+          'format': 1,
+          'origins': [
+            explorer,
+            'https://127.0.0.1',
+            explorer,
+            42,
+            "https://a.com; script-src *",
+            node,
+          ],
+        }),
+      );
+      expect(await installer.allowedOrigins(testGuid), [explorer, node]);
+      // Writing again keeps only those.
+      expect(await installer.revokeOrigin(testGuid, node), [explorer]);
+    });
+  });
 }

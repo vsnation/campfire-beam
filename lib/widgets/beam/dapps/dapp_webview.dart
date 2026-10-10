@@ -24,6 +24,25 @@ bool dappWebviewAvailable() => WebViewPlatform.instance != null;
 const String dappWindowPlatformsSentence =
     "Campfire opens dApps on macOS, Android and iOS.";
 
+/// What the dApp page needs of the window a dApp is shown in.
+abstract interface class DappWebview {
+  Widget widget();
+
+  /// Loads the page again (a new page session, and the server's current
+  /// CSP).
+  Future<void> reload();
+}
+
+/// Makes the window for [session] and loads the dApp in it
+/// ([DappWebviewGlue.create]; tests give their own).
+typedef DappWebviewFactory = Future<DappWebview> Function({
+  required DappHostSession session,
+  required Color background,
+  required void Function(Uri url) onExternalLink,
+  void Function()? onLoaded,
+  void Function(String description)? onLoadFailed,
+});
+
 /// Wires one [WebViewController] to a [DappHostSession]:
 ///
 /// * the [dappBridgeChannelName] JavaScript channel → [DappHostSession]
@@ -41,7 +60,7 @@ const String dappWindowPlatformsSentence =
 ///   draws white), so the browser view keeps the webview covered until the
 ///   page has loaded; the page itself is painted by the server's host
 ///   stylesheet.
-class DappWebviewGlue {
+class DappWebviewGlue implements DappWebview {
   DappWebviewGlue._(this.controller, this.session);
 
   /// Creates the controller and loads the dApp. Only call when
@@ -104,5 +123,9 @@ class DappWebviewGlue {
   final WebViewController controller;
   final DappHostSession session;
 
+  @override
   Widget widget() => WebViewWidget(controller: controller);
+
+  @override
+  Future<void> reload() => controller.reload();
 }

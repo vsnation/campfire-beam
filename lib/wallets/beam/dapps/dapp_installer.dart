@@ -20,6 +20,7 @@ import 'dapp_api_version.dart';
 import 'dapp_errors.dart';
 import 'dapp_manifest.dart';
 import 'dapp_package.dart';
+import 'dapp_remote_origins.dart';
 
 /// An installed dApp.
 @immutable
@@ -53,6 +54,7 @@ class DappInstallation {
 /// <root>/dapps/<guid>/<version>/files/…        the package, served as is
 /// <root>/dapps/<guid>/port                     the dApp's serving port
 /// <root>/dapps/<guid>/scope.json               the dApp's own txs/addresses
+/// <root>/dapps/<guid>/remote_origins.json      servers it may reach
 /// ```
 ///
 /// `<guid>` is only ever the canonical 32-hex form from [DappManifest];
@@ -73,6 +75,7 @@ class DappInstaller {
   static const filesDirName = 'files';
   static const recordFileName = 'install.json';
   static const _portFileName = 'port';
+  static const _remoteOriginsFileName = 'remote_origins.json';
 
   Future<void> _tail = Future.value();
 
@@ -368,6 +371,81 @@ class DappInstaller {
     if (!await dir.exists()) return;
     await _serial(() => _claimOrigin(guid, port));
     await File(p.join(dir.path, _portFileName)).writeAsString('$port');
+  }
+
+  /// The https origins the person let the dApp reach (a dApp installed
+  /// from a file; see [dappRemoteOriginFor]), in the order they were
+  /// allowed. Kept with the dApp's own data: a replace keeps them, an
+  /// uninstall deletes them. Anything else in the file is ignored.
+  Future<List<String>> allowedOrigins(String guid) =>
+      _serial(() => _readAllowed(guid));
+
+  /// Lets the dApp reach [origin] too. Returns the new list. Throws
+  /// [ArgumentError] for an origin a dApp may not be allowed, [StateError]
+  /// when the dApp is not installed or already has
+  /// [dappMaxFileOrigins].
+  Future<List<String>> allowOrigin(String guid, String origin) {
+    if (dappRemoteOriginFor(origin) != origin) {
+      return Future.error(
+        ArgumentError.value(origin, 'origin', 'not an origin a dApp may reach'),
+      );
+    }
+    return _serial(() async {
+      final now = await _readAllowed(guid);
+      if (now.contains(origin)) return now;
+      if (now.length >= dappMaxFileOrigins) {
+        throw StateError(
+          'the dApp already reaches $dappMaxFileOrigins servers',
+        );
+      }
+      return _writeAllowed(guid, [...now, origin]);
+    });
+  }
+
+  /// The dApp may no longer reach [origin]. Returns the new list.
+  Future<List<String>> revokeOrigin(String guid, String origin) =>
+      _serial(() async {
+        final now = await _readAllowed(guid);
+        return _writeAllowed(guid, [
+          for (final o in now)
+            if (o != origin) o,
+        ]);
+      });
+
+  Future<List<String>> _readAllowed(String guid) async {
+    final file = File(p.join(dataDirectory(guid), _remoteOriginsFileName));
+    try {
+      final json = jsonDecode(await file.readAsString());
+      final list = json is Map ? json['origins'] : null;
+      if (list is! List) return const [];
+      final out = <String>[];
+      for (final o in list) {
+        if (o is String &&
+            dappRemoteOriginFor(o) == o &&
+            !out.contains(o) &&
+            out.length < dappMaxFileOrigins) {
+          out.add(o);
+        }
+      }
+      return List.unmodifiable(out);
+    } on FileSystemException {
+      return const [];
+    } on FormatException {
+      return const [];
+    }
+  }
+
+  Future<List<String>> _writeAllowed(String guid, List<String> origins) async {
+    final dir = Directory(dataDirectory(guid));
+    if (!await dir.exists()) throw StateError('$guid is not installed');
+    final target = p.join(dir.path, _remoteOriginsFileName);
+    final tmp = File('$target.part');
+    await tmp.writeAsString(
+      jsonEncode({'format': 1, 'origins': origins}),
+      flush: true,
+    );
+    await tmp.rename(target);
+    return List.unmodifiable(origins);
   }
 
   /// Every loopback port a dApp other than [guid] has been served on: its

@@ -18,6 +18,7 @@ import 'dapp_bridge_js.dart';
 import 'dapp_errors.dart';
 import 'dapp_installer.dart';
 import 'dapp_manifest.dart';
+import 'dapp_remote_origins.dart';
 
 /// The Content-Security-Policy every response of a dApp carries.
 ///
@@ -25,7 +26,10 @@ import 'dapp_manifest.dart';
 /// (checked by reading all 9 packages, 2026-10-06):
 ///
 /// * `script-src 'self'`: the package's own scripts and the bridge. No
-///   package has an inline `<script>` or an inline event handler.
+///   bundled package has an inline `<script>` or an inline event handler.
+/// * `'unsafe-inline'` ([allowInline]): a dApp installed from a file only.
+///   Single-file dApps are one inline script with inline handlers, and next
+///   to `'unsafe-eval'` it gives a page nothing more.
 /// * `'unsafe-eval'` ([allowEval]): 7 packages are webpack `devtool: eval`
 ///   builds (every module is an `eval("…")` string, 600 to 970 per
 ///   bundle) and the emscripten glue in 3 uses `new Function`; without it
@@ -40,37 +44,53 @@ import 'dapp_manifest.dart';
 /// * `connect-src 'self'`: a dApp fetches its own app shader
 ///   (`fetch('./app.wasm')`).
 /// * [remoteOrigins], added to `connect-src` and `img-src`: named https
-///   origins only, for the price and bridge-fee APIs some packages call
-///   (see `dappBundledCatalogue`). None by default.
+///   origins only ([dappRemoteOriginFor]), for the price and bridge-fee
+///   APIs some packages call (see `dappBundledCatalogue`), or the servers
+///   the person let a dApp from a file reach. None by default.
 /// * `worker-src 'self'`: the wasm-client worker (headless mode only).
 ///
 /// Everything else is `'none'`: no frames, plugins, `<base>`, form posts,
 /// or framing of the dApp by anything.
 @immutable
 class DappCsp {
-  const DappCsp({this.allowEval = true, this.remoteOrigins = const []});
+  const DappCsp({
+    this.allowEval = true,
+    this.allowInline = false,
+    this.remoteOrigins = const [],
+  });
+
+  /// A dApp installed from a file: eval and inline scripts, and exactly the
+  /// servers the person allowed for it.
+  const DappCsp.fromFile(List<String> allowedOrigins)
+    : this(allowInline: true, remoteOrigins: allowedOrigins);
 
   final bool allowEval;
+  final bool allowInline;
 
   /// `https://host[:port]` origins the dApp may fetch from and load images
   /// from.
   final List<String> remoteOrigins;
 
-  static final _origin = RegExp(
-    r'^https://[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*'
-    r'(:[0-9]{1,5})?$',
-  );
-
   String get header {
     for (final o in remoteOrigins) {
-      if (!_origin.hasMatch(o)) {
+      if (dappRemoteOriginFor(o) != o) {
         throw ArgumentError.value(o, 'remoteOrigins', 'https origin only');
       }
     }
+    if (remoteOrigins.length > dappMaxFileOrigins ||
+        remoteOrigins.toSet().length != remoteOrigins.length) {
+      throw ArgumentError.value(
+        remoteOrigins,
+        'remoteOrigins',
+        'too many or repeated origins',
+      );
+    }
     final remote = remoteOrigins.isEmpty ? '' : ' ${remoteOrigins.join(' ')}';
+    final inline = allowInline ? " 'unsafe-inline'" : '';
+    final eval = allowEval ? " 'unsafe-eval'" : '';
     return [
       "default-src 'none'",
-      "script-src 'self'${allowEval ? " 'unsafe-eval'" : ''}",
+      "script-src 'self'$inline$eval",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:$remote",
       "media-src 'self' data: blob:",
@@ -127,7 +147,13 @@ class DappServer {
   final String _root;
   final String _token;
   final Map<String, Object> _style;
-  final String _cspHeader;
+  String _cspHeader;
+
+  /// Every response from now on carries [csp] (a dApp from a file was
+  /// allowed, or no longer allowed, to reach a server); a page has it once
+  /// it is reloaded. Throws [ArgumentError] for an origin [DappCsp] refuses,
+  /// and then keeps the policy it had.
+  set csp(DappCsp csp) => _cspHeader = csp.header;
 
   /// True when the saved port was taken and the dApp got a new one (its
   /// browser storage starts empty on the new origin).

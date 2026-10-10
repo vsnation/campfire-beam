@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:stackwallet/wallets/beam/dapps/dapp_bridge.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_bridge_js.dart';
+import 'package:stackwallet/wallets/beam/dapps/dapp_catalogue.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_installer.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_package.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_server.dart';
@@ -95,6 +96,26 @@ void main() {
     expect(r.headers['cache-control'], 'no-store');
     expect(r.headers['permissions-policy'], contains('camera=()'));
   }
+
+  test('a new policy reaches the next response; a refused one changes '
+      'nothing', () async {
+    final before = await raw(server.port, '/app/index.html');
+    expect(before.headers['content-security-policy'], const DappCsp().header);
+    const wider = DappCsp.fromFile(['https://explorer.0xmx.net']);
+    server.csp = wider;
+    final after = await raw(server.port, '/app/index.html');
+    expect(after.headers['content-security-policy'], wider.header);
+    expect(
+      after.headers['content-security-policy'],
+      contains("connect-src 'self' https://explorer.0xmx.net;"),
+    );
+    expect(
+      () => server.csp = const DappCsp.fromFile(['https://localhost']),
+      throwsArgumentError,
+    );
+    final still = await raw(server.port, '/app/index.js');
+    expect(still.headers['content-security-policy'], wider.header);
+  });
 
   test('binds 127.0.0.1 only', () {
     expect(server.origin, 'http://127.0.0.1:${server.port}');
@@ -383,6 +404,10 @@ void main() {
         'https://a.com/path',
         "https://a.com; script-src *",
         '*',
+        'https://localhost',
+        'https://127.0.0.1',
+        'https://printer.local',
+        'https://a.com:443',
       ]) {
         expect(
           () => DappCsp(remoteOrigins: [bad]).header,
@@ -390,6 +415,105 @@ void main() {
           reason: bad,
         );
       }
+    });
+
+    test('CSP: a bundled dApp never gets inline scripts; its servers are '
+        "the catalogue's", () {
+      for (final e in dappBundledCatalogue) {
+        for (final remote in [false, true]) {
+          final h = DappCsp(
+            allowEval: e.needsEval,
+            remoteOrigins: remote ? e.remoteOrigins : const [],
+          ).header;
+          final script = h
+              .split('; ')
+              .firstWhere((d) => d.startsWith('script-src'));
+          expect(
+            script,
+            e.needsEval
+                ? "script-src 'self' 'unsafe-eval'"
+                : "script-src 'self'",
+            reason: e.name,
+          );
+        }
+      }
+      final minter = dappBundledCatalogue
+          .firstWhere((e) => e.name == 'Beam Asset Minter')
+          .csp
+          .header;
+      expect(
+        minter,
+        contains(
+          "connect-src 'self' https://api.coingecko.com "
+          'https://explorer-api.beam.mw;',
+        ),
+      );
+      expect(
+        minter,
+        contains(
+          "img-src 'self' data: blob: https://api.coingecko.com "
+          'https://explorer-api.beam.mw;',
+        ),
+      );
+    });
+
+    test('CSP: a dApp from a file gets eval and inline scripts, and no '
+        'server until one is allowed', () {
+      final none = const DappCsp.fromFile([]).header;
+      expect(
+        none,
+        contains("script-src 'self' 'unsafe-inline' 'unsafe-eval';"),
+      );
+      expect(none, contains("connect-src 'self';"));
+      expect(none, contains("img-src 'self' data: blob:;"));
+      expect(none, contains("frame-src 'none'"));
+      expect(none, contains("object-src 'none'"));
+      expect(none, contains("default-src 'none'"));
+      // Styles were always inline-capable; scripts only for a file now.
+      expect("'unsafe-inline'".allMatches(const DappCsp().header).length, 1);
+      expect("'unsafe-inline'".allMatches(none).length, 2);
+
+      final two = const DappCsp.fromFile([
+        'https://explorer.0xmx.net',
+        'https://beamsmart.net:8000',
+      ]).header;
+      expect(
+        two,
+        contains(
+          "connect-src 'self' https://explorer.0xmx.net "
+          'https://beamsmart.net:8000;',
+        ),
+      );
+      expect(
+        two,
+        contains(
+          "img-src 'self' data: blob: https://explorer.0xmx.net "
+          'https://beamsmart.net:8000;',
+        ),
+      );
+      // Servers never reach script, style, font, frame or worker sources.
+      for (final d in two.split('; ')) {
+        if (!d.startsWith('connect-src') && !d.startsWith('img-src')) {
+          expect(d, isNot(contains('0xmx')), reason: d);
+        }
+      }
+      expect(
+        () => DappCsp.fromFile([
+          for (var i = 0; i < 17; i++) 'https://h$i.example.com',
+        ]).header,
+        throwsArgumentError,
+      );
+      expect(
+        () => const DappCsp.fromFile([
+          'https://a.example.com',
+          'https://a.example.com',
+        ]).header,
+        throwsArgumentError,
+      );
+      expect(
+        () => const DappCsp.fromFile(['https://10.0.0.1']).header,
+        throwsArgumentError,
+      );
     });
   });
 }

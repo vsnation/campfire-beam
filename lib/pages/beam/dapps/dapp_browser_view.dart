@@ -34,6 +34,10 @@
 // * A platform without the dApp window: says so, and offers the way back.
 // * A link that silently leaves the wallet: links to other sites ask first,
 //   then open in the system browser.
+// * A dApp from a file that silently can't load its data: when its page is
+//   refused a server, Campfire asks once per server whether it may connect
+//   (Allow reloads it), and More (⋯) lists the servers it may reach, each
+//   with Remove access.
 
 import 'dart:async';
 
@@ -50,6 +54,7 @@ import '../../../utilities/prefs.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../utilities/util.dart';
 import '../../../wallets/beam/dapps/dapp_installer.dart';
+import '../../../wallets/beam/dapps/dapp_remote_origins.dart';
 import '../../../wallets/beam/dapps/dapp_session.dart';
 import '../../../wallets/beam/dapps/host/dapp_approval_model.dart';
 import '../../../wallets/beam/dapps/host/dapp_host.dart';
@@ -60,6 +65,7 @@ import '../../../wallets/beam/sync/beam_sync_messages.dart';
 import '../../../widgets/background.dart';
 import '../../../widgets/beam/dapps/dapp_approval_banner.dart';
 import '../../../widgets/beam/dapps/dapp_approval_sheet.dart';
+import '../../../widgets/beam/dapps/dapp_network_sheets.dart';
 import '../../../widgets/beam/dapps/dapp_surface.dart';
 import '../../../widgets/beam/dapps/dapp_tap_tracker.dart';
 import '../../../widgets/beam/dapps/dapp_webview.dart';
@@ -82,9 +88,14 @@ class DappBrowserView extends ConsumerStatefulWidget {
     this.desktop,
     this.webviewAvailable,
     this.authenticate,
+    this.webviewFactory,
+    this.torOn,
   });
 
   static const String routeName = "/beamDappBrowser";
+
+  /// More (⋯) in the title bar of a dApp installed from a file.
+  static const moreKey = Key('dappMore');
 
   /// A request that arrives within this long of the user's last tap on the
   /// page opens its review after [DappApprovalBanner.openDelay]; a later one
@@ -103,6 +114,12 @@ class DappBrowserView extends ConsumerStatefulWidget {
   /// Overrides Campfire's PIN / password check (tests).
   final DappApprovalAuthenticator? authenticate;
 
+  /// Overrides the dApp window (tests); [DappWebviewGlue.create] otherwise.
+  final DappWebviewFactory? webviewFactory;
+
+  /// Overrides whether Tor is on (tests).
+  final bool? torOn;
+
   @override
   ConsumerState<DappBrowserView> createState() => _DappBrowserViewState();
 }
@@ -117,7 +134,7 @@ class _PendingBanner {
 
 class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
   DappHostSession? _session;
-  DappWebviewGlue? _glue;
+  DappWebview? _glue;
   bool _loading = true;
   String? _failure;
   final _taps = DappTapTracker();
@@ -139,9 +156,20 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
   static const _coverAtMost = Duration(seconds: 12);
   Timer? _coverTimer;
 
+  /// Servers the page was refused, waiting to be asked about one at a
+  /// time; the one on screen; and those answered "Not now", which stay
+  /// unasked until the dApp is closed.
+  final _asks = <String>[];
+  String? _asking;
+  final _declined = <String>{};
+
   bool get _desktop => widget.desktop ?? Util.isDesktop;
   bool get _available => widget.webviewAvailable ?? dappWebviewAvailable();
   String get _name => widget.installation.manifest.name;
+
+  /// Installed from a file: it asks before reaching a server, and has More.
+  bool get _fromFile =>
+      DappHostSession.bundledEntryFor(widget.installation) == null;
 
   void _readWalletWait() {
     final wait = widget.host.wallet.walletWait;
@@ -184,6 +212,8 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
   }
 
   bool get _torOn {
+    final forced = widget.torOn;
+    if (forced != null) return forced;
     try {
       return Prefs.instance.useTor;
     } catch (_) {
@@ -205,6 +235,7 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
         consent: widget.host.consent,
         allowRemoteOrigins: !_torOn,
         onActivity: _onActivity,
+        onAskToReach: _askToReach,
       );
       if (_disposed) {
         await session.close();
@@ -212,7 +243,7 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
       }
       _session = session;
       if (!mounted) return;
-      final glue = await DappWebviewGlue.create(
+      final glue = await (widget.webviewFactory ?? DappWebviewGlue.create)(
         session: session,
         // What the page is drawn on, for platforms that honour it until
         // the page paints (Android, iOS); the cover below hides the rest.
@@ -231,10 +262,7 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
         },
       );
       if (mounted) setState(() => _glue = glue);
-      _coverTimer?.cancel();
-      _coverTimer = Timer(_coverAtMost, () {
-        if (mounted && _loading) setState(() => _loading = false);
-      });
+      _coverUntilLoaded();
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -244,6 +272,139 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
       }
     }
   }
+
+  void _coverUntilLoaded() {
+    _coverTimer?.cancel();
+    _coverTimer = Timer(_coverAtMost, () {
+      if (mounted && _loading) setState(() => _loading = false);
+    });
+  }
+
+  /// Loads the page again, behind the "Opening…" cover, with the server's
+  /// current CSP; starts over when there is no page.
+  Future<void> _reload() async {
+    if (!_available || !mounted) return;
+    final glue = _glue;
+    if (glue == null) return _restart();
+    setState(() => _loading = true);
+    _coverUntilLoaded();
+    try {
+      await glue.reload();
+    } catch (_) {
+      if (mounted) await _restart();
+    }
+  }
+
+  // ------------------------------------------------------ servers it reaches
+
+  void _askToReach(String origin) {
+    if (!mounted || _declined.contains(origin) || _asks.contains(origin)) {
+      return;
+    }
+    _asks.add(origin);
+    unawaited(_askNext());
+  }
+
+  /// One prompt at a time, in the order the page was refused.
+  Future<void> _askNext() async {
+    if (_asking != null || _asks.isEmpty || !mounted) return;
+    final origin = _asks.removeAt(0);
+    _asking = origin;
+    final host = dappOriginHost(origin);
+    final bool allow;
+    try {
+      allow = await showDappReachPrompt(
+        context,
+        name: _name,
+        origin: origin,
+        desktop: _desktop,
+        torOn: _torOn,
+      );
+    } finally {
+      _asking = null;
+    }
+    if (!mounted) return;
+    if (!allow) {
+      _declined.add(origin);
+      return _askNext();
+    }
+    final session = _session;
+    try {
+      if (session == null || session.isClosed) throw StateError('closed');
+      await session.allowOrigin(origin);
+    } catch (_) {
+      if (mounted) {
+        _notice(
+          DappNetworkText.allowFailed(_name, host),
+          type: FlushBarType.warning,
+        );
+      }
+      return _askNext();
+    }
+    if (!mounted || !identical(session, _session)) return;
+    _notice(DappNetworkText.allowed(_name, host), type: FlushBarType.success);
+    await _reload();
+    return _askNext();
+  }
+
+  Future<void> _showServers() async {
+    final session = _session;
+    List<String> origins;
+    try {
+      origins = session != null && !session.isClosed
+          ? session.allowedOrigins
+          : await (await widget.host.installer()).allowedOrigins(
+              widget.installation.guid,
+            );
+    } catch (_) {
+      origins = const [];
+    }
+    if (!mounted) return;
+    final m = widget.installation.manifest;
+    final choice = await showDappServersSheet(
+      context,
+      name: _name,
+      meta: DappNetworkText.meta(version: m.version, publisher: m.publisher),
+      origins: origins,
+      desktop: _desktop,
+    );
+    if (choice == null || !mounted) return;
+    final origin = choice.origin;
+    if (origin == null) return _reload();
+    try {
+      final now = _session;
+      if (now != null && !now.isClosed) {
+        await now.revokeOrigin(origin);
+      } else {
+        await (await widget.host.installer()).revokeOrigin(
+          widget.installation.guid,
+          origin,
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        _notice(
+          DappNetworkText.revokeFailed(_name),
+          type: FlushBarType.warning,
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    _declined.remove(origin);
+    _notice(DappNetworkText.revoked(_name, dappOriginHost(origin)));
+    await _reload();
+  }
+
+  void _notice(String message, {FlushBarType type = FlushBarType.info}) =>
+      unawaited(
+        showFloatingFlushBar(
+          type: type,
+          message: message,
+          context: context,
+          duration: Duration(seconds: type == FlushBarType.warning ? 5 : 4),
+        ),
+      );
 
   Future<void> _restart() async {
     final old = _session;
@@ -269,7 +430,7 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
           type: FlushBarType.warning,
           message:
               "${activity.dapp.name}: ${activity.detail ?? "Campfire "
-                  "refused a request. Nothing was sent."}",
+                      "refused a request. Nothing was sent."}",
           context: context,
         ),
       );
@@ -466,14 +627,30 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
                   onPressed: Navigator.of(context).pop,
                 ),
                 const SizedBox(width: 12),
-                Flexible(
+                Expanded(
                   child: Text(
                     _name,
                     style: STextStyles.desktopH3(context),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Spacer(),
+                if (_fromFile) ...[
+                  AppBarIconButton(
+                    key: DappBrowserView.moreKey,
+                    size: 32,
+                    color: colors.textFieldDefaultBG,
+                    shadows: const [],
+                    semanticsLabel: DappNetworkText.more,
+                    tooltip: DappNetworkText.more,
+                    icon: Icon(
+                      Icons.more_horiz,
+                      size: 20,
+                      color: colors.topNavIconPrimary,
+                    ),
+                    onPressed: () => unawaited(_showServers()),
+                  ),
+                  const SizedBox(width: 24),
+                ],
               ],
             ),
           ),
@@ -495,6 +672,18 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
                 style: STextStyles.navBarTitle(context),
                 overflow: TextOverflow.ellipsis,
               ),
+              actions: [
+                if (_fromFile)
+                  IconButton(
+                    key: DappBrowserView.moreKey,
+                    tooltip: DappNetworkText.more,
+                    icon: Icon(
+                      Icons.more_horiz,
+                      color: colors.topNavIconPrimary,
+                    ),
+                    onPressed: () => unawaited(_showServers()),
+                  ),
+              ],
             ),
             // The dApp's background reaches into the safe-area margins.
             body: ColoredBox(
@@ -590,19 +779,18 @@ class _DappBrowserViewState extends ConsumerState<DappBrowserView> {
 /// What the strip above a dApp says while the wallet core cannot serve it:
 /// what is happening, what it means for the dApp, and what happens next.
 abstract final class DappWalletWaitText {
-  static String title(DappWalletWait wait, String name) =>
-      switch (wait.kind) {
-        DappWalletWaitKind.connecting =>
-          "Your wallet is still connecting — $name may not load until "
-              "it's connected.",
-        DappWalletWaitKind.catchingUp =>
-          "Your wallet is catching up — $name may not load until it's done.",
-        DappWalletWaitKind.unreachable =>
-          "Your wallet can't reach the network — $name can't load until it "
-              "does.",
-        DappWalletWaitKind.stuck =>
-          "Your wallet has stopped updating — $name may show old numbers.",
-      };
+  static String title(DappWalletWait wait, String name) => switch (wait.kind) {
+    DappWalletWaitKind.connecting =>
+      "Your wallet is still connecting — $name may not load until "
+          "it's connected.",
+    DappWalletWaitKind.catchingUp =>
+      "Your wallet is catching up — $name may not load until it's done.",
+    DappWalletWaitKind.unreachable =>
+      "Your wallet can't reach the network — $name can't load until it "
+          "does.",
+    DappWalletWaitKind.stuck =>
+      "Your wallet has stopped updating — $name may show old numbers.",
+  };
 
   static String next(DappWalletWait wait) => switch (wait.kind) {
     DappWalletWaitKind.connecting =>

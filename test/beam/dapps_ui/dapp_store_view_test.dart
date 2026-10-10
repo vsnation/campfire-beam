@@ -33,6 +33,12 @@ import '../dapps/dapp_test_zip.dart';
 import 'dapp_ui_harness.dart';
 
 const dexGuid = 'db851322f6674a6da3e84e9953db2ffd';
+
+/// The pinned Beam DEX package's SHA-256: an install with it is the bundled
+/// dApp.
+final dexSha256 = dappBundledCatalogue
+    .firstWhere((e) => e.guid == dexGuid)
+    .sha256;
 const ownGuid = 'f00dfeedf00dfeedf00dfeedf00dfeed';
 
 /// The DEX entry of the real catalogue, pinned to [bytes] instead (the
@@ -256,7 +262,8 @@ void main() {
         version: '1.0.0',
       ),
       apiVersion: DappApiVersion.v7_0,
-      packageSha256: '00' * 32,
+      // The pinned package: a bundled dApp (no More, no servers to ask).
+      packageSha256: dexSha256,
       directory: '${root.path}/dapps/$dexGuid/1.0.0',
       installedAt: DateTime.utc(2026, 10, 6),
     );
@@ -298,7 +305,8 @@ void main() {
         version: '1.0.0',
       ),
       apiVersion: DappApiVersion.v7_0,
-      packageSha256: '00' * 32,
+      // The pinned package: a bundled dApp (no More, no servers to ask).
+      packageSha256: dexSha256,
       directory: '${root.path}/dapps/$dexGuid/1.0.0',
       installedAt: DateTime.utc(2026, 10, 6),
     );
@@ -385,6 +393,58 @@ void main() {
       find.textContaining(
         'Its name matches Beam DEX, one of the dApps Campfire checks, but '
         'it is a different app.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    c.dispose();
+  });
+
+  testWidgets('replacing a dApp from a file says which servers it keeps', (
+    tester,
+  ) async {
+    await loadCampfireFonts(tester);
+    setSurface(tester, const Size(375, 2400));
+    final c = await controller(tester, installSome: true);
+    final file = File('${root.path}/newer.dapp');
+    await tester.runAsync(() async {
+      await c.installer.allowOrigin(ownGuid, 'https://explorer.0xmx.net');
+      await c.installer.allowOrigin(ownGuid, 'https://beamsmart.net:8000');
+      await file.writeAsBytes(
+        testPackage(
+          manifest: {
+            'guid': ownGuid,
+            'name': 'Fuddle Tools',
+            'version': '0.4.0',
+            'icon': null,
+          },
+        ),
+      );
+    });
+    await tester.pumpWidget(
+      campfireApp(
+        home: DappStoreView(
+          host: hostFor(link(root)),
+          controller: c,
+          desktop: false,
+          webviewAvailable: true,
+          pickFile: () async => file.path,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.runAsync(() async {
+      await tester.tap(find.byKey(const Key('dappInstallFromFile')));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+    });
+    await tester.pumpAndSettle();
+
+    expect(find.text('Install Fuddle Tools?'), findsOneWidget);
+    expect(
+      find.textContaining(
+        'Replaces the installed version 0.3.1. It keeps the servers you let '
+        'it reach: explorer.0xmx.net, beamsmart.net:8000.',
       ),
       findsOneWidget,
     );

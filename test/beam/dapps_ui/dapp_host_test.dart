@@ -25,6 +25,7 @@ import 'package:stackwallet/wallets/beam/dapps/dapp_errors.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_installer.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_package.dart';
 import 'package:stackwallet/wallets/beam/dapps/dapp_scope.dart';
+import 'package:stackwallet/wallets/beam/dapps/dapp_server.dart';
 import 'package:stackwallet/wallets/beam/dapps/host/dapp_host_session.dart';
 import 'package:stackwallet/wallets/beam/dapps/host/dapp_package_fetcher.dart';
 import 'package:stackwallet/wallets/beam/dapps/host/dapp_shared_transport.dart';
@@ -336,6 +337,211 @@ void main() {
         throwsA(isA<SocketException>()),
       );
     });
+  });
+
+  group('servers a dApp from a file may reach', () {
+    late Directory root;
+    late DappInstaller installer;
+    late DappInstallation installation;
+    const explorer = 'https://explorer.0xmx.net';
+
+    setUp(() async {
+      root = await Directory.systemTemp.createTemp('cfb_dapp_reach_');
+      installer = DappInstaller(root.path);
+      installation = await installer.install(DappPackage.read(testPackage()));
+    });
+    tearDown(() async {
+      if (await root.exists()) await root.delete(recursive: true);
+    });
+
+    Future<({String csp, String token})> load(DappHostSession s) async {
+      final client = HttpClient();
+      try {
+        final res = await (await client.getUrl(s.startUri)).close();
+        final html = await utf8.decodeStream(res);
+        return (
+          csp: res.headers.value('content-security-policy')!,
+          token: RegExp(r'/__campfire/([0-9a-f]+)/bridge\.js')
+              .firstMatch(html)!
+              .group(1)!,
+        );
+      } finally {
+        client.close(force: true);
+      }
+    }
+
+    String refused(String token, String origin, [String d = 'connect-src']) =>
+        jsonEncode({
+          'v': 1,
+          'token': token,
+          'type': 'blocked',
+          'payload': {'origin': origin, 'directive': d},
+        });
+
+    Future<DappHostSession> start(
+      List<String> asked, {
+      List<DappCatalogueEntry> catalogue = dappBundledCatalogue,
+      bool allowRemoteOrigins = false,
+    }) => DappHostSession.start(
+      installation: installation,
+      installer: installer,
+      wallet: FakeWalletLink(root: root.path, transport: FakeTransport({})),
+      consent: DappWatchedConsentQueue(ScriptedPolicy()),
+      scopeStore: InMemoryDappScopeStore(),
+      onAskToReach: asked.add,
+      catalogue: catalogue,
+      allowRemoteOrigins: allowRemoteOrigins,
+    );
+
+    test('starts with inline scripts and no server; asks about each '
+        'refused public https server once', () async {
+      final asked = <String>[];
+      final s = await start(asked);
+      expect(s.fromFile, isTrue);
+      final page = await load(s);
+      expect(page.csp, const DappCsp.fromFile([]).header);
+      expect(page.csp, contains("script-src 'self' 'unsafe-inline'"));
+      s.pageStarted('${s.origin}/app/index.html', (_) async {});
+      for (final o in [
+        explorer,
+        explorer,
+        'https://img.example.com',
+        // Never asked about: not a public https server.
+        'https://localhost',
+        'https://10.0.0.1',
+        'https://printer.local',
+        'http://explorer.0xmx.net',
+        'https://explorer.0xmx.net:443',
+        'https://*.0xmx.net',
+      ]) {
+        await s.onMessage(refused(page.token, o));
+      }
+      await s.onMessage(
+        refused(page.token, 'https://img.example.com', 'img-src'),
+      );
+      expect(asked, [explorer, 'https://img.example.com']);
+
+      // A reload does not ask again ("Not now" lasts until it is closed),
+      // and no open dApp asks about more than 16 servers.
+      s.pageStarted('${s.origin}/app/index.html', (_) async {});
+      await s.onMessage(refused(page.token, explorer));
+      for (var i = 0; i < 20; i++) {
+        await s.onMessage(refused(page.token, 'https://h$i.example.com'));
+      }
+      expect(asked, hasLength(16));
+      expect(asked.take(3), [
+        explorer,
+        'https://img.example.com',
+        'https://h0.example.com',
+      ]);
+      await s.close();
+      await s.onMessage(refused(page.token, 'https://late.example.com'));
+      expect(asked, hasLength(16));
+    });
+
+    test('Allow saves it with the dApp and the next page load reaches it; '
+        'Remove access takes it back', () async {
+      final asked = <String>[];
+      final s = await start(asked);
+      var page = await load(s);
+      s.pageStarted('${s.origin}/app/index.html', (_) async {});
+      await s.onMessage(refused(page.token, explorer));
+      expect(asked, [explorer]);
+
+      await s.allowOrigin(explorer);
+      expect(s.allowedOrigins, [explorer]);
+      expect(await installer.allowedOrigins(testGuid), [explorer]);
+      page = await load(s);
+      expect(page.csp, const DappCsp.fromFile([explorer]).header);
+      expect(page.csp, contains("connect-src 'self' $explorer;"));
+      expect(page.csp, contains("img-src 'self' data: blob: $explorer;"));
+      await s.close();
+
+      // The next visit starts with it.
+      final again = await start(asked);
+      expect(again.allowedOrigins, [explorer]);
+      expect(
+        (await load(again)).csp,
+        contains("connect-src 'self' $explorer;"),
+      );
+
+      await again.revokeOrigin(explorer);
+      expect(again.allowedOrigins, isEmpty);
+      expect(await installer.allowedOrigins(testGuid), isEmpty);
+      page = await load(again);
+      expect(page.csp, contains("connect-src 'self';"));
+      // Taken back: it may ask again.
+      again.pageStarted('${again.origin}/app/index.html', (_) async {});
+      await again.onMessage(refused(page.token, explorer));
+      expect(asked, [explorer, explorer]);
+      await again.close();
+    });
+
+    test('a server that cannot be saved is not allowed, and may be asked '
+        'about again', () async {
+      final asked = <String>[];
+      final s = await start(asked);
+      final page = await load(s);
+      s.pageStarted('${s.origin}/app/index.html', (_) async {});
+      await s.onMessage(refused(page.token, explorer));
+      await installer.uninstall(testGuid);
+      await expectLater(s.allowOrigin(explorer), throwsA(isA<StateError>()));
+      expect(s.allowedOrigins, isEmpty);
+      expect(page.csp, contains("connect-src 'self';"));
+      await s.onMessage(refused(page.token, explorer));
+      expect(asked, [explorer, explorer]);
+      await s.close();
+    });
+
+    test(
+      "a bundled dApp is never asked: its servers are the catalogue's",
+      () async {
+        final bytes = testPackage();
+        final entry = DappCatalogueEntry(
+          fileName: 'test.dapp',
+          name: 'Test dApp',
+          guid: testGuid,
+          version: '1.2.3',
+          apiVersion: '7.0',
+          minApiVersion: '7.0',
+          sha256: crypto.sha256.convert(bytes).toString(),
+          size: bytes.length,
+          remoteOrigins: const ['https://api.coingecko.com'],
+        );
+        // Even with servers saved for its guid (it was a file once).
+        await installer.allowOrigin(testGuid, explorer);
+        final asked = <String>[];
+        for (final remote in [false, true]) {
+          final s = await start(
+            asked,
+            catalogue: [entry],
+            allowRemoteOrigins: remote,
+          );
+          expect(s.fromFile, isFalse);
+          expect(s.allowedOrigins, isEmpty);
+          final page = await load(s);
+          expect(
+            page.csp.split('; ').firstWhere((d) => d.startsWith('script-src')),
+            isNot(contains('unsafe-inline')),
+          );
+          expect(page.csp, isNot(contains('0xmx')));
+          expect(
+            page.csp,
+            contains(
+              remote
+                  ? "connect-src 'self' https://api.coingecko.com;"
+                  : "connect-src 'self';",
+            ),
+          );
+          s.pageStarted('${s.origin}/app/index.html', (_) async {});
+          await s.onMessage(refused(page.token, 'https://img.example.com'));
+          await expectLater(s.allowOrigin(explorer), throwsStateError);
+          await expectLater(s.revokeOrigin(explorer), throwsStateError);
+          await s.close();
+        }
+        expect(asked, isEmpty);
+      },
+    );
   });
 
   group('user agent', () {
