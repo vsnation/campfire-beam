@@ -450,6 +450,12 @@ export class Wallet {
     return r;
   }
 
+  /** The owner key, encrypted with the password the person typed (WalletSession.exportOwnerKey). */
+  async ownerKey(password) {
+    if (!this.session) throw new EngineError('stopped', 'The wallet is not open yet. Go back to Home, then try again.');
+    return this.session.exportOwnerKey(password);
+  }
+
   async stop() {
     for (const t of this.timers) clearInterval(t);
     this.timers = [];

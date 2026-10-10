@@ -1,0 +1,135 @@
+Campfire wasm patch 0106: export the owner key ("Show owner key").
+
+A BEAM node started with a wallet's owner key (beam-node --owner_key=<key>
+--pass=<password>) recognises every coin of that seed in the blocks it
+processes, offline and max-privacy payments included. The key lets the node
+see balances and history; it cannot spend. BEAM's CLI exports it with
+`beam-wallet export_owner_key` and the desktop and Android wallets through
+WalletClient::exportOwnerKey; the wasm client had no way to.
+
+This adds WasmWalletClient.exportOwnerKey(pass, cb) on a running wallet. On
+the wallet thread, which owns the database, it exports the owner Kdf exactly
+as those do: KeyString with the password `pass`, meta "0", ExportP. The web
+app opens wallet.db with a random database password, so `pass` is the
+password the person typed, and the node must be started with that same
+--pass. cb(key) runs on the main thread; cb(null) when the wallet is not
+running or the export failed. The callback is kept on the main thread (a val
+must not be released on another one), and the call is dropped if the client
+object is deleted first. Neither the password nor the key is logged.
+
+--- a/wasmclient/wasmclient.cpp
++++ b/wasmclient/wasmclient.cpp
+@@ -16,6 +16,7 @@
+ #include <emscripten/threading.h>
+ #include <emscripten/val.h>
+ #include <boost/algorithm/string.hpp>
++#include <map>
+ #include <queue>
+ #include <exception>
+ #include <filesystem>
+@@ -31,6 +32,7 @@
+ #include "mnemonic/mnemonic.h"
+ #include "utility/string_helpers.h"
+ #include "wasm_beamapi.h"
++#include "core/block_rw.h" // Campfire (wasm patch 0106): KeyString, for exportOwnerKey
+ #include "3rdparty/sqlite/sqlite3.h"
+ // Campfire (wasm patch 0105): SQLCipher's key/rekey for RekeyFile below.
+ // sqlite3.h declares them only under SQLITE_HAS_CODEC, which the sqlite
+@@ -503,6 +505,78 @@
+         m_BodyRequests = enable;
+     }
+ 
++    // Campfire (wasm patch 0106): "Show owner key". With the owner key a node
++    // the person runs recognises every coin of this seed, offline and
++    // max-privacy payments included; it can see them, not spend them. Exported
++    // exactly as `beam-wallet export_owner_key` and
++    // WalletClient::exportOwnerKey do: KeyString encrypted with `pass`, meta
++    // "0". `pass` is the password the person typed (the node is started with
++    // the same --pass), never the wallet.db password. Runs on the wallet
++    // thread, which owns the database; cb(key) on the main thread, cb(null)
++    // when the wallet is not running or the export failed. Neither the
++    // password nor the key is logged.
++    void ExportOwnerKey(const std::string& pass, val cb)
++    {
++        AssertMainThread();
++        if (!m_Client || !m_Client->isRunning() || pass.empty())
++        {
++            cb(val::null());
++            return;
++        }
++        // The callback stays on this thread: a val must not be released on another one.
++        const uint32_t id = ++m_OwnerKeyRequests;
++        m_OwnerKeyCallbacks.emplace(id, std::move(cb));
++        auto secret = std::make_shared<SecString>(pass);
++        std::weak_ptr<int> alive = m_Alive;
++        m_Client->getAsync()->makeIWTCall([client = m_Client.get(), secret]() -> boost::any
++        {
++            std::string key;
++            try
++            {
++                auto db = client->GetWalletDB();
++                auto ownerKdf = db ? db->get_OwnerKdf() : nullptr;
++                if (ownerKdf)
++                {
++                    KeyString ks;
++                    ks.SetPassword(Blob(secret->data(), static_cast<uint32_t>(secret->size())));
++                    ks.m_sMeta = std::to_string(0);
++                    ks.ExportP(*ownerKdf);
++                    key = std::move(ks.m_sRes);
++                }
++            }
++            catch (const std::exception&)
++            {
++                key.clear();
++            }
++            secret->erase();
++            return boost::any(std::move(key));
++        },
++        [this, alive, id](const boost::any& res)
++        {
++            if (alive.expired())
++            {
++                return;
++            }
++            auto it = m_OwnerKeyCallbacks.find(id);
++            if (it == m_OwnerKeyCallbacks.end())
++            {
++                return;
++            }
++            val cb = std::move(it->second);
++            m_OwnerKeyCallbacks.erase(it);
++            auto* key = boost::any_cast<std::string>(&const_cast<boost::any&>(res));
++            if (key && !key->empty())
++            {
++                cb(*key);
++                ECC::SecureErase(key->data(), static_cast<uint32_t>(key->size()));
++            }
++            else
++            {
++                cb(val::null());
++            }
++        });
++    }
++
+     void ExecuteAPIRequest(const std::string& request)
+     {
+         AssertMainThread();
+@@ -1107,6 +1181,10 @@
+     bool m_Headless = false;
+     bool m_BodyRequests = true; // Campfire: upstream behaviour unless the app opts out
+     std::string m_CurrentRecoveryFile;
++    // Campfire (wasm patch 0106): exportOwnerKey callbacks, main thread only.
++    std::map<uint32_t, val> m_OwnerKeyCallbacks;
++    uint32_t m_OwnerKeyRequests = 0;
++    std::shared_ptr<int> m_Alive = std::make_shared<int>(0);
+ };
+ 
+ val WasmWalletClient::s_MountCB = val::null();
+@@ -1142,6 +1220,7 @@
+         .function("createAppAPI", &WasmWalletClient::CreateAppAPI3)
+         .function("importRecovery", &WasmWalletClient::ImportRecovery)
+         .function("importRecoveryFromFile", &WasmWalletClient::ImportRecoveryFromFile)
++        .function("exportOwnerKey", &WasmWalletClient::ExportOwnerKey) // Campfire: wasm patch 0106
+         .class_function("IsAppSupported", &WasmWalletClient::IsAppSupported)
+         .class_function("GenerateAppID", &WasmWalletClient::GenerateAppID)
+         .class_function("GeneratePhrase", &WasmWalletClient::GeneratePhrase)

@@ -12,11 +12,13 @@
 # emsdk by commit, Boost headers and OpenSSL 3.5.9 from the SHA-256-checked
 # tarballs in ../core/common.sh (BeamMW links a prebuilt OpenSSL 1.1.1).
 #
-# Outputs $WASM_ROOT/out/: wasm-client.js, wasm-client.wasm,
-# wasm-client.worker.js and SHA256SUMS.txt.
+# Outputs $BEAM_WASM_OUT (default $WASM_ROOT/out/): wasm-client.js,
+# wasm-client.wasm, wasm-client.worker.js and SHA256SUMS.txt.
 #
 # Env: JOBS (default 8), BEAM_CORE_BUILD_ROOT (default ~/Desktop/Beam/beam-core-build),
 #      BEAM_WASM_BUILD_ROOT (default $BEAM_CORE_BUILD_ROOT/wasm),
+#      BEAM_WASM_OUT (default $BEAM_WASM_BUILD_ROOT/out; another directory leaves
+#      the engine that other checkouts stage from untouched),
 #      BEAM_REPO_URL (default GitHub; a local clone of BeamMW/beam saves the download).
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../core/common.sh"
@@ -32,7 +34,7 @@ EMSDK_DIR="${WASM_ROOT}/emsdk"
 DEPS="${WASM_ROOT}/deps"
 WORK="${WASM_ROOT}/work"
 BUILD_DIR="${WASM_ROOT}/build"
-OUT="${WASM_ROOT}/out"
+OUT="${BEAM_WASM_OUT:-${WASM_ROOT}/out}"
 
 # The wasm build gets its own source tree, so the desktop tree stays exactly
 # "pinned commit + core patches" (prepare_source checks that).

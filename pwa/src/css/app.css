@@ -221,6 +221,9 @@ textarea.input { resize: none; min-height: 84px; }
 .qr { background: #fff; border-radius: var(--radius); padding: 12px; display: flex; justify-content: center; align-self: center; width: min(78vw, 300px); }
 .qr svg { width: 100%; height: auto; display: block; }
 .address-box { background: var(--surface); border-radius: var(--radius); padding: 12px 14px; }
+/* The owner key: one tap selects all of it, for pasting by hand if copying is refused. */
+.owner-key { font-size: 14px; line-height: 1.55; -webkit-user-select: all; user-select: all; }
+.okey-msg { scroll-margin-bottom: 100px; }
 
 .kv { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .kv:last-child { border-bottom: 0; }
@@ -280,6 +283,7 @@ details.more[open] summary { margin-bottom: 6px; }
 .grow { flex: 1; }
 
 .card p + p, .card .steps-list + p, .card h3 + p { margin-top: 8px; }
+.card .card-btn { margin-top: 12px; }
 @media (max-height: 700px) { .qr { width: min(56vw, 230px); padding: 8px; } }
 
 .asset-row { cursor: default; }

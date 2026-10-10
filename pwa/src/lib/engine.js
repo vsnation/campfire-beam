@@ -484,6 +484,40 @@ export class WalletSession {
     return syncFS(this.M);
   }
 
+  /**
+   * The owner key (wasm patch 0106), encrypted with `password` the way
+   * `beam-wallet export_owner_key` does it: a node started with
+   * --owner_key=<key> --pass=<password> reads it. `password` is the one the
+   * person typed, never the database password. The key is handed to the
+   * caller only: not logged, not kept here.
+   */
+  exportOwnerKey(password, { timeoutMs = 60000 } = {}) {
+    if (this.stopped || !this.client) return Promise.reject(new EngineError('stopped', 'The wallet is locked.'));
+    if (typeof this.client.exportOwnerKey !== 'function') return Promise.reject(new EngineError('engine', 'This engine build cannot show the owner key (it needs wasm patch 0106).'));
+    if (!password) return Promise.reject(new EngineError('owner_key', 'Enter your password.'));
+    return new Promise((resolve, reject) => {
+      let done = false;
+      const fail = (code, message) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        reject(new EngineError(code, message));
+      };
+      const timer = setTimeout(() => fail('timeout', 'The wallet did not answer. Try again.'), timeoutMs);
+      try {
+        this.client.exportOwnerKey(password, (key) => {
+          if (done) return;
+          if (typeof key !== 'string' || !key) return fail('owner_key', 'The owner key could not be read. Try again.');
+          done = true;
+          clearTimeout(timer);
+          resolve(key);
+        });
+      } catch {
+        fail('owner_key', 'The owner key could not be read. Try again.');
+      }
+    });
+  }
+
   async stop() {
     if (this.stopped) return;
     this.stopped = true;

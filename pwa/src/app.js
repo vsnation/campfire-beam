@@ -28,6 +28,7 @@ import settings from './screens/settings.js';
 import changePassword from './screens/change_password.js';
 import about from './screens/about.js';
 import deleteWallet from './screens/delete_wallet.js';
+import ownerKey from './screens/owner_key.js';
 import problem from './screens/problem.js';
 import install from './screens/install.js';
 import swap from './screens/swap.js';
@@ -44,13 +45,13 @@ import { consentLog, contractsState } from './lib/contracts.js';
 
 const SCREENS = {
   welcome, backup, confirmWords, restore, importWallet, setPassword, passkeySetup, ipNotice, fastStart, unlock,
-  home, send, review, txStatus, receive, activity, settings, changePassword, about, deleteWallet, problem, install, swap, dapps,
+  home, send, review, txStatus, receive, activity, settings, changePassword, about, deleteWallet, ownerKey, problem, install, swap, dapps,
   names, airdrop, airdropCreate, airdropBatches, airdropCodes,
   ...ETH_SCREENS,
   ...BUY_SCREENS,
 };
 // Screens that need an unlocked, running wallet.
-const NEEDS_WALLET = new Set(['home', 'send', 'review', 'txStatus', 'receive', 'activity', 'settings', 'changePassword', 'about', 'swap', 'dapps', 'names', 'airdrop', 'airdropCreate', 'airdropBatches', 'airdropCodes', ...Object.keys(ETH_SCREENS), ...Object.keys(BUY_SCREENS)]);
+const NEEDS_WALLET = new Set(['home', 'send', 'review', 'txStatus', 'receive', 'activity', 'settings', 'changePassword', 'about', 'ownerKey', 'swap', 'dapps', 'names', 'airdrop', 'airdropCreate', 'airdropBatches', 'airdropCodes', ...Object.keys(ETH_SCREENS), ...Object.keys(BUY_SCREENS)]);
 
 const root = document.getElementById('app');
 

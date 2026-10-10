@@ -4,8 +4,8 @@
   "build_script": "scripts/beam/wasm/build_wasm.sh",
   "rules_signature_contains": "3928666-96df3f33ee02ad9e",
   "files": {
-    "wasm-client.js": "68c784e45de57363241f9c9e68bf81a2d9b253221f8a8f45247cd99a84634bcf",
-    "wasm-client.wasm": "b86dd07950474beff01bd8a9103886a0230f549708814b4facef0e4444903ce8",
+    "wasm-client.js": "f4e61c591a1882f2129407c1ab9430dd83019910e235374c89a30af994f25e82",
+    "wasm-client.wasm": "760eb2c769b3e557cc13bdb67686fc99584d97b6cb25ee21b0d13f408f484ce3",
     "wasm-client.worker.js": "eff6668e83689221c3515bd0b29bf9db9a1c8067a73213be4abe142f396a4e0e"
   },
   "patches": [
@@ -13,6 +13,7 @@
     "scripts/beam/wasm/patches/0102-wasm-new-wallet-without-history-scan.patch",
     "scripts/beam/wasm/patches/0103-wasm-configured-node-only.patch",
     "scripts/beam/wasm/patches/0104-wasm-connection-events.patch",
-    "scripts/beam/wasm/patches/0105-wasm-rekey-file-for-export.patch"
+    "scripts/beam/wasm/patches/0105-wasm-rekey-file-for-export.patch",
+    "scripts/beam/wasm/patches/0106-wasm-export-owner-key.patch"
   ]
 }
