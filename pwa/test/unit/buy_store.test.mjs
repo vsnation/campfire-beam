@@ -52,7 +52,10 @@ test('a buy comes back as it was saved, newest first; nothing readable in storag
   assert.equal(all[1].chainName, 'Bitcoin');
   assert.equal(all[1].isOpen, true);
   const raw = JSON.stringify(kv.m.get(BUY_RECORD_KEY));
-  for (const secret of [DEPOSIT, BTC_REFUND, BEAM_ADDRESS, '0.0123', 'BTC']) assert.equal(raw.includes(secret), false, secret);
+  for (const secret of [DEPOSIT, BTC_REFUND, BEAM_ADDRESS, '0.0123']) assert.equal(raw.includes(secret), false, secret);
+  // A short word can turn up inside random ciphertext by chance: look for it
+  // outside the long base64 runs only.
+  assert.equal(raw.replace(/[A-Za-z0-9+/=_-]{16,}/g, '').includes('BTC'), false, 'BTC');
 });
 
 test('saving again replaces the buy, never adds a second; saves keep their order', async () => {

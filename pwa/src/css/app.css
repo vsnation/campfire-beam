@@ -225,7 +225,7 @@ textarea.input { resize: none; min-height: 84px; }
 .kv { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
 .kv:last-child { border-bottom: 0; }
 .kv .k { color: var(--muted); font-size: 15px; }
-.kv .v { font-weight: 600; text-align: right; word-break: break-all; }
+.kv .v { font-weight: 600; text-align: right; word-break: normal; overflow-wrap: anywhere; }
 .big-amount { font-size: 32px; font-weight: 700; text-align: center; margin: 8px 0; word-break: break-all; }
 
 .progress { height: 8px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
