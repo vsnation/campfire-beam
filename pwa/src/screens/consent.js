@@ -120,7 +120,7 @@ function bridgeCard(req, b, t) {
   if (b.kind === 'collect') {
     return h(
       'div',
-      { class: 'card', 'data-testid': 'consent-bridge' },
+      { class: 'card bridge-card', 'data-testid': 'consent-bridge' },
       kv('You collect', `${formatAmount(b.amount)} ${r.beamSymbol}`, 'consent-get-0'),
       kv('From', "BEAM's official bridge", 'consent-bridge-from', b.msgId != null ? `transfer #${b.msgId}, from your Ethereum wallet` : 'from your Ethereum wallet'),
       kv('Network fee', `${formatAmount(req.fee)} BEAM`, 'consent-fee'),
@@ -130,7 +130,7 @@ function bridgeCard(req, b, t) {
   const when = t.arrivesText(r, t.TO_ETHEREUM);
   return h(
     'div',
-    { class: 'card', 'data-testid': 'consent-bridge' },
+    { class: 'card bridge-card', 'data-testid': 'consent-bridge' },
     kv('You move', `${formatAmount(b.amount)} ${r.beamSymbol}`, 'consent-bridge-amount'),
     kv('Bridge fee', `${formatAmount(b.fee)} ${r.beamSymbol}`, 'consent-bridge-fee', 'paid to the bridge operator'),
     kv('Network fee', `${formatAmount(req.fee)} BEAM`, 'consent-fee'),
@@ -222,7 +222,8 @@ function showConsent(app, req, bridge, t) {
               ),
           h(
             'div',
-            { class: 'actions' },
+            // A move's sheet is long: its button stays in sight.
+            { class: bridge ? 'actions sheet-actions' : 'actions' },
             enough ? h('button', { class: 'btn btn-primary wrap', 'data-testid': 'consent-approve', onclick: approve }, label) : null,
             // The wallet's own swap: the way out of "not enough" is one tap away. (A dApp stays open; its text says where.)
             !enough && native

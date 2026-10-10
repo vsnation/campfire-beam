@@ -179,7 +179,7 @@ export function stepList(steps) {
 /** One move in a list: where it goes, where it is, when it started. */
 export function crossingRow(ctl, c, onclick) {
   const w = crossingWords(c, { blocksLeft: ctl.blocksLeft(c) });
-  const cls = w.needsYou ? 'you' : w.mood;
+  const cls = w.needsYou ? 'you' : `mood-${w.mood}`;
   return h(
     'button',
     { class: 'row bridge-row', onclick, 'data-testid': 'bridge-row', 'data-id': c.id, 'data-state': c.state },

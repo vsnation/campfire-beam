@@ -95,16 +95,14 @@ export function openBridgeReview(app, s, first, { onStarted }) {
         h('div', { class: 'big-amount', 'data-testid': 'bridge-review-amount', text: `${coin(q.amount, dec, sym)} → BEAM` }),
         h(
           'div',
-          { class: 'card consent-card' },
-          row('You move', coin(q.amount, dec, sym), 'bridge-review-move'),
+          { class: 'card bridge-card' },
+          row('Arrives in your BEAM wallet', [h('span', { 'data-testid': 'bridge-review-receive', text: coin(q.receives, 8, r.beamSymbol) }), h('div', { class: 'small', 'data-testid': 'bridge-review-time', text: arrivesText(r, TO_BEAM) })]),
           row('Bridge fee', [h('span', { 'data-testid': 'bridge-review-fee', text: coin(q.fee, dec, sym) }), h('div', { class: 'small', text: 'paid to the bridge operator' })]),
           row(n > 1 ? `Ethereum network fee, ${n} transactions` : 'Ethereum network fee', [h('span', { 'data-testid': 'bridge-review-eth-fee', text: `likely ${ethText(plan.expectedGasCost)}` }), h('div', { class: 'small', 'data-testid': 'bridge-review-eth-fee-max', text: `up to ${ethMaxText(plan.maxGasCost)}` })]),
           row('Leaves your Ethereum wallet', total),
-          row('Arrives in your BEAM wallet', coin(q.receives, 8, r.beamSymbol), 'bridge-review-receive'),
-          row('Then you collect it', [h('span', { text: `${coin(CLAIM_FEE, 8, 'BEAM')} network fee` }), h('div', { class: 'small', text: 'from your BEAM wallet' })]),
+          row('Collecting it', [h('span', { text: `${coin(CLAIM_FEE, 8, 'BEAM')} network fee` }), h('div', { class: 'small', text: 'from your BEAM wallet' })]),
           h('div', { class: 'kv kv-stack' }, h('span', { class: 'k', text: 'From your Ethereum wallet' }), h('span', { class: 'v mono addr-groups', 'data-testid': 'bridge-review-from', text: groupedAddress(s.w.state.address) })),
-          row('Through', `BEAM's official bridge, contract ${short(r.ethPipe)}`, 'bridge-review-through'),
-          row('Arrives', arrivesText(r, TO_BEAM), 'bridge-review-time'),
+          row('Through', [h('span', { text: "BEAM's official bridge" }), h('div', { class: 'small mono', 'data-testid': 'bridge-review-through', text: `contract ${short(r.ethPipe)}` })]),
         ),
         approvals.length
           ? h(
@@ -115,9 +113,13 @@ export function openBridgeReview(app, s, first, { onStarted }) {
           : null,
         h('div', { 'data-testid': 'bridge-review-public' }, notice('info', PUBLIC_NOTE)),
         freeze ? h('p', { class: 'small', 'data-testid': 'bridge-review-freeze', text: `${freeze} BEAM Campfire asks Ethereum again right before signing.` }) : null,
-        message,
-        h('button', { class: 'btn btn-primary wrap', onclick: confirm, disabled: busy, 'data-testid': 'bridge-review-move-btn' }, busy ? 'Moving…' : label),
-        h('button', { class: 'btn btn-text', onclick: () => close(false), disabled: busy, 'data-testid': 'bridge-review-change' }, 'Change'),
+        h(
+          'div',
+          { class: 'sheet-actions' },
+          message,
+          h('button', { class: 'btn btn-primary wrap', onclick: confirm, disabled: busy, 'data-testid': 'bridge-review-move-btn' }, busy ? 'Moving…' : label),
+          h('button', { class: 'btn btn-text', onclick: () => close(false), disabled: busy, 'data-testid': 'bridge-review-change' }, 'Change'),
+        ),
       ];
     },
     { label: 'Confirm your move', dismissable: false },

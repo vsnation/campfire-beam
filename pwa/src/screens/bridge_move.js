@@ -175,7 +175,7 @@ export default function bridgeMove(app, params = {}) {
           'button',
           { class: 'card row bridge-open', 'data-testid': 'bridge-open-crossing', 'data-id': c.id, onclick: () => app.go('bridgeCrossing', { id: c.id, back: 'bridgeMove' }) },
           h('span', { class: 'ico swap' }, icon(w.needsYou ? 'download' : 'clock')),
-          h('span', { class: 'main' }, h('div', { class: 't', text: headline(c) }), h('div', { class: 's' }, h('span', { class: `bridge-short ${w.needsYou ? 'you' : w.mood}`, text: w.short }))),
+          h('span', { class: 'main' }, h('div', { class: 't', text: headline(c) }), h('div', { class: 's' }, h('span', { class: `bridge-short ${w.needsYou ? 'you' : `mood-${w.mood}`}`, text: w.short }))),
           h('span', { class: 'chev' }, icon('chevron')),
         ),
       );
@@ -225,7 +225,8 @@ export default function bridgeMove(app, params = {}) {
     put(toSub, h('span', { class: 'grow', text: costs[0] || (s ? `You receive ${dstSym}` : '') }), worth ? h('span', { class: 'nowrap', text: worth }) : null);
 
     // Limits, before anything is typed.
-    const lim = s ? limitsText(r, d, fee) : null;
+    // Once a quote prices it, the line under "You receive" says it with numbers.
+    const lim = s && !(q && q.fee != null) ? limitsText(r, d, fee) : null;
     limits.textContent = lim || '';
     limits.classList.toggle('hidden', !lim);
 
@@ -494,7 +495,7 @@ export default function bridgeMove(app, params = {}) {
       { class: 'swap-pair' },
       h('div', { class: 'card swap-box' }, fromLabel, h('div', { class: 'swap-line' }, input, fromCoin), fromSub),
       flipBtn,
-      h('div', { class: 'card swap-box' }, toLabel, h('div', { class: 'swap-line' }, toAmount, toCoin), toSub),
+      h('div', { class: 'card swap-box pair-to' }, toLabel, h('div', { class: 'swap-line' }, toAmount, toCoin), toSub),
     ),
     limits,
     notes,

@@ -208,6 +208,14 @@ test('(d) CoinGecko only after it is allowed; "Not now" leaves WBEAM → BEAM, a
   await page.waitForFunction(() => /ETH$/.test(document.querySelector('[data-testid="bridge-fee"]').textContent), null, { timeout: 30000 });
   assert.ok(geckoAsked.length >= 1, 'allowed: the first price request');
   assert.match(geckoAsked[0], /ethereum/);
+  // The choice can be changed later, under Settings -> Ethereum wallet.
+  await page.evaluate(() => window.__campfire.go('ethSettings'));
+  await page.waitForSelector(tid('eth-bridge-prices-switch'));
+  assert.equal(await page.isChecked(tid('eth-bridge-prices-switch')), true);
+  await shots4('05a-eth-settings-prices');
+  await page.evaluate(() => window.__campfire.go('bridgeMove'));
+  await waitScreen(page, 'bridgeMove');
+  await page.waitForSelector(tid('bridge-history'));
   // The list before any move.
   await page.click(tid('bridge-history'));
   await waitScreen(page, 'bridgeList');
