@@ -156,8 +156,8 @@ try {
   if (codes.length !== 2) throw new Error(`expected 2 codes, the screen shows ${codes.length}`);
   log('batch sent; 2 codes saved in the wallet (not printed)');
   await shot(page, 'live-na-04-codes');
-  await waitTx(page, newTx(seen), 'batch', 25 * 60000);
-  log('batch confirmed');
+  const batchTx = await waitTx(page, newTx(seen), 'batch', 25 * 60000);
+  log('batch confirmed:', JSON.stringify({ txId: batchTx.txId, kernel: batchTx.kernel }));
 
   // Claim one code back into this wallet.
   await page.evaluate(() => window.__campfire.go('airdrop'));
@@ -172,8 +172,8 @@ try {
   await approveIf('claim', (s) => (s.pay || s.get2 ? 'it moves something other than the code' : s.get !== '0.001 BEAM' ? `it gives ${s.get}` : groth(s.fee) !== DROP_FEE ? `it charges ${s.fee}` : null));
   await page.waitForSelector(tid('airdrop-done'), { timeout: 120000 });
   await shot(page, 'live-na-06-claimed');
-  await waitTx(page, newTx(seen), 'claim', 25 * 60000);
-  log('claim confirmed');
+  const claimTx = await waitTx(page, newTx(seen), 'claim', 25 * 60000);
+  log('claim confirmed:', JSON.stringify({ txId: claimTx.txId, kernel: claimTx.kernel }));
 
   // Take the batch back: the other code.
   await page.evaluate(() => window.__campfire.go('airdropBatches'));
@@ -186,8 +186,8 @@ try {
   await cancelBtn.click();
   await approveIf('takeback', (s) => (s.pay || s.get2 ? 'it moves something other than the unclaimed code' : s.get !== '0.001 BEAM' ? `it gives ${s.get}` : groth(s.fee) !== CANCEL_FEE ? `it charges ${s.fee}` : null));
   await page.waitForSelector(`${tid('batches-result')}[data-code="sent"]`, { timeout: 120000 });
-  await waitTx(page, newTx(seen), 'take back', 25 * 60000);
-  log('take back confirmed');
+  const takebackTx = await waitTx(page, newTx(seen), 'take back', 25 * 60000);
+  log('take back confirmed:', JSON.stringify({ txId: takebackTx.txId, kernel: takebackTx.kernel }));
   await sleep(10000);
 
   // ---------------------------------------------------------------- the balance
