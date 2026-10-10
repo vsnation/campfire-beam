@@ -103,7 +103,7 @@ test('sealed store: round trip after a restart, newest first; nothing about the 
   assert.equal(env.records.length, 2);
   const clear = JSON.stringify(env).toLowerCase();
   for (const secret of [ETH_ADDRESS.slice(2), 'tx-claim', 'usdt', '26156200', 'claimed']) assert.ok(!clear.includes(secret), secret);
-  assert.equal(BRIDGE_DATA_INFO, 'beam-campfire-eth-data-v1');
+  assert.equal(BRIDGE_DATA_INFO, 'beam-campfire-bridge-data-v1');
 });
 
 test('sealed store: a wrong key or another wallet is refused, and nothing is written over', async () => {

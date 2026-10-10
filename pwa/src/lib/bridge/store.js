@@ -10,7 +10,7 @@
 //
 // * each record is sealed on its own with AES-256-GCM under a key from the BEAM
 //   wallet's database password (app.dbPass): HKDF-SHA256, info
-//   "beam-campfire-eth-data-v1", for created wallets; PBKDF2 >= 600,000 rounds
+//   "beam-campfire-bridge-data-v1", for created wallets; PBKDF2 >= 600,000 rounds
 //   for wallets imported from a wallet.db (their dbPass is a chosen password).
 //   Every header field is bound as additional data, and a sealed check value
 //   tells a wrong key from a damaged record;
@@ -30,7 +30,7 @@ import { routeById } from './routes.js';
 import { sealingKey, kdfFor, KDF_PBKDF2, VaultError } from '../eth/vault.js';
 import { PBKDF2_MIN_ITERATIONS, randomBytes, b64, unb64 } from '../envelope.js';
 
-export const BRIDGE_DATA_INFO = 'beam-campfire-eth-data-v1';
+export const BRIDGE_DATA_INFO = 'beam-campfire-bridge-data-v1';
 export const BRIDGE_RECORD_KEY = 'bridge';
 const VERSION = 1;
 const KIND = 'bridge-crossings';
