@@ -20,11 +20,12 @@ import { privateKeyToAddress, wipe, ETH_PATH } from './crypto.js';
 import { hexToBytes, bytesToHex, concatBytes } from './hex.js';
 import { PBKDF2_MIN_ITERATIONS, randomBytes, toHex, b64, unb64 } from '../envelope.js';
 import { store } from '../store.js';
+import { ETH_RECORD_KEY } from './record.js';
 
+export { ETH_RECORD_KEY };
 export const ETH_KEY_INFO = 'beam-campfire-eth-key-v1';
 export const KDF_HKDF = 'hkdf-sha256';
 export const KDF_PBKDF2 = 'pbkdf2-sha256';
-export const ETH_RECORD_KEY = 'eth';
 const VERSION = 1;
 const KIND = 'eth-key';
 // Above this, opening would hang the page for minutes: a corrupted or hostile record.
@@ -49,7 +50,11 @@ function aad(env) {
   return enc.encode(JSON.stringify([env.v, env.kind, env.walletId, env.ethId, env.kdf, env.iterations || 0, env.salt]));
 }
 
-async function kek(env, dbPass) {
+/**
+ * The AES-256-GCM key-encryption key for an envelope {kdf, salt, iterations?}
+ * under dbPass. `info` separates uses (the key itself, the data sealed beside it).
+ */
+export async function deriveWrappingKey(env, dbPass, info = ETH_KEY_INFO) {
   if (typeof dbPass !== 'string' || dbPass.length === 0) throw new VaultError('locked', 'Unlock the wallet first.');
   const salt = unb64(env.salt);
   if (env.kdf === KDF_HKDF) {
@@ -57,7 +62,7 @@ async function kek(env, dbPass) {
     const ikm = hexToBytes(dbPass);
     try {
       const base = await subtle().importKey('raw', ikm, 'HKDF', false, ['deriveKey']);
-      return await subtle().deriveKey({ name: 'HKDF', hash: 'SHA-256', salt, info: enc.encode(ETH_KEY_INFO) }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+      return await subtle().deriveKey({ name: 'HKDF', hash: 'SHA-256', salt, info: enc.encode(info) }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
     } finally {
       wipe(ikm);
     }
@@ -71,7 +76,7 @@ async function kek(env, dbPass) {
   }
 }
 
-function checkIterations(n) {
+export function checkIterations(n) {
   if (!Number.isSafeInteger(n)) throw new VaultError('malformed', 'Bad PBKDF2 round count.');
   if (n < PBKDF2_MIN_ITERATIONS) throw new VaultError('weak', 'Too few PBKDF2 rounds; refusing.');
   if (n > MAX_ITERATIONS) throw new VaultError('malformed', 'Implausible PBKDF2 round count.');
@@ -101,7 +106,7 @@ export async function sealEthKey({ sk, address, dbPass, walletId, imported, ethI
   const iv = randomBytes(12);
   const pt = concatBytes(sk, hexToBytes(address));
   try {
-    const ct = await subtle().encrypt({ name: 'AES-GCM', iv, additionalData: aad(env) }, await kek(env, dbPass), pt);
+    const ct = await subtle().encrypt({ name: 'AES-GCM', iv, additionalData: aad(env) }, await deriveWrappingKey(env, dbPass), pt);
     return { ...env, iv: b64(iv), ct: b64(new Uint8Array(ct)) };
   } finally {
     wipe(pt);
@@ -123,7 +128,7 @@ export async function openEthKey(env, { dbPass, walletId, imported }) {
   }
   if (env.kdf === KDF_PBKDF2) checkIterations(env.iterations);
   else if (env.iterations !== undefined) throw new VaultError('malformed', 'Unexpected round count.');
-  const key = await kek(env, dbPass);
+  const key = await deriveWrappingKey(env, dbPass);
   let pt;
   try {
     pt = new Uint8Array(await subtle().decrypt({ name: 'AES-GCM', iv: unb64(env.iv), additionalData: aad(env) }, key, unb64(env.ct)));
@@ -155,7 +160,8 @@ export async function openEthKey(env, { dbPass, walletId, imported }) {
 // address is only inside the envelope: in the clear it would link this BEAM
 // wallet to a public Ethereum address for anyone who can read the storage.
 
-function walletOf(app) {
+/** {walletId, imported, dbPass} of the unlocked BEAM wallet, or a VaultError. */
+export function walletOf(app) {
   if (!app || !app.record || typeof app.record.id !== 'string') throw new VaultError('missing', 'There is no BEAM wallet on this device.');
   if (!app.dbPass) throw new VaultError('locked', 'Unlock the wallet first.');
   // record.imported is what lib/session.js isImported() reads; read directly so
