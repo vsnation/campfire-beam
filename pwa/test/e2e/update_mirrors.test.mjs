@@ -156,6 +156,22 @@ const servedVersion = async () => ((await page.evaluate(() => fetch('lib/version
 const controller = () => page.evaluate(() => navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL.split('/').pop());
 const intrusion = () => page.evaluate(() => window.__campfire.intrusion());
 
+/**
+ * Waits until the page runs under `loader` and is no longer behind it. A locked
+ * page reloads as soon as a new loader takes over (lib/loader.js onMoved): this
+ * waits across that reload.
+ */
+async function settledUnder(loader, timeoutMs = 60000) {
+  for (const t0 = Date.now(); ; ) {
+    const ok = await page
+      .evaluate((l) => Boolean(navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL.endsWith(`/${l}`) && window.__campfire && window.__campfire.loaderBehind() === false && document.getElementById('app')?.dataset.screen), loader)
+      .catch(() => false);
+    if (ok) return;
+    if (Date.now() - t0 > timeoutMs) throw new Error(`the page did not settle under ${loader}`);
+    await sleep(250);
+  }
+}
+
 /** Light and dark, 375 px wide. */
 async function shots(name) {
   mkdirSync(SHOTS, { recursive: true });
@@ -493,8 +509,9 @@ test('8. a release that brings a new loader while the address is dead: safe, no 
   await checkAndWait();
   await page.waitForSelector(tid('update-apply-sheet'));
   await applyAndReload();
+  await settledUnder(L.n7x);
+  await waitScreen(page, 'unlock', 60000);
   assert.equal(await servedVersion(), V(7));
-  await page.waitForFunction((l) => navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL.endsWith(`/${l}`), L.n7x, { timeout: 30000 });
   assert.equal(await intrusion(), null);
   await unlockWithPassword(page, PASSWORD);
   await waitScreen(page, 'home', 60000);
