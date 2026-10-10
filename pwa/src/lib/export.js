@@ -33,9 +33,25 @@ export async function prepareExport(app, password) {
   return new File([out], exportFileName(), { type: 'application/octet-stream' });
 }
 
+/** A copy kept in the cloud can be attacked offline for as long as anyone likes: its password is longer. */
+export const CLOUD_MIN_PASSWORD = 12;
+
+/**
+ * How a saved file reaches the person's cloud here. 'ios': the share sheet's Save to Files, then
+ * iCloud Drive. 'mac': Safari's share sheet on a Mac has no Save to Files, so a download, then
+ * iCloud Drive in Finder. 'other': the share sheet (Google Drive, Dropbox, ...) or a download.
+ * iPadOS presents itself as a Mac with touch.
+ */
+export function cloudPlatform(nav = globalThis.navigator) {
+  const ua = (nav && nav.userAgent) || '';
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && nav.maxTouchPoints > 1)) return 'ios';
+  if (/Macintosh/.test(ua)) return 'mac';
+  return 'other';
+}
+
 /** Share sheet where the browser has one for files, else a download. Needs a fresh tap. */
-export async function deliverExport(file) {
-  if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+export async function deliverExport(file, { download = false } = {}) {
+  if (!download && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
     let can = false;
     try {
       can = navigator.canShare({ files: [file] });

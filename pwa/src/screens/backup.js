@@ -19,13 +19,17 @@
  *     anywhere BEAM runs. Said plainly: file + password = the wallet, keep it private.
  *   - "I run my own node" -> Show owner key (secondary, last): the key a node needs to find every
  *     payment, offline and max-privacy ones too; it sees, it cannot spend.
+ *   - "Can it go to iCloud?" -> optional card "Keep a copy in iCloud Drive" (other platforms: "your
+ *     cloud storage"): the same encrypted wallet.db, with a password of at least 12 characters (a
+ *     file in the cloud can be attacked offline), and the exact taps to put it in iCloud Drive and to
+ *     bring it back (Import wallet.db). Never offered unasked, never automatic.
  */
 import { h, put } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { screen, primary, notice, openSheet, toast } from '../lib/ui.js';
 import { generatePhrase } from '../lib/engine.js';
 import { isImported, openWithPasswordFor, markExported } from '../lib/session.js';
-import { prepareExport, deliverExport } from '../lib/export.js';
+import { prepareExport, deliverExport, cloudPlatform, CLOUD_MIN_PASSWORD } from '../lib/export.js';
 import { NO_PHRASE_NOTICE, formatFileSize } from '../lib/wallet_file.js';
 import { OWNER_KEY_TEXT } from '../lib/owner_key.js';
 
@@ -120,6 +124,7 @@ function existingBackup(app) {
           h('p', { class: 'small', text: 'BEAM Campfire does not keep a copy of the words, so it cannot show them again. Keep your paper safe and private.' }),
         ],
     exportCard,
+    cloudCard(app),
     notice('warn', h('strong', { text: 'The file and your password are your wallet. ' }), 'Anyone who has both can take your money. Keep the file somewhere private.'),
     h(
       'div',
@@ -130,6 +135,177 @@ function existingBackup(app) {
     ),
   );
   return { el };
+}
+
+/** Words for the cloud copy, per platform (cloudPlatform). Exported for the tests. */
+export function cloudText(where) {
+  const apple = where === 'ios' || where === 'mac';
+  const place = apple ? 'iCloud Drive' : 'your cloud storage';
+  return {
+    place,
+    title: apple ? 'Keep a copy in iCloud Drive' : 'Keep a copy in your cloud storage',
+    lead: `Optional. If this ${where === 'mac' ? 'computer' : 'phone'} is lost, open BEAM Campfire anywhere, choose Import wallet.db and pick the copy in ${place}.`,
+    lock: `The copy is encrypted (AES-256) and opens only with its password. ${apple ? 'Apple' : 'The cloud service'} cannot open it, but anyone who gets into your account can keep guessing the password, so it must be at least ${CLOUD_MIN_PASSWORD} characters.`,
+    cta: apple ? 'Save a copy to iCloud Drive' : 'Save a copy to the cloud',
+    save: where === 'ios' ? 'Save to iCloud Drive' : where === 'mac' ? 'Save the file' : 'Save to the cloud',
+    steps:
+      where === 'ios'
+        ? [`Tap “Save to iCloud Drive”.`, 'In the list that opens, choose “Save to Files”.', 'Choose iCloud Drive, then Save.']
+        : where === 'mac'
+          ? ['Tap “Save the file”: it goes to your Downloads folder.', 'In Finder, move it into iCloud Drive.']
+          : ['Tap “Save to the cloud”.', 'Choose your cloud storage in the list (for example Google Drive), or open your downloads and move it there.'],
+    // how: what deliverExport did ('shared' through the share sheet, or 'downloaded').
+    done: (how) =>
+      how === 'shared'
+        ? where === 'ios'
+          ? 'Saved. Check Files → iCloud Drive for the copy.'
+          : 'Saved. Check your cloud storage for the copy.'
+        : where === 'mac'
+          ? 'Saved to Downloads. Move it into iCloud Drive in Finder.'
+          : where === 'ios'
+            ? 'Saved to your downloads. Move it into iCloud Drive in Files.'
+            : 'Saved to your downloads. Move it to your cloud storage.',
+  };
+}
+
+/** Settings -> Backup: the optional card for a copy in the person's cloud. */
+function cloudCard(app) {
+  const t = cloudText(cloudPlatform());
+  return h(
+    'div',
+    { class: 'card', 'data-testid': 'cloud-card' },
+    h('h3', { text: t.title }),
+    h('p', { text: t.lead }),
+    h('p', { class: 'small', text: t.lock }),
+    h('button', { class: 'btn btn-secondary card-btn', onclick: () => cloudSheet(app), 'data-testid': 'cloud-start' }, icon('cloud'), t.cta),
+  );
+}
+
+/**
+ * The cloud copy: BEAM Campfire password (who is asking) -> if it is shorter than
+ * CLOUD_MIN_PASSWORD, a longer one for this copy only -> prepare -> a fresh tap to save it.
+ */
+function cloudSheet(app) {
+  const where = cloudPlatform();
+  const t = cloudText(where);
+  let step = 'who';
+  let filePw = null;
+  let sameAsApp = false;
+  let file = null;
+  let busy = false;
+  let message = null;
+  const field = (attrs) => h('input', { class: 'input', type: 'password', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false', ...attrs });
+  const pw = field({ autocomplete: 'current-password', 'aria-label': 'BEAM Campfire password', placeholder: 'Password', 'data-testid': 'cloud-pw' });
+  // Not saved by the browser: a password kept in the same account as the copy would protect nothing.
+  const pw1 = field({ autocomplete: 'off', 'aria-label': 'Password for the copy', placeholder: `At least ${CLOUD_MIN_PASSWORD} characters`, 'data-testid': 'cloud-pw1' });
+  const pw2 = field({ autocomplete: 'off', 'aria-label': 'The same password again', placeholder: 'The same password again', 'data-testid': 'cloud-pw2' });
+  openSheet((close, rerender) => {
+    const prepare = async () => {
+      busy = true;
+      message = h('p', { class: 'small', 'data-testid': 'cloud-busy', text: 'Preparing the copy… (the wallet pauses for a moment)' });
+      rerender();
+      try {
+        file = await prepareExport(app, filePw);
+        filePw = null;
+        message = null;
+        step = 'save';
+      } catch (e) {
+        message = notice('error', `The copy could not be prepared: ${e.message} Your wallet is unchanged.`);
+      }
+      busy = false;
+      rerender();
+    };
+    const who = async () => {
+      if (busy) return;
+      if (!pw.value) {
+        message = notice('warn', 'Enter your BEAM Campfire password.');
+        return rerender();
+      }
+      busy = true;
+      rerender();
+      try {
+        await openWithPasswordFor(app, pw.value);
+      } catch (e) {
+        busy = false;
+        message = notice('error', e.code === 'wrong_secret' ? "That password didn't match. Try again." : e.message);
+        return rerender();
+      }
+      busy = false;
+      message = null;
+      if (pw.value.length >= CLOUD_MIN_PASSWORD) {
+        filePw = pw.value;
+        sameAsApp = true;
+        pw.value = '';
+        return prepare();
+      }
+      pw.value = '';
+      step = 'choose';
+      rerender();
+    };
+    const chosen = () => {
+      if (busy) return;
+      if (pw1.value.length < CLOUD_MIN_PASSWORD) {
+        message = notice('warn', `Use at least ${CLOUD_MIN_PASSWORD} characters.`);
+        return rerender();
+      }
+      if (pw1.value !== pw2.value) {
+        message = notice('warn', "The two passwords don't match.");
+        return rerender();
+      }
+      filePw = pw1.value;
+      pw1.value = '';
+      pw2.value = '';
+      prepare();
+    };
+    pw.onkeydown = (e) => e.key === 'Enter' && who();
+    pw2.onkeydown = (e) => e.key === 'Enter' && chosen();
+    const cancel = h('button', { class: 'btn btn-text', onclick: () => close(), 'data-testid': 'cloud-cancel' }, 'Cancel');
+    if (step === 'who') {
+      setTimeout(() => pw.focus(), 50);
+      return [
+        h('h2', { text: t.cta }),
+        h('p', { class: 'lead', text: 'Enter your BEAM Campfire password.' }),
+        h('label', { class: 'field' }, 'Password', pw),
+        message,
+        h('button', { class: 'btn btn-primary', onclick: who, disabled: busy, 'data-testid': 'cloud-continue' }, busy ? 'Checking…' : 'Continue'),
+        cancel,
+      ];
+    }
+    if (step === 'choose') {
+      setTimeout(() => pw1.focus(), 50);
+      return [
+        h('h2', { text: 'Choose a password for the copy' }),
+        h('p', { class: 'lead', 'data-testid': 'cloud-choose-lead', text: `Your BEAM Campfire password is short for a file kept in ${t.place}. Choose one of at least ${CLOUD_MIN_PASSWORD} characters for this copy. You need it to open the copy, so write it down, not in the same account as the copy.` }),
+        h('label', { class: 'field' }, 'Password for the copy', pw1),
+        h('label', { class: 'field' }, 'Again', pw2),
+        message,
+        h('button', { class: 'btn btn-primary', onclick: chosen, disabled: busy, 'data-testid': 'cloud-prepare' }, busy ? 'Preparing…' : 'Prepare the copy'),
+        cancel,
+      ];
+    }
+    return [
+      h('h2', { text: 'Your copy is ready' }),
+      h('div', { class: 'card file-card' }, h('span', { class: 'ico' }, icon('file')), h('span', { class: 'main' }, h('div', { class: 't', 'data-testid': 'cloud-name', text: file.name }), h('div', { class: 's', 'data-testid': 'cloud-opens-with', text: `${formatFileSize(file.size)} · opens with ${sameAsApp ? 'your BEAM Campfire password' : 'the password you chose'}` }))),
+      h('ol', { class: 'steps-list', 'data-testid': 'cloud-steps' }, ...t.steps.map((s) => h('li', { text: s }))),
+      h(
+        'button',
+        {
+          class: 'btn btn-primary',
+          'data-testid': 'cloud-save',
+          onclick: async () => {
+            const how = await deliverExport(file, { download: where === 'mac' });
+            if (how === 'cancelled') return;
+            await markExported(app).catch(() => {});
+            toast(t.done(how));
+            close();
+          },
+        },
+        icon('cloud'),
+        t.save,
+      ),
+      h('button', { class: 'btn btn-text', onclick: () => close() }, 'Done'),
+    ];
+  }, { label: t.cta });
 }
 
 /** Password (it also becomes the file's password) -> prepare -> a fresh tap to save it. */
