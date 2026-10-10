@@ -8,6 +8,7 @@ import { NODES as HEADER_NODES, CSP, SECURITY_HEADERS, DAPP_PACKAGE_SOURCE } fro
 import { CATALOGUE, sourceUrl, REMOTE_ORIGINS } from '../../src/lib/dapps/catalogue.js';
 import { NODES } from '../../src/lib/nodes.js';
 import { DEFAULT_PREFS } from '../../src/lib/store.js';
+import { connectSources, ETH_RPC_HOSTS, DEFAULT_ETH_RPC, PRICE_HOST, TX_EXPLORER, originOf, txExplorerUrl } from '../../src/lib/eth/hosts.js';
 
 const pwa = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -16,14 +17,33 @@ test('the app offers exactly the nodes the CSP allows', () => {
   assert.ok(HEADER_NODES.includes(DEFAULT_PREFS.node));
 });
 
-test('connect-src: this origin, the wss nodes and the pinned dApp package directory only (no explorer, no other host)', () => {
+test('connect-src: this origin, the wss nodes, the pinned dApp package directory and the Ethereum servers of lib/eth/hosts.js only (no explorer, no other host)', () => {
   const connect = CSP.split(';').map((d) => d.trim()).find((d) => d.startsWith('connect-src'));
   const sources = connect.split(/\s+/).slice(1);
-  assert.deepEqual(sources, ["'self'", ...HEADER_NODES.map((n) => `wss://${n}`), DAPP_PACKAGE_SOURCE]);
+  assert.deepEqual(sources, ["'self'", ...HEADER_NODES.map((n) => `wss://${n}`), DAPP_PACKAGE_SOURCE, ...connectSources()]);
+  assert.deepEqual(connectSources(), [
+    'https://eth2.stackwallet.com',
+    'https://ethereum-rpc.publicnode.com',
+    'https://eth.drpc.org',
+    'https://rpc.mevblocker.io',
+    'https://eth-mainnet.public.blastapi.io',
+    'https://api.coingecko.com/api/v3/simple/price',
+  ]);
+  assert.ok(ETH_RPC_HOSTS.some((h) => h.id === DEFAULT_ETH_RPC));
+  assert.equal(originOf(ETH_RPC_HOSTS.find((h) => h.id === DEFAULT_ETH_RPC)), 'https://eth2.stackwallet.com', 'the desktop default');
+  assert.ok(!sources.some((s) => s.includes(TX_EXPLORER.host)), 'the block explorer is a link the person taps, never contacted by the app');
   assert.match(DAPP_PACKAGE_SOURCE, /^https:\/\/raw\.githubusercontent\.com\/BeamMW\/beam-ui\/[0-9a-f]{40}\/ui\/apps\/mainnet\/$/);
   for (const e of CATALOGUE) assert.ok(sourceUrl(e).startsWith(DAPP_PACKAGE_SOURCE), e.fileName);
   assert.ok(!CSP.includes('explorer'), 'the explorer is reached through this origin');
   assert.ok(!CSP.includes("'unsafe-eval'") && !CSP.includes("'unsafe-inline'"));
+});
+
+test('the block explorer link is built only for a transaction hash', () => {
+  const hash = `0x${'ab'.repeat(32)}`;
+  assert.equal(txExplorerUrl(hash), `https://etherscan.io/tx/${hash}`);
+  assert.equal(txExplorerUrl(hash.toUpperCase().replace('0X', '0x')), `https://etherscan.io/tx/${hash}`);
+  for (const bad of ['', '0x12', `${hash}/../x`, `javascript:${hash}`, null]) assert.throws(() => txExplorerUrl(bad));
+  assert.equal(PRICE_HOST.path, '/api/v3/simple/price');
 });
 
 test('cross-origin isolation headers are present', () => {
@@ -65,6 +85,9 @@ test('no source file reaches out to another origin', () => {
       // frame contacts only when the person allows it. Only in these two files.
       if (u === 'https://raw.githubusercontent.com' && f.endsWith(join('lib', 'dapps', 'catalogue.js'))) continue;
       if (REMOTE_ORIGINS.includes(u) && (f.endsWith(join('lib', 'dapps', 'catalogue.js')) || f.endsWith(join('lib', 'dapps', 'frame_policy.js')))) continue;
+      // The Ethereum servers (exactly what connect-src lists) and the block explorer's
+      // address, whose transaction pages the person may open with a tap: only in this file.
+      if (f.endsWith(join('lib', 'eth', 'hosts.js')) && (connectSources().includes(u) || u === originOf(TX_EXPLORER))) continue;
       offenders.push(`${f.slice(pwa.length)}: ${u}`);
     }
   }

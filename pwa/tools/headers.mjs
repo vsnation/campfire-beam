@@ -9,7 +9,8 @@
 // - CORP same-origin: no other site can embed our files.
 // - CSP: scripts only from this origin; 'wasm-unsafe-eval' is what
 //   WebAssembly.instantiate needs (no 'unsafe-eval': the engine is built with
-//   DYNAMIC_EXECUTION=0). connect-src names the BEAM nodes and one more host:
+//   DYNAMIC_EXECUTION=0). connect-src names the BEAM nodes, one dApp host and
+//   the Ethereum servers:
 //   the explorer check goes through this origin (/explorer/status), so the
 //   wallet talks to this origin and the chosen node, plus BEAM's GitHub
 //   (raw.githubusercontent.com, one directory at a pinned commit) only when
@@ -18,8 +19,15 @@
 //   from its pin. dApps themselves run in sandboxed frames with their own,
 //   stricter policy (src/lib/dapps/frame_policy.js); frames come from this
 //   origin only (default-src 'self').
+//   The Ethereum servers come from one list, src/lib/eth/hosts.js
+//   (connectSources()): the five RPC servers the person can pick from (the
+//   app talks to the one picked, never a fallback, and only once there is an
+//   Ethereum wallet) and CoinGecko's price path for the bridge (only after
+//   the person allows it). All six are in one release, because this policy is
+//   inlined into the loader and changing it renames the loader.
 
 import { SOURCE_HOST, SOURCE_COMMIT } from '../src/lib/dapps/catalogue.js';
+import { connectSources as ethConnectSources } from '../src/lib/eth/hosts.js';
 
 export const NODES = [
   'eu-nodes.mainnet.beam.mw:8200',
@@ -34,7 +42,7 @@ export const CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval'",
   "worker-src 'self'",
-  `connect-src 'self' ${NODES.map((n) => `wss://${n}`).join(' ')} ${DAPP_PACKAGE_SOURCE}`,
+  `connect-src 'self' ${NODES.map((n) => `wss://${n}`).join(' ')} ${DAPP_PACKAGE_SOURCE} ${ethConnectSources().join(' ')}`,
   "img-src 'self' data: blob:",
   "style-src 'self'",
   "font-src 'self'",

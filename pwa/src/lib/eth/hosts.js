@@ -13,6 +13,11 @@
 // There is no fallback between servers: each one sees the IP address
 // together with the Ethereum address, so the person picks one and the app
 // uses only that one.
+//
+// Stack Wallet's server also keeps an index of each address's history
+// (GET /export, the desktop app's lib/services/ethereum/ethereum_api.dart).
+// The desktop app always asks it, whichever RPC is picked; the PWA asks it
+// only while Settings -> Ethereum -> "History from Stack Wallet" is on.
 
 const SCHEME = 'https:';
 
@@ -57,6 +62,35 @@ export function rpcUrl(entry) {
 export function priceUrl(ids) {
   if (!Array.isArray(ids) || ids.length === 0 || ids.some((i) => !/^[a-z0-9-]+$/.test(i))) throw new Error('bad price ids');
   return `${originOf(PRICE_HOST)}${PRICE_HOST.path}?ids=${ids.join(',')}&vs_currencies=usd`;
+}
+
+/**
+ * Where an address's history is indexed: Stack Wallet's own server (the
+ * desktop app's EthereumAPI.stackBaseServer, the same host as its default node).
+ */
+export const HISTORY_HOST = ETH_RPC_HOSTS[0];
+
+/**
+ * GET /export: the transactions to and from `address` (firstBlock onwards), or
+ * with `emitter` the logs that token contract emitted about the address.
+ * `address` and `emitter` must already be checked 0x addresses.
+ */
+export function historyUrl(address, { firstBlock = 0, emitter = null } = {}) {
+  const hex = /^0x[0-9a-fA-F]{40}$/;
+  if (!hex.test(address) || (emitter && !hex.test(emitter)) || !Number.isSafeInteger(firstBlock) || firstBlock < 0) throw new Error('bad history query');
+  const q = emitter ? `addrs=${address.toLowerCase()}&emitter=${emitter.toLowerCase()}&logs=true` : `addrs=${address.toLowerCase()}&firstBlock=${firstBlock}&unripe=true`;
+  return `${originOf(HISTORY_HOST)}/export?${q}`;
+}
+
+/**
+ * The block explorer the person may open with a tap to see a transaction.
+ * Never fetched by the app (it is not in connect-src): a link only.
+ */
+export const TX_EXPLORER = Object.freeze({ id: 'etherscan', name: 'Etherscan', host: 'etherscan.io' });
+
+export function txExplorerUrl(hash) {
+  if (typeof hash !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(hash)) throw new Error('not a transaction hash');
+  return `${originOf(TX_EXPLORER)}/tx/${hash.toLowerCase()}`;
 }
 
 /** What `connect-src` must list for these hosts (the price entry is an exact path). */
