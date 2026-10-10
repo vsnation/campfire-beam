@@ -1,7 +1,7 @@
 // Shared screen furniture: top bar, tab bar, sheets, toasts.
 import { h, clear } from './dom.js';
 import { icon } from './icons.js';
-import { badgeText } from './meta.js';
+import { badgeText, assetLabel, frameInset, genericIcon } from './meta.js';
 
 export function topbar({ title, back, brand = false, right = null }) {
   return h(
@@ -121,11 +121,51 @@ export async function copyText(text, what = 'Copied') {
 }
 
 /**
- * An asset's round badge: BEAM's logo for BEAM, otherwise its first letters on
- * a colour picked by its id (never by the asset's own metadata).
+ * An asset's round icon, the same on every screen (the desktop's BeamAssetLogo):
+ * BEAM's logo, a verified asset's bundled icon, otherwise the BEAM desktop
+ * wallet's generic icon for its id; a DEX liquidity token shows its pool's two
+ * icons. Every picture ships with the app (img/assets) and is chosen by the id
+ * and the DEX's pool list, never by anything the asset's creator wrote; the name
+ * and #id are written next to it. A label without an icon (an Ethereum token)
+ * gets its first letters on a colour picked for it.
  */
 export function assetBadge(label, { size = '' } = {}) {
   if (Number(label.id) === 0) return h('span', { class: `asset-badge beam ${size}`.trim(), 'aria-hidden': 'true' }, h('img', { src: 'img/beam.svg', alt: '' }));
+  if (label.pool) return pairBadge(label.pool, size, 0);
+  if (label.icon) return coin(label.icon, Number(label.id), size);
+  return letterBadge(label, size);
+}
+
+/** One icon as a coin: clipped to a circle, on a neutral disc while it loads (and for good when it is not round). */
+function coin(src, id, size) {
+  const inset = frameInset(src);
+  const el = h('span', { class: `asset-badge asset-icon${inset == null ? '' : ' framed'}${size ? ` ${size}` : ''}`, 'aria-hidden': 'true', 'data-icon': src });
+  if (inset) el.style.setProperty('--inset', `${inset * 100}%`);
+  const img = h('img', { src, alt: '', decoding: 'async', draggable: 'false', class: src.endsWith('.svg') ? 'contain' : 'cover' });
+  // A bundled picture that cannot be read falls back to the generic icon for the id, never an empty hole.
+  img.addEventListener('error', () => {
+    const fallback = id >= 0 ? genericIcon(id) : null;
+    if (fallback && !img.src.endsWith(fallback)) {
+      el.classList.remove('framed');
+      el.dataset.icon = fallback;
+      img.className = 'contain';
+      img.src = fallback;
+    } else img.remove();
+  });
+  el.append(img);
+  return el;
+}
+
+/** A DEX pool's two icons in one badge: the first top left, the second bottom right with a gap around it. */
+function pairBadge(pool, size, depth) {
+  const side = (aid) => {
+    const l = assetLabel(aid);
+    return l.pool && depth < 3 ? pairBadge(l.pool, '', depth + 1) : coin(l.icon, aid, '');
+  };
+  return h('span', { class: `asset-badge pair${size ? ` ${size}` : ''}`, 'aria-hidden': 'true', 'data-pair': `${pool.aid1}/${pool.aid2}` }, side(pool.aid1), side(pool.aid2));
+}
+
+function letterBadge(label, size) {
   const el = h('span', { class: `asset-badge ${size}`.trim(), 'aria-hidden': 'true', text: badgeText(label) });
   if (/^#[0-9a-f]{6}$/i.test(label.color || '')) {
     el.style.setProperty('--badge', label.color);

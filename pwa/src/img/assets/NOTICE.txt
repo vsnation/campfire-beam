@@ -1,0 +1,24 @@
+Confidential Asset icons
+
+These are the desktop app's icons (assets/beam/icons in this repository), copied byte for byte, so
+an asset looks the same in both apps. They ship inside the signed release: loading an icon from
+its issuer's server would tell that server the viewer's IP address and what they hold.
+test/unit/asset_icons.test.mjs pins every file by SHA-256, here and in the desktop app's folder,
+so a changed icon on either side fails the tests until both are updated together.
+
+Verified assets (src/lib/meta.js VERIFIED), from the logos their issuers publish:
+  4.png    Gothic Crown (CROWN)    48 x 48
+  7.png    BeamX (BEAMX)           32 x 32
+  9.png    Tico (TICO)             48 x 48
+  47.svg   Nephrite (NPH)
+  174.png  FOMO                    128 x 128
+  186.png  GIGA (assets 186, 191)  128 x 128
+  187.png  CHAD (assets 187, 190)  128 x 117
+BEAM itself is img/beam.svg.
+
+generic/asset-0.svg ... asset-19.svg and asset-err.svg are copied unchanged from the BEAM desktop
+wallet, BeamMW/beam-ui (ui/view/assets/, commit 1cc4d1a), licensed under the Apache License 2.0
+(https://www.apache.org/licenses/LICENSE-2.0), which is compatible with this project's GPLv3.
+They are used the way that wallet uses them (ui/model/assets_manager.cpp, AssetsManager::getIcon):
+an asset without an icon of its own gets asset-<id % 20>.svg, so the same asset always looks the
+same, and an asset that does not exist gets asset-err.svg.

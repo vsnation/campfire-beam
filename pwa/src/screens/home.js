@@ -28,6 +28,8 @@ import { chainSwitch } from './eth_screens.js';
 import { openBuyChooser } from './buy_screens.js';
 import { loaderBehind } from '../lib/loader.js';
 import { switchToRandom } from './node.js';
+import { VERIFIED, metadataOf, tokenSubtitle, copyWarning } from '../lib/meta.js';
+import { needsPoolCheck, checkPools } from '../lib/dex_pools.js';
 
 export function syncLine(sync) {
   const cls = sync.state === 'synced' ? 'ok' : sync.state === 'offline' || sync.state === 'stalled' || sync.state === 'behind' ? 'bad' : 'wait';
@@ -54,6 +56,30 @@ function contractRow(app, tx, onclick) {
       get && pay ? h('div', { class: 'small', text: amt(pay, '−') }) : null,
     ),
   );
+}
+
+let allAssetsTried = { session: null, at: 0 };
+
+/**
+ * What a token row's name still needs from the chain, asked once in a while and
+ * only on a synced wallet: the DEX's pool list when an asset may be the LP token
+ * of a pool newer than the bundled list, and every asset's metadata (one call)
+ * when an asset, or a side of an LP token, has not been named yet. Each answer
+ * re-renders the rows through the wallet's change event.
+ */
+function nameTokens(app, ids, s) {
+  const w = app.wallet;
+  if (!w.session || s.sync.state !== 'synced' || !ids.length) return;
+  if (needsPoolCheck(ids)) checkPools(ids).then((named) => named && w.emit());
+  const sides = ids.flatMap((id) => {
+    const p = w.label(id).pool;
+    return p ? [p.aid1, p.aid2] : [id];
+  });
+  const unnamed = sides.some((id) => id > 0 && !VERIFIED[id] && !w.label(id).pool && metadataOf(id) == null);
+  if (!unnamed) return;
+  if (allAssetsTried.session === w.session && Date.now() - allAssetsTried.at < 5 * 60000) return;
+  allAssetsTried = { session: w.session, at: Date.now() };
+  w.loadAllAssets();
 }
 
 export function txRow(app, tx, onclick) {
@@ -101,6 +127,7 @@ export default function home(app) {
     );
 
     // Every other asset this wallet has anything of: available, on its way, or maturing.
+    // Named and drawn as the desktop app's asset list does (lib/meta.js).
     const others = [...s.totals.entries()]
       .filter(([id, t]) => id !== 0 && (t.available > 0n || t.receiving > 0n || t.sending > 0n || t.maturing > 0n))
       .map(([id, t]) => [id, t, app.wallet.label(id)])
@@ -113,24 +140,30 @@ export default function home(app) {
               'div',
               { class: 'card list', 'data-testid': 'tokens' },
               ...others.map(([id, t, l]) => {
-                const named = !l.unit.startsWith('Asset #');
-                const sub = !named ? `Asset #${id}` : l.verified ? l.unit : `${l.unit} · asset #${id}`;
                 const pending = [];
                 if (t.receiving > 0n) pending.push(`+${formatAmount(t.receiving)} incoming`);
                 if (t.sending > 0n) pending.push(`−${formatAmount(t.sending)} outgoing`);
                 if (t.maturing > 0n) pending.push(`${formatAmount(t.maturing)} maturing`);
+                const warning = copyWarning(l);
                 return h(
                   'div',
                   { class: 'row asset-row', 'data-testid': 'token-row', 'data-asset-id': String(id) },
                   assetBadge(l),
-                  h('span', { class: 'main' }, h('div', { class: 't', text: named ? l.name : 'Unnamed asset' }), h('div', { class: 's', text: sub })),
-                  h('span', { class: 'end' }, h('div', { 'data-testid': 'token-balance', text: `${formatAmount(t.available)}${named ? ` ${l.unit}` : ''}` }), pending.length ? h('div', { class: 'small', text: pending.join(' · ') }) : null),
+                  h(
+                    'span',
+                    { class: 'main' },
+                    h('div', { class: 't', 'data-testid': 'token-name', text: l.name }),
+                    h('div', { class: 's', 'data-testid': 'token-sub', text: tokenSubtitle(l) }),
+                    warning ? h('div', { class: 'warn-line', 'data-testid': 'token-warning', text: warning }) : null,
+                  ),
+                  h('span', { class: 'end' }, h('div', { 'data-testid': 'token-balance', text: `${formatAmount(t.available)} ${l.pool ? 'LP' : l.symbol}` }), pending.length ? h('div', { class: 'small', text: pending.join(' · ') }) : null),
                 );
               }),
             ),
           ]
         : []),
     );
+    nameTokens(app, others.map(([id]) => id), s);
 
     const recent = s.txs.slice(0, 5);
     put(txBox, 

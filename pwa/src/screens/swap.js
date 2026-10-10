@@ -14,26 +14,9 @@ import { icon } from '../lib/icons.js';
 import { screen, primary, notice, openSheet, assetBadge } from '../lib/ui.js';
 import { parseAmount, formatAmount, toInputString } from '../lib/amount.js';
 import { wallet } from '../lib/wallet.js';
-import { nativeApp } from '../lib/contracts.js';
-import { loadShader } from '../lib/shaders.js';
-import { DEX_CALL_FEE, DEFAULT_RECEIVE, KINDS, PROTECTION_BPS, PROTECTIONS, poolsViewArgs, parsePools, receivable, tradable, bestQuote, tradeArgs, swapExpectation, priceImpactBps, IMPACT_WARN_BPS, feeIsLarge, swapValue, feeShareBps, bpsText, DexError } from '../lib/dex.js';
+import { dexApp, loadPools } from '../lib/dex_pools.js';
+import { DEX_CALL_FEE, DEFAULT_RECEIVE, KINDS, PROTECTION_BPS, PROTECTIONS, receivable, tradable, bestQuote, tradeArgs, swapExpectation, priceImpactBps, IMPACT_WARN_BPS, feeIsLarge, swapValue, feeShareBps, bpsText, DexError } from '../lib/dex.js';
 import { shortAmount } from './consent.js';
-
-const POOLS_TTL_MS = 30000;
-let poolCache = null; // { at, pools, session }
-
-async function dexApp() {
-  const [app, shader] = await Promise.all([nativeApp(), loadShader('amm')]);
-  return { app, shader };
-}
-
-async function loadPools(force = false) {
-  if (!force && poolCache && poolCache.session === wallet.session && Date.now() - poolCache.at < POOLS_TTL_MS) return poolCache.pools;
-  const { app, shader } = await dexApp();
-  const pools = parsePools(await app.view(poolsViewArgs(), shader));
-  poolCache = { at: Date.now(), pools, session: wallet.session };
-  return pools;
-}
 
 /** Plain words for whatever stopped a quote or a swap. */
 function problemText(e, payUnit, getUnit) {
@@ -325,7 +308,7 @@ export default function swap(app) {
                   'button',
                   { class: `row${current ? ' on' : ''}`, 'data-asset-id': String(id), onclick: () => close(id) },
                   assetBadge(l),
-                  h('span', { class: 'main' }, h('div', { class: 't', text: l.unit }), h('div', { class: 's', text: id === 0 || l.verified ? l.name : `${l.name} · asset #${id}` })),
+                  h('span', { class: 'main' }, h('div', { class: 't', text: l.unit }), h('div', { class: 's', text: l.verified ? l.name : `Not verified · ${l.name}` })),
                   have > 0n ? h('span', { class: 'end small', text: formatAmount(have) }) : null,
                 );
               })

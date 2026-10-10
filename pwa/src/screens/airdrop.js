@@ -143,7 +143,7 @@ export default function airdropClaim(app) {
         h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Network fee' }), h('span', { class: 'v', 'data-testid': 'airdrop-fee', text: `${formatAmount(CALL_FEE)} BEAM` })),
         h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Balance change' }), h('span', { class: 'v', 'data-testid': 'airdrop-net' }, ...balanceChange(info.assetId, info.value).map((t) => h('div', { text: t })))),
       ),
-      info.assetId !== 0 && !l.verified ? h('p', { class: 'small', text: `${l.unit} is asset #${info.assetId}: not on BEAM Campfire's list of known assets.` }) : null,
+      info.assetId !== 0 && !l.verified ? h('p', { class: 'small', text: `${l.symbol} is asset #${info.assetId}: not on BEAM Campfire's list of known assets.` }) : null,
       worthLess ? notice('warn', `This code gives ${amountText(0, info.value)} and claiming it costs ${formatAmount(CALL_FEE)} BEAM, so your balance goes down. Claim only if you want it anyway.`) : null,
     );
   }
