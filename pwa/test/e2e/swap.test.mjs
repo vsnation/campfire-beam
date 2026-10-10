@@ -75,7 +75,7 @@ test('swap BEAM -> FOMO: live quote, the consent sheet shows what the engine rep
   console.log(`# quote: 0.01 BEAM -> ${quoted}; ${await page.textContent(tid('swap-rate'))}; pool fee ${await page.textContent(tid('swap-pool-fee'))}`);
   assert.ok(quote > 0n);
   assert.equal(await page.textContent(tid('swap-fee')), '0.011 BEAM');
-  assert.equal(await page.textContent(tid('swap-cta')), 'Swap 0.01 BEAM');
+  assert.match(await page.textContent(tid('swap-cta')), /^Swap 0\.01 BEAM for ≈[0-9][0-9.,]* FOMO$/);
   const shaderLoads = await page.evaluate(() => performance.getEntriesByType('resource').filter((e) => e.name.endsWith('/shaders/amm_app.wasm')).length);
   assert.equal(shaderLoads, 1, 'the DEX shader loads once, when the swap screen needs it');
   await shot(page, 'swap-01-quote');
@@ -96,6 +96,7 @@ test('swap BEAM -> FOMO: live quote, the consent sheet shows what the engine rep
   assert.match(await page.textContent(tid('consent-total')), /^0\.021 BEAM$/);
   assert.match(short, /^Not enough BEAM\./);
   assert.equal(await page.isVisible(tid('consent-approve')), false, 'no approve button when the engine says it is not enough');
+  assert.match(await page.textContent(tid('consent-receive')), /^Add (BEAM|funds)$/, 'the way out of "not enough" is on the sheet');
   assert.match(await page.textContent(tid('consent-app')), /BEAM Campfire/);
 
   await page.click(tid('consent-cancel'));

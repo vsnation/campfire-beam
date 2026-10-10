@@ -171,7 +171,7 @@ export default function swap(app) {
 
     const st = ctaState();
     cta.disabled = Boolean(st.off);
-    cta.textContent = a.value != null && !a.error ? `Swap ${shortAmount(a.value)} ${payU}` : 'Swap';
+    cta.textContent = a.value == null || a.error ? 'Swap' : quoted ? `Swap ${shortAmount(a.value)} ${payU} for ≈${shortAmount(quote.receive)} ${getL.unit}` : `Swap ${shortAmount(a.value)} ${payU}`;
     reason.textContent = st.off || '';
     reason.classList.toggle('hidden', !st.off);
   }

@@ -4,7 +4,7 @@
 //
 // Test wallet FUNDER2, restored through the real Restore screen, swaps
 // 0.01 BEAM for FOMO on BEAM's DEX through the Swap screen and the approve
-// sheet, exactly as a user would: quote, "Swap 0.01 BEAM", read the sheet,
+// sheet, exactly as a user would: quote, "Swap 0.01 BEAM for ≈… FOMO", read the sheet,
 // approve, password. The swap must complete on chain, and the balances must
 // move by what the sheet said: BEAM down by the amount paid plus the 0.011
 // BEAM network fee, FOMO up by at least the 1%-protected amount.

@@ -131,15 +131,30 @@ export function presentConsent(app, req) {
                   'error',
                   h('strong', { text: `Not enough ${short ? unit(short.assetId) : spentUnits(req, unit)}. ` }),
                   short
-                    ? `You need ${formatAmount(short.need)} ${unit(short.assetId)}${short.includesFee ? `, including the ${formatAmount(req.fee)} BEAM network fee` : ''}. You have ${formatAmount(short.have)}. Add ${unit(short.assetId)} to this wallet (Receive on the Wallet tab), then try again.`
-                    : `The wallet can't spend this much right now${req.fee > 0n ? ` (the ${formatAmount(req.fee)} BEAM network fee included)` : ''}. Part of the balance may be in a payment that has not finished: try again in a minute, or add more on the Wallet tab (Receive).`,
+                    ? `You need ${formatAmount(short.need)} ${unit(short.assetId)}${short.includesFee ? `, including the ${formatAmount(req.fee)} BEAM network fee` : ''}. You have ${formatAmount(short.have)}. Add ${unit(short.assetId)} to this wallet${native ? '' : ' (Receive on the Wallet tab)'}, then try again.`
+                    : `The wallet can't spend this much right now${req.fee > 0n ? ` (the ${formatAmount(req.fee)} BEAM network fee included)` : ''}. Part of the balance may be in a payment that has not finished: try again in a minute, or add more${native ? '' : ' on the Wallet tab (Receive)'}.`,
                 ),
               ),
           h(
             'div',
             { class: 'actions' },
             req.isEnough ? h('button', { class: 'btn btn-primary wrap', 'data-testid': 'consent-approve', onclick: approve }, label) : null,
-            h('button', { class: `btn ${req.isEnough ? 'btn-text' : 'btn-secondary'}`, 'data-testid': 'consent-cancel', onclick: () => close(false) }, 'Cancel'),
+            // The wallet's own swap: the way out of "not enough" is one tap away. (A dApp stays open; its text says where.)
+            !req.isEnough && native
+              ? h(
+                  'button',
+                  {
+                    class: 'btn btn-primary',
+                    'data-testid': 'consent-receive',
+                    onclick: () => {
+                      close(false);
+                      app.go('receive');
+                    },
+                  },
+                  short ? `Add ${unit(short.assetId)}` : 'Add funds',
+                )
+              : null,
+            h('button', { class: `btn ${req.isEnough || native ? 'btn-text' : 'btn-secondary'}`, 'data-testid': 'consent-cancel', onclick: () => close(false) }, 'Cancel'),
           ),
         );
       },
