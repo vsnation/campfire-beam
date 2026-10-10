@@ -162,6 +162,7 @@ class BeamClaimText {
     this.warning,
     this.blocker,
     this.batches,
+    this.privacyNote,
   });
 
   final String headline;
@@ -190,6 +191,10 @@ class BeamClaimText {
 
   /// More than one claim transaction is needed.
   final String? batches;
+
+  /// A payment to a name and its claim can be linked on-chain; null when
+  /// only sale proceeds wait.
+  final String? privacyNote;
 
   /// The primary button: the outcome, not the mechanism.
   final String cta;
@@ -445,6 +450,11 @@ abstract final class BeamHomeText {
       warning: warning,
       blocker: blocker,
       batches: batches,
+      privacyNote: summary.names.isEmpty
+          ? null
+          : 'A payment to your name and your claim of it can be linked on '
+                'the blockchain. Claiming later, or several payments at '
+                'once, makes that harder.',
       cta: receive.length == 1 ? 'Claim ${receive.single}' : 'Claim all',
     );
   }

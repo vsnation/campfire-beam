@@ -388,6 +388,14 @@ class _BeamClaimSheetState extends State<BeamClaimSheet> {
             const SizedBox(height: 12),
             Text(text.batches!, style: note),
           ],
+          if (text.privacyNote != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              text.privacyNote!,
+              key: const Key('beamClaimPrivacy'),
+              style: note,
+            ),
+          ],
           if (blocker != null) ...[
             const SizedBox(height: 12),
             Text(

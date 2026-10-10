@@ -360,6 +360,24 @@ void main() {
       expect(t.blocker, isNull);
       expect(t.warning, isNull);
       expect(t.cta, 'Claim 2.5 BEAM');
+      expect(t.privacyNote, contains('can be linked on the blockchain'));
+    });
+
+    test('only sale proceeds waiting: no note about payments to a name', () {
+      final s = BansPendingSummary(
+        visibility: BansInboxVisibility.visible,
+        totalsByAsset: {0: g(3)},
+        entryCount: 1,
+        names: const [],
+        checkedAt: DateTime(2026, 10, 10),
+      );
+      final t = BeamHomeText.claim(
+        summary: s,
+        advice: s.advise(beamAvailable: BigInt.zero),
+        canSpend: true,
+      );
+      expect(t.headline, 'Claim what your sold names earned');
+      expect(t.privacyNote, isNull);
     });
 
     test('tokens only with an empty wallet: needs the fee first', () {
