@@ -102,7 +102,7 @@ export async function resumeBridgeIfAny(app) {
 export function bridgeEntry(app) {
   return h(
     'button',
-    { class: 'card row dapps-entry', onclick: () => app.go('bridgeMove', { dir: 'toBeam', back: 'ethHome' }), 'data-testid': 'eth-move-to-beam' },
+    { class: 'card row bridge-entry', onclick: () => app.go('bridgeMove', { dir: 'toBeam', back: 'ethHome' }), 'data-testid': 'eth-move-to-beam' },
     h('span', { class: 'ico' }, icon('bridge')),
     h('span', { class: 'main' }, h('div', { class: 't', text: 'Move to BEAM' }), h('div', { class: 's', text: "Through BEAM's official bridge" })),
     h('span', { class: 'chev' }, icon('chevron')),

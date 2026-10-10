@@ -584,7 +584,9 @@ details.more.card { padding: 12px 16px; }
 .bridge-short.mood-success { color: var(--success); }
 .bridge-short.mood-error { color: var(--error); }
 .bridge .pair-to { padding-top: 22px; }
-.bridge .kv .v, .bridge-card .kv .v { word-break: normal; overflow-wrap: anywhere; }
+.bridge .kv .v, .bridge-card .kv .v { word-break: normal; overflow-wrap: break-word; min-width: 0; }
+.bridge-entry .ico { background: var(--secondary); color: var(--on-secondary); }
+.bridge-entry { padding: 12px 14px; border-bottom: 0; }
 .bridge .kv .v .small, .bridge-card .kv .v .small { font-weight: 400; }
 .bridge .notice .grow, .bridge-card + .notice .grow { min-width: 0; }
 .bridge .prompt-actions, .sheet .prompt-actions { flex-wrap: wrap; }

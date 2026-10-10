@@ -470,10 +470,14 @@ test('(e) a move ready to collect: "Collect", then the approve sheet in the brid
     await s.ctl.store.save(c);
     return c.id;
   }, { id: pick.id, msgId: pick.msgId, amount: String(pick.amount) });
+  // Locked from Home (from a bridge screen, unlocking would go back to that screen).
+  await page.evaluate(() => window.__campfire.go('home'));
+  await waitScreen(page, 'home');
   await page.evaluate(async () => (await import('./app.js')).app.lock('manual'));
   await unlockWithPassword(page, PASSWORD);
   await waitScreen(page, 'home', 120000);
   await page.waitForSelector(`${tid('chain-move')}[data-badge="collect"]`, { timeout: 60000 });
+  await shots4('23a-home-move-ready-to-collect');
   await page.evaluate((x) => window.__campfire.go('bridgeCrossing', { id: x, back: 'bridgeList' }), id);
   await waitScreen(page, 'bridgeCrossing');
   assert.equal(await crossingState(['delivered']), 'delivered');
@@ -482,8 +486,11 @@ test('(e) a move ready to collect: "Collect", then the approve sheet in the brid
   assert.match(label, /^Collect [0-9.]+ b(ETH|USDT)$|^Collect 0\.02 BEAM$/);
   assert.match(await page.textContent(tid('bridge-collect-fee')), /Network fee 0\.121 BEAM, from your BEAM wallet\./);
   await shots4('24-crossing-ready-to-collect');
+  // Told it holds 0.5 BEAM only for the collect button's own check; the approve sheet then
+  // measures the real wallet (0 BEAM) against the 0.121 BEAM fee.
   await pretendBeam(50000000n);
   await page.click(tid('bridge-collect'));
+  await pretendBeam(null);
   await page.waitForSelector(`${tid('consent')}[data-bridge="collect"]`, { timeout: 120000 });
   assert.equal(await page.textContent(`${tid('consent')} h2`), 'Collect your coins');
   assert.equal(await page.textContent(tid('consent-fee')), '0.121 BEAM');
@@ -502,7 +509,6 @@ test('(e) a move ready to collect: "Collect", then the approve sheet in the brid
   assert.equal(truth.txs, 0);
   assert.equal(truth.last.decision, 'rejected');
   assert.deepEqual(truth.last.receives.map((r) => r.amount), [String(Number(pick.amount) / 1e8)]);
-  await pretendBeam(null);
 });
 
 test('IP privacy: this origin, the BEAM node, the chosen Ethereum server and (once allowed) CoinGecko; no CSP violation', T(1), async () => {

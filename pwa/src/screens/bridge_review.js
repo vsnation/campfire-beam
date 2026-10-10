@@ -98,7 +98,11 @@ export function openBridgeReview(app, s, first, { onStarted }) {
           { class: 'card bridge-card' },
           row('Arrives in your BEAM wallet', [h('span', { 'data-testid': 'bridge-review-receive', text: coin(q.receives, 8, r.beamSymbol) }), h('div', { class: 'small', 'data-testid': 'bridge-review-time', text: arrivesText(r, TO_BEAM) })]),
           row('Bridge fee', [h('span', { 'data-testid': 'bridge-review-fee', text: coin(q.fee, dec, sym) }), h('div', { class: 'small', text: 'paid to the bridge operator' })]),
-          row(n > 1 ? `Ethereum network fee, ${n} transactions` : 'Ethereum network fee', [h('span', { 'data-testid': 'bridge-review-eth-fee', text: `likely ${ethText(plan.expectedGasCost)}` }), h('div', { class: 'small', 'data-testid': 'bridge-review-eth-fee-max', text: `up to ${ethMaxText(plan.maxGasCost)}` })]),
+          row('Ethereum network fee', [
+            h('span', { 'data-testid': 'bridge-review-eth-fee', text: `likely ${ethText(plan.expectedGasCost)}` }),
+            h('div', { class: 'small', 'data-testid': 'bridge-review-eth-fee-max', text: `up to ${ethMaxText(plan.maxGasCost)}` }),
+            n > 1 ? h('div', { class: 'small', text: `for ${n} transactions` }) : null,
+          ]),
           row('Leaves your Ethereum wallet', total),
           row('Collecting it', [h('span', { text: `${coin(CLAIM_FEE, 8, 'BEAM')} network fee` }), h('div', { class: 'small', text: 'from your BEAM wallet' })]),
           h('div', { class: 'kv kv-stack' }, h('span', { class: 'k', text: 'From your Ethereum wallet' }), h('span', { class: 'v mono addr-groups', 'data-testid': 'bridge-review-from', text: groupedAddress(s.w.state.address) })),
