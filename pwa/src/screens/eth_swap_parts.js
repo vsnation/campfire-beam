@@ -275,6 +275,7 @@ export function openReviewSheet(app, { w, svc, review: first, acceptImpact }) {
               review = Object.freeze({ ...review, gasLimit: e.gasLimit, maxGasCost: e.gasLimit * review.fees.maxFeePerGas, expectedGasCost: e.gasLimit * (review.fees.baseFee + review.fees.maxPriorityFeePerGas) });
               error = 'The swap needs a little more gas than first measured. The network fee below is updated; nothing was sent.';
             } else if (e instanceof UniRouteChanged) error = 'One of the pools on this route would not actually trade, so BEAM Campfire left it out. Go back for the next best price.';
+            else if (e instanceof EthRpcError && (e.code === 3 || /revert/i.test(e.message))) error = 'Ethereum would refuse this swap now, most often because the price moved past your protection since this review. Nothing was sent. Tap Change for a new price.';
             else if (e instanceof EthRpcError) error = `Your Ethereum server would not build it: "${e.message}". Nothing was sent.`;
             else error = `Couldn't build the swap: ${e.message} Nothing was sent.`;
             return rerender();

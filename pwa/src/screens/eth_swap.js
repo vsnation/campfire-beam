@@ -20,7 +20,7 @@ import { icon } from '../lib/icons.js';
 import { screen, primary, notice, openSheet } from '../lib/ui.js';
 import { ethWallet } from '../lib/eth/wallet.js';
 import { parseUnits, toInputString } from '../lib/eth/units.js';
-import { compactUnits, exactUnits, percentText } from '../lib/compact.js';
+import { compactUnits, percentText } from '../lib/compact.js';
 import { UniswapNoRoute } from '../lib/eth/uniswap/quoter.js';
 import { DEFAULT_SLIPPAGE, IMPACT_WARNING, IMPACT_BLOCK, PERMIT_GAS, UniPriceMoved, UniRouteChanged } from '../lib/eth/uniswap/service.js';
 import { EthRpcError } from '../lib/eth/rpc.js';
@@ -66,7 +66,7 @@ export default function ethSwap(app, params = {}) {
   const notesBox = h('div', { class: 'swap-notes' });
   const detailsBox = h('div');
   const reason = h('p', { class: 'hint center', 'data-testid': 'uni-reason', 'aria-live': 'polite' });
-  const cta = primary('Swap', swapNow, { disabled: true, 'data-testid': 'uni-swap-cta' });
+  const cta = primary('Swap', swapNow, { disabled: true, class: 'btn btn-primary wrap', 'data-testid': 'uni-swap-cta' });
   const poolsPanel = h('div', { class: 'stack', 'data-testid': 'uni-pools-panel' });
   const poolsBtn = h('button', { class: 'btn btn-text btn-small pools-btn', type: 'button', 'data-testid': 'uni-open-pools', onclick: openPools }, 'Pools');
   const wide = window.matchMedia(WIDE);
@@ -161,7 +161,9 @@ export default function ethSwap(app, params = {}) {
 
     const st = ctaState();
     cta.disabled = st.off !== null;
-    cta.textContent = a.value == null || a.error ? 'Swap' : quoted ? `Swap ${exactUnits(a.value, p.decimals)} ${p.symbol} for ≈${compactUnits(quote.amountOut, r.decimals)} ${r.symbol}` : `Swap ${exactUnits(a.value, p.decimals)} ${p.symbol}`;
+    // The outcome, rounded to what people read (every digit is on the review).
+    cta.textContent = a.value == null || a.error ? 'Swap' : quoted ? `Swap ${compactUnits(a.value, p.decimals)} ${p.symbol} for ≈${compactUnits(quote.amountOut, r.decimals)} ${r.symbol}` : `Swap ${compactUnits(a.value, p.decimals)} ${p.symbol}`;
+    payInput.classList.toggle('long', payInput.value.length > 9);
     reason.textContent = st.off || '';
     reason.classList.toggle('hidden', !st.off);
     renderPools();

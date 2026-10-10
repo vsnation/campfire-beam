@@ -99,10 +99,10 @@ function swapTitle(item) {
   const open = item.state === 'signed' || item.state === 'pending';
   const failed = item.state === 'failed' || item.state === 'replaced' || item.state === 'rejected';
   if (item.kind === 'swap') {
-    const pair = `${item.asset.symbol} for ${item.swapOut || 'a token'}`;
-    return open ? `Swapping ${pair}` : failed ? `Swap not done (${pair})` : `Swapped ${pair}`;
+    const to = item.swapOut || 'a token';
+    return open ? `Swapping to ${to}` : failed ? 'Swap not done' : `Swapped to ${to}`;
   }
-  if (item.kind === 'approve') return open ? `Allowing ${item.asset.symbol} for Uniswap` : failed ? `${item.asset.symbol} not allowed` : `Allowed ${item.asset.symbol} for Uniswap`;
+  if (item.kind === 'approve') return open ? `Allowing ${item.asset.symbol}` : failed ? `${item.asset.symbol} not allowed` : `Allowed ${item.asset.symbol}`;
   if (item.kind === 'approveReset') return `Reset the ${item.asset.symbol} permission`;
   return null;
 }
@@ -124,8 +124,8 @@ export function activityRow(item, onclick) {
       'button',
       { class: 'row', onclick, 'data-testid': 'eth-activity-row', 'data-hash': item.hash, 'data-state': item.state, 'data-kind': item.kind },
       h('span', { class: `ico ${bad ? 'fail' : 'swap'}` }, icon(open ? 'clock' : 'check')),
-      h('span', { class: 'main' }, h('div', { class: 't', text: title }), h('div', { class: 's addr', text: when || '' })),
-      h('span', { class: 'end small', text: item.kind === 'approve' ? amountText(item.amount, item.asset) : '' }),
+      h('span', { class: 'main' }, h('div', { class: 't', text: title }), h('div', { class: 's addr', text: when ? `${when} · for Uniswap` : 'For Uniswap' })),
+      h('span', { class: 'end small', title: amountText(item.amount, item.asset), text: item.kind === 'approve' ? `${compactUnits(item.amount, item.asset.decimals)} ${item.asset.symbol}` : '' }),
     );
   }
   if (item.kind === 'swap') {

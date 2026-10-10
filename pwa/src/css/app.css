@@ -562,3 +562,4 @@ details.more.card { padding: 12px 16px; }
 .review-line .big { word-break: normal; overflow-wrap: anywhere; }
 .asset-row .end { word-break: normal; overflow-wrap: anywhere; }
 .sheet .sheet-actions { bottom: calc(-18px - var(--safe-bottom)); }
+.swap-input.long { font-size: 22px; }
