@@ -162,3 +162,27 @@ test('fork: a price that moved past the protection: the review refuses, and a sw
     t.diagnostic(`refused swap ${receipt.transactionHash}: fee ${out.gasCost} wei, gas ${receipt.gasUsed}`);
   });
 });
+
+test('fork: 2 ETH → WBEAM shared between pools, each share with its own minimum; sold back with one permit', T, async (t) => {
+  await withFork(async () => {
+    const rpc = forkRpc();
+    const svc = service(rpc);
+    const who = await fundedKey({ eth: 5n * ETH });
+    const q = await svc.quote({ tokenIn: ETH_TOKEN, tokenOut: wbeam, amountIn: 2n * ETH });
+    assert.ok(q.isSplit, `one route: ${q.route.id}`);
+    const ids = q.pools.map((p) => p.id);
+    assert.equal(new Set(ids).size, ids.length, 'a pool used twice');
+    // This moves the price more than 10 %: built only once accepted.
+    assert.equal((await svc.reviewSwap({ quote: q, owner: who.address })).impact, 'block');
+    const { done } = await swap(t, svc, rpc, who, q, { acceptImpact: true });
+    assert.equal(minimaOf(done.tx.data).length, done.quote.parts.length, 'one minimum per share');
+    const commands = [...decodeCall('execute(bytes,bytes[],uint256)', done.tx.data)[0]];
+    t.diagnostic(`commands ${commands.map((c) => c.toString(16).padStart(2, '0')).join(' ')}`);
+    const have = await svc.balanceOf(wbeam, who.address);
+    assert.equal(have, done.quote.amountOut);
+
+    const sell = await svc.quote({ tokenIn: wbeam, tokenOut: ETH_TOKEN, amountIn: have });
+    await swap(t, svc, rpc, who, sell, { acceptImpact: true });
+    assert.equal(await svc.balanceOf(wbeam, who.address), 0n);
+  });
+});
