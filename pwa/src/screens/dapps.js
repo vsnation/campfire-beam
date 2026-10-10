@@ -14,7 +14,6 @@
 import { h, put } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { screen, notice, openSheet, progressBar, toast } from '../lib/ui.js';
-import { formatAmount } from '../lib/amount.js';
 import { wallet } from '../lib/wallet.js';
 import { loadEngine } from '../lib/engine.js';
 import { isControlled } from '../lib/loader.js';
@@ -22,8 +21,7 @@ import { confirmIdentity } from '../lib/auth_ui.js';
 import { CATALOGUE, iconPath, sizeText, hostOf } from '../lib/dapps/catalogue.js';
 import { downloadPackage, cachedPackage, keepPackage, isCached, forgetPackage, openPackage, PackageError } from '../lib/dapps/package.js';
 import { DappRunner, runnerStats } from '../lib/dapps/runner.js';
-// Stand-in until lib/contracts.js lands (see the file).
-import { openApp, setConsentPresenter } from '../lib/dapps/app_api_shim.js';
+import { openApp } from '../lib/contracts.js';
 
 export { runnerStats };
 
@@ -188,34 +186,24 @@ export default function dapps(app, params = {}) {
       if (err.code === 'hash' || err.code === 'size') return `This file is not the ${e.name} BEAM published (its fingerprint doesn't match), so nothing was run. Try again later; if it keeps happening, the download is being changed on its way to you.`;
       return `${e.name} could not be opened: ${err.message}`;
     }
-    if (err && err.code === 'busy') return `Your wallet did not answer in time; it may still be finishing what the last dApp asked. Try again in a moment.`;
+    if (err && err.code === 'timeout') return `Your wallet did not answer in time; it may still be finishing what the last dApp asked. Try again in a moment.`;
+    if (err && (err.code === 'locked' || err.code === 'no_wallet')) return 'The wallet was locked. Unlock it and open the dApp again.';
     return `${e.name} could not be opened: ${(err && err.message) || err}`;
   }
 
-  /** This dApp's own app API in the engine: its own identity, privilege 0. */
-  async function connect(manifest, e) {
-    const M = await loadEngine();
-    const appId = M.WasmWalletClient.GenerateAppID(manifest.name, `campfire-pwa:dapp/${e.guid}/${manifest.startPath}`);
-    let timer;
-    const late = new Promise((_, reject) => {
-      timer = setTimeout(() => reject(Object.assign(new Error('the wallet did not answer'), { code: 'busy' })), 30000);
-    });
-    const opening = openApp({ appId, appName: manifest.name });
-    try {
-      return await Promise.race([opening, late]);
-    } catch (err) {
-      opening.then((a) => a.close(), () => {});
-      throw err;
-    } finally {
-      clearTimeout(timer);
-    }
+  /**
+   * This dApp's own app API in BEAM's engine (lib/contracts.js): its own app
+   * identity, privilege 0. The wallet's approve sheet asks before anything it
+   * requests is signed, with the dApp's name on it.
+   */
+  function connect(manifest, e) {
+    return openApp({ appName: manifest.name, appUrl: `campfire-pwa:dapp/${e.guid}/${manifest.startPath}` });
   }
 
   // ---------------------------------------------------------------- running
   function run(e, files, manifest, appApi) {
     const pref = dappPrefs(app)[e.guid] || {};
     const remoteOrigins = pref.remote === true ? [...e.remoteOrigins] : [];
-    setConsentPresenter((req) => presentConsent(req));
     const stage = h('div', { class: 'dapp-stage' });
     const busyBar = h('div', { class: 'dapp-busy hidden', 'data-testid': 'dapp-busy' }, progressBar(null));
     const wideHint = h(
@@ -309,7 +297,6 @@ export default function dapps(app, params = {}) {
   }
 
   function closeRunner() {
-    setConsentPresenter(null);
     if (runner) runner.close();
     runner = null;
     layer.classList.add('hidden');
@@ -319,57 +306,6 @@ export default function dapps(app, params = {}) {
   }
 
   // ---------------------------------------------------------------- asking
-  const amountText = (a) => `${formatAmount(a.amount)} ${wallet.label(a.assetId).unit}`;
-
-  /** Names for the assets on the sheet ("FOMO", not "Asset 174"), asked of the wallet, briefly. */
-  async function nameAssets(req) {
-    const ids = [...new Set([...req.spends, ...req.receives].map((a) => a.assetId))].filter((id) => id !== 0 && !wallet.assetNamed.has(id));
-    await Promise.race([Promise.all(ids.map((id) => wallet.loadAsset(id))), new Promise((r) => setTimeout(r, 4000))]);
-  }
-
-  async function presentConsent(req) {
-    await nameAssets(req).catch(() => {});
-    return new Promise((resolve) => {
-      let busyAuth = false;
-      let s = null;
-      const approveButton = h(
-        'button',
-        {
-          class: 'btn btn-primary',
-          'data-testid': 'dapp-consent-approve',
-          onclick: async () => {
-            if (busyAuth) return;
-            busyAuth = true;
-            const ok = await confirmIdentity(app, { title: 'Confirm it is you', detail: `${req.appName}: approve this transaction`, cta: 'Approve' });
-            busyAuth = false;
-            s.close(ok === true);
-          },
-        },
-        'Approve',
-      );
-      s = openSheet(
-        (close) => [
-          h('h2', { 'data-testid': 'dapp-consent', text: req.kind === 'send' ? `${req.appName} asks to send a payment` : `${req.appName} asks to run a transaction` }),
-          h(
-            'div',
-            { class: 'card' },
-            ...req.spends.map((a) => h('div', { class: 'kv' }, h('span', { class: 'k', text: 'You pay' }), h('span', { class: 'v', text: amountText(a) }))),
-            ...req.receives.map((a) => h('div', { class: 'kv' }, h('span', { class: 'k', text: 'You receive' }), h('span', { class: 'v', text: amountText(a) }))),
-            req.spends.length + req.receives.length === 0 ? h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Moves' }), h('span', { class: 'v', text: 'No funds, only the fee' })) : null,
-            h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Network fee' }), h('span', { class: 'v', text: `${formatAmount(req.fee)} BEAM` })),
-            req.address ? h('div', { class: 'kv' }, h('span', { class: 'k', text: 'To' }), h('span', { class: 'v mono', text: req.address.length > 24 ? `${req.address.slice(0, 12)}…${req.address.slice(-8)}` : req.address })) : null,
-          ),
-          req.comment ? h('p', { class: 'small', text: `${req.appName} describes it as: "${req.comment}"` }) : null,
-          req.isEnough === false ? notice('warn', "There isn't enough in the wallet for this and its fee, so it can't go through. Reject it, add funds, then try again in the dApp.") : null,
-          req.isEnough === false ? null : approveButton,
-          h('button', { class: req.isEnough === false ? 'btn btn-primary' : 'btn btn-text', 'data-testid': 'dapp-consent-reject', onclick: () => close(false) }, 'Reject'),
-        ],
-        { dismissable: false, label: `${req.appName} asks` },
-      );
-      s.then((v) => resolve(v === true));
-    });
-  }
-
   function presentSign(req) {
     return new Promise((resolve) => {
       const s = openSheet(

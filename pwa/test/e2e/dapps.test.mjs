@@ -186,7 +186,7 @@ test('a message posted to the wallet window reaches no wallet call', async () =>
   assert.ok(seen.length > 0, 'the trace sees the dApp\'s own requests');
   assert.deepEqual(seen.filter((r) => r.id === 'forged' || r.method === 'tx_send' || r.id === null), [], 'nothing posted to the wallet window reached the bridge');
   assert.equal((await stats())[0].dropped, before.dropped);
-  assert.equal(await page.$(tid('dapp-consent')), null, 'no approval was asked for');
+  assert.equal(await page.$(tid('consent')), null, 'no approval was asked for');
 });
 
 test('a port or reply forged by another frame is ignored by the dApp frame', async () => {

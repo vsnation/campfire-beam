@@ -145,10 +145,10 @@ try {
         return { rawBytes: trade.result.raw_data.length };
       }, DEX_CID);
       log('DEX trade built:', JSON.stringify(built).slice(0, 200));
-      await page.waitForSelector(tid('dapp-consent'), { timeout: 60000 });
-      const sheet = await page.$eval('.sheet', (el) => el.innerText);
+      await page.waitForSelector(tid('consent'), { timeout: 60000 });
+      const sheet = await page.$eval(tid('consent'), (el) => el.innerText);
       await shot(page, `dapps-live-${WIDTH}-dex-approval`);
-      await page.click(tid('dapp-consent-reject'));
+      await page.click(tid('consent-cancel'));
       const answer = await frame.evaluate(() => window.__submit).catch(async (e) => ({ lost: e.message, states: await page.evaluate(() => window.__campfire.dapps()), stopped: await page.$eval(tid('dapp-stopped'), (x) => x.innerText).catch(() => null) }));
       const after = await page.evaluate((b) => window.__bridgeTrace.slice(b), before);
       const consent = { sheet: sheet.replace(/\s+/g, ' ').slice(0, 300), engineAnswer: answer.error || answer.result, bridge: after };

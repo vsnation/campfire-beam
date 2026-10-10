@@ -10,7 +10,7 @@
 //    when it asks for privilege, calls BEAM names or signs with a key BEAM
 //    Campfire's own features use (policy.js); sign_message with such a key
 //    is refused too, and any other sign_message is put to the person first;
-// 5. forwarded to this dApp's own app API in BEAM's engine (openApp), which
+// 5. forwarded to this dApp's own app API in BEAM's engine (lib/contracts.js openApp), which
 //    applies the core's app rules again, scopes transactions and addresses
 //    to this dApp, and asks the person (through the consent presenter, with
 //    this dApp's name) before tx_send or process_invoke_data runs.
@@ -98,7 +98,7 @@ export class DappSession {
         return errorResponse(id, err);
       }
       if (e && e.code === 'timeout') return errorResponse(id, new RpcError(RPC.internalError, 'The wallet did not answer in time; the outcome is unknown'));
-      if (e && e.code === 'stopped') return errorResponse(id, new RpcError(RPC.internalError, 'The wallet is locked'));
+      if (e && ['locked', 'closed', 'no_wallet', 'stopped'].includes(e.code)) return errorResponse(id, new RpcError(RPC.internalError, 'The wallet is locked or the dApp was closed'));
       return errorResponse(id, new RpcError(RPC.internalError));
     }
   }

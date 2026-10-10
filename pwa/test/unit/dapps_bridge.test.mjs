@@ -213,11 +213,3 @@ test('runner: messages posted to the wallet window, or malformed ones on the por
   delete globalThis.document;
 });
 
-test('consent amounts from the engine (whole-coin strings) become groth exactly', async () => {
-  const { coinsToGroth } = await import('../../src/lib/dapps/app_api_shim.js');
-  assert.equal(coinsToGroth('0.011'), 1100000n);
-  assert.equal(coinsToGroth('1'), 100000000n);
-  assert.equal(coinsToGroth('12345.00000001'), 1234500000001n);
-  assert.equal(coinsToGroth(0), 0n);
-  for (const bad of ['', '-1', '1e5', '0.000000001', 'abc', null]) assert.throws(() => coinsToGroth(bad), Error, String(bad));
-});
