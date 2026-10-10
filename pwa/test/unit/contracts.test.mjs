@@ -1,89 +1,9 @@
 import test, { beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { fakeEngine, TXID } from './helpers/fake_engine.mjs';
 import { bindSession, unbindSession, openApp, nativeApp, setConsentPresenter, consentLog, contractsState, ContractError, consentRequest, decimalToGroth, parseShaderJson, NATIVE_APP_NAME } from '../../src/lib/contracts.js';
 
-const TXID = 'ab'.repeat(16);
 const tick = () => new Promise((r) => setImmediate(r));
-
-/**
- * A stand-in for the engine's WasmWalletClient and its app API, shaped like
- * wasmclient.cpp: createAppAPI(id, name, cb(err, api)); api.callWalletApi(json);
- * api.setHandler(fn); approve handlers get (request, info, amounts, cb).
- */
-function fakeEngine({ respond } = {}) {
-  const engine = { apis: [], handlerSets: { contract: 0, send: 0 }, contractHandler: null, sendHandler: null, deleted: 0, answers: [] };
-  engine.respond =
-    respond ||
-    ((req, api) => {
-      if (req.method === 'invoke_contract') {
-        if (req.params.args.includes('bPredictOnly=0') || req.params.args.includes('action=tx')) return api.reply(req.id, { output: '', raw_data: [1, 2, 3] });
-        return api.reply(req.id, { output: '{"res": {"ok": 1}}' });
-      }
-      if (req.method === 'process_invoke_data') return engine.askContract(api, req, { comment: 'Amm trade', fee: '0.011', isEnough: true, isSpend: true }, [{ amount: '0.01', assetID: 0, spend: true }, { amount: '371.76133894', assetID: 174, spend: false }]);
-      if (req.method === 'tx_send') return engine.askSend(api, req, { comment: '', fee: '0.001', token: 'f'.repeat(66), isOnline: true, isSpend: true, isEnough: true, amount: '1.5', assetID: 0 });
-      return api.reply(req.id, { echo: req.method });
-    });
-  engine.askContract = (api, req, info, amounts) => {
-    const text = JSON.stringify(req);
-    setImmediate(() => engine.contractHandler(text, JSON.stringify(info), JSON.stringify(amounts), engine.callback(api, text)));
-  };
-  engine.askSend = (api, req, info) => {
-    const text = JSON.stringify(req);
-    setImmediate(() => engine.sendHandler(text, JSON.stringify(info), engine.callback(api, text)));
-  };
-  engine.callback = (api, original) => {
-    const answer = (approved) => (request) => {
-      assert.equal(request, original, 'the engine gets back the request it sent');
-      engine.answers.push(approved ? 'approved' : 'rejected');
-      const id = JSON.parse(request).id;
-      if (approved) api.reply(id, { txid: TXID });
-      else api.replyError(id, { code: -32021, message: 'Call is rejected by user' });
-    };
-    return { contractInfoApproved: answer(true), contractInfoRejected: answer(false), sendApproved: answer(true), sendRejected: answer(false), delete() {} };
-  };
-  engine.client = {
-    setApproveContractInfoHandler(fn) {
-      engine.handlerSets.contract++;
-      engine.contractHandler = fn;
-    },
-    setApproveSendHandler(fn) {
-      engine.handlerSets.send++;
-      engine.sendHandler = fn;
-    },
-    createAppAPI(appId, appName, cb) {
-      const api = {
-        appId,
-        appName,
-        handler: null,
-        sent: [],
-        setHandler(fn) {
-          this.handler = fn;
-        },
-        callWalletApi(s) {
-          const req = JSON.parse(s);
-          this.sent.push(req);
-          engine.respond(req, this);
-        },
-        reply(id, result) {
-          setImmediate(() => this.handler && this.handler(JSON.stringify({ jsonrpc: '2.0', id, result })));
-        },
-        replyError(id, error) {
-          setImmediate(() => this.handler && this.handler(JSON.stringify({ jsonrpc: '2.0', id, error })));
-        },
-        event(id, result) {
-          this.handler && this.handler(JSON.stringify({ jsonrpc: '2.0', id, result }));
-        },
-        delete() {
-          engine.deleted++;
-        },
-      };
-      engine.apis.push(api);
-      setImmediate(() => cb(undefined, api));
-    },
-  };
-  engine.session = { client: engine.client, M: { WasmWalletClient: { GenerateAppID: (n, u) => `appid:${n}|${u}` } } };
-  return engine;
-}
 
 let engine;
 let unset = () => {};
@@ -348,4 +268,71 @@ test('a session that ends releases closed apps still waiting on the engine', asy
   assert.equal(engine.deleted, 0);
   unbindSession();
   assert.equal(engine.deleted, 1);
+});
+
+test('inspect reads the built bytes before the engine sees them again; null lets the request on to consent', async () => {
+  const seen = [];
+  let shown = 0;
+  unset = setConsentPresenter(async () => {
+    shown++;
+    return true;
+  });
+  const app = await nativeApp();
+  const txId = await app.transact('action=pool_trade,bPredictOnly=0', [0], {
+    inspect: (bytes) => {
+      seen.push({ bytes, sentYet: engine.apis.flatMap((a) => a.sent).some((q) => q.method === 'process_invoke_data') });
+      bytes[0] = 99; // a copy: what is sent is what the engine built
+      return null;
+    },
+  });
+  assert.equal(txId, TXID);
+  assert.equal(seen.length, 1);
+  assert.ok(seen[0].bytes instanceof Uint8Array);
+  assert.equal(seen[0].sentYet, false, 'inspect runs before process_invoke_data');
+  assert.equal(shown, 1);
+  const pid = engine.apis.flatMap((a) => a.sent).filter((q) => q.method === 'process_invoke_data');
+  assert.deepEqual(pid.map((q) => q.params.data), [[1, 2, 3]]);
+});
+
+test('an inspect refusal (returned or thrown) sends nothing and shows nothing', async () => {
+  let shown = 0;
+  unset = setConsentPresenter(async () => {
+    shown++;
+    return true;
+  });
+  const app = await nativeApp();
+  await assert.rejects(
+    app.transact('action=pool_trade,bPredictOnly=0', [0], { inspect: () => ({ code: 'unexpected', message: 'Not what you asked for. Nothing was sent.' }) }),
+    (e) => e instanceof ContractError && e.code === 'unexpected' && e.message === 'Not what you asked for. Nothing was sent.',
+  );
+  await assert.rejects(
+    app.transact('action=pool_trade,bPredictOnly=0', [0], {
+      inspect: async () => {
+        throw new Error('cannot read it');
+      },
+    }),
+    (e) => e.code === 'unexpected' && e.message === 'cannot read it',
+  );
+  await assert.rejects(app.transact('action=pool_trade,bPredictOnly=0', [0], { inspect: () => 'no' }), (e) => e.code === 'refused' && e.message === 'no');
+  assert.equal(engine.apis.flatMap((a) => a.sent).filter((q) => q.method === 'process_invoke_data').length, 0);
+  assert.equal(shown, 0);
+  assert.deepEqual(engine.answers, []);
+  assert.equal(contractsState().inflight, 0);
+});
+
+test('with inspect, raw_data that is not all bytes is refused before inspect runs', async () => {
+  engine.respond = (req, api) => api.reply(req.id, { output: '', raw_data: [1, 256, 3] });
+  const app = await nativeApp();
+  let ran = false;
+  await assert.rejects(
+    app.transact('x=1', [0], {
+      inspect: () => {
+        ran = true;
+        return null;
+      },
+    }),
+    (e) => e.code === 'unexpected',
+  );
+  assert.equal(ran, false);
+  assert.equal(engine.apis.flatMap((a) => a.sent).filter((q) => q.method === 'process_invoke_data').length, 0);
 });

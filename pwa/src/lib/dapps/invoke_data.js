@@ -125,7 +125,8 @@ function readEntry(r) {
     parentHeight = r.u64();
     r.take(32); // parent context hash
   }
-  return { flags, method, contractId, argsLength: args.length, dataLength, signatureKeyHashes, charge, comment, spend, parentHeight };
+  // args: a copy of the packed method arguments, for callers that check them byte for byte.
+  return { flags, method, contractId, args: args.slice(), argsLength: args.length, dataLength, signatureKeyHashes, charge, comment, spend, parentHeight };
 }
 
 /**

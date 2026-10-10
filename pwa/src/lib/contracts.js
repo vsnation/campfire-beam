@@ -35,12 +35,14 @@
 //         invoke_contract, create_tx:false; the shader's printed JSON, parsed (large
 //         integers kept exact as strings). A {"error": ...} from the shader rejects with
 //         code 'shader'; a transaction in the answer rejects with code 'unexpected'.
-//     .transact(args, shader, { expect, intent, timeoutMs }) -> Promise<txId>
-//         invoke_contract -> raw_data -> process_invoke_data -> consent -> the tx id.
-//         expect(req) may return { code, message } to refuse a request that is not what
-//         the caller asked for (it is then rejected without being shown); intent is a
-//         hint for the consent screen ({ action: 'swap', ... }) and only native apps
-//         may set it.
+//     .transact(args, shader, { inspect, expect, intent, timeoutMs }) -> Promise<txId>
+//         invoke_contract -> raw_data -> inspect -> process_invoke_data -> consent -> the tx id.
+//         inspect(bytes) reads the built transaction (a copy of raw_data, Uint8Array)
+//         before the engine sees it again; it may return { code, message } (or throw)
+//         to refuse it, and then nothing reaches process_invoke_data. expect(req) may
+//         return { code, message } to refuse a request that is not what the caller asked
+//         for (it is then rejected without being shown); intent is a hint for the
+//         consent screen ({ action: 'swap', ... }) and only native apps may set it.
 //     .onEvent(fn) -> unsubscribe     ev_* notifications this app subscribed to.
 //     .close()
 //
@@ -174,6 +176,23 @@ function shaderArray(shader) {
   throw new ContractError('unexpected', 'A shader must be bytes.');
 }
 
+/**
+ * Runs a caller's check of a built transaction. The bytes it reads are the bytes
+ * process_invoke_data sends: anything that is not a byte is refused first.
+ */
+async function inspected(raw, inspect) {
+  if (!raw.every((b) => Number.isInteger(b) && b >= 0 && b <= 255)) throw new ContractError('unexpected', 'The wallet built an unreadable transaction. Nothing was sent.');
+  let problem = null;
+  try {
+    problem = await inspect(Uint8Array.from(raw));
+  } catch (e) {
+    problem = { code: 'unexpected', message: (e && e.message) || 'This transaction is not what was asked for. Nothing was sent.' };
+  }
+  if (!problem) return;
+  if (typeof problem === 'string') problem = { code: 'refused', message: problem };
+  throw new ContractError(problem.code || 'refused', problem.message || 'This transaction was refused. Nothing was sent.');
+}
+
 // ---------------------------------------------------------------- apps
 
 class App {
@@ -269,11 +288,12 @@ class App {
   }
 
   /** Builds the transaction, asks for consent, sends it. Resolves with the tx id. */
-  async transact(args, shader, { expect = null, intent = null, timeoutMs } = {}) {
+  async transact(args, shader, { inspect = null, expect = null, intent = null, timeoutMs } = {}) {
     const r = await this.call('invoke_contract', { args: String(args), contract: shaderArray(shader), create_tx: false }, { timeoutMs });
     shaderOutput(r && r.output);
     const raw = r && r.raw_data;
     if (!Array.isArray(raw) || raw.length === 0) throw new ContractError('unexpected', 'The contract built no transaction.');
+    if (inspect) await inspected(raw, inspect);
     const done = await this.call('process_invoke_data', { data: raw }, { expect, intent });
     const txId = done && (done.txid || done.txId);
     if (typeof txId !== 'string' || !/^[0-9a-f]{32}$/i.test(txId)) throw new ContractError('unexpected', 'The wallet did not return a transaction id.');
