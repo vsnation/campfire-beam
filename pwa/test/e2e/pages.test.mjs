@@ -212,7 +212,17 @@ test('the publicly served release (installed, with a wallet) takes this one thro
   }
   const oldLoader = manifest.files.map((f) => f.path).find((p) => /^sw(-[0-9a-f]+)?\.js$/.test(p));
   console.log(`# public release ${release.version} (${manifest.files.length} files, manifest ${release.manifest_sha256.slice(0, 16)}…, loader ${oldLoader}) downloaded and verified`);
-  if (release.version === pkg.version) return console.log('# the public site already serves this release; nothing to update from');
+  // When the public site already serves this version, update to the next patch
+  // version built from this tree, so the move between loaders is always tested.
+  let next = rel;
+  let nextVersion = pkg.version;
+  if (release.version === pkg.version) {
+    const v = pkg.version.split('.').map(Number);
+    nextVersion = `${v[0]}.${v[1]}.${v[2] + 1}`;
+    next = join(tmp, 'rel-next');
+    execFileSync(process.execPath, [join(PWA, 'tools', 'build.mjs'), '--out', next, '--version', nextVersion, '--quiet'], { cwd: PWA });
+    console.log(`# the public site already serves ${pkg.version}; updating it to ${nextVersion} built from this tree`);
+  }
 
   // Serve it like Pages does, install it, and make a wallet with it.
   const live = join(tmp, 'live');
@@ -239,7 +249,7 @@ test('the publicly served release (installed, with a wallet) takes this one thro
     const addrsBefore = await page.evaluate(() => window.__campfire.addresses());
 
     // The host now serves this release. The person taps Check for updates, then Update.
-    point(rel);
+    point(next);
     await page.evaluate(() => window.__campfire.go('settings'));
     await waitScreen(page, 'settings');
     await page.click(tid('check-updates'));
@@ -247,10 +257,10 @@ test('the publicly served release (installed, with a wallet) takes this one thro
     await shot(page, 'pages-06-update-ready');
     await Promise.all([page.waitForEvent('load', { timeout: 60000 }), page.click(tid('update-apply-sheet'))]);
     await waitScreen(page, 'unlock', 120000);
-    assert.equal(await served(), pkg.version, `the installed ${release.version} now runs ${pkg.version}`);
+    assert.equal(await served(), nextVersion, `the installed ${release.version} now runs ${nextVersion}`);
     // This release's loader has a new name: the page moves to it once; that is not a takeover.
-    const loader = readFileSync(join(rel, 'lib', 'version.js'), 'utf8').match(/LOADER = "(sw-[0-9a-f]+\.js)"/)[1];
-    await page.waitForFunction((l) => navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL.endsWith(`/${l}`), loader, { timeout: 60000 });
+    const loader = readFileSync(join(next, 'lib', 'version.js'), 'utf8').match(/LOADER = "(sw-[0-9a-f]+\.js)"/)[1];
+    await page.waitForFunction((l) => navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL.endsWith(`/${l}`), loader, { timeout: 20000 });
     assert.equal(await page.evaluate(() => window.__campfire.intrusion()), null, 'the approved move to the new loader is not mistaken for a takeover');
     assert.equal(await page.evaluate(() => self.crossOriginIsolated), true);
     await page.fill(tid('unlock-pw'), PASSWORD);
@@ -258,12 +268,12 @@ test('the publicly served release (installed, with a wallet) takes this one thro
     await waitScreen(page, 'home', 60000);
     await waitSynced(page, 180000);
     assert.deepEqual(await page.evaluate(() => window.__campfire.addresses()), addrsBefore, 'the same wallet, after the update');
-    console.log(`# ${release.version} (${oldLoader}) -> ${pkg.version} (${loader}) through Check for updates on the static host: wallet kept, Synced, loader moved, no tripwire`);
+    console.log(`# ${release.version} (${oldLoader}) -> ${nextVersion} (${loader}) through Check for updates on the static host: wallet kept, Synced, loader moved, no tripwire`);
     await shot(page, 'pages-07-after-update');
     // A cold start after the move: still this release, still no alarm.
     await page.reload();
     await waitScreen(page, 'unlock', 60000);
-    assert.equal(await served(), pkg.version);
+    assert.equal(await served(), nextVersion);
     assert.equal(await page.evaluate(() => window.__campfire.intrusion()), null);
     assert.deepEqual(rec.errors, []);
     await ctx.close();

@@ -371,6 +371,14 @@ self.addEventListener('message', (event) => {
     if (installAbort) installAbort.abort();
     return;
   }
+  if (type === 'skip-waiting') {
+    // The page moves to this loader once, after an Update the person approved.
+    // Chrome can drop the skipWaiting() made during install when the old loader
+    // is busy with the page's reload (measured: this loader then waited five
+    // minutes behind the old one), so the page asks again once it is waiting.
+    event.waitUntil(self.skipWaiting());
+    return;
+  }
   const port = event.ports && event.ports[0];
   if (!port) return;
   event.waitUntil(
