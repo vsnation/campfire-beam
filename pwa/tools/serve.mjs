@@ -3,9 +3,10 @@
 //   node tools/serve.mjs [--port 8780] [--root dist|src|<dir>] [--selftest]
 //                        [--result-file <path>] [--quiet]
 //
-// - Serves --root (default dist/) with the production security headers
-//   (tools/headers.mjs). The root may be a symlink; it is resolved on every
-//   request, so tests can switch releases by re-pointing it.
+// - Serves --root (default dist/) with the production headers (tools/headers.mjs
+//   headersFor(): the page policy, the loader's own, CORS on the app's files).
+//   The root may be a symlink; it is resolved on every request, so tests can
+//   switch releases by re-pointing it.
 // - Proxies /recovery/mainnet_recovery.bin (BEAM's recovery file, which has no
 //   CORS headers) by streaming it: nothing is written to disk.
 // - Proxies /explorer/status (independent chain height), so the page itself
@@ -25,7 +26,7 @@ import { createReadStream } from 'node:fs';
 import { stat, realpath, writeFile, readFile } from 'node:fs/promises';
 import { join, normalize, sep, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SECURITY_HEADERS, mimeFor, RECOVERY_UPSTREAM, EXPLORER_UPSTREAMS } from './headers.mjs';
+import { SECURITY_HEADERS, headersFor, mimeFor, RECOVERY_UPSTREAM, EXPLORER_UPSTREAMS } from './headers.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pwaRoot = join(here, '..');
@@ -136,7 +137,7 @@ async function serveFile(req, res, pathname) {
     return send(res, 404, 'not found');
   }
   if (!st.isFile()) return send(res, 404, 'not found');
-  res.writeHead(200, baseHeaders({ 'Content-Type': mimeFor(full), 'Content-Length': st.size }));
+  res.writeHead(200, { ...headersFor(pathname), 'Cache-Control': 'no-cache', 'Content-Type': mimeFor(full), 'Content-Length': st.size });
   if (req.method === 'HEAD') return res.end();
   createReadStream(full).pipe(res);
 }

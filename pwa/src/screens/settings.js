@@ -8,16 +8,19 @@
  *   - "How do I remove it?" -> Delete is here, with what it means before anything happens.
  *   - "What is my backup?" -> Backup row: the 12 words, or for an imported wallet its wallet.db
  *     file and password (it has no words here, and nothing offers to rebuild it from words).
+ *   - "What if this app's address dies?" -> Check for updates also asks public copies of the
+ *     release, and "Update from another address" takes any copy; both say the app keeps working.
  */
 import { h, put } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
-import { screen, toast, notice, openSheet } from '../lib/ui.js';
+import { screen, toast } from '../lib/ui.js';
 import { NODES } from '../lib/nodes.js';
 import { hasPasskey, removePasskey, scanEnabled, isImported } from '../lib/session.js';
 import { passkeyAvailable } from '../lib/passkey.js';
 import { confirmIdentity } from '../lib/auth_ui.js';
 import { wallet } from '../lib/wallet.js';
 import { lastCheckText } from '../lib/update.js';
+import { runUpdateCheck, openOtherAddress } from '../lib/update_ui.js';
 
 export default function settings(app) {
   const row = (ico, title, sub, onclick, extra = {}) =>
@@ -63,38 +66,21 @@ export default function settings(app) {
     );
   })();
 
-  // The only way this app contacts its web address: when this row is tapped.
-  const updRow = row('download', 'Check for updates', lastCheckText(app.updates.lastCheck), checkUpdates, { 'data-testid': 'check-updates' });
-  const setUpdSub = () => {
+  // The only way this app contacts an update source (its web address, then copies of the
+  // release, then an address added below): when this row is tapped.
+  const updRow = row('download', 'Check for updates', lastCheckText(app.updates.lastCheck), () => runUpdateCheck(app, { onDone: setUpdSub }), { 'data-testid': 'check-updates' });
+  const otherSub = () => {
+    const added = app.updates.addedSource();
+    return added ? `Also asks ${new URL(added).host}` : "If this app's address is gone";
+  };
+  const otherRow = row('globe', 'Update from another address', otherSub(), () => openOtherAddress(app, { onDone: setUpdSub }), { 'data-testid': 'update-other-row' });
+  function setUpdSub() {
     const sub = updRow.querySelector('.s');
     if (sub) sub.textContent = lastCheckText(app.updates.lastCheck);
-  };
-  async function checkUpdates() {
-    toast('Checking for a signed update…');
-    try {
-      const r = await app.updates.check();
-      setUpdSub();
-      if (r.result === 'ready') {
-        openSheet((close) => [
-          h('h2', { text: `Update to ${r.version}` }),
-          h('p', { class: 'lead', text: 'This version was downloaded and checked against the BEAM Campfire release signature. Your wallet and settings stay as they are.' }),
-          h('button', { class: 'btn btn-primary', onclick: () => app.updates.apply(), 'data-testid': 'update-apply-sheet' }, `Update to ${r.version}`),
-          h('button', { class: 'btn btn-text', onclick: () => close() }, 'Later'),
-        ]);
-      } else if (r.result === 'refused') {
-        openSheet((close) => [h('h2', { text: 'Update refused' }), notice('error', `${r.reason} You are still on the version you had, which is unchanged.`), h('button', { class: 'btn btn-primary', onclick: () => close() }, 'OK')]);
-      } else if (r.result === 'unreachable') {
-        openSheet((close) => [
-          h('h2', { text: 'No update source reachable' }),
-          h('div', { 'data-testid': 'no-update-source' }, notice('info', 'No update source reachable. Your app keeps working.')),
-          h('p', { class: 'lead', text: 'BEAM Campfire runs from the copy on this device. It does not need its web address to open, unlock, sync, send or receive.' }),
-          h('button', { class: 'btn btn-primary', onclick: () => close(), 'data-testid': 'no-update-ok' }, 'OK'),
-        ]);
-      } else toast('You have the latest version.');
-    } catch (e) {
-      toast(e.message);
-    }
+    const sub2 = otherRow.querySelector('.s');
+    if (sub2) sub2.textContent = otherSub();
   }
+  const offU = app.updates.onChange(setUpdSub);
 
   const el = screen(
     { title: 'Settings', tabs: 'settings', app, cls: 'settings' },
@@ -123,9 +109,10 @@ export default function settings(app) {
       // Imported wallets have no words and nothing here rebuilds or rescans them (as in the desktop app).
       scanEnabled(app) || isImported(app) ? null : row('download', 'Find coins from other wallets', 'If these 12 words were used in another app (one-time 330 MB scan)', () => app.go('fastStart', { rescan: true }), { 'data-testid': 'find-coins' }),
       updRow,
+      otherRow,
       row('info', 'About', null, () => app.go('about'), { 'data-testid': 'about' }),
       row('trash', 'Delete wallet from this device', null, () => app.go('deleteWallet'), { 'data-testid': 'delete-wallet' }),
     ),
   );
-  return { el };
+  return { el, destroy: offU };
 }

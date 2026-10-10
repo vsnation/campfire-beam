@@ -442,6 +442,8 @@ body.dapp-open { overflow: hidden; }
 .addr-chip .mono { font-size: 13px; }
 .kv.kv-stack { flex-direction: column; gap: 4px; }
 .kv.kv-stack .v { text-align: left; font-weight: 500; }
+.kv .v.list { word-break: normal; overflow-wrap: anywhere; }
+.kv .v.list > span { display: block; }
 .stack { display: flex; flex-direction: column; gap: 14px; }
 .row .main .s.wrap { white-space: normal; }
 input.switch { appearance: none; -webkit-appearance: none; width: 46px; height: 28px; border-radius: 14px; background: var(--border); position: relative; flex: none; cursor: pointer; margin: 0; transition: background 0.2s; }

@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { NODES as HEADER_NODES, CSP, SECURITY_HEADERS, DAPP_PACKAGE_SOURCE } from '../../tools/headers.mjs';
+import { NODES as HEADER_NODES, CSP, SECURITY_HEADERS, DAPP_PACKAGE_SOURCE, LOADER_CSP, headersFor, nginxHeaderLines, PROXY_PATHS } from '../../tools/headers.mjs';
+import { BUILTIN_SOURCES } from '../../src/lib/update_sources.js';
 import { CATALOGUE, sourceUrl, REMOTE_ORIGINS } from '../../src/lib/dapps/catalogue.js';
 import { NODES } from '../../src/lib/nodes.js';
 import { DEFAULT_PREFS } from '../../src/lib/store.js';
@@ -58,11 +59,26 @@ test('cross-origin isolation headers are present', () => {
 test('deploy configs carry the same headers', () => {
   const nginx = readFileSync(join(pwa, 'deploy', 'nginx.conf'), 'utf8');
   const headers = readFileSync(join(pwa, 'deploy', '_headers'), 'utf8');
-  for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
-    assert.ok(nginx.includes(`add_header ${k} "${v}" always;`), `nginx: ${k}`);
-    assert.ok(headers.includes(`${k}: ${v}`), `_headers: ${k}`);
-  }
+  for (const line of nginxHeaderLines()) assert.ok(nginx.includes(line), `nginx: ${line.slice(0, 60)}`);
+  // nginx drops server-level add_header in any location that has its own: none may.
+  const server = nginx.slice(nginx.indexOf('server {'));
+  assert.ok(!/location[^{]*\{[^}]*add_header/.test(server), 'no add_header inside a location block');
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) assert.ok(headers.includes(`${k}: ${v}`), `_headers: ${k}`);
   assert.ok(nginx.includes('location = /explorer/status') && nginx.includes('location = /recovery/mainnet_recovery.bin'));
+});
+
+test('the loader gets its own policy (it may fetch signed updates from any https copy); pages keep theirs; release files are readable by any copy, the proxies are not', () => {
+  assert.equal(LOADER_CSP, "default-src 'none'; connect-src 'self' https:");
+  for (const p of ['sw-0123456789abcdef.js', '/sw-0123456789abcdef.js', 'sw.js']) assert.equal(headersFor(p)['Content-Security-Policy'], LOADER_CSP, p);
+  for (const p of ['index.html', 'app.js', 'lib/sw-0123456789abcdef.js', 'vendor/engine/wasm-client.worker.js', 'release.json']) assert.equal(headersFor(p)['Content-Security-Policy'], CSP, p);
+  assert.ok(!CSP.includes('https:;') && !/connect-src[^;]* https:( |;|$)/.test(CSP), 'the page policy names its hosts, never all of https');
+  for (const p of ['index.html', 'release.json', 'release.sig', 'manifest.json', 'vendor/engine/wasm-client.wasm', 'sw-0123456789abcdef.js']) assert.equal(headersFor(p)['Access-Control-Allow-Origin'], '*', p);
+  for (const p of PROXY_PATHS) assert.equal(headersFor(p)['Access-Control-Allow-Origin'], undefined, p);
+  // Everything else is the same set on every path.
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) if (k !== 'Content-Security-Policy') assert.equal(headersFor('sw-0123456789abcdef.js')[k], v, k);
+  const headers = readFileSync(join(pwa, 'deploy', '_headers'), 'utf8');
+  assert.match(headers, /\n\/\*\n(?:  [^\n]+\n)*  Access-Control-Allow-Origin: \*\n/);
+  assert.ok(headers.includes(`/sw-*.js\n  ! Content-Security-Policy\n  Content-Security-Policy: ${LOADER_CSP}\n`));
 });
 
 test('no source file reaches out to another origin', () => {
@@ -92,6 +108,10 @@ test('no source file reaches out to another origin', () => {
       // The Ethereum servers (exactly what connect-src lists) and the block explorer's
       // address, whose transaction pages the person may open with a tap: only in this file.
       if (f.endsWith(join('lib', 'eth', 'hosts.js')) && (connectSources().includes(u) || u === originOf(TX_EXPLORER))) continue;
+      // The public copies of the release, asked only by a tapped Check for updates (from the
+      // loader, after this app's own address): exactly the list, only in this file.
+      // Besides those, only the scheme it puts in front of a typed address, and its wording.
+      if (f.endsWith(join('lib', 'update_sources.js')) && (BUILTIN_SOURCES.includes(u) || u === 'https://${s}' || u === 'https://.')) continue;
       offenders.push(`${f.slice(pwa.length)}: ${u}`);
     }
   }

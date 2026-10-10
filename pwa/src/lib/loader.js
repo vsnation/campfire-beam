@@ -14,6 +14,13 @@
 //
 // Best effort, stated plainly in the project notes: a page opened after a
 // takeover is served by the new code, and that code can show anything.
+//
+// An update that came from another copy while the app's own address was down
+// (lib/update_sources.js) runs under the loader the device already has, since
+// a service worker comes only from its own address. The page moves to its own
+// loader later, when a tapped Check for updates finds that address serving the
+// installed release again; every move first checks that the address serves the
+// loader's signed bytes.
 
 import { LOADER } from './version.js';
 
@@ -43,6 +50,56 @@ export function loaderBehind() {
 
 export function isControlled() {
   return Boolean(navigator.serviceWorker && navigator.serviceWorker.controller);
+}
+
+/**
+ * One request to the running loader over a MessageChannel. Messages with a
+ * `progress` field go to onProgress, and each of them restarts the timeout.
+ */
+export function askLoader(msg, { timeoutMs = 120000, onProgress = null, slowMessage = 'The update check took too long.' } = {}) {
+  const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (!sw) return Promise.reject(new Error('The app is not running from its verified copy yet.'));
+  return new Promise((resolve, reject) => {
+    const ch = new MessageChannel();
+    let t = null;
+    const arm = () => {
+      clearTimeout(t);
+      t = setTimeout(() => reject(new Error(slowMessage)), timeoutMs);
+    };
+    ch.port1.onmessage = (e) => {
+      if (e.data && e.data.progress) {
+        arm();
+        if (onProgress) onProgress(e.data.progress);
+        return;
+      }
+      clearTimeout(t);
+      resolve(e.data);
+    };
+    arm();
+    sw.postMessage(msg, [ch.port2]);
+  });
+}
+
+const hex = (buf) => Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('');
+
+/**
+ * Whether this app's address serves the loader file `path` with the signed
+ * bytes (sha256 from the release's manifest; without it, the hash its
+ * content-addressed name carries). A loader that replaces another is installed
+ * only after this.
+ */
+export async function loaderServed(path, sha256 = null) {
+  if (!/^sw-[0-9a-f]{16}\.js$/.test(String(path))) return false;
+  let bytes;
+  try {
+    const r = await fetch(new URL(path, document.baseURI).href, { cache: 'no-store', credentials: 'same-origin' });
+    if (!r.ok) return false;
+    bytes = await r.arrayBuffer();
+  } catch {
+    return false;
+  }
+  const got = hex(await crypto.subtle.digest('SHA-256', bytes));
+  return sha256 ? got === sha256 : got.startsWith(path.slice(3, 19));
 }
 
 const endsWithLoader = (url) => typeof url === 'string' && url.split('?')[0].endsWith(`/${LOADER}`);
@@ -90,6 +147,7 @@ export async function installedButBypassed() {
  * ran under the older loader's headers.
  */
 function askToTakeOver(reg) {
+  if (!reg) return;
   const sw = navigator.serviceWorker;
   let tries = 0;
   const tick = () => {
@@ -142,13 +200,28 @@ export async function watchLoader({ onIntrusion, onMoved = () => {} }) {
   // the older loader's headers (which name only the hosts that release knew).
   if (!endsWithLoader(controllerUrl)) {
     const pending = [reg.installing, reg.waiting].some((w) => endsWithLoader(w && w.scriptURL));
-    if (!pending) {
-      sw.register(LOADER, { scope: './', updateViaCache: 'none' }).then(
-        (r) => askToTakeOver(r),
-        () => {
-          /* the address is down: the older loader keeps serving this verified copy */
-        },
-      );
-    }
+    // The address is down, or serves other bytes: the older loader keeps serving this verified copy.
+    if (!pending) moveToLoader().catch(() => {});
   }
+}
+
+/**
+ * Installs this release's loader when the page still runs under an older one,
+ * after checking the address serves its signed bytes. Returns 'current'
+ * (nothing to do), 'moving', or 'not-served' (address down or other bytes).
+ */
+export async function moveToLoader() {
+  const sw = navigator.serviceWorker;
+  if (!sw || !sw.controller || endsWithLoader(sw.controller.scriptURL)) return 'current';
+  let st = null;
+  try {
+    st = await askLoader({ type: 'status' }, { timeoutMs: 10000 });
+  } catch {
+    st = null;
+  }
+  const signed = st && st.releaseLoader && st.releaseLoader.path === LOADER ? st.releaseLoader.sha256 : null;
+  if (!(await loaderServed(LOADER, signed))) return 'not-served';
+  const reg = await sw.register(LOADER, { scope: './', updateViaCache: 'none' });
+  askToTakeOver(reg);
+  return 'moving';
 }

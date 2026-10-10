@@ -40,8 +40,10 @@ function pointLive(dir) {
   symlinkSync(dir, live);
 }
 
+// The update releases name no public copies: these tests are about the app's own address
+// (test/e2e/update_mirrors.test.mjs covers the copies), and a refused one must not reach GitHub.
 function build(version, out) {
-  execFileSync(process.execPath, [join(PWA, 'tools', 'build.mjs'), '--out', out, '--version', version, '--quiet'], { cwd: PWA });
+  execFileSync(process.execPath, [join(PWA, 'tools', 'build.mjs'), '--out', out, '--version', version, '--mirrors', 'none', '--quiet'], { cwd: PWA });
   return out;
 }
 

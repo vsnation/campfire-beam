@@ -67,6 +67,49 @@ export const SECURITY_HEADERS = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=()',
 };
 
+// The loader (sw-<hash>.js) is a worker, not a page: the policy on ITS response
+// decides what it may fetch, and the browser applies it every time the worker
+// starts. It fetches releases: from this origin, or, when that does not answer
+// a tapped "Check for updates", from the copies in src/lib/update_sources.js or
+// an address the person added - any https address, since a downloaded file is
+// kept only after the release signature and its SHA-256 checked out. It runs no
+// other script and loads nothing else. Pages keep CSP above (the loader puts
+// SECURITY_HEADERS on every page it serves): pages never fetch updates.
+export const LOADER_CSP = ["default-src 'none'", "connect-src 'self' https:"].join('; ');
+export const LOADER_FILE = /^sw(-[0-9a-f]+)?\.js$/;
+
+// Every file of a release may be read by any origin, so any copy of the app can
+// serve updates to installs whose own address is gone (GitHub Pages already
+// sends this). Not on the two same-origin proxies below: they are no relay for
+// other sites.
+export const RELEASE_CORS = { 'Access-Control-Allow-Origin': '*' };
+export const PROXY_PATHS = ['/recovery/mainnet_recovery.bin', '/explorer/status'];
+
+/** The headers a deployment sends for a path under the app's folder (rel: path relative to it, no leading slash). */
+export function headersFor(rel) {
+  const clean = String(rel).replace(/^\/+/, '');
+  const h = { ...SECURITY_HEADERS };
+  if (LOADER_FILE.test(clean)) h['Content-Security-Policy'] = LOADER_CSP;
+  if (!PROXY_PATHS.includes(`/${clean}`)) Object.assign(h, RELEASE_CORS);
+  return h;
+}
+
+/**
+ * What deploy/nginx.conf must contain (tools/build.mjs and the unit tests check
+ * it): every header, the page policy and the loader's from one map on $uri,
+ * and CORS from another (empty on the proxies, which nginx then leaves out).
+ */
+export function nginxHeaderLines() {
+  const lines = [];
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) if (k !== 'Content-Security-Policy') lines.push(`add_header ${k} "${v}" always;`);
+  lines.push('add_header Content-Security-Policy $campfire_csp always;');
+  lines.push('add_header Access-Control-Allow-Origin $campfire_acao always;');
+  lines.push(`default "${CSP}";`);
+  lines.push(`"~/sw(-[0-9a-f]+)?\\.js$" "${LOADER_CSP}";`);
+  for (const p of PROXY_PATHS) lines.push(`${p} "";`);
+  return lines;
+}
+
 export const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',

@@ -21,6 +21,15 @@
  * into a separate cache, and become the served copy only on "apply-update",
  * which only the Update button sends.
  *
+ * Update sources (lib/update_sources.js, inlined below): this app's own
+ * address first, then the public copies the installed release names, then an
+ * address the person added. The first that answers with a valid signed release
+ * decides; the rest are never contacted. Files from any source go into this
+ * app's own cache under its own scope URLs, each only after its hash matched.
+ * A release from anywhere but the own address must run under THIS loader (a
+ * service worker comes only from its own address), so it is staged only when
+ * it ships this loader or one that serves pages the same way (loader_compat).
+ *
  * Every response gets the security headers (COOP/COEP for the engine's
  * SharedArrayBuffer, CSP, CORP): a response from the cache would carry none.
  *
@@ -51,6 +60,8 @@ const MIME = /*__MIME__*/ {};
 
 /*__INLINE_RELEASE_JS__*/
 
+/*__INLINE_UPDATE_SOURCES_JS__*/
+
 /*__INLINE_FRAME_POLICY_JS__*/
 
 const META_CACHE = 'campfire-meta';
@@ -61,9 +72,22 @@ const PASSTHROUGH = [/^release\.json$/, /^release\.sig$/, /^manifest\.json$/, /^
 const PARALLEL = 6;
 const FRAME_SCRIPT = 'dapp-frame.js';
 const FILE_TIMEOUT_MS = 90000; // per file: a stalled connection fails the run, which can then resume
+const PROBE_TIMEOUT_MS = 30000; // release.json/.sig/manifest.json at one update source, then the next
+const MAX_META_BYTES = 4 * 1024 * 1024; // release.json, release.sig or manifest.json larger than this is not ours
+// The page <-> loader contract. Raise it when page code starts to rely on
+// something only a newer loader does (a message, a route, a header): it is
+// part of LOADER_COMPAT, so such a release then installs only from the own
+// address, where its loader comes along.
+const LOADER_API = /*__LOADER_API__*/ 2;
+// Hash of what this loader does to pages (security headers, MIME types, dApp
+// frame policy, LOADER_API), filled in by the build; release.json carries the
+// same value for the release's own loader (see loaderCompatible()).
+const LOADER_COMPAT = /*__LOADER_COMPAT__*/ null;
+const LOADER_NAME = self.location.pathname.split('/').pop();
 
 let stateCache = null;
 let updateRun = null;
+const updateListeners = new Set();
 let installAbort = null;
 
 function mimeFor(path) {
@@ -107,26 +131,62 @@ function relPath(url) {
   }
 }
 
-async function fetchBytes(path, signal) {
+/** Reads a response body, giving up once it is larger than max bytes. */
+async function readCapped(r, max, tooBig) {
+  const announced = Number(r.headers.get('content-length'));
+  if (Number.isFinite(announced) && announced > max) throw tooBig();
+  if (!r.body || !Number.isFinite(max)) return new Uint8Array(await r.arrayBuffer());
+  const reader = r.body.getReader();
+  const parts = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.byteLength;
+    if (n > max) {
+      reader.cancel().catch(() => {});
+      throw tooBig();
+    }
+    parts.push(value);
+  }
+  const out = new Uint8Array(n);
+  let o = 0;
+  for (const p of parts) {
+    out.set(p, o);
+    o += p.byteLength;
+  }
+  return out;
+}
+
+/**
+ * One file of a release from base (this app's folder or another copy).
+ * Another copy gets no cookies and no referrer; it must send CORS headers,
+ * or the browser hands nothing over (reported as unreachable).
+ */
+async function fetchBytes(base, path, { signal = null, timeoutMs = FILE_TIMEOUT_MS, max = Infinity, tooBig = null } = {}) {
+  const url = new URL(path, base);
+  const own = url.origin === self.location.origin;
   const ctl = new AbortController();
   const onAbort = () => ctl.abort();
   if (signal) {
     if (signal.aborted) ctl.abort();
     else signal.addEventListener('abort', onAbort);
   }
-  const timer = setTimeout(() => ctl.abort(), FILE_TIMEOUT_MS);
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  const where = own ? '' : ` from ${url.host}`;
   try {
     let r;
     try {
-      r = await fetch(new URL(path, scopeUrl).href, { cache: 'no-store', credentials: 'same-origin', signal: ctl.signal });
+      r = await fetch(url.href, { cache: 'no-store', credentials: own ? 'same-origin' : 'omit', referrerPolicy: 'no-referrer', signal: ctl.signal });
     } catch {
-      throw new ReleaseError('unreachable', `Could not download ${path}.`);
+      throw new ReleaseError('unreachable', `Could not download ${path}${where}.`);
     }
-    if (!r.ok) throw new ReleaseError('unreachable', `${path}: HTTP ${r.status}`);
+    if (!r.ok) throw new ReleaseError('unreachable', `${path}${where}: HTTP ${r.status}`);
     try {
-      return new Uint8Array(await r.arrayBuffer());
-    } catch {
-      throw new ReleaseError('unreachable', `The download of ${path} was interrupted.`);
+      return await readCapped(r, max, tooBig || (() => new ReleaseError('unreachable', `${path}${where} is far larger than a BEAM Campfire release file.`)));
+    } catch (e) {
+      if (e instanceof ReleaseError) throw e;
+      throw new ReleaseError('unreachable', `The download of ${path}${where} was interrupted.`);
     }
   } finally {
     clearTimeout(timer);
@@ -134,25 +194,9 @@ async function fetchBytes(path, signal) {
   }
 }
 
-/**
- * release.json + its signature + manifest.json. Something that is not a
- * release.json at all (a parking page, an error page) means there is no update
- * source at this address: "unreachable", not "refused". A release.json that
- * names this app but fails the signature is refused.
- */
-async function fetchVerifiedRelease(signal) {
-  const relBytes = await fetchBytes('release.json', signal);
-  let claimed = null;
-  try {
-    claimed = JSON.parse(new TextDecoder().decode(relBytes));
-  } catch {
-    claimed = null;
-  }
-  if (!claimed || claimed.app !== RELEASE_APP_ID) throw new ReleaseError('unreachable', 'No BEAM Campfire release is published at this address.');
-  const sig = new TextDecoder().decode(await fetchBytes('release.sig', signal));
-  const release = await verifyReleaseSignature(relBytes, sig, RELEASE_PUBLIC_JWK);
-  const manifest = await verifyManifest(release, await fetchBytes('manifest.json', signal));
-  return { release, manifest };
+/** release.json + its signature + manifest.json from base, verified (readRelease in lib/update_sources.js). */
+function fetchVerifiedRelease(base, { signal = null, timeoutMs = FILE_TIMEOUT_MS } = {}) {
+  return readRelease((path) => fetchBytes(base, path, { signal, timeoutMs, max: MAX_META_BYTES }), RELEASE_PUBLIC_JWK);
 }
 
 const cacheNameFor = (release) => `campfire-${release.version}-${release.manifest_sha256.slice(0, 16)}`;
@@ -164,7 +208,7 @@ const cacheNameFor = (release) => `campfire-${release.version}-${release.manifes
  * is never served until it has become state.current (first install, every
  * file verified) or state.pending and then current (Update button).
  */
-async function stageRelease({ release, manifest }, { signal = null, report = null } = {}) {
+async function stageRelease({ release, manifest }, { base = scopeUrl, signal = null, report = null } = {}) {
   const cacheName = cacheNameFor(release);
   const st = await readState();
   if (st.staging !== cacheName) await writeState({ ...st, staging: cacheName });
@@ -201,7 +245,8 @@ async function stageRelease({ release, manifest }, { signal = null, report = nul
     while (!failure && next < todo.length) {
       const f = todo[next++];
       try {
-        const bytes = await fetchBytes(f.path, run.signal);
+        // Never more than the signed size: a larger answer fails the check without being read whole.
+        const bytes = await fetchBytes(base, f.path, { signal: run.signal, max: f.size, tooBig: () => new ReleaseError('file_mismatch', `A file in this update (${f.path}) is not the one that was signed.`) });
         await verifyFile(f, bytes);
         await cache.put(new URL(f.path, scopeUrl).href, new Response(bytes, { headers: { 'Content-Type': mimeFor(f.path) } }));
         prog.done++;
@@ -221,7 +266,18 @@ async function stageRelease({ release, manifest }, { signal = null, report = nul
   if (failure) throw failure;
   const map = {};
   for (const f of files) map[f.path] = f.sha256;
-  return { version: release.version, cache: cacheName, files: map, manifestSha: release.manifest_sha256, verifiedAt: Date.now() };
+  return {
+    version: release.version,
+    cache: cacheName,
+    files: map,
+    manifestSha: release.manifest_sha256,
+    verifiedAt: Date.now(),
+    // Where the next check looks, from the signed release; the loader that ships with it; and
+    // what that loader does to pages (see loaderCompatible()).
+    sources: releaseSources(release),
+    loader: typeof release.loader === 'string' ? release.loader : null,
+    loaderCompat: typeof release.loader_compat === 'string' ? release.loader_compat : null,
+  };
 }
 
 async function cleanup(st) {
@@ -239,7 +295,7 @@ self.addEventListener('install', (event) => {
         const signal = installAbort.signal;
         try {
           await writeProgress({ state: 'checking', done: 0, total: 0, doneBytes: 0, totalBytes: 0, error: null });
-          const rel = await fetchVerifiedRelease(signal);
+          const rel = await fetchVerifiedRelease(scopeUrl, { signal });
           let last = null;
           const current = await stageRelease(rel, { signal, report: (p) => writeProgress((last = p)) });
           const now = await readState();
@@ -319,48 +375,70 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(serve(req, path));
 });
 
-async function checkUpdate() {
+/**
+ * "Check for updates": asks the sources in order (findUpdate in
+ * lib/update_sources.js) and stages the first newer release it may install.
+ * added: addresses the person added. progress(p) gets {step, host, own, ...}.
+ */
+async function checkUpdate({ added = [], progress = null } = {}) {
   const st = await readState();
-  let rel;
-  try {
-    rel = await fetchVerifiedRelease();
-  } catch (e) {
-    const code = e && e.code;
-    if (code === 'unreachable') return { result: 'unreachable', reason: e.message };
-    st.lastRefusal = { at: Date.now(), reason: e.message };
-    await writeState(st);
-    return { result: 'refused', reason: e.message };
-  }
-  const v = rel.release.version;
   if (!st.current) return { result: 'none' };
-  const cmp = compareVersions(v, st.current.version);
-  if (cmp === 0 && rel.release.manifest_sha256 !== st.current.manifestSha) {
-    return { result: 'refused', version: v, reason: `A different release claims version ${v}.` };
-  }
-  if (cmp <= 0) return { result: 'none', version: st.current.version };
-  if (st.pending && st.pending.version === v && st.pending.manifestSha === rel.release.manifest_sha256) return { result: 'ready', version: v };
-  try {
-    const staged = await stageRelease(rel);
+  const say = (p) => {
+    if (progress) progress(p);
+  };
+  const sources = updateSources({ own: scopeUrl.href, builtins: Array.isArray(st.current.sources) ? st.current.sources : BUILTIN_SOURCES, added });
+  const ownFrom = { host: scopeUrl.host, own: true };
+  const r = await findUpdate({
+    sources,
+    installed: { version: st.current.version, manifestSha: st.current.manifestSha },
+    pending: st.pending ? { version: st.pending.version, manifestSha: st.pending.manifestSha, from: st.pending.from || ownFrom } : null,
+    loader: { name: LOADER_NAME, compat: LOADER_COMPAT },
+    onSource: (src) => say({ step: 'checking', host: src.host, own: src.own }),
+    fetchRelease: (src) => fetchVerifiedRelease(src.url, { timeoutMs: PROBE_TIMEOUT_MS }),
+    stage: async (src, rel) => {
+      const staged = await stageRelease(rel, {
+        base: src.url,
+        report: (p) => say({ step: 'downloading', host: src.host, own: src.own, version: rel.release.version, done: p.done, total: p.total }),
+      });
+      const now = await readState();
+      const next = { ...now, pending: { ...staged, from: { host: src.host, own: src.own } }, staging: null, lastRefusal: null };
+      await writeState(next);
+      await cleanup(next);
+    },
+  });
+  if (r.result === 'refused') {
     const now = await readState();
-    const next = { ...now, pending: staged, staging: null, lastRefusal: null };
-    await writeState(next);
-    await cleanup(next);
-    return { result: 'ready', version: v };
-  } catch (e) {
-    if (e && e.code === 'unreachable') return { result: 'unreachable', reason: e.message };
-    const now = await readState();
-    await writeState({ ...now, lastRefusal: { at: Date.now(), reason: e.message, version: v } });
-    return { result: 'refused', version: v, reason: e.message };
+    await writeState({ ...now, lastRefusal: { at: Date.now(), reason: r.reason, version: r.version || undefined, host: r.from && !r.from.own ? r.from.host : undefined } });
   }
+  return r;
 }
 
-async function applyUpdate() {
+/**
+ * Switches to the staged release. A release whose loader this one cannot
+ * stand in for (loaderCompatible) is switched to only when the page says its
+ * own address just served that loader with the signed bytes (loaderReady): the
+ * page then moves to it right after the reload. Otherwise it stays staged.
+ */
+async function applyUpdate({ loaderReady = false } = {}) {
   const st = await readState();
   if (!st.pending) return { result: 'none' };
-  const next = { current: st.pending, pending: null, staging: null, lastRefusal: null, previous: st.current && st.current.version };
+  const p = st.pending;
+  const compatible = loaderCompatible({ loader: p.loader, loader_compat: p.loaderCompat }, { name: LOADER_NAME, compat: LOADER_COMPAT });
+  if (!compatible && !loaderReady) {
+    const l = releaseLoaderOf(p);
+    return { result: 'needs_loader', version: p.version, loader: l && l.path, loaderSha256: l && l.sha256 };
+  }
+  const next = { current: p, pending: null, staging: null, lastRefusal: null, previous: st.current && st.current.version };
   await writeState(next);
   await cleanup(next);
-  return { result: 'applied', version: next.current.version };
+  return { result: 'applied', version: next.current.version, from: p.from || null };
+}
+
+/** The loader file the installed release ships, with its signed SHA-256 (for the page's move to it). */
+function releaseLoaderOf(rec) {
+  if (!rec || !rec.files) return null;
+  const path = rec.loader || Object.keys(rec.files).find((f) => /^sw(-[0-9a-f]+)?\.js$/.test(f));
+  return path && rec.files[path] ? { path, sha256: rec.files[path] } : null;
 }
 
 self.addEventListener('message', (event) => {
@@ -387,17 +465,32 @@ self.addEventListener('message', (event) => {
         if (type === 'status') {
           const st = await readState();
           port.postMessage({
-            loader: self.location.pathname.split('/').pop(),
+            loader: LOADER_NAME,
+            api: LOADER_API,
             current: st.current && st.current.version,
+            currentFrom: (st.current && st.current.from) || null,
             pending: st.pending && st.pending.version,
+            pendingFrom: (st.pending && st.pending.from) || null,
             currentFiles: st.current ? Object.keys(st.current.files).length : 0,
+            releaseLoader: releaseLoaderOf(st.current),
+            sources: st.current ? updateSources({ own: scopeUrl.href, builtins: Array.isArray(st.current.sources) ? st.current.sources : BUILTIN_SOURCES }).map((x) => ({ host: x.host, kind: x.kind })) : [],
             lastRefusal: st.lastRefusal || null,
           });
         } else if (type === 'check-update') {
-          if (!updateRun) updateRun = checkUpdate().finally(() => (updateRun = null));
-          port.postMessage(await updateRun);
+          // One check at a time; every page that asks hears its progress and its answer.
+          const added = Array.isArray(event.data.added) ? event.data.added.slice(0, MAX_ADDED_SOURCES) : [];
+          if (event.data.progress === true) updateListeners.add(port);
+          if (!updateRun) {
+            updateRun = checkUpdate({ added, progress: (p) => updateListeners.forEach((l) => l.postMessage({ progress: p })) }).finally(() => {
+              updateRun = null;
+              updateListeners.clear();
+            });
+          }
+          const r = await updateRun;
+          updateListeners.delete(port);
+          port.postMessage(r);
         } else if (type === 'apply-update') {
-          port.postMessage(await applyUpdate());
+          port.postMessage(await applyUpdate({ loaderReady: event.data.loaderReady === true }));
         } else {
           port.postMessage({ result: 'error', reason: 'unknown request' });
         }

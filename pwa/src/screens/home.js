@@ -21,6 +21,8 @@ import { screen, notice, primary, secondary, assetBadge } from '../lib/ui.js';
 import { formatAmount } from '../lib/amount.js';
 import { wallet, txStatusText, isPendingTx, isContractTx, contractMoves } from '../lib/wallet.js';
 import { needsBackupPrompt } from '../lib/session.js';
+import { copyAt } from '../lib/update.js';
+import { applyUpdate } from '../lib/update_ui.js';
 import { chainSwitch } from './eth_screens.js';
 import { openBuyChooser } from './buy_screens.js';
 import { loaderBehind } from '../lib/loader.js';
@@ -151,7 +153,7 @@ export default function home(app) {
     const parts = [];
     if (app.updates.available) {
       parts.push(
-        h('div', { class: 'notice info', 'data-testid': 'update-banner' }, icon('download'), h('div', { class: 'grow', text: `BEAM Campfire ${app.updates.available.version} is ready. It was checked against the release signature.` }), h('button', { class: 'btn btn-primary btn-small', onclick: () => app.updates.apply(), 'data-testid': 'update-apply' }, 'Update')),
+        h('div', { class: 'notice info', 'data-testid': 'update-banner' }, icon('download'), h('div', { class: 'grow', text: `BEAM Campfire ${app.updates.available.version} is ready. ${copyAt(app.updates.available.from) ? `It came from ${copyAt(app.updates.available.from)} and was` : 'It was'} checked against the release signature.` }), h('button', { class: 'btn btn-primary btn-small', onclick: () => applyUpdate(app), 'data-testid': 'update-apply' }, 'Update')),
       );
     }
     if (needsBackupPrompt(app)) {

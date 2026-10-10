@@ -3,10 +3,11 @@ import { h, clear } from './lib/dom.js';
 import { engineSupport, loadEngine, nodeGuard, walletFiles } from './lib/engine.js';
 import { getPrefs, setPrefs, getWalletRecord } from './lib/store.js';
 import { wallet } from './lib/wallet.js';
-import { updates } from './lib/update.js';
+import { updates, takeJustUpdated } from './lib/update.js';
 import { swSupported, isControlled, clearReloadFlag, installedButBypassed, watchLoader, loaderBehind } from './lib/loader.js';
 import { refreshPersistence } from './lib/storage.js';
-import { BUILT } from './lib/version.js';
+import { BUILT, APP_VERSION } from './lib/version.js';
+import { toast } from './lib/ui.js';
 
 import welcome from './screens/welcome.js';
 import backup from './screens/backup.js';
@@ -229,7 +230,10 @@ app.continueBoot = async function continueBoot() {
     }
   }
 
-  app.go(app.record ? 'unlock' : 'welcome');
+  // Once, after an Update: which version, and whether it came from another copy of the app.
+  const updated = takeJustUpdated(APP_VERSION);
+  app.go(app.record ? 'unlock' : 'welcome', updated ? { updated } : {});
+  if (updated && !app.record) toast(updated, 6000);
 };
 
 boot().catch((e) => {

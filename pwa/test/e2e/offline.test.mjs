@@ -23,6 +23,9 @@
 //    the address except loader probes. For 404 / 5xx / parking: the browser's
 //    update of the loader fails and the installed loader and its copy stay.
 //    "Check for updates" says no update source is reachable; the app works.
+//    The public copies of the release (lib/update_sources.js) are made
+//    unresolvable in this browser: the tapped check asks each of them for
+//    release.json, after the address, and nothing else.
 // 4. Hostile takeover: the address serves different loader code (200, valid
 //    JS). The browser installs it (no web API prevents that); the running page
 //    locks the wallet and shows the warning.
@@ -39,7 +42,8 @@ import { chromium } from 'playwright-core';
 import { PWA, CHROME, recordedPage, shot, waitScreen, foreignHosts, sleep, SHOTS } from './harness.mjs';
 import { waitHome, waitSynced } from './flows.mjs';
 import { makeWalletDb, openWithCli, cliVersion, WANT_CORE } from './walletdb.mjs';
-import { SECURITY_HEADERS, mimeFor, EXPLORER_UPSTREAMS } from '../../tools/headers.mjs';
+import { headersFor, mimeFor, EXPLORER_UPSTREAMS } from '../../tools/headers.mjs';
+import { BUILTIN_SOURCES } from '../../src/lib/update_sources.js';
 
 const PORT = 8793;
 const HOST = 'campfire.test';
@@ -55,6 +59,10 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', (e) => e.respondWith(new Response('<h1>Not BEAM Campfire</h1>', { headers: { 'Content-Type': 'text/html' } })));
 `;
 const PARKING = '<!doctype html><html><head><title>campfire.test is for sale</title></head><body><h1>This domain is parked</h1><p>Buy it now!</p></body></html>';
+
+// The public copies are unreachable in this browser, like everything else the address had.
+const COPY_HOSTS = [...new Set(BUILTIN_SOURCES.map((u) => new URL(u).host))];
+const isCopyProbe = (u) => BUILTIN_SOURCES.some((b) => u === `${b}release.json`);
 
 let tmp, rel, loader, total, cliWallet;
 let mode = 'normal';
@@ -72,7 +80,7 @@ function handler(req, res) {
   const path = new URL(req.url, 'http://x').pathname;
   reqs.push({ method: req.method, path, sw: String(req.headers['service-worker'] || ''), dest: String(req.headers['sec-fetch-dest'] || ''), mode });
   const send = (code, body, type, extra = {}) => {
-    res.writeHead(code, { ...SECURITY_HEADERS, 'Content-Type': type, 'Cache-Control': 'no-cache', ...extra });
+    res.writeHead(code, { ...headersFor(path), 'Content-Type': type, 'Cache-Control': 'no-cache', ...extra });
     res.end(body);
   };
   if (mode === 'notfound') return send(404, 'Not Found', 'text/plain');
@@ -143,7 +151,7 @@ async function coldStart({ unresolvable = false, goto = true, waitUntil = 'load'
     deviceScaleFactor: 2,
     acceptDownloads: true,
     args: [
-      `--host-resolver-rules=MAP ${HOST} ${unresolvable ? '~NOTFOUND' : '127.0.0.1'}`,
+      `--host-resolver-rules=MAP ${HOST} ${unresolvable ? '~NOTFOUND' : '127.0.0.1'}, ${COPY_HOSTS.map((h) => `MAP ${h} ~NOTFOUND`).join(', ')}`,
       `--unsafely-treat-insecure-origin-as-secure=http://${HOST}:${PORT}`,
       '--disable-features=AutofillServerCommunication',
       ...extraArgs,
@@ -506,9 +514,12 @@ for (const way of WAYS) {
       assert.match(await page.textContent(tid('check-updates')), /no update source was reachable; your app keeps working/);
     }
 
-    // The tapped update check is the one request the app makes on purpose.
+    // The tapped update check is the one request the app makes on purpose: the address, then each
+    // public copy once for release.json (none resolves here). Without a tap, no copy is asked.
     assertOnlyBrowserRequests(from, 1, way.name, (r) => (way.name === 'parking' || way.name === 'stopped') && /^\/(release\.json|release\.sig|manifest\.json)$/.test(r.path));
-    assert.deepEqual(foreignHosts(rec, ORIGIN, [NODE]), [], 'no other host contacted');
+    const tapped = way.name === 'parking' || way.name === 'stopped';
+    assert.deepEqual(rec.requests.filter(isCopyProbe).sort(), tapped ? BUILTIN_SOURCES.map((b) => `${b}release.json`).sort() : [], 'the public copies: asked once each, only on the tapped check');
+    assert.deepEqual(foreignHosts({ ...rec, requests: rec.requests.filter((u) => !isCopyProbe(u)) }, ORIGIN, [NODE]), [], 'no other host contacted');
     assert.deepEqual(rec.errors, [], 'no page errors');
     console.log(`# ${way.name}: requests at the address after the cold start: ${reqs.length - from} (loader probes ${loaderProbes(from)}, Chrome auto-preload ${autoPreloads(from)}, the rest: the update check the test tapped)`);
   });
