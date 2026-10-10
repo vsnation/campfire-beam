@@ -7,3 +7,6 @@ export const RELEASE_PUBLIC_JWK = /*__RELEASE_PUBLIC_JWK__*/ null;
 // The service worker's content-addressed file name (sw-<sha256 prefix>.js). Its
 // bytes never change under that name, so a change there is a warning sign.
 export const LOADER = '__LOADER__';
+// What that loader does to pages (release.json loader_compat). A running loader with the
+// same value serves this release's pages with the same headers (lib/loader.js loaderBehind).
+export const LOADER_COMPAT = '__LOADER_COMPAT__';

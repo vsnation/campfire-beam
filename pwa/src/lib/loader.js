@@ -22,7 +22,7 @@
 // installed release again; every move first checks that the address serves the
 // loader's signed bytes.
 
-import { LOADER } from './version.js';
+import { LOADER, LOADER_COMPAT, BUILT } from './version.js';
 
 const META_CACHE = 'campfire-meta';
 const PROGRESS_KEY = '__campfire_install';
@@ -38,14 +38,51 @@ export function swSupported() {
 // for the life of the page, even after a newer loader takes over.
 const servedBy = typeof navigator !== 'undefined' && navigator.serviceWorker && navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : null;
 
+// This release's loader_compat (null in an unbuilt tree), and whether the loader
+// that served this document said it has the same one (checkServedLoader()).
+const RELEASE_COMPAT = BUILT ? LOADER_COMPAT : null;
+let servedCompat = null;
+
+/**
+ * Pure: is a page still running under headers older than its release's
+ * loader's? Not when it was served by that loader, and not when the loader
+ * that served it does the same to pages (equal loader_compat: same headers,
+ * so nothing this release needs is refused).
+ * @param {{servedBy: string|null, loader: string, servedCompat: string|null, releaseCompat: string|null}} p
+ */
+export function isLoaderBehind({ servedBy: by, loader, servedCompat: sc, releaseCompat }) {
+  if (!by) return false;
+  if (String(by).split('?')[0].endsWith(`/${loader}`)) return false;
+  return !(sc && releaseCompat && sc === releaseCompat);
+}
+
 /**
  * True while this page runs under an older loader's headers: an Update that
  * brought a new loader is not finished until the page is loaded again under it.
  * Hosts this release added (buybeam.my, Ethereum servers, dApps) are refused
- * until then.
+ * until then. A loader that serves pages exactly like the release's own is not
+ * behind; until the running loader has said so (checkServedLoader) this
+ * answers from the names alone.
  */
 export function loaderBehind() {
-  return Boolean(servedBy) && !endsWithLoader(servedBy);
+  return isLoaderBehind({ servedBy, loader: LOADER, servedCompat, releaseCompat: RELEASE_COMPAT });
+}
+
+/**
+ * Asks the loader that served this document for its loader_compat and keeps it
+ * when it is the same loader. Returns loaderBehind() afterwards.
+ */
+export async function checkServedLoader() {
+  if (!servedBy || endsWithLoader(servedBy)) return loaderBehind();
+  const sw = navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (!sw || sw.scriptURL !== servedBy) return loaderBehind();
+  try {
+    const st = await askLoader({ type: 'status' }, { timeoutMs: 10000 });
+    if (st && typeof st.compat === 'string' && st.loader === servedBy.split('?')[0].split('/').pop()) servedCompat = st.compat;
+  } catch {
+    /* an older loader, or no answer: decided by the names */
+  }
+  return loaderBehind();
 }
 
 export function isControlled() {
@@ -200,8 +237,11 @@ export async function watchLoader({ onIntrusion, onMoved = () => {} }) {
   // the older loader's headers (which name only the hosts that release knew).
   if (!endsWithLoader(controllerUrl)) {
     const pending = [reg.installing, reg.waiting].some((w) => endsWithLoader(w && w.scriptURL));
+    // A running loader that serves pages exactly like this release's own leaves
+    // nothing to finish: no move, no request to the address. A tapped Check for
+    // updates still moves the page once the address serves the release (lib/update.js).
     // The address is down, or serves other bytes: the older loader keeps serving this verified copy.
-    if (!pending) moveToLoader().catch(() => {});
+    if (!pending && (await checkServedLoader())) moveToLoader().catch(() => {});
   }
 }
 

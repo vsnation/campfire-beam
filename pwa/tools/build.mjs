@@ -151,8 +151,9 @@ for (const f of await walk(srcDir)) {
       .replace("export const APP_VERSION = '__BUILD_VERSION__';", `export const APP_VERSION = ${JSON.stringify(version)};`)
       .replace('/*__ENGINE_LOCK__*/ null', JSON.stringify(engineLockForApp))
       .replace('/*__RELEASE_PUBLIC_JWK__*/ null', JSON.stringify(pub))
-      .replace("export const LOADER = '__LOADER__';", `export const LOADER = ${JSON.stringify(LOADER_NAME)};`);
-    if (s.includes('/*__') || s.includes('__LOADER__')) throw new Error('version.js: a placeholder was not filled');
+      .replace("export const LOADER = '__LOADER__';", `export const LOADER = ${JSON.stringify(LOADER_NAME)};`)
+      .replace("export const LOADER_COMPAT = '__LOADER_COMPAT__';", `export const LOADER_COMPAT = ${JSON.stringify(loaderCompat)};`);
+    if (s.includes('/*__') || s.includes('__LOADER__') || s.includes('__LOADER_COMPAT__')) throw new Error('version.js: a placeholder was not filled');
     await writeFile(dst, s);
   } else {
     await copyFile(f, dst);

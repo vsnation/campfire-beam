@@ -26,7 +26,7 @@
 //    refused in words, the https one is saved and used.
 // 8. A release that brings a new loader while A is dead: one that serves pages
 //    like the running loader applies and runs under it, no loop, no takeover
-//    alarm; one that cannot is refused from M with the reason. A back: a
+//    alarm, no request to A and no "finish the update" banner; one that cannot is refused from M with the reason. A back: a
 //    tapped check moves the page to its loader; the incompatible release then
 //    installs from A and the loader moves as before. Update of such a staged
 //    release while A is down says it needs A.
@@ -443,9 +443,10 @@ test('8. a release that brings a new loader while the address is dead: safe, no 
   assert.equal(await controller(), L.n0, 'still the loader the device has: a service worker comes only from its own address');
   await sleep(3000);
   assert.equal(await intrusion(), null, 'no takeover alarm');
-  // Right after the Update, one try to fetch the new loader from the (dead) address; nothing is
-  // registered without its signed bytes.
-  assert.equal(loaderAsks(), 1, 'one try to reach the new loader, right after the Update');
+  // The running loader serves this release's pages exactly like its own (same loader_compat):
+  // nothing is left to finish, so no request to the (dead) address, not even right after the Update.
+  assert.equal(loaderAsks(), 0, 'no try to reach the new loader: the running one is compatible');
+  assert.equal(await page.evaluate(() => window.__campfire.loaderBehind()), false, 'not behind: no "finish the update" banner');
   assert.deepEqual((await registers()).slice(reg0), [], 'nothing registered while the address is dead');
   for (let i = 0; i < 2; i++) {
     let navs = 0;
@@ -456,7 +457,8 @@ test('8. a release that brings a new loader while the address is dead: safe, no 
     await sleep(4000);
     assert.equal(navs, 0, 'no reload loop');
     assert.equal(await intrusion(), null);
-    assert.equal(loaderAsks(), 0, 'later starts do not try again');
+    assert.equal(loaderAsks(), 0, 'later starts do not try either');
+    assert.equal(await page.evaluate(() => window.__campfire.loaderBehind()), false);
   }
   assert.deepEqual((await registers()).slice(reg0), []);
   await waitSynced(page, 180000);

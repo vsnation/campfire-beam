@@ -320,6 +320,8 @@ test('the build signs the loader, its compat value and the sources into release.
     assert.match(a.release.loader_compat, /^[0-9a-f]{64}$/);
     assert.deepEqual(a.release.update_sources, [...BUILTIN_SOURCES]);
     assert.ok(a.sw.includes(`const LOADER_COMPAT = ${JSON.stringify(a.release.loader_compat)};`), 'the loader carries its own compat value');
+    assert.ok(readFileSync(join(a.out, 'lib', 'version.js'), 'utf8').includes(`export const LOADER_COMPAT = ${JSON.stringify(a.release.loader_compat)};`), 'the pages know their release loader\'s compat value');
+    assert.match(a.sw, /compat: LOADER_COMPAT,/, 'and the loader tells pages its own (status)');
     assert.ok(a.sw.includes('async function findUpdate') && a.sw.includes('const BUILTIN_SOURCES'), 'lib/update_sources.js is inlined');
     assert.ok(!/^import /m.test(a.sw), 'no import left in the loader');
     const b = build('--mirrors', 'https://mirror.test:8812/,https://mirror2.test:8813/');

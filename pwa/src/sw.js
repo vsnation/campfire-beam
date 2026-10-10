@@ -514,6 +514,7 @@ self.addEventListener('message', (event) => {
           port.postMessage({
             loader: LOADER_NAME,
             api: LOADER_API,
+            compat: LOADER_COMPAT,
             current: st.current && st.current.version,
             currentFrom: (st.current && st.current.from) || null,
             pending: st.pending && st.pending.version,
