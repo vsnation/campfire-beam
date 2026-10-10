@@ -238,7 +238,16 @@ class UniswapQuoter {
           for (final p in found[(a, m)] ?? const <UniPool>[])
             if (live(p)) UniHop(p, a, m),
     ];
-    if (direct.isEmpty && firstToMid.isEmpty) {
+    // A first pool into a base token that has no live pool on to the token
+    // wanted leads nowhere: that is no route, not an amount too small.
+    bool leadsOn(UniHop h) =>
+        mids.contains(h.currencyOut) &&
+        outs.any(
+          (b) => (found[(h.currencyOut, b)] ?? const <UniPool>[]).any(
+            (p) => live(p) && p.id != h.pool.id,
+          ),
+        );
+    if (direct.isEmpty && !firstToMid.any(leadsOn)) {
       throw const UniswapNoRoute('noPool');
     }
     // Also at nineteen twentieths: the best route's last step says whether

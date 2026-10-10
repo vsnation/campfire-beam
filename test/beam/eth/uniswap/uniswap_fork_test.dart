@@ -240,6 +240,32 @@ void main() {
     await swap(svc, who, q);
   });
 
+  test('ETH → KAS with every KAS pool hidden is no route, not "too small" '
+      '(pools into the base tokens lead nowhere)', () async {
+    if (skip != null) return markTestSkipped(skip!);
+    final rpc = forkRpc();
+    final quoter = UniswapQuoter(
+      rpc: rpc,
+      discovery: _WithoutPair(rpc, UniswapAddresses.nativeEth, kas.address)
+        ..hide(UniswapAddresses.weth, kas.address)
+        ..hide(usdc.address, kas.address)
+        ..hide(usdt.address, kas.address)
+        ..hide('0x6b175474e89094c44da98b954eedeac495271d0f', kas.address)
+        ..hide('0x2260fac5e5542a773aa44fbcfedf7c193bc2c599', kas.address)
+        ..hide(wbeam.address, kas.address),
+    );
+    await expectLater(
+      quoter.bestQuote(
+        tokenIn: UniToken.eth,
+        tokenOut: kas,
+        amountIn: eth ~/ BigInt.from(1000),
+      ),
+      throwsA(
+        isA<UniswapNoRoute>().having((e) => e.reason, 'reason', 'noPool'),
+      ),
+    );
+  });
+
   test(
     'a v4 pool whose hook quotes a price it does not give is skipped',
     () async {
