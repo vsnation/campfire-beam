@@ -372,8 +372,6 @@ label.btn.disabled { pointer-events: none; opacity: 0.5; }
 .consent .asset-v { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
 .consent .actions { margin-top: 4px; }
 /* dApps */
-.dapps-entry { padding: 12px 14px; border-bottom: 0; }
-.dapps-entry .ico { background: var(--secondary); color: var(--on-secondary); }
 .dapp-list .dapp-row { padding: 10px 4px; align-items: center; }
 .dapp-list .dapp-row .s.meta { font-size: 12px; color: var(--subtle); }
 .dapp-list .dapp-row:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -443,3 +441,45 @@ input.switch:focus-visible { outline: 2px solid var(--primary); outline-offset: 
 .btn-link { background: none; border: 0; padding: 0; color: var(--on-secondary); font: inherit; font-weight: 600; cursor: pointer; text-decoration: underline; }
 a.btn { text-decoration: none; }
 details.more.card { padding: 12px 16px; }
+
+/* BEAM names and airdrop codes (screens/names.js, screens/airdrop*.js); on Home they share one line with dApps. */
+.more-entry { display: flex; padding: 0; overflow: hidden; }
+.more-entry .tile { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 58px; padding: 7px 4px; border: 0; background: none; color: var(--text); cursor: pointer; }
+.more-entry .tile + .tile { border-left: 1px solid var(--border); }
+.more-entry .tile:active { background: var(--surface-2); }
+.more-entry .ico { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--secondary); color: var(--on-secondary); }
+.more-entry .ico svg { width: 14px; height: 14px; }
+.more-entry .t { max-width: 100%; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.feature .content > div:empty { display: none; }
+.inline-actions { margin-top: 2px; gap: 6px; }
+.inline-actions .hint { min-height: 0; }
+.hint .btn.inline { display: inline; width: auto; min-height: 0; padding: 0; color: var(--on-secondary); font-weight: 600; text-decoration: underline; }
+.input-wrap.suffix .input { padding-right: 64px; }
+.suffix-text { position: absolute; right: 14px; color: var(--muted); font-weight: 500; pointer-events: none; }
+.name-result { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; }
+.name-line { display: flex; align-items: center; gap: 8px; }
+.name-ico { width: 20px; height: 20px; flex: none; }
+.name-result.good .name-ico { color: var(--success); }
+.name-result.taken .name-ico { color: var(--error); }
+.spinner.small { width: 16px; height: 16px; border-width: 2px; flex: none; }
+.name-quote { display: flex; flex-direction: column; gap: 8px; }
+.stepper { display: inline-flex; align-items: center; gap: 4px; }
+.stepper-btn { width: 32px; height: 32px; margin: 0; padding: 0; justify-content: center; align-items: center; background: var(--surface-2); border-radius: 50%; font-size: 18px; font-weight: 600; line-height: 1; }
+.stepper-btn:disabled { opacity: 0.4; cursor: default; }
+.stepper-value { min-width: 64px; text-align: center; font-weight: 600; }
+.swap-details .kv:has(.stepper) { align-items: center; padding: 6px 0; }
+.kv .k .small { font-size: 12px; }
+.code-input { font-family: ui-monospace, 'SF Mono', Menlo, monospace; letter-spacing: 1px; text-transform: uppercase; }
+.drop-fields { display: flex; gap: 10px; }
+.drop-fields .field.grow { flex: 1; min-width: 0; }
+.drop-fields .count-field { width: 92px; flex: none; }
+.batch { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; }
+.batch-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.batch .btn-row { justify-content: flex-start; flex-wrap: wrap; }
+.batch .btn-row .btn { flex: none; }
+.code-row { padding: 10px 4px; cursor: default; }
+.code-n { width: 24px; color: var(--subtle); font-size: 13px; text-align: right; flex: none; }
+.code-text { font-size: 16px; letter-spacing: 0.5px; word-break: normal; }
+/* Names are shown exactly as registered: Inter would draw "0x4" as "0×4". */
+.names, .consent, .plain { font-feature-settings: 'calt' 0; }
+.names .row .main .s { white-space: normal; }

@@ -8,6 +8,8 @@
  *   - "Why can't I send?" -> the reason is written under the button, never a silent grey button.
  *   - "Where did my payment go?" -> recent payments with plain status right below.
  *   - "Empty wallet, now what?" -> the primary button becomes Receive.
+ *   - "Can I get a short name, or claim a code I was given?" -> BEAM names and Airdrop codes, on one line with
+ *     dApps under the buttons, one tap each.
  *   - "What if this phone or this app's web address is gone?" -> a wallet imported from wallet.db has
  *     no 12 words: until it is exported once, a banner asks for a copy outside this device (one tap
  *     to Backup; "Later" for a week).
@@ -180,12 +182,16 @@ export default function home(app) {
   render(wallet.state);
   renderBanner();
 
-  const dappsRow = h(
-    'button',
-    { class: 'card row dapps-entry', onclick: () => app.go('dapps'), 'data-testid': 'open-dapps' },
-    h('span', { class: 'ico' }, icon('apps')),
-    h('span', { class: 'main' }, h('div', { class: 't', text: 'dApps' }), h('div', { class: 's', text: 'Beam DEX, NFT Gallery, names and more' })),
-    h('span', { class: 'chev' }, icon('chevron')),
+  // dApps, BEAM names and airdrop codes share one line, no taller than the dApps row it took over:
+  // Home scrolls no further than before. Each is one tap away.
+  const tile = (testid, ico, text, to, label = null) =>
+    h('button', { class: 'tile', type: 'button', onclick: () => app.go(to), 'data-testid': testid, 'aria-label': label }, h('span', { class: 'ico' }, icon(ico)), h('span', { class: 't', text }));
+  const moreRow = h(
+    'div',
+    { class: 'card more-entry' },
+    tile('open-dapps', 'apps', 'dApps', 'dapps', 'dApps: Beam DEX, NFT Gallery and more'),
+    tile('names', 'at', 'BEAM names', 'names'),
+    tile('airdrop', 'gift', 'Airdrop codes', 'airdrop'),
   );
 
   const el = screen(
@@ -194,7 +200,7 @@ export default function home(app) {
     bannerBox,
     balanceBox,
     actionsBox,
-    dappsRow,
+    moreRow,
     assetsBox,
     txBox,
   );
