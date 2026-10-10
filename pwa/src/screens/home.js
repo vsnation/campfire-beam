@@ -136,7 +136,7 @@ export default function home(app) {
     recvBtn.prepend(icon('receive'));
     const swapBtn = secondary(h('span', {}, 'Swap'), () => app.go('swap'), { disabled: !canSend, 'data-testid': 'swap' });
     swapBtn.prepend(icon('swap'));
-    const why = !canSend && s.sync.state !== 'synced' ? h('p', { class: 'small center', text: `${hasFunds ? 'Sending and swaps are' : 'Swaps are'} paused: ${s.sync.title.toLowerCase()}.` }) : null;
+    const why = !canSend && s.sync.state !== 'synced' ? h('p', { class: 'small center', text: `${hasFunds ? 'Sending and swaps are' : 'Swaps are'} paused: ${s.sync.title.toLowerCase().replace(/[.…]+$/, '')}.` }) : null;
     put(actionsBox, h('div', { class: 'btn-row three' }, ...(hasFunds ? [sendBtn, recvBtn, swapBtn] : [recvBtn, sendBtn, swapBtn])), why);
   }
 

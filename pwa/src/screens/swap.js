@@ -97,7 +97,7 @@ export default function swap(app) {
   function ctaState() {
     const payU = unit(draft.pay);
     if (preparing) return { off: 'Building your swap…' };
-    if (!wallet.state.sync.canSend) return { off: `Swaps are paused: ${wallet.state.sync.title.toLowerCase()}.` };
+    if (!wallet.state.sync.canSend) return { off: `Swaps are paused: ${wallet.state.sync.title.toLowerCase().replace(/[.…]+$/, '')}.` };
     if (poolsError) return { off: 'Prices could not be loaded. Try again above.' };
     if (!pools) return { off: 'Loading prices…' };
     if (draft.receive == null) return { off: `Nothing can be bought with ${payU} right now. Pick another asset to pay with.` };
