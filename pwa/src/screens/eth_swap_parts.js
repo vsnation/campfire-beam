@@ -244,6 +244,16 @@ export function openAllowSheet(app, { w, svc, approval }) {
 
 // ------------------------------------------------------------------ review
 
+/** The price-change warning from 3 %, and from 10 % the box to tick before the swap can be sent. */
+export function impactBlock(q, block, ack, onAck) {
+  const warn = notice(block ? 'error' : 'warn', h('strong', { text: `This swap moves the price ${percentText(q.priceImpact)}. ` }), 'The pools are small for this amount, so you get noticeably less than the current rate. A smaller amount gets a better price.');
+  warn.dataset.testid = 'uni-impact-warning';
+  if (!block) return [warn];
+  const box = h('input', { type: 'checkbox', 'data-testid': 'uni-impact-ack', checked: ack });
+  box.addEventListener('change', () => onAck(box.checked));
+  return [warn, h('label', { class: 'check-row' }, box, h('span', { text: `I accept getting ${percentText(q.priceImpact)} less` }))];
+}
+
 /**
  * The review sheet: exactly what the swap does before anything is signed.
  * After the person confirms: the Permit2 signature (for a token), the router
@@ -255,12 +265,13 @@ export function openReviewSheet(app, { w, svc, review: first, acceptImpact }) {
   let review = first;
   let busy = false;
   let error = null;
+  let ack = Boolean(acceptImpact);
   return new Promise((resolve) => {
     const sheet = openSheet(
       (close, rerender) => {
         const q = review.quote;
         const swap = async () => {
-          if (busy) return;
+          if (busy || (review.impact === 'block' && !ack)) return;
           const ok = await confirmIdentity(app, { title: 'Confirm the swap', detail: `${amtShown(q.amountIn, q.tokenIn)} for at least ${amtShown(review.minimumOut, q.tokenOut, { floor: true })}`, cta: 'Confirm' });
           if (!ok) return;
           busy = true;
@@ -268,7 +279,7 @@ export function openReviewSheet(app, { w, svc, review: first, acceptImpact }) {
           rerender();
           let prepared;
           try {
-            prepared = await svc.finalizeSwap({ review, signPermit: permitSigner(app, w), acceptImpact });
+            prepared = await svc.finalizeSwap({ review, signPermit: permitSigner(app, w), acceptImpact: ack });
           } catch (e) {
             busy = false;
             if (e instanceof UniGasChanged) {
@@ -314,11 +325,34 @@ export function openReviewSheet(app, { w, svc, review: first, acceptImpact }) {
             { class: 'card flat swap-details' },
             kv('Rate', rateText(q)),
             kv('Route', routeText(q), {}, routeNote(q)),
-            kv('Price change from your swap', q.priceImpact == null ? 'Unknown' : percentText(q.priceImpact)),
+            kv('Price change from your swap', q.priceImpact == null ? 'Unknown' : percentText(q.priceImpact), { class: `v${review.impact === 'none' ? '' : ' bad'}` }),
+            h(
+              'button',
+              {
+                class: 'kv kv-tap',
+                type: 'button',
+                title: 'Also called slippage tolerance',
+                'data-testid': 'uni-review-protection',
+                disabled: busy,
+                onclick: async () => {
+                  const b = await pickSlippage(review.slippageBips);
+                  if (!b || b === review.slippageBips || sheet.closed) return;
+                  // Only the minimum changes: the gas and the route are the same.
+                  review = Object.freeze({ ...review, slippageBips: b, minimumOut: review.quote.minimumOut(b) });
+                  rerender();
+                },
+              },
+              h('span', { class: 'k', text: 'Price protection' }),
+              h('span', { class: 'v' }, bipsText(review.slippageBips), h('div', { class: 'small', text: 'Tap to change' })),
+            ),
             kv('Network fee', `about ${ethAbout(review.expectedGasCost)}`, { 'data-testid': 'uni-review-fee' }, `at most ${ethAtMost(review.maxGasCost)}`),
             h('div', { class: 'kv kv-stack' }, h('span', { class: 'k', text: 'Sent to' }), h('span', { class: 'v', 'data-testid': 'uni-review-router' }, 'Uniswap Universal Router ', h('span', { class: 'mono nowrap', text: `(${shorten(toChecksumAddress(ADDRESSES.universalRouter), 6, 4)})` }))),
             review.needsPermit ? kv('You also sign', `Uniswap may take exactly ${amt(q.amountIn, q.tokenIn)}, for ${PERMIT_LIFE_SECONDS / 60} minutes`, { 'data-testid': 'uni-review-permit' }) : null,
           ),
+          ...(review.impact === 'none' ? [] : impactBlock(q, review.impact === 'block', ack, (v) => {
+            ack = v;
+            rerender();
+          })),
           hooked ? notice('warn', h('strong', { text: 'This route uses a pool with a hook. ' }), 'A hook is extra code its creator added to the pool. Your minimum above is still enforced by Uniswap.') : null,
           h('p', { class: 'small', text: 'Ethereum swaps cannot be undone once sent, and anyone can see them.' }),
           error ? (() => {
@@ -329,7 +363,7 @@ export function openReviewSheet(app, { w, svc, review: first, acceptImpact }) {
           h(
             'div',
             { class: 'sheet-actions' },
-            h('button', { class: 'btn btn-primary', onclick: swap, disabled: busy, 'data-testid': 'uni-review-cta' }, busy ? 'Signing and sending…' : `Swap ${amtShown(q.amountIn, q.tokenIn)}`),
+            h('button', { class: 'btn btn-primary', onclick: swap, disabled: busy || (review.impact === 'block' && !ack), 'data-testid': 'uni-review-cta' }, busy ? 'Signing and sending…' : `Swap ${amtShown(q.amountIn, q.tokenIn)}`),
             h('button', { class: 'btn btn-text', onclick: () => close(null), disabled: busy, 'data-testid': 'uni-review-change' }, 'Change'),
           ),
         ];

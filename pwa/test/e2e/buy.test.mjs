@@ -414,6 +414,15 @@ test('on the fork: buy WBEAM with ETH, then sell some back; what arrived is what
     assert.match(await page.textContent(tid('uni-review-fee')), /about [\d.]+ ETH.*at most [\d.]+ ETH/);
     assert.equal(await page.textContent(tid('uni-review-cta')), 'Swap 0.01 ETH');
     assert.equal(await page.isVisible(tid('uni-review-permit')), false, 'paying with ETH signs no permit');
+    // Price protection can still be changed here: only the minimum moves.
+    const min1 = await page.textContent(tid('uni-review-minimum'));
+    await page.click(tid('uni-review-protection'));
+    await page.click(tid('uni-slippage-300'));
+    await page.waitForFunction((m) => (document.querySelector('[data-testid="uni-review-minimum"]')?.textContent || m) !== m, min1);
+    assert.match(await page.textContent('.sheet .notice.success'), /more than 3% first/);
+    await page.click(tid('uni-review-protection'));
+    await page.click(tid('uni-slippage-100'));
+    await page.waitForFunction((m) => document.querySelector('[data-testid="uni-review-minimum"]')?.textContent === m, min1);
     await shots4('18-review-buy');
     const minText = (await page.textContent(tid('uni-review-minimum'))).match(/least ([\d,.]+) WBEAM/)[1].replace(/,/g, '');
     const sends0 = rpcMethods.filter((m) => m === 'eth_sendRawTransaction').length;

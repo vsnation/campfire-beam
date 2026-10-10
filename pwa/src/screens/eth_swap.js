@@ -26,7 +26,7 @@ import { DEFAULT_SLIPPAGE, IMPACT_WARNING, IMPACT_BLOCK, PERMIT_GAS, UniPriceMov
 import { EthRpcError } from '../lib/eth/rpc.js';
 import { SWAP_TOKENS, WBEAM_TOKEN, uniswapFor, walletAsset } from '../lib/eth/uniswap_app.js';
 import { serverProblem } from './eth_ui.js';
-import { amtShown, short, ethAbout, bipsText, rateText, routeText, routeNote, kv, tokenBadge, loadPools, poolsList, pickSlippage, openAllowSheet, openReviewSheet } from './eth_swap_parts.js';
+import { amtShown, short, ethAbout, bipsText, rateText, routeText, routeNote, kv, tokenBadge, loadPools, poolsList, pickSlippage, openAllowSheet, openReviewSheet, impactBlock } from './eth_swap_parts.js';
 
 const QUOTE_DELAY_MS = 500;
 const WIDE = '(min-width: 900px)';
@@ -189,17 +189,10 @@ export default function ethSwap(app, params = {}) {
   }
 
   function impactNotice(q) {
-    const impact = q.priceImpact;
-    const block = impact >= IMPACT_BLOCK;
-    const warn = notice(block ? 'error' : 'warn', h('strong', { text: `This swap moves the price ${percentText(impact)}. ` }), 'The pools are small for this amount, so you get noticeably less than the current rate. A smaller amount gets a better price.');
-    warn.dataset.testid = 'uni-impact-warning';
-    if (!block) return [warn];
-    const box = h('input', { type: 'checkbox', 'data-testid': 'uni-impact-ack', checked: impactAck });
-    box.addEventListener('change', () => {
-      impactAck = box.checked;
+    return impactBlock(q, q.priceImpact >= IMPACT_BLOCK, impactAck, (v) => {
+      impactAck = v;
       render();
     });
-    return [warn, h('label', { class: 'check-row' }, box, h('span', { text: `I accept getting ${percentText(impact)} less` }))];
   }
 
   function problemNotice() {
