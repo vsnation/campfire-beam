@@ -51,8 +51,10 @@ import '../../../widgets/beam/airdrop/beam_spend_auth.dart';
 import '../../../widgets/beam/airdrop/beam_sync_gate.dart';
 import '../../../widgets/beam/airdrop/beam_units.dart';
 import '../../../widgets/beam/dex/dex_widgets.dart';
+import '../../../widgets/beam/split/beam_coin_list.dart';
 import '../../../widgets/beam/split/beam_split_backend.dart';
 import '../../../widgets/beam/split/beam_split_text.dart';
+import '../../../widgets/custom_buttons/blue_text_button.dart';
 import '../../../widgets/rounded_white_container.dart';
 import 'beam_split_confirm_view.dart';
 
@@ -479,6 +481,23 @@ class _BeamSplitViewState extends State<BeamSplitView> {
                 valueKey: const ValueKey('split-change'),
               ),
           ],
+        ),
+      ],
+      // Read-only, so last: what each coin holds and whether it can be
+      // spent now.
+      if (coins.available.isNotEmpty || coins.locked.isNotEmpty) ...[
+        const BeamGap(8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: CustomTextButton(
+            key: const ValueKey('split-see-coins'),
+            text: 'See each coin',
+            onTap: () => showBeamCoinList(
+              context: context,
+              coins: coins,
+              symbol: symbol,
+            ),
+          ),
         ),
       ],
     ];

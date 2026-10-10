@@ -25,6 +25,7 @@ import 'package:stackwallet/wallets/beam/sync/beam_sync_state.dart';
 import 'package:stackwallet/wallets/beam/utxo/beam_coin_split.dart';
 import 'package:stackwallet/wallets/beam/utxo/beam_coins.dart';
 import 'package:stackwallet/widgets/beam/airdrop/beam_asset_names.dart';
+import 'package:stackwallet/widgets/beam/split/beam_coin_list.dart';
 import 'package:stackwallet/widgets/beam/split/beam_split_backend.dart';
 import 'package:stackwallet/widgets/desktop/primary_button.dart';
 
@@ -307,5 +308,88 @@ void main() {
     expect(b.receiveOpened, 1);
     expect(find.textContaining('no BEAM it can spend'), findsOneWidget);
     expect(_enabled(tester, 'split-cta'), isFalse);
+  });
+
+  BeamUtxo coin(
+    int i,
+    num beam,
+    String status, {
+    String type = 'norm',
+    int? maturity,
+  }) => BeamUtxo(
+    id: 'k$i',
+    assetId: 0,
+    amount: _g(beam),
+    type: type,
+    statusCode: 0,
+    statusString: status,
+    maturity: maturity,
+  );
+
+  group('each coin, in plain words', () {
+    test('summary and statuses', () {
+      final coins = BeamCoinSummary.of([
+        coin(0, 40, 'available'),
+        coin(1, 5, 'available', type: 'shld'),
+        coin(2, 0.0005, 'available'),
+        coin(3, 0.2, 'maturing', maturity: 4073500),
+        coin(4, 1, 'outgoing'),
+      ])[0]!;
+      expect(BeamCoinListText.title('BEAM'), 'Your BEAM coins');
+      expect(BeamCoinListText.summary(coins), '3 ready to spend · 2 not yet');
+      expect(BeamCoinListText.status(coins.available[0]), 'Ready to spend');
+      expect(
+        BeamCoinListText.status(coins.available[1]),
+        'Ready to spend · private',
+      );
+      expect(
+        BeamCoinListText.status(coins.available[2]),
+        'Too small to be worth spending',
+      );
+      expect(
+        BeamCoinListText.status(coin(3, 0.2, 'maturing', maturity: 4073500)),
+        'Ready soon (after block 4,073,500)',
+      );
+      expect(BeamCoinListText.status(coin(5, 1, 'maturing')), 'Ready soon');
+      expect(BeamCoinListText.status(coin(6, 1, 'incoming')), 'Arriving');
+      expect(
+        BeamCoinListText.status(coin(4, 1, 'outgoing')),
+        "In a payment that hasn't finished",
+      );
+      expect(
+        BeamCoinListText.summary(
+          BeamCoinSummary.of([coin(7, 1, 'available')])[0]!,
+        ),
+        '1 ready to spend',
+      );
+    });
+  });
+
+  testWidgets('phone: "See each coin" lists every coin, ready ones first, '
+      'read-only', (tester) async {
+    await _open(
+      tester,
+      backend: FakeSplitBackend(
+        BeamCoinSummary.of([
+          coin(0, 40, 'available'),
+          coin(1, 5, 'available', type: 'shld'),
+          coin(2, 0.0005, 'available'),
+          coin(3, 0.2, 'maturing', maturity: 4073500),
+          coin(4, 1, 'outgoing'),
+        ]),
+      ),
+    );
+    await tester.ensureVisible(_key('split-see-coins'));
+    await tester.pumpAndSettle();
+    await tester.tap(_key('split-see-coins'));
+    await tester.pumpAndSettle();
+    expect(_text(tester, 'coin-list-title'), 'Your BEAM coins');
+    expect(_text(tester, 'coin-list-summary'), '3 ready to spend · 2 not yet');
+    expect(_key('coin-row-4'), findsOneWidget);
+    expect(find.text('40 BEAM'), findsWidgets);
+    expect(find.text('Ready to spend · private'), findsOneWidget);
+    expect(find.text('Ready soon (after block 4,073,500)'), findsOneWidget);
+    expect(find.textContaining('UTXO'), findsNothing);
+    await expectScreen(tester, 'split_coin_list_phone');
   });
 }
