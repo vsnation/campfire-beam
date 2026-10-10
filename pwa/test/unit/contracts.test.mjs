@@ -318,3 +318,34 @@ test('consentRequest refuses unreadable engine reports', () => {
   const ok = consentRequest('contract', app, 1, '{"fee":"0.011","isEnough":false}', '[]');
   assert.equal(ok.isEnough, false);
 });
+
+test('a closed app keeps its engine handle until the engine has answered what was sent through it', async () => {
+  const held = [];
+  engine.respond = (req, api) => held.push({ req, api });
+  const app = await openApp({ appName: 'Busy' });
+  const p = app.call('invoke_contract', { args: 'role=manager,action=view', create_tx: false });
+  await tick();
+  app.close();
+  await assert.rejects(p, (e) => e.code === 'closed');
+  assert.equal(engine.deleted, 0, 'not released while the engine still runs its request');
+  held[0].api.reply(held[0].req.id, { output: '{}' });
+  await tick();
+  assert.equal(engine.deleted, 1, 'released once the engine answered');
+  // Nothing outstanding: released at once.
+  engine.respond = (req, api) => api.reply(req.id, { ok: 1 });
+  const idle = await openApp({ appName: 'Idle' });
+  await idle.call('get_version');
+  idle.close();
+  assert.equal(engine.deleted, 2);
+});
+
+test('a session that ends releases closed apps still waiting on the engine', async () => {
+  engine.respond = () => {};
+  const app = await openApp({ appName: 'Stuck' });
+  app.call('invoke_contract', { args: 'a=b', create_tx: false }).catch(() => {});
+  await tick();
+  app.close();
+  assert.equal(engine.deleted, 0);
+  unbindSession();
+  assert.equal(engine.deleted, 1);
+});

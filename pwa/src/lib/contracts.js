@@ -62,6 +62,7 @@ const NATIVE_APP_URL = 'campfire:native';
 export const CONSENT_TIMEOUT_MS = 10 * 60000;
 const CALL_TIMEOUT_MS = 60000;
 const OPEN_TIMEOUT_MS = 20000;
+const RELEASE_AFTER_MS = 120000;
 const SPEND_METHODS = new Set(['process_invoke_data', 'tx_send']);
 const USER_REJECTED = -32021;
 const LOG_MAX = 20;
@@ -187,6 +188,9 @@ class App {
     this.n = 0;
     this.pending = new Map();
     this.listeners = new Set();
+    // Ids sent to the engine that it has not answered yet, kept after close (see close()).
+    this.unanswered = new Set();
+    this.releaseWhenDrained = null;
     api.setHandler((s) => this.onMessage(s));
   }
 
@@ -198,7 +202,13 @@ class App {
       return;
     }
     if (!m || typeof m !== 'object') return;
-    if (typeof m.id === 'string' && m.id.startsWith('ev_')) {
+    const isEvent = typeof m.id === 'string' && m.id.startsWith('ev_');
+    if (!isEvent) this.unanswered.delete(m.id);
+    if (this.closed) {
+      if (this.releaseWhenDrained && this.unanswered.size === 0) this.releaseWhenDrained();
+      return;
+    }
+    if (isEvent) {
       for (const fn of this.listeners) {
         try {
           fn(m.id, m.result);
@@ -243,6 +253,7 @@ class App {
       if (params !== undefined) req.params = params;
       try {
         this.api.callWalletApi(JSON.stringify(req));
+        this.unanswered.add(id);
       } catch (e) {
         this.finish(id, entry);
         reject(new ContractError('rpc', String((e && e.message) || e)));
@@ -285,16 +296,32 @@ class App {
     this.listeners.clear();
     this.b.apps.delete(this);
     if (this.native && this.b.native) this.b.native = null;
-    try {
-      this.api.setHandler(() => {});
-    } catch {
-      /* engine already gone */
-    }
-    try {
-      this.api.delete();
-    } catch {
-      /* embind handle already released */
-    }
+    // Deleting an app API while the engine still runs a request sent through it
+    // can leave the engine unable to open the next app (measured: after the BEAM
+    // NFT Gallery dApp closed mid-load, createAppAPI stopped answering). So the
+    // handle is released once the engine has answered everything sent through
+    // it, or after two minutes; a session that is ending releases at once.
+    const release = () => {
+      if (this.released) return;
+      this.released = true;
+      clearTimeout(this.releaseTimer);
+      this.releaseWhenDrained = null;
+      this.b.draining.delete(this);
+      try {
+        this.api.setHandler(() => {});
+      } catch {
+        /* engine already gone */
+      }
+      try {
+        this.api.delete();
+      } catch {
+        /* embind handle already released */
+      }
+    };
+    if (code === 'locked' || this.unanswered.size === 0) return release();
+    this.releaseWhenDrained = release;
+    this.releaseTimer = setTimeout(release, RELEASE_AFTER_MS);
+    this.b.draining.add(this);
   }
 }
 
@@ -402,7 +429,7 @@ export function bindSession(session) {
   if (!session || !session.client) throw new ContractError('no_wallet', 'The wallet is not running.');
   if (bound && bound.session === session) return;
   if (bound) unbindSession();
-  const b = { session, client: session.client, M: session.M, apps: new Set(), inflight: new Map(), consents: new Set(), native: null, seq: 0 };
+  const b = { session, client: session.client, M: session.M, apps: new Set(), draining: new Set(), inflight: new Map(), consents: new Set(), native: null, seq: 0 };
   bound = b;
   b.client.setApproveContractInfoHandler((request, info, amounts, cb) => onConsent(b, 'contract', request, info, amounts, cb));
   b.client.setApproveSendHandler((request, info, cb) => onConsent(b, 'send', request, info, null, cb));
@@ -415,6 +442,7 @@ export function unbindSession() {
   for (const c of [...b.consents]) c.withdraw('locked');
   bound = null;
   for (const app of [...b.apps]) app.close('locked');
+  for (const app of [...b.draining]) if (app.releaseWhenDrained) app.releaseWhenDrained();
   for (const fn of ['setApproveContractInfoHandler', 'setApproveSendHandler']) {
     try {
       b.client[fn](null);
