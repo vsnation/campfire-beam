@@ -10,6 +10,7 @@
 // M  https://mirror.test:8812/   built-in copy #1   } other origins, self-signed
 // M2 https://mirror2.test:8813/  built-in copy #2   } (Chrome ignores certificate
 // C  https://copy.test:8814/     an added address   } errors here); same headers.
+// The ports are CAMPFIRE_MIRRORS_PORT (default 8811) and the next three.
 // Every release here is built with --mirrors M,M2 (the list the loader asks
 // after A). Each server counts what it receives.
 //
@@ -50,9 +51,14 @@ const pkg = JSON.parse(readFileSync(join(PWA, 'package.json'), 'utf8'));
 const V = (n) => pkg.version.replace(/\d+$/, (p) => String(Number(p) + n));
 const A_PORT = Number(process.env.CAMPFIRE_MIRRORS_PORT || 8811);
 const ORIGIN = `http://campfire.test:${A_PORT}/`;
-const M_URL = 'https://mirror.test:8812/';
-const M2_URL = 'https://mirror2.test:8813/';
-const C_URL = 'https://copy.test:8814/';
+// The three other origins listen on the next three ports.
+const M_HOST = `mirror.test:${A_PORT + 1}`;
+const M2_HOST = `mirror2.test:${A_PORT + 2}`;
+const C_HOST = `copy.test:${A_PORT + 3}`;
+const M_URL = `https://${M_HOST}/`;
+const M2_URL = `https://${M2_HOST}/`;
+const C_URL = `https://${C_HOST}/`;
+const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const MIRRORS = `${M_URL},${M2_URL}`;
 
 let tmp, ctx = null, page = null, rec = null;
@@ -211,9 +217,9 @@ before(async () => {
   execFileSync('openssl', ['req', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1', '-nodes', '-keyout', join(tmp, 'key.pem'), '-out', join(tmp, 'cert.pem'), '-days', '2', '-subj', '/CN=mirror.test', '-addext', 'subjectAltName=DNS:mirror.test,DNS:mirror2.test,DNS:copy.test'], { stdio: 'ignore' });
   const tls = { key: readFileSync(join(tmp, 'key.pem')), cert: readFileSync(join(tmp, 'cert.pem')) };
   A = host({ port: A_PORT });
-  M = host({ port: 8812, tls });
-  M2 = host({ port: 8813, tls });
-  C = host({ port: 8814, tls });
+  M = host({ port: A_PORT + 1, tls });
+  M2 = host({ port: A_PORT + 2, tls });
+  C = host({ port: A_PORT + 3, tls });
   build('n0', V(0));
   build('n1', V(1));
   build('n2', V(2));
@@ -262,18 +268,18 @@ test('2. own address dead, M serves N+1: found there, verified, applied; a cold 
   await openUnlocked();
   await tapCheck();
   await page.waitForFunction(() => /Downloading/.test(document.querySelector('[data-testid="update-progress"]')?.textContent || ''), null, { timeout: 120000, polling: 50 });
-  assert.match(await page.textContent(tid('update-progress')), new RegExp(`^Downloading ${V(1).replace(/\./g, '\\.')} from a copy at mirror\\.test:8812: \\d+ of \\d+ files checked$`));
+  assert.match(await page.textContent(tid('update-progress')), new RegExp(`^Downloading ${V(1).replace(/\./g, '\\.')} from a copy at ${esc(M_HOST)}: \\d+ of \\d+ files checked$`));
   await shots('mirrors-01-downloading-from-copy');
   await page.waitForSelector(tid('update-apply-sheet'), { timeout: 180000 });
   M.delayMs = 0;
-  assert.match(await page.textContent(tid('update-ready-text')), /Downloaded from a copy at mirror\.test:8812 and checked against BEAM Campfire's signature/);
+  assert.match(await page.textContent(tid('update-ready-text')), new RegExp(`Downloaded from a copy at ${esc(M_HOST)} and checked against BEAM Campfire's signature`));
   await shots('mirrors-02-ready-from-copy');
   // "Later": Home says where it came from.
   await page.click('.sheet .btn-text');
   await page.evaluate(() => window.__campfire.go('home'));
   await waitScreen(page, 'home');
   await page.waitForSelector(tid('update-banner'));
-  assert.match(await page.textContent(tid('update-banner')), /came from a copy at mirror\.test:8812/);
+  assert.match(await page.textContent(tid('update-banner')), new RegExp(`came from a copy at ${esc(M_HOST)}`));
   await shots('mirrors-03-home-banner-from-copy');
   // Every file the mirror served went into the app's own cache, under the app's own URLs.
   const caches = await page.evaluate(async () => {
@@ -282,7 +288,7 @@ test('2. own address dead, M serves N+1: found there, verified, applied; a cold 
     return { pending: st.pending.version, from: st.pending.from, n: keys.length, foreign: keys.filter((u) => !u.startsWith(location.origin + '/')).length };
   });
   assert.equal(caches.pending, V(1));
-  assert.deepEqual(caches.from, { host: 'mirror.test:8812', own: false });
+  assert.deepEqual(caches.from, { host: M_HOST, own: false });
   assert.equal(caches.foreign, 0, 'cached under the scope URLs only');
   const mreqs = M.since(0);
   assert.ok(mreqs.every((r) => r.cookie === '' && r.referer === ''), 'no cookies, no referrer to the copy');
@@ -290,7 +296,7 @@ test('2. own address dead, M serves N+1: found there, verified, applied; a cold 
   await Promise.all([page.waitForEvent('load', { timeout: 60000 }), page.click(tid('update-apply'))]);
   await waitScreen(page, 'unlock', 60000);
   await page.waitForSelector(tid('updated-notice'), { timeout: 10000 });
-  assert.equal(await page.textContent(tid('updated-notice')), `Updated to ${V(1)} from a copy at mirror.test:8812 — checked against BEAM Campfire's signature.`);
+  assert.equal(await page.textContent(tid('updated-notice')), `Updated to ${V(1)} from a copy at ${M_HOST} — checked against BEAM Campfire's signature.`);
   await shots('mirrors-04-updated-from-copy');
   assert.equal(await servedVersion(), V(1));
   // Cold start, own address still dead.
@@ -307,8 +313,8 @@ test('3. M serves a tampered N+2: refused, nothing of it cached, still N+1 and w
   M.serve(R.n2t);
   const r = await checkAndWait();
   assert.match(r.sheet, /Update refused/);
-  assert.match(await page.textContent('.sheet .notice'), /From the copy at mirror\.test:8812: A file in this update \(app\.js\) is not the one that was signed\. You are still on the version you had/);
-  assert.match(await page.textContent(tid('update-tried')), /Asked: this app's address, mirror\.test:8812 and mirror2\.test:8813\./);
+  assert.match(await page.textContent('.sheet .notice'), new RegExp(`From the copy at ${esc(M_HOST)}: A file in this update \\(app\\.js\\) is not the one that was signed\\. You are still on the version you had`));
+  assert.match(await page.textContent(tid('update-tried')), new RegExp(`Asked: this app's address, ${esc(M_HOST)} and ${esc(M2_HOST)}\\.`));
   await shots('mirrors-05-refused-tampered-copy');
   await page.click('.sheet .btn-primary');
   assert.equal(await servedVersion(), V(1));
@@ -329,7 +335,7 @@ test('3. M serves a tampered N+2: refused, nothing of it cached, still N+1 and w
 test('4. M serves N+1 (installed) or N (older): up to date', { timeout: 5 * 60000 }, async () => {
   M.serve(R.n1);
   let r = await checkAndWait();
-  assert.equal(r.toast, 'You have the latest version (checked at a copy at mirror.test:8812).');
+  assert.equal(r.toast, `You have the latest version (checked at a copy at ${M_HOST}).`);
   await shots('mirrors-06-up-to-date-at-copy');
   M.serve(R.n0);
   r = await checkAndWait();
@@ -347,7 +353,7 @@ test('5. M sends no CORS headers: unreachable, M2 is asked next and used', { tim
   const m0 = M.count();
   const r = await checkAndWait();
   assert.match(r.sheet, new RegExp(`Update to ${V(3).replace(/\./g, '\\.')}`));
-  assert.match(await page.textContent(tid('update-ready-text')), /a copy at mirror2\.test:8813/);
+  assert.match(await page.textContent(tid('update-ready-text')), new RegExp(`a copy at ${esc(M2_HOST)}`));
   assert.deepEqual(M.since(m0).map((x) => x.path), ['/release.json'], 'M was asked, its answer could not be read, nothing more was asked of it');
   await applyAndReload();
   assert.equal(await servedVersion(), V(3));
@@ -383,34 +389,34 @@ test('7. nothing reachable, then "Update from another address": http refused in 
   await openUnlocked();
   let r = await checkAndWait();
   assert.match(await page.textContent(tid('no-update-source')), /No update source reachable\. Your app keeps working\./);
-  assert.match(await page.textContent(tid('update-tried')), /Asked: this app's address, mirror\.test:8812 and mirror2\.test:8813\./);
+  assert.match(await page.textContent(tid('update-tried')), new RegExp(`Asked: this app's address, ${esc(M_HOST)} and ${esc(M2_HOST)}\\.`));
   await shots('mirrors-07-no-source-reachable');
   await page.click(tid('update-other'));
   await page.waitForSelector(tid('other-address'));
   await shots('mirrors-08-other-address');
-  await page.fill(tid('other-address'), `http://copy.test:8814/`);
+  await page.fill(tid('other-address'), `http://${C_HOST}/`);
   await page.click(tid('other-address-check'));
   await page.waitForSelector(tid('other-address-error'));
   assert.equal(await page.textContent(tid('other-address-error')), 'Use an address that starts with https://.');
   await shots('mirrors-09-other-address-http-refused');
   C.serve(R.n5);
   await C.start();
-  await page.fill(tid('other-address'), 'copy.test:8814/index.html');
+  await page.fill(tid('other-address'), `${C_HOST}/index.html`);
   await page.click(tid('other-address-check'));
   await page.waitForSelector(tid('update-apply-sheet'), { timeout: 180000 });
-  assert.match(await page.textContent(tid('update-ready-text')), /a copy at copy\.test:8814/);
+  assert.match(await page.textContent(tid('update-ready-text')), new RegExp(`a copy at ${esc(C_HOST)}`));
   assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('campfire-update-source')).url), C_URL, 'saved, normalised');
   await shots('mirrors-10-ready-from-added');
   await page.click('.sheet .btn-text'); // Later
   await page.evaluate(() => window.__campfire.go('settings'));
   await waitScreen(page, 'settings');
-  assert.match(await page.textContent(tid('update-other-row')), /Also asks copy\.test:8814/);
+  assert.match(await page.textContent(tid('update-other-row')), new RegExp(`Also asks ${esc(C_HOST)}`));
   await page.evaluate(() => document.querySelector('[data-testid="update-other-row"]').scrollIntoView({ block: 'center' }));
   await shots('mirrors-11-settings');
   await page.click(tid('about'));
   await waitScreen(page, 'about');
   await page.waitForSelector(tid('about-sources'));
-  assert.deepEqual(await page.$$eval('[data-testid="about-sources"] > span', (els) => els.map((e) => e.textContent)), ["This app's address", 'mirror.test:8812', 'mirror2.test:8813', 'copy.test:8814']);
+  assert.deepEqual(await page.$$eval('[data-testid="about-sources"] > span', (els) => els.map((e) => e.textContent)), ["This app's address", M_HOST, M2_HOST, C_HOST]);
   await page.evaluate(() => document.querySelector('[data-testid="about-sources"]').scrollIntoView({ block: 'center' }));
   await shots('mirrors-12-about-sources');
   await page.evaluate(() => window.__campfire.go('settings'));
