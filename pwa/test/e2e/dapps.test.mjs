@@ -53,6 +53,21 @@ test.before(async () => {
   await page.goto(server.url);
   await createWallet(page, { password: `iso-${Math.random().toString(36).slice(2, 10)}` });
   await waitHome(page);
+  // Test-only: record the id and method of every request that reaches the bridge (the dApp polls on its own).
+  await page.evaluate(async () => {
+    const m = await import('./lib/dapps/session.js');
+    const orig = m.DappSession.prototype.handle;
+    window.__bridgeSeen = [];
+    m.DappSession.prototype.handle = function (text) {
+      try {
+        const j = JSON.parse(text);
+        window.__bridgeSeen.push({ id: j.id, method: j.method });
+      } catch {
+        window.__bridgeSeen.push({ id: null, method: null });
+      }
+      return orig.call(this, text);
+    };
+  });
   await page.click(tid('open-dapps'));
   await waitScreen(page, 'dapps');
   await page.click(tid(`dapp-${DAO}`));
@@ -167,9 +182,10 @@ test('a message posted to the wallet window reaches no wallet call', async () =>
     top.postMessage(forged, '*');
   });
   await sleep(1500);
-  const after = (await stats())[0];
-  assert.equal(after.requests, before.requests);
-  assert.equal(after.forwarded, before.forwarded);
+  const seen = await page.evaluate(() => window.__bridgeSeen);
+  assert.ok(seen.length > 0, 'the trace sees the dApp\'s own requests');
+  assert.deepEqual(seen.filter((r) => r.id === 'forged' || r.method === 'tx_send' || r.id === null), [], 'nothing posted to the wallet window reached the bridge');
+  assert.equal((await stats())[0].dropped, before.dropped);
   assert.equal(await page.$(tid('dapp-consent')), null, 'no approval was asked for');
 });
 
@@ -181,10 +197,13 @@ test('a port or reply forged by another frame is ignored by the dApp frame', asy
     f.src = 'dapp-run/e1r0/app/index.html';
     document.body.appendChild(f);
   });
-  await sleep(1500);
-  const intruder = page.frames().find((f) => f.url().includes('/dapp-run/') && f !== dappFrame);
-  assert.ok(intruder);
-  const before = (await stats())[0];
+  let intruder = null;
+  for (let i = 0; i < 40 && !intruder; i++) {
+    await sleep(250);
+    intruder = page.frames().find((f) => f.url().includes('/dapp-run/') && f !== dappFrame);
+  }
+  assert.ok(intruder, 'the second frame is there');
+  await intruder.waitForFunction(() => document.readyState === 'complete');
   const heard = await intruder.evaluate(async () => {
     const target = parent.frames[0];
     const ch = new MessageChannel();
@@ -198,8 +217,8 @@ test('a port or reply forged by another frame is ignored by the dApp frame', asy
   });
   assert.deepEqual(heard, [], 'the dApp frame did not take the forged port (it answers ready on a port it accepts)');
   const after = (await stats())[0];
-  assert.equal(after.state, 'running');
-  assert.equal(after.requests, before.requests);
+  assert.equal(after.state, 'running', 'the dApp still runs on its own port');
+  assert.equal((await stats()).length, 1, 'the second frame is no dApp: it got no port and no files');
   await page.evaluate(() => document.getElementById('intruder').remove());
 });
 
