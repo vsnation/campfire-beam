@@ -100,7 +100,7 @@ export class DappRunner {
    * @param {(url: string) => void} o.onOpenLink
    * @param {() => void} o.onActivity
    */
-  constructor({ entry, manifest, files, appApi, remoteOrigins = [], confirmSign, onState, onOpenLink, onActivity, onRefused = null, onBusy = null }) {
+  constructor({ entry, manifest, files, appApi, remoteOrigins = [], confirmSign, onState, onOpenLink, onActivity, onLayout = null, onRefused = null, onBusy = null }) {
     this.entry = entry;
     this.name = manifest.name;
     this.manifest = manifest;
@@ -110,6 +110,7 @@ export class DappRunner {
     this.onState = onState || (() => {});
     this.onOpenLink = onOpenLink || (() => {});
     this.onActivity = onActivity || (() => {});
+    this.onLayout = onLayout || (() => {});
     this.session = new DappSession({ appName: manifest.name, app: appApi, confirmSign, onRefused, onBusy, apiVersion: manifest.apiVersion, minApiVersion: manifest.minApiVersion });
     this.loads = 0;
     this.dropped = 0;
@@ -217,6 +218,9 @@ export class DappRunner {
         break;
       case 'open-link':
         this.onOpenLink(m.url);
+        break;
+      case 'layout':
+        this.onLayout(m);
         break;
       case 'failed':
         this.fail(`The dApp could not start: ${m.message}`);

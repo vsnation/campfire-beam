@@ -218,6 +218,12 @@ export default function dapps(app, params = {}) {
     setConsentPresenter((req) => presentConsent(req));
     const stage = h('div', { class: 'dapp-stage' });
     const busyBar = h('div', { class: 'dapp-busy hidden', 'data-testid': 'dapp-busy' }, progressBar(null));
+    const wideHint = h(
+      'div',
+      { class: 'dapp-hint hidden', 'data-testid': 'dapp-wide-hint' },
+      h('span', { text: `${manifest.name} is laid out for a wider screen: swipe sideways to see all of it, or turn your phone.` }),
+      h('button', { class: 'icon-btn', 'aria-label': 'Hide this note', onclick: () => wideHint.classList.add('hidden') }, icon('close')),
+    );
     const cover = h('div', { class: 'dapp-cover', 'data-testid': 'dapp-cover' }, h('div', { class: 'spinner' }), h('p', { text: `Starting ${manifest.name}…` }));
     const bar = h(
       'header',
@@ -227,7 +233,7 @@ export default function dapps(app, params = {}) {
       h('h1', { text: manifest.name }),
       h('button', { class: 'icon-btn', 'aria-label': 'More', 'data-testid': 'dapp-more', onclick: () => moreSheet(e, files, manifest) }, icon('more')),
     );
-    put(layer, bar, busyBar, stage, cover);
+    put(layer, bar, busyBar, wideHint, stage, cover);
     layer.classList.remove('hidden');
     document.body.classList.add('dapp-open');
     let busy = 0;
@@ -241,6 +247,9 @@ export default function dapps(app, params = {}) {
       confirmSign: (req) => presentSign(req),
       onActivity: () => app.touch(),
       onOpenLink: (url) => presentLink(manifest.name, url),
+      onLayout: ({ width, viewport }) => {
+        if (viewport > 0 && width > viewport * 1.2) wideHint.classList.remove('hidden');
+      },
       onRefused: (why) => toast(why, 6000),
       onBusy: (d) => {
         busy += d;

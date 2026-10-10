@@ -16,10 +16,11 @@
 //   pong      {n}
 //   activity                       the person touched the dApp (auto-lock)
 //   open-link {url}                the dApp wants to open an https link
+//   layout    {width, viewport}    how wide the dApp's page is laid out
 //   failed    {message}            the bootstrap could not start the dApp
 // wallet -> frame
 //   campfire-port (window message, first load only, with the port)
-//   start  {files, start, shape, ua, style, hostCss}
+//   start  {files, start, shape, ua, style, hostCss, shims}
 //   deliver {json}                 a JSON-RPC response or event
 //   handshake {ok}
 //   ping {n}
@@ -56,6 +57,8 @@ export function validateFrameMessage(m) {
       if (u.protocol !== 'https:' || u.username || u.password) return null;
       return { t: 'open-link', url: u.href };
     }
+    case 'layout':
+      return Number.isSafeInteger(m.width) && Number.isSafeInteger(m.viewport) && m.width >= 0 && m.viewport >= 0 ? { t: 'layout', width: m.width, viewport: m.viewport } : null;
     case 'failed':
       return { t: 'failed', message: typeof m.message === 'string' ? m.message.slice(0, 300) : 'unknown' };
     default:

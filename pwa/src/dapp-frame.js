@@ -508,5 +508,10 @@
     document.write(out);
     document.close();
     send({ t: 'started' });
+    // Some dApps are laid out for a desktop window; the wallet tells the person to swipe.
+    setTimeout(function () {
+      var d = document.documentElement;
+      if (d) send({ t: 'layout', width: d.scrollWidth, viewport: d.clientWidth });
+    }, 4000);
   }
 })();

@@ -395,6 +395,10 @@ label.btn.disabled { pointer-events: none; opacity: 0.5; }
 .dapp-bar-icon { width: 26px; height: 26px; border-radius: 7px; background: #042548; display: flex; align-items: center; justify-content: center; flex: none; }
 .dapp-bar-icon img { width: 18px; height: 18px; }
 .dapp-busy { flex: none; }
+.dapp-hint { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px calc(14px + var(--safe-left)); background: var(--info-bg); color: var(--info); font-size: 14px; }
+.dapp-hint span { flex: 1; }
+.dapp-hint .icon-btn { color: var(--info); margin: 0; padding: 6px; }
+.dapp-hint .icon-btn svg { width: 18px; height: 18px; }
 .dapp-busy .progress { height: 3px; border-radius: 0; background: transparent; }
 .dapp-stage { flex: 1; position: relative; min-height: 0; }
 .dapp-frame { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #042548; }

@@ -63,6 +63,8 @@ test('frame messages: known types with bounded, typed fields; everything else is
   assert.deepEqual(validateFrameMessage({ t: 'ready', extra: 1 }), { t: 'ready' });
   assert.deepEqual(validateFrameMessage({ t: 'hello', apiver: '7.0', apivermin: 7, appname: 'x'.repeat(65) }), { t: 'hello', apiver: '7.0', apivermin: null, appname: null });
   assert.deepEqual(validateFrameMessage({ t: 'open-link', url: 'https://explorer.beam.mw/block?h=1' }), { t: 'open-link', url: 'https://explorer.beam.mw/block?h=1' });
+  assert.deepEqual(validateFrameMessage({ t: 'layout', width: 860, viewport: 390, x: 1 }), { t: 'layout', width: 860, viewport: 390 });
+  assert.equal(validateFrameMessage({ t: 'layout', width: '860', viewport: 390 }), null);
   for (const bad of [null, 'rpc', [], {}, { t: 'nope' }, { t: 'rpc' }, { t: 'rpc', json: '' }, { t: 'rpc', json: 5 }, { t: 'rpc', json: 'x'.repeat(8 * 1024 * 1024 + 1) }, { t: 'pong', n: 1.5 }, { t: 'open-link', url: 'javascript:alert(1)' }, { t: 'open-link', url: 'http://plain.example' }, { t: 'open-link', url: 'https://user:pw@x.example' }, { t: 'open-link', url: 'not a url' }, { t: 'campfire-port' }, { t: 'start', files: [] }]) {
     assert.equal(validateFrameMessage(bad), null, JSON.stringify(bad)?.slice(0, 60));
   }
