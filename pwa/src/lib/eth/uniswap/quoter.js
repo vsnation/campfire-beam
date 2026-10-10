@@ -172,7 +172,11 @@ export class UniswapQuoter {
     for (const a of ins) for (const b of outs) for (const p of foundOf(a, b)) if (live(p)) direct.push(new UniHop(p, a, b));
     const firstToMid = [];
     for (const a of ins) for (const m of mids) for (const p of foundOf(a, m)) if (live(p)) firstToMid.push(new UniHop(p, a, m));
-    if (!direct.length && !firstToMid.length) throw new UniswapNoRoute('noPool');
+    // No pool at all, or first pools that lead nowhere: no route (the desktop
+    // app reports the second case as 'tooSmall', which tells the person to
+    // try a larger amount when no amount would do).
+    const leadsOn = (h) => mids.some((m) => assetKey(m) === assetKey(h.currencyOut) && outs.some((b) => foundOf(m, b).some((p) => live(p) && p.id !== h.pool.id)));
+    if (!direct.length && !firstToMid.some(leadsOn)) throw new UniswapNoRoute('noPool');
     // Also at nineteen twentieths: the best route's last step says whether
     // any other route could add to it (step 3).
     const probe = [...new Set([1, n - 1, n])].filter((k) => k >= 1);

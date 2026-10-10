@@ -60,6 +60,16 @@ export function parseKnownPools(json) {
   return { block: json.block, pools };
 }
 
+/**
+ * Reads known_pools.json from beside this file (same origin; it ships, and is
+ * cached, with the app) → parseKnownPools of it.
+ */
+export async function loadKnownPools(fetchImpl = (...a) => globalThis.fetch(...a)) {
+  const r = await fetchImpl(new URL('./known_pools.json', import.meta.url), { credentials: 'omit' });
+  if (!r.ok) throw new Error('The list of Uniswap pools could not be loaded.');
+  return parseKnownPools(await r.json());
+}
+
 /** A store that forgets on reload (tests, or a caller with nowhere to keep it). */
 export function memoryPoolStore() {
   const m = new Map();
