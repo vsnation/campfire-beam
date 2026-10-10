@@ -3,7 +3,8 @@
  *       Primary CTA: none (a list); the most used item, "Lock now", is first in its group.
  *       Taps from app open: 1 (tab), 2 for any item.
  * Exit-intent reasons and answers:
- *   - "Which node should I pick?" -> the default is preselected and works; others say what they are.
+ *   - "Which node should I pick?" -> none: random BEAM nodes by default, and the app moves to another
+ *     by itself; "BEAM node" says which is in use and offers your own node.
  *   - "Who can see my IP?" -> IP privacy row, same words as before the first connection.
  *   - "How do I remove it?" -> Delete is here, with what it means before anything happens.
  *   - "What is my backup?" -> Backup row: the 12 words, or for an imported wallet its wallet.db
@@ -14,32 +15,16 @@
 import { h, put } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { screen, toast } from '../lib/ui.js';
-import { NODES } from '../lib/nodes.js';
+import { isOwnNode } from '../lib/own_node.js';
 import { hasPasskey, removePasskey, scanEnabled, isImported } from '../lib/session.js';
 import { passkeyAvailable } from '../lib/passkey.js';
 import { confirmIdentity } from '../lib/auth_ui.js';
-import { wallet } from '../lib/wallet.js';
 import { lastCheckText } from '../lib/update.js';
 import { runUpdateCheck, openOtherAddress } from '../lib/update_ui.js';
 
 export default function settings(app) {
   const row = (ico, title, sub, onclick, extra = {}) =>
     h('button', { class: 'row', onclick, ...extra }, h('span', { class: 'ico' }, icon(ico)), h('span', { class: 'main' }, h('div', { class: 't', text: title }), sub ? h('div', { class: 's', text: sub }) : null), h('span', { class: 'chev' }, icon('chevron')));
-
-  const nodeSel = h('select', { class: 'inline', 'aria-label': 'BEAM node', 'data-testid': 'node-select' }, ...NODES.map((n) => h('option', { value: n.address, text: n.label })));
-  nodeSel.value = app.prefs.node;
-  nodeSel.addEventListener('change', async () => {
-    const node = nodeSel.value;
-    await app.setPrefs({ node });
-    toast('Switching node…');
-    try {
-      await wallet.stop();
-      await wallet.start({ dbPass: app.dbPass, node, bodyRequests: scanEnabled(app) });
-      toast(`Connected through ${NODES.find((n) => n.address === node).label}`);
-    } catch (e) {
-      toast(`Couldn't switch: ${e.message}`);
-    }
-  });
 
   const lockSel = h('select', { class: 'inline', 'aria-label': 'Auto-lock', 'data-testid': 'autolock-select' }, ...[1, 5, 15].map((m) => h('option', { value: String(m), text: `${m} min` })));
   lockSel.value = String(app.prefs.autoLockMin);
@@ -98,7 +83,7 @@ export default function settings(app) {
     h(
       'div',
       { class: 'card list' },
-      h('div', { class: 'row' }, h('span', { class: 'ico' }, icon('globe')), h('span', { class: 'main' }, h('div', { class: 't', text: 'BEAM node' }), h('div', { class: 's', text: 'Run by BEAM. Europe is the default.' })), nodeSel),
+      row('globe', 'BEAM node', isOwnNode(app.prefs.node) ? `Your own node: ${app.prefs.node}` : 'Random BEAM nodes', () => app.go('nodeSettings'), { 'data-testid': 'node-row' }),
       row('shield', 'IP privacy', 'Who can see your IP address', () => app.go('ipNotice'), { 'data-testid': 'ip-privacy' }),
       row('eth', 'Ethereum wallet', 'Server, privacy, backup', () => app.go('ethSettings'), { 'data-testid': 'eth-settings-row' }),
     ),

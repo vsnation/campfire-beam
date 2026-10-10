@@ -25,8 +25,19 @@ export class EngineError extends Error {
 }
 
 // ---------------------------------------------------------------- node guard
-const guard = { allowed: null, open: 0, everOpen: false, blocked: new Map(), listeners: new Set(), lastError: null };
+// Per node (reset by setAllowed): attempts, failures (closed before opening),
+// first open and last close - what lib/node_health.js judges a node by.
+const guard = { allowed: null, allowedHost: null, open: 0, everOpen: false, attempts: 0, failures: 0, firstOpenAt: null, lastCloseAt: null, blocked: new Map(), listeners: new Set(), lastError: null };
 const NativeWebSocket = globalThis.WebSocket;
+
+/** "host:443" and "host" are one WebSocket host: compare as the URL parser writes it. */
+function wsHost(node) {
+  try {
+    return new URL(`wss://${node}/`).host;
+  } catch {
+    return null;
+  }
+}
 
 function notifyGuard() {
   for (const fn of guard.listeners) {
@@ -50,27 +61,33 @@ if (NativeWebSocket && !NativeWebSocket.__campfireGuard) {
       } catch {
         /* falls through to refusal */
       }
-      if (!guard.allowed || proto !== 'wss:' || host !== guard.allowed) {
+      if (!guard.allowedHost || proto !== 'wss:' || host !== guard.allowedHost) {
         guard.blocked.set(host || String(url), (guard.blocked.get(host || String(url)) || 0) + 1);
         throw new DOMException(`BEAM Campfire only connects to the node you chose (${guard.allowed || 'none'})`, 'SecurityError');
       }
       super(url, protocols);
+      const mine = guard.allowedHost;
+      guard.attempts++;
       let opened = false;
       this.addEventListener('open', () => {
+        if (guard.allowedHost !== mine) return;
         opened = true;
         guard.open++;
         guard.everOpen = true;
+        if (!guard.firstOpenAt) guard.firstOpenAt = Date.now();
         guard.lastError = null;
         notifyGuard();
       });
       this.addEventListener('error', () => {
-        guard.lastError = Date.now();
+        if (guard.allowedHost === mine) guard.lastError = Date.now();
       });
       this.addEventListener('close', () => {
+        if (guard.allowedHost !== mine) return;
         if (opened) {
           guard.open = Math.max(0, guard.open - 1);
-          notifyGuard();
-        }
+          guard.lastCloseAt = Date.now();
+        } else guard.failures++;
+        notifyGuard();
       });
     }
   }
@@ -81,11 +98,16 @@ if (NativeWebSocket && !NativeWebSocket.__campfireGuard) {
 export const nodeGuard = {
   setAllowed(node) {
     guard.allowed = node;
+    guard.allowedHost = node ? wsHost(node) : null;
     guard.everOpen = false;
     guard.open = 0;
+    guard.attempts = 0;
+    guard.failures = 0;
+    guard.firstOpenAt = null;
+    guard.lastCloseAt = null;
   },
   get state() {
-    return { allowed: guard.allowed, open: guard.open, everOpen: guard.everOpen, blocked: Object.fromEntries(guard.blocked), lastError: guard.lastError };
+    return { allowed: guard.allowed, open: guard.open, everOpen: guard.everOpen, attempts: guard.attempts, failures: guard.failures, firstOpenAt: guard.firstOpenAt, lastCloseAt: guard.lastCloseAt, blocked: Object.fromEntries(guard.blocked), lastError: guard.lastError };
   },
   subscribe(fn) {
     guard.listeners.add(fn);

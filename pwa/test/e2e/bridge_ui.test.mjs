@@ -45,9 +45,8 @@ import { ETH_RPC_HOSTS } from '../../src/lib/eth/hosts.js';
 import { routeById } from '../../src/lib/bridge/routes.js';
 import { e2bRelayerFee } from '../../src/lib/bridge/fees.js';
 
-const PORT = 8870;
+const PORT = Number(process.env.CAMPFIRE_BRIDGE_UI_PORT || 8870);
 const PASSWORD = `bridge-ui-${Math.random().toString(36).slice(2, 10)}`;
-const NODE = 'eu-nodes.mainnet.beam.mw:8200';
 const STACK = 'eth2.stackwallet.com';
 const GECKO = 'api.coingecko.com';
 const tid = (id) => `[data-testid="${id}"]`;
@@ -518,7 +517,7 @@ test('(e) a move ready to collect: "Collect", then the approve sheet in the brid
 });
 
 test('IP privacy: this origin, the BEAM node, the chosen Ethereum server and (once allowed) CoinGecko; no CSP violation', T(1), async () => {
-  assert.deepEqual(foreignHosts(rec, srv.url, [NODE]).sort(), [`https://${GECKO}`, `https://${STACK}`]);
+  assert.deepEqual(foreignHosts(rec, srv.url).sort(), [`https://${GECKO}`, `https://${STACK}`]);
   assert.deepEqual(rec.csp, []);
   assert.deepEqual(await page.evaluate(() => window.__cspViolations), []);
   assert.deepEqual(rec.errors, []);

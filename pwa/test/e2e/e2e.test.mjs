@@ -15,7 +15,7 @@ import { webcrypto } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import jsQR from 'jsqr';
-import { PWA, startServer, launch, recordedPage, addVirtualAuthenticator, shot, waitScreen, foreignHosts, explorerHeight, waitHeightNearExplorer, sleep, SHOTS } from './harness.mjs';
+import { PWA, startServer, launch, recordedPage, addVirtualAuthenticator, shot, waitScreen, foreignHosts, explorerHeight, waitHeightNearExplorer, sleep, SHOTS, NODE_HOSTS } from './harness.mjs';
 import { createWallet, restoreWallet, waitHome, waitSynced, unlockWithPassword } from './flows.mjs';
 
 const PORT = Number(process.env.CAMPFIRE_E2E_PORT || 8791);
@@ -26,7 +26,6 @@ const V1 = nextVersion(1);
 const V2 = nextVersion(2);
 const V3 = nextVersion(3);
 const PASSWORD = `e2e-${Math.random().toString(36).slice(2, 10)}`;
-const NODE = 'eu-nodes.mainnet.beam.mw:8200';
 const tid = (id) => `[data-testid="${id}"]`;
 
 let tmp, live, srv, browser, ctx, page, rec, blockNode = false, throwawayWords = null;
@@ -254,7 +253,7 @@ test('restore: the same 12 words in a fresh browser profile, with the snapshot d
     console.log(`# restore: Connect -> Synced ${Date.now() - t0} ms (download + import + scan)`);
     assert.equal(await r2.page.evaluate(() => window.__campfire.scanning()), true, 'a restored wallet scans');
     assert.ok(r2.rec.requests.some((u) => u.includes('/recovery/mainnet_recovery.bin')));
-    assert.deepEqual(foreignHosts(r2.rec, srv.url, [NODE]), []);
+    assert.deepEqual(foreignHosts(r2.rec, srv.url), []);
     assert.deepEqual((await r2.page.evaluate(() => window.__campfire.guard())).blocked, {});
     await shot(r2.page, 'e2e-restore-03-home');
   } finally {
@@ -279,14 +278,14 @@ test('find coins from other wallets: Settings -> snapshot import turns scanning 
 });
 
 test('IP privacy: the page contacted only this origin and the chosen node; the guard refused nothing', async () => {
-  const foreign = foreignHosts(rec, srv.url, [NODE]);
+  const foreign = foreignHosts(rec, srv.url);
   assert.deepEqual(foreign, [], `unexpected hosts: ${foreign.join(', ')}`);
   const wsHosts = [...new Set(rec.websockets.map((u) => new URL(u).host))];
-  assert.deepEqual(wsHosts, [NODE]);
+  assert.ok(wsHosts.length >= 1 && wsHosts.every((h) => NODE_HOSTS.includes(h)), `BEAM pool nodes only: ${wsHosts}`);
   const blocked = (await page.evaluate(() => window.__campfire.guard())).blocked;
   console.log(`# node guard refusals this session: ${JSON.stringify(blocked)}`);
   assert.deepEqual(blocked, {}, 'the engine no longer dials anything but the chosen node (engine patch 0103)');
-  console.log(`# requests recorded: ${rec.requests.length}, websocket opens: ${rec.websockets.length} (all to ${NODE})`);
+  console.log(`# requests recorded: ${rec.requests.length}, websocket opens: ${rec.websockets.length} (all to BEAM pool nodes: ${[...new Set(rec.websockets.map((u) => new URL(u).host))].join(', ')})`);
 });
 
 test('(g1) the verified copy works without the server (cache only)', { timeout: 120000 }, async () => {

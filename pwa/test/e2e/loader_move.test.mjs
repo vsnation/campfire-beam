@@ -26,7 +26,7 @@ import { PWA, launch, waitScreen, sleep, shot } from './harness.mjs';
 import { createWallet, waitHome, unlockWithPassword } from './flows.mjs';
 import { mimeFor } from '../../tools/headers.mjs';
 
-const PORT = 8789;
+const PORT = Number(process.env.CAMPFIRE_LOADER_MOVE_PORT || 8789);
 const BASE = '/beam-campfire-pwa/';
 const URL_ = `http://127.0.0.1:${PORT}${BASE}`;
 const PREV = 'https://github.com/vsnation/campfire-beam/releases/download/web-v0.1.8/';

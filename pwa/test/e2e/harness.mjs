@@ -6,12 +6,14 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { chromium } from 'playwright-core';
+import { NODES } from '../../src/lib/nodes.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const PWA = join(here, '..', '..');
 export const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 export const SHOTS = process.env.CAMPFIRE_SHOTS || join(tmpdir(), 'beam-campfire-shots');
-export const NODE_HOSTS = ['eu-nodes.mainnet.beam.mw:8200', 'eu-node01.mainnet.beam.mw:8200', 'eu-node02.mainnet.beam.mw:8200'];
+// BEAM's node pool (random node): a wallet uses one of these at a time.
+export const NODE_HOSTS = [...NODES];
 
 export async function startServer({ root = 'dist', port = 8781, selftest = false, extra = [] } = {}) {
   const args = [join(PWA, 'tools', 'serve.mjs'), '--port', String(port), '--root', root, ...(selftest ? ['--selftest'] : []), ...extra];

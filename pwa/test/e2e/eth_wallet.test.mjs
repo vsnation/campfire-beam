@@ -38,9 +38,8 @@ import { ETH_RPC_HOSTS } from '../../src/lib/eth/hosts.js';
 import { WBEAM } from '../../src/lib/eth/tokens.js';
 import { routeById } from '../../src/lib/bridge/routes.js';
 
-const PORT = 8840;
+const PORT = Number(process.env.CAMPFIRE_ETH_PORT || 8840);
 const PASSWORD = `eth-${Math.random().toString(36).slice(2, 10)}`;
-const NODE = 'eu-nodes.mainnet.beam.mw:8200';
 const STACK = 'eth2.stackwallet.com';
 const ETHER = 10n ** 18n;
 const tid = (id) => `[data-testid="${id}"]`;
@@ -669,7 +668,7 @@ test('import by private key: one box knows it is a key, shows the address first;
 });
 
 test('IP privacy: only this origin, the BEAM node and the chosen Ethereum server; no CSP violation', { skip: skip || false }, async () => {
-  assert.deepEqual(foreignHosts(rec, srv.url, [NODE]), [`https://${STACK}`]);
+  assert.deepEqual(foreignHosts(rec, srv.url), [`https://${STACK}`]);
   assert.deepEqual(rec.csp, []);
   assert.deepEqual(await page.evaluate(() => window.__cspViolations), []);
   assert.deepEqual(rec.errors, []);

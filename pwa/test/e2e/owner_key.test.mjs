@@ -33,7 +33,7 @@ import { createWallet, waitHome, unlockWithPassword } from './flows.mjs';
 import { makeWalletDb, cliVersion, cliOwnerKey, nodeReadsOwnerKey, WANT_CORE, BEAM_CLI, BEAM_NODE } from './walletdb.mjs';
 import { looksLikeOwnerKey, OWNER_KEY_TEXT as T } from '../../src/lib/owner_key.js';
 
-const PORT = 8850;
+const PORT = Number(process.env.CAMPFIRE_OWNER_KEY_PORT || 8850);
 const tid = (id) => `[data-testid="${id}"]`;
 const pkg = JSON.parse(readFileSync(join(PWA, 'package.json'), 'utf8'));
 const PASSWORD = `okey-${randomBytes(9).toString('base64url')}`; // throwaway wallet

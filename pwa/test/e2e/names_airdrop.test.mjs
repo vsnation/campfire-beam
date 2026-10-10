@@ -26,7 +26,6 @@ import { createWallet, waitHome, waitSynced, lock, unlockWithPassword } from './
 
 const PORT = Number(process.env.E2E_PORT || 8820);
 const PASSWORD = `names-${Math.random().toString(36).slice(2, 10)}`;
-const NODE = 'eu-nodes.mainnet.beam.mw:8200';
 const tid = (id) => `[data-testid="${id}"]`;
 const groth = (text) => {
   const m = /([\d,]+(?:\.\d+)?)/.exec(text);
@@ -608,7 +607,7 @@ test('screens with data, for the screenshots (lookups replaced in the page)', { 
 });
 
 test('IP privacy: only this origin and the chosen node', async () => {
-  assert.deepEqual(foreignHosts(rec, srv.url, [NODE]), []);
+  assert.deepEqual(foreignHosts(rec, srv.url), []);
   assert.deepEqual(rec.csp, []);
   assert.deepEqual(rec.errors, []);
 });

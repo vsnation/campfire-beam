@@ -7,7 +7,8 @@
 // 1. Checks vendor/engine against engine.lock.json (run tools/stage_engine.mjs first).
 // 2. Copies src/ and the engine into --out, filling in the version, the
 //    engine hashes and the release public key (lib/version.js, sw.js), and
-//    inlining lib/release.js and lib/update_sources.js into sw.js. The service worker is written under a
+//    inlining lib/release.js, lib/update_sources.js, lib/dapps/frame_policy.js
+//    and lib/node_address.js into sw.js. The service worker is written under a
 //    content-addressed name, sw-<first 16 hex of its SHA-256>.js, and that
 //    name goes into lib/version.js (LOADER). It carries nothing per-release,
 //    so the name only changes when the loader's code does.
@@ -19,7 +20,8 @@
 //    update sources: --mirrors, or BUILTIN_SOURCES of lib/update_sources.js)
 //    and release.sig (ECDSA P-256 / SHA-256 over release.json, base64 of r||s).
 //    loader_compat hashes what the loader does to pages (security headers,
-//    MIME types, dApp frame policy, LOADER_API); a release from a copy other
+//    MIME types, dApp frame policy, the own-node policy of lib/node_address.js,
+//    LOADER_API); a release from a copy other
 //    than the app's own address installs only where the running loader has the
 //    same value (lib/update_sources.js loaderCompatible()). The build prints it:
 //    a release meant to reach installs whose address is gone must keep it.
@@ -110,6 +112,8 @@ if (/^import /m.test(framePolicyJs)) throw new Error('lib/dapps/frame_policy.js 
 // Inlined after release.js, whose names it imports: that one import line goes.
 const updateSourcesJs = (await readFile(join(srcDir, 'lib', 'update_sources.js'), 'utf8')).replace(/^import \{[^}]*\} from '\.\/release\.js';\n/m, '').replace(/^export /gm, '');
 if (/^import /m.test(updateSourcesJs)) throw new Error('lib/update_sources.js may import only from ./release.js: it is inlined into the service worker');
+const nodeAddressJs = (await readFile(join(srcDir, 'lib', 'node_address.js'), 'utf8')).replace(/^export /gm, '');
+if (/^import /m.test(nodeAddressJs)) throw new Error('lib/node_address.js must not import anything: it is inlined into the service worker');
 const engineLockForApp = { beam_tag: lock.beam_tag, files: lock.files, rules_signature_contains: lock.rules_signature_contains };
 
 // The loader first: its name goes into lib/version.js.
@@ -119,7 +123,7 @@ if (!apiMatch) throw new Error('sw.js: LOADER_API placeholder not found');
 const loaderApi = Number(arg('loader-api', apiMatch[1]));
 if (!Number.isSafeInteger(loaderApi) || loaderApi < 1) throw new Error('--loader-api must be a positive integer');
 // What the loader does to the pages it serves. Equal values: a page of one release runs the same under either loader.
-const loaderCompat = sha256(Buffer.from(JSON.stringify({ api: loaderApi, headers: SECURITY_HEADERS, mime: MIME, frame: framePolicyJs })));
+const loaderCompat = sha256(Buffer.from(JSON.stringify({ api: loaderApi, headers: SECURITY_HEADERS, mime: MIME, frame: framePolicyJs, node: nodeAddressJs })));
 let swSrc = swRaw
   .replace(apiMatch[0], `const LOADER_API = ${loaderApi};`)
   .replace('/*__LOADER_COMPAT__*/ null', JSON.stringify(loaderCompat))
@@ -128,9 +132,10 @@ let swSrc = swRaw
   .replace('/*__MIME__*/ {}', JSON.stringify(MIME))
   .replace('/*__INLINE_RELEASE_JS__*/', () => `// ---- inlined from lib/release.js\n${releaseJs}\n// ---- end of lib/release.js`)
   .replace('/*__INLINE_UPDATE_SOURCES_JS__*/', () => `// ---- inlined from lib/update_sources.js\n${updateSourcesJs}\n// ---- end of lib/update_sources.js`)
-  .replace('/*__INLINE_FRAME_POLICY_JS__*/', () => `// ---- inlined from lib/dapps/frame_policy.js\n${framePolicyJs}\n// ---- end of lib/dapps/frame_policy.js`);
+  .replace('/*__INLINE_FRAME_POLICY_JS__*/', () => `// ---- inlined from lib/dapps/frame_policy.js\n${framePolicyJs}\n// ---- end of lib/dapps/frame_policy.js`)
+  .replace('/*__INLINE_NODE_ADDRESS_JS__*/', () => `// ---- inlined from lib/node_address.js\n${nodeAddressJs}\n// ---- end of lib/node_address.js`);
 if (loaderNote !== null) swSrc += `// ${loaderNote}\n`;
-if (/__[A-Z_]+__/.test(swSrc.replace(/__campfire_(state|install)/g, ''))) throw new Error('sw.js: a placeholder was not filled');
+if (/__[A-Z_]+__/.test(swSrc.replace(/__campfire_(state|install|node)/g, ''))) throw new Error('sw.js: a placeholder was not filled');
 const LOADER_NAME = `sw-${sha256(Buffer.from(swSrc)).slice(0, 16)}.js`;
 await writeFile(join(out, LOADER_NAME), swSrc);
 

@@ -48,7 +48,6 @@ import { BUILTIN_SOURCES } from '../../src/lib/update_sources.js';
 const PORT = Number(process.env.CAMPFIRE_OFFLINE_PORT || 8793);
 const HOST = 'campfire.test';
 const ORIGIN = `http://${HOST}:${PORT}/`;
-const NODE = 'eu-nodes.mainnet.beam.mw:8200';
 const PASSWORD = `off-${randomBytes(6).toString('hex')}`;
 const tid = (id) => `[data-testid="${id}"]`;
 const pkg = JSON.parse(readFileSync(join(PWA, 'package.json'), 'utf8'));
@@ -519,7 +518,7 @@ for (const way of WAYS) {
     assertOnlyBrowserRequests(from, 1, way.name, (r) => (way.name === 'parking' || way.name === 'stopped') && /^\/(release\.json|release\.sig|manifest\.json)$/.test(r.path));
     const tapped = way.name === 'parking' || way.name === 'stopped';
     assert.deepEqual(rec.requests.filter(isCopyProbe).sort(), tapped ? BUILTIN_SOURCES.map((b) => `${b}release.json`).sort() : [], 'the public copies: asked once each, only on the tapped check');
-    assert.deepEqual(foreignHosts({ ...rec, requests: rec.requests.filter((u) => !isCopyProbe(u)) }, ORIGIN, [NODE]), [], 'no other host contacted');
+    assert.deepEqual(foreignHosts({ ...rec, requests: rec.requests.filter((u) => !isCopyProbe(u)) }, ORIGIN), [], 'no other host contacted');
     assert.deepEqual(rec.errors, [], 'no page errors');
     console.log(`# ${way.name}: requests at the address after the cold start: ${reqs.length - from} (loader probes ${loaderProbes(from)}, Chrome auto-preload ${autoPreloads(from)}, the rest: the update check the test tapped)`);
   });

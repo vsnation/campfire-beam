@@ -22,13 +22,12 @@ import { mkdtempSync, writeFileSync, rmSync, readFileSync, existsSync } from 'no
 import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PWA, startServer, launch, recordedPage, shot, waitScreen, foreignHosts, waitHeightNearExplorer, sleep, SHOTS } from './harness.mjs';
+import { PWA, startServer, launch, recordedPage, shot, waitScreen, foreignHosts, waitHeightNearExplorer, sleep, SHOTS, NODE_HOSTS } from './harness.mjs';
 import { waitHome, waitSynced, unlockWithPassword } from './flows.mjs';
 import { makeWalletDb, cliVersion, sha256File, openWithCli, WANT_CORE, BEAM_CLI } from './walletdb.mjs';
 import { IMPORT_PROBLEM, NO_PHRASE_NOTICE } from '../../src/lib/wallet_file.js';
 
 const PORT = Number(process.env.CAMPFIRE_IMPORT_PORT || 8792);
-const NODE = 'eu-nodes.mainnet.beam.mw:8200';
 const tid = (id) => `[data-testid="${id}"]`;
 const pkg = JSON.parse(readFileSync(join(PWA, 'package.json'), 'utf8'));
 
@@ -340,8 +339,8 @@ test('delete removes it; Welcome again after a reload, nothing left in storage',
 
 test('nothing left the device: GET only, this origin and the node only, no password anywhere, original file unchanged', async () => {
   assert.deepEqual(nonGet, [], 'no POST/PUT: the file was never uploaded');
-  assert.deepEqual(foreignHosts(rec, srv.url, [NODE]), []);
-  assert.deepEqual([...new Set(rec.websockets.map((u) => new URL(u).host))], [NODE]);
+  assert.deepEqual(foreignHosts(rec, srv.url), []);
+  assert.ok([...new Set(rec.websockets.map((u) => new URL(u).host))].every((h) => NODE_HOSTS.includes(h)), 'BEAM pool nodes only');
   assert.deepEqual((await page.evaluate(() => window.__campfire.guard())).blocked, {});
   assert.deepEqual(rec.csp, []);
   assert.deepEqual(await page.evaluate(() => window.__cspViolations), []);
@@ -351,5 +350,5 @@ test('nothing left the device: GET only, this origin and the node only, no passw
   assert.ok(!rec.requests.some((u) => u.includes(wdb.password)), 'password in no URL');
   assert.equal(sha256File(wdb.path), wdb.sha256, 'the original wallet.db is unchanged');
   assert.deepEqual(rec.errors, [], 'no uncaught page errors');
-  console.log(`# requests: ${rec.requests.length} (all GET), websocket opens: ${rec.websockets.length} (all to ${NODE})`);
+  console.log(`# requests: ${rec.requests.length} (all GET), websocket opens: ${rec.websockets.length} (all to BEAM pool nodes: ${[...new Set(rec.websockets.map((u) => new URL(u).host))].join(', ')})`);
 });

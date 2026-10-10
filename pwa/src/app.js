@@ -6,6 +6,7 @@ import { wallet } from './lib/wallet.js';
 import { updates, takeJustUpdated } from './lib/update.js';
 import { swSupported, isControlled, clearReloadFlag, installedButBypassed, watchLoader, loaderBehind } from './lib/loader.js';
 import { refreshPersistence } from './lib/storage.js';
+import { reconcileOwnNode } from './lib/own_node.js';
 import { BUILT, APP_VERSION } from './lib/version.js';
 import { toast } from './lib/ui.js';
 
@@ -26,6 +27,8 @@ import txStatus from './screens/tx_status.js';
 import receive from './screens/receive.js';
 import activity from './screens/activity.js';
 import settings from './screens/settings.js';
+import nodeSettings from './screens/node.js';
+import ownNode from './screens/own_node.js';
 import changePassword from './screens/change_password.js';
 import about from './screens/about.js';
 import deleteWallet from './screens/delete_wallet.js';
@@ -46,13 +49,13 @@ import { consentLog, contractsState } from './lib/contracts.js';
 
 const SCREENS = {
   welcome, backup, confirmWords, restore, importWallet, setPassword, passkeySetup, ipNotice, fastStart, unlock,
-  home, send, review, txStatus, receive, activity, settings, changePassword, about, deleteWallet, ownerKey, problem, install, swap, dapps,
+  home, send, review, txStatus, receive, activity, settings, nodeSettings, ownNode, changePassword, about, deleteWallet, ownerKey, problem, install, swap, dapps,
   names, airdrop, airdropCreate, airdropBatches, airdropCodes,
   ...ETH_SCREENS,
   ...BUY_SCREENS,
 };
 // Screens that need an unlocked, running wallet.
-const NEEDS_WALLET = new Set(['home', 'send', 'review', 'txStatus', 'receive', 'activity', 'settings', 'changePassword', 'about', 'ownerKey', 'swap', 'dapps', 'names', 'airdrop', 'airdropCreate', 'airdropBatches', 'airdropCodes', ...Object.keys(ETH_SCREENS), ...Object.keys(BUY_SCREENS)]);
+const NEEDS_WALLET = new Set(['home', 'send', 'review', 'txStatus', 'receive', 'activity', 'settings', 'nodeSettings', 'ownNode', 'changePassword', 'about', 'ownerKey', 'swap', 'dapps', 'names', 'airdrop', 'airdropCreate', 'airdropBatches', 'airdropCodes', ...Object.keys(ETH_SCREENS), ...Object.keys(BUY_SCREENS)]);
 
 const root = document.getElementById('app');
 
@@ -209,6 +212,8 @@ app.continueBoot = async function continueBoot() {
     return app.go('problem', { kind: 'unsupported', detail: sup.problems });
   }
   app.prefs = await getPrefs();
+  // The person's own node must be in this page's policy before the engine can reach it.
+  if (BUILT && (await reconcileOwnNode(app))) return;
   app.record = (await getWalletRecord()) || null;
   loadEngine().catch((e) => console.warn('[campfire] engine', e.message)); // warm up
   refreshPersistence(app, { request: Boolean(app.record) });
@@ -251,6 +256,9 @@ window.__campfire = Object.freeze({
   totals: () => Object.fromEntries([...wallet.state.totals].map(([k, v]) => [k, { available: String(v.available), receiving: String(v.receiving), sending: String(v.sending) }])),
   txs: () => wallet.state.txs.map((t) => ({ txId: t.txId, status: t.status, income: t.income, value: t.value, fee: t.fee, kernel: t.kernel })),
   node: () => wallet.state.node,
+  nodeMode: () => wallet.state.nodeMode,
+  nodeSwitches: () => wallet.state.switchLog.map((e) => ({ ...e })),
+  ownNodeConfirmed: () => (wallet.state.connEvent ? wallet.state.connEvent.own_node === true : null),
   explorer: () => wallet.state.explorer,
   guard: () => nodeGuard.state,
   scanning: () => wallet.state.scanning,

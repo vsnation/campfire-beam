@@ -13,9 +13,8 @@ import assert from 'node:assert/strict';
 import { startServer, launch, recordedPage, shot, waitScreen, foreignHosts, SHOTS } from './harness.mjs';
 import { createWallet, waitHome, waitSynced } from './flows.mjs';
 
-const PORT = 8793;
+const PORT = Number(process.env.CAMPFIRE_SWAP_PORT || 8793);
 const PASSWORD = `swap-${Math.random().toString(36).slice(2, 10)}`;
-const NODE = 'eu-nodes.mainnet.beam.mw:8200';
 const FOMO = 174;
 const tid = (id) => `[data-testid="${id}"]`;
 const groth = (text) => {
@@ -158,7 +157,7 @@ test('lock closes every app; the next session starts clean', { timeout: 120000 }
 });
 
 test('IP privacy: only this origin and the chosen node', async () => {
-  assert.deepEqual(foreignHosts(rec, srv.url, [NODE]), []);
+  assert.deepEqual(foreignHosts(rec, srv.url), []);
   assert.deepEqual(rec.csp, []);
   assert.deepEqual(rec.errors, []);
 });

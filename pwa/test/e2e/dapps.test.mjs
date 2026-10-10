@@ -24,7 +24,7 @@ import { startServer, launch, recordedPage, waitScreen, sleep, shot } from './ha
 import { createWallet, waitHome } from './flows.mjs';
 
 const DAO = 'abcc470e12c6422291f360f83d79355e';
-const PORT = 8794;
+const PORT = Number(process.env.CAMPFIRE_DAPPS_PORT || 8794);
 const tid = (id) => `[data-testid="${id}"]`;
 const cacheDir = process.env.CFB_DAPP_PACKAGES || join(homedir(), '.cache', 'campfire-beam', 'dapps');
 

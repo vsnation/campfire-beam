@@ -9,9 +9,14 @@
 // - CORP same-origin: no other site can embed our files.
 // - CSP: scripts only from this origin; 'wasm-unsafe-eval' is what
 //   WebAssembly.instantiate needs (no 'unsafe-eval': the engine is built with
-//   DYNAMIC_EXECUTION=0). connect-src names the BEAM nodes, one dApp host and
-//   the Ethereum servers:
-//   the explorer check goes through this origin (/explorer/status), so the
+//   DYNAMIC_EXECUTION=0). connect-src names the BEAM node pool
+//   (src/lib/nodes.js), one dApp host and the Ethereum servers. The person's
+//   own BEAM node, when they add one, is added by the service worker to the
+//   pages and workers it serves (securityHeaders(node) below, the same function
+//   inlined into sw.js): exactly that wss origin, never a wildcard. A static
+//   host's headers never name it; they only cover the first load, before the
+//   service worker takes over.
+//   The explorer check goes through this origin (/explorer/status), so the
 //   wallet talks to this origin and the chosen node, plus BEAM's GitHub
 //   (raw.githubusercontent.com, one directory at a pinned commit) only when
 //   the person opens a dApp for the first time: that is where BEAM publishes
@@ -32,12 +37,10 @@
 import { SOURCE_HOST, SOURCE_COMMIT } from '../src/lib/dapps/catalogue.js';
 import { connectSources as ethConnectSources } from '../src/lib/eth/hosts.js';
 import { buyConnectSources } from '../src/lib/buy/hosts.js';
+import { NODES as POOL_NODES } from '../src/lib/nodes.js';
+import { cspWithNode } from '../src/lib/node_address.js';
 
-export const NODES = [
-  'eu-nodes.mainnet.beam.mw:8200',
-  'eu-node01.mainnet.beam.mw:8200',
-  'eu-node02.mainnet.beam.mw:8200',
-];
+export const NODES = [...POOL_NODES];
 
 /** The one directory BEAM's dApp packages are fetched from: beam-ui at the pinned commit (src/lib/dapps/catalogue.js). */
 export const DAPP_PACKAGE_SOURCE = `${SOURCE_HOST}/BeamMW/beam-ui/${SOURCE_COMMIT}/ui/apps/mainnet/`;
@@ -108,6 +111,15 @@ export function nginxHeaderLines() {
   lines.push(`"~/sw(-[0-9a-f]+)?\\.js$" "${LOADER_CSP}";`);
   for (const p of PROXY_PATHS) lines.push(`${p} "";`);
   return lines;
+}
+
+/**
+ * A page's (or a page worker's) headers with the person's own node ("host:port")
+ * in connect-src; null: SECURITY_HEADERS unchanged. The loader serves pages with
+ * this; its own response keeps LOADER_CSP above.
+ */
+export function securityHeaders(ownNode = null) {
+  return ownNode == null ? SECURITY_HEADERS : { ...SECURITY_HEADERS, 'Content-Security-Policy': cspWithNode(CSP, ownNode) };
 }
 
 export const MIME = {

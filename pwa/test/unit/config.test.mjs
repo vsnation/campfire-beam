@@ -4,19 +4,66 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { NODES as HEADER_NODES, CSP, SECURITY_HEADERS, DAPP_PACKAGE_SOURCE, LOADER_CSP, headersFor, nginxHeaderLines, PROXY_PATHS } from '../../tools/headers.mjs';
+import { NODES as HEADER_NODES, CSP, SECURITY_HEADERS, DAPP_PACKAGE_SOURCE, LOADER_CSP, headersFor, nginxHeaderLines, PROXY_PATHS, securityHeaders } from '../../tools/headers.mjs';
 import { BUILTIN_SOURCES } from '../../src/lib/update_sources.js';
 import { CATALOGUE, sourceUrl, REMOTE_ORIGINS } from '../../src/lib/dapps/catalogue.js';
-import { NODES } from '../../src/lib/nodes.js';
+import { frameCsp } from '../../src/lib/dapps/frame_policy.js';
+import { NODES, POOL, RANDOM_NODE } from '../../src/lib/nodes.js';
 import { DEFAULT_PREFS } from '../../src/lib/store.js';
 import { connectSources, ETH_RPC_HOSTS, DEFAULT_ETH_RPC, PRICE_HOST, TX_EXPLORER, originOf, txExplorerUrl } from '../../src/lib/eth/hosts.js';
 import { buyConnectSources } from '../../src/lib/buy/hosts.js';
 
 const pwa = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-test('the app offers exactly the nodes the CSP allows', () => {
-  assert.deepEqual(NODES.map((n) => n.address), HEADER_NODES);
-  assert.ok(HEADER_NODES.includes(DEFAULT_PREFS.node));
+test('the app offers exactly the nodes the CSP allows: the five-node pool, random by default', () => {
+  assert.deepEqual(NODES, HEADER_NODES);
+  assert.deepEqual(POOL.map((n) => n.address), [
+    'eu-node02.mainnet.beam.mw:8200',
+    'eu-node03.mainnet.beam.mw:8200',
+    'eu-node04.mainnet.beam.mw:8200',
+    'eu-nodes.mainnet.beam.mw:8200',
+    'eu-node01.mainnet.beam.mw:8200',
+  ]);
+  assert.equal(DEFAULT_PREFS.node, RANDOM_NODE);
+});
+
+const connectSrc = (csp) => csp.split('; ').find((d) => d.startsWith('connect-src ')).split(' ').slice(1);
+
+test('CSP without an own node: the static headers, unchanged', () => {
+  assert.equal(securityHeaders(), SECURITY_HEADERS);
+  assert.equal(securityHeaders(null), SECURITY_HEADERS);
+  assert.ok(!connectSrc(CSP).some((s) => s.startsWith('wss://') && !HEADER_NODES.includes(s.slice(6))), 'only pool nodes are wss sources');
+  assert.ok(!connectSrc(CSP).includes('wss:') && !connectSrc(CSP).includes('*'), 'no wildcard');
+});
+
+test('CSP with an own node: exactly one extra wss origin in connect-src, every other header and directive as before', () => {
+  for (const [given, origin] of [
+    ['127.0.0.1:9443', 'wss://127.0.0.1:9443'],
+    ['wss://Node.Example.com:8200/', 'wss://node.example.com:8200'],
+  ]) {
+    const h = securityHeaders(given);
+    for (const k of Object.keys(SECURITY_HEADERS)) if (k !== 'Content-Security-Policy') assert.equal(h[k], SECURITY_HEADERS[k], k);
+    const before = CSP.split('; ');
+    const after = h['Content-Security-Policy'].split('; ');
+    assert.equal(after.length, before.length);
+    for (let i = 0; i < before.length; i++) if (!before[i].startsWith('connect-src ')) assert.equal(after[i], before[i]);
+    const extra = connectSrc(h['Content-Security-Policy']).filter((s) => !connectSrc(CSP).includes(s));
+    assert.deepEqual(extra, [origin]);
+    assert.deepEqual(connectSrc(h['Content-Security-Policy']).slice(0, -1), connectSrc(CSP), 'appended, nothing else moved');
+  }
+  // A pool node given as an own node adds nothing (it is already allowed).
+  assert.equal(securityHeaders('eu-node03.mainnet.beam.mw:8200')['Content-Security-Policy'], CSP);
+  // Anything that is not host:port never reaches the header.
+  for (const bad of ["evil.com:443; script-src *", 'a.com:443 wss:', '*:443', 'wss://*.com:1', '[::1]:8200', 'h:1/x']) assert.throws(() => securityHeaders(bad), bad);
+});
+
+test('the own node is a page policy only: the loader keeps its own, the dApp frame policy is untouched', () => {
+  assert.equal(headersFor('sw-0123456789abcdef.js')['Content-Security-Policy'], LOADER_CSP);
+  assert.ok(!LOADER_CSP.includes('wss:'), 'the loader reaches no node');
+  assert.equal(headersFor('index.html')['Content-Security-Policy'], CSP, 'deployments serve the static page policy');
+  const withNode = securityHeaders('127.0.0.1:9443')['Content-Security-Policy'];
+  assert.notEqual(withNode, LOADER_CSP);
+  assert.ok(!frameCsp({ evalAllowed: true, remoteOrigins: REMOTE_ORIGINS, nonce: 'abcdefghijklmnop' }).includes('wss:'), 'dApp frames reach no node');
 });
 
 test('connect-src: this origin, the wss nodes, the pinned dApp package directory, the Ethereum servers of lib/eth/hosts.js and buybeam.my\'s buy API only (no explorer, no other host)', () => {

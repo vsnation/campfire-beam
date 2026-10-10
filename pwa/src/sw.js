@@ -32,6 +32,11 @@
  *
  * Every response gets the security headers (COOP/COEP for the engine's
  * SharedArrayBuffer, CSP, CORP): a response from the cache would carry none.
+ * When the person uses their own BEAM node, its wss origin - exactly that one -
+ * is added to connect-src for every page and worker served ("set-node", kept
+ * in the meta cache). node_probe.html, the frame that checks an address before
+ * it is saved, gets a policy that allows only the address it is checking
+ * (lib/node_address.js, inlined below), and only as a frame of this app.
  *
  * dApp frames: a navigation to dapp-run/<policy>/... is answered with the
  * frame document built from the verified dapp-frame.js and the frame's own
@@ -64,10 +69,13 @@ const MIME = /*__MIME__*/ {};
 
 /*__INLINE_FRAME_POLICY_JS__*/
 
+/*__INLINE_NODE_ADDRESS_JS__*/
+
 const META_CACHE = 'campfire-meta';
 const scopeUrl = new URL(self.registration.scope);
 const STATE_KEY = new URL('__campfire_state', scopeUrl).href;
 const PROGRESS_KEY = new URL('__campfire_install', scopeUrl).href;
+const OWN_NODE_KEY = new URL('__campfire_node', scopeUrl).href;
 const PASSTHROUGH = [/^release\.json$/, /^release\.sig$/, /^manifest\.json$/, /^sw(-[0-9a-f]+)?\.js$/, /^recovery\//, /^explorer\//, /^__dev\//, /^_headers$/];
 const PARALLEL = 6;
 const FRAME_SCRIPT = 'dapp-frame.js';
@@ -80,12 +88,13 @@ const MAX_META_BYTES = 4 * 1024 * 1024; // release.json, release.sig or manifest
 // address, where its loader comes along.
 const LOADER_API = /*__LOADER_API__*/ 2;
 // Hash of what this loader does to pages (security headers, MIME types, dApp
-// frame policy, LOADER_API), filled in by the build; release.json carries the
+// frame policy, the own-node policy, LOADER_API), filled in by the build; release.json carries the
 // same value for the release's own loader (see loaderCompatible()).
 const LOADER_COMPAT = /*__LOADER_COMPAT__*/ null;
 const LOADER_NAME = self.location.pathname.split('/').pop();
 
 let stateCache = null;
+let ownNodeCache; // the person's own node "host:port", null for BEAM's pool; undefined until read
 let updateRun = null;
 const updateListeners = new Set();
 let installAbort = null;
@@ -107,6 +116,32 @@ async function writeState(st) {
   const c = await caches.open(META_CACHE);
   await c.put(STATE_KEY, new Response(JSON.stringify(st), { headers: { 'Content-Type': 'application/json' } }));
   stateCache = st;
+}
+
+async function readOwnNode() {
+  if (ownNodeCache !== undefined) return ownNodeCache;
+  let saved = null;
+  try {
+    const r = await (await caches.open(META_CACHE)).match(OWN_NODE_KEY);
+    saved = r ? await r.json() : null;
+  } catch {
+    saved = null;
+  }
+  const n = saved && saved.node ? normalizeNodeAddress(saved.node) : null;
+  ownNodeCache = n && n.ok ? n.address : null;
+  return ownNodeCache;
+}
+
+async function writeOwnNode(address) {
+  const c = await caches.open(META_CACHE);
+  if (address) await c.put(OWN_NODE_KEY, new Response(JSON.stringify({ node: address }), { headers: { 'Content-Type': 'application/json' } }));
+  else await c.delete(OWN_NODE_KEY);
+  ownNodeCache = address;
+}
+
+/** The security headers, with the person's own node (if any) in connect-src. */
+function pageHeaders(ownNode) {
+  return ownNode ? { ...SECURITY_HEADERS, 'Content-Security-Policy': cspWithNode(SECURITY_HEADERS['Content-Security-Policy'], ownNode) } : SECURITY_HEADERS;
 }
 
 /** What the first-run screen shows. The page reads it from the meta cache. */
@@ -327,8 +362,8 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-function withHeaders(resp, path) {
-  const h = new Headers(SECURITY_HEADERS);
+function withHeaders(resp, path, base = SECURITY_HEADERS) {
+  const h = new Headers(base);
   h.set('Content-Type', mimeFor(path));
   h.set('Cache-Control', 'no-cache');
   return new Response(resp.body, { status: 200, headers: h });
@@ -340,10 +375,22 @@ async function serve(request, path) {
   if (Object.prototype.hasOwnProperty.call(st.current.files, path)) {
     const cache = await caches.open(st.current.cache);
     const hit = await cache.match(new URL(path, scopeUrl).href);
-    if (hit) return withHeaders(hit, path);
+    if (hit && path === NODE_PROBE_PAGE) return probeResponse(request, hit);
+    if (hit) return withHeaders(hit, path, pageHeaders(await readOwnNode()));
   }
   // Installed: only the verified copy is served; nothing is fetched from the web address.
   return new Response('Not part of this BEAM Campfire release.', { status: 404, headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/plain; charset=utf-8' } });
+}
+
+/** The node check frame: only as a frame, and allowed to reach only the address in its query. */
+function probeResponse(request, hit) {
+  const n = normalizeNodeAddress(new URL(request.url).searchParams.get('node'));
+  if (request.destination !== 'iframe' || !n.ok) return notInRelease();
+  const h = new Headers(SECURITY_HEADERS);
+  h.set('Content-Security-Policy', probeCsp(n.address));
+  h.set('Content-Type', mimeFor(NODE_PROBE_PAGE));
+  h.set('Cache-Control', 'no-store');
+  return new Response(hit.body, { status: 200, headers: h });
 }
 
 const notInRelease = () => new Response('Not part of this BEAM Campfire release.', { status: 404, headers: { ...SECURITY_HEADERS, 'Content-Type': 'text/plain; charset=utf-8' } });
@@ -491,6 +538,15 @@ self.addEventListener('message', (event) => {
           port.postMessage(r);
         } else if (type === 'apply-update') {
           port.postMessage(await applyUpdate({ loaderReady: event.data.loaderReady === true }));
+        } else if (type === 'set-node') {
+          // The person's own node (or null for BEAM's pool): from the next page load on, in connect-src.
+          const raw = event.data.node;
+          const n = raw == null ? null : normalizeNodeAddress(raw);
+          if (n && !n.ok) port.postMessage({ result: 'refused', reason: n.error });
+          else {
+            await writeOwnNode(n ? n.address : null);
+            port.postMessage({ result: 'saved', node: n ? n.address : null });
+          }
         } else {
           port.postMessage({ result: 'error', reason: 'unknown request' });
         }

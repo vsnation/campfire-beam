@@ -23,8 +23,7 @@ import { join } from 'node:path';
 import { startServer, launch, recordedPage, shot, foreignHosts, PWA, SHOTS } from './harness.mjs';
 import { createWallet, waitHome, waitSynced } from './flows.mjs';
 
-const PORT = 8830;
-const NODE = 'eu-nodes.mainnet.beam.mw:8200';
+const PORT = Number(process.env.CAMPFIRE_BRIDGE_BEAM_PORT || 8830);
 const PASSWORD = `bridge-${Math.random().toString(36).slice(2, 10)}`;
 const RECEIVER = '5a'.repeat(20); // the recordings' receiver: nobody's address
 const OWNER = 'acefc4bed717cf94de3868e9979f72184aee00627bd3ebe1b8c0f086ab968b9f'; // bETH's asset-owner contract
@@ -250,7 +249,7 @@ test('one full send to Ethereum stops at the consent sheet: what the engine repo
 });
 
 test('IP privacy: only this origin and the chosen node', async () => {
-  assert.deepEqual(foreignHosts(rec, srv.url, [NODE]), []);
+  assert.deepEqual(foreignHosts(rec, srv.url), []);
   assert.deepEqual(rec.csp, []);
   assert.deepEqual(rec.errors, []);
 });

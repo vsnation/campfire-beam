@@ -34,9 +34,8 @@ import { WBEAM } from '../../src/lib/eth/tokens.js';
 import { ASSETS, envelope, errorJson, statusJson } from '../unit/buy_fakes.mjs';
 import { exactUnits } from '../../src/lib/compact.js';
 
-const PORT = 8860;
+const PORT = Number(process.env.CAMPFIRE_BUY_PORT || 8860);
 const PASSWORD = `buy-${Math.random().toString(36).slice(2, 10)}`;
-const NODE = 'eu-nodes.mainnet.beam.mw:8200';
 const STACK = 'eth2.stackwallet.com';
 const ETHER = 10n ** 18n;
 const DEPOSIT = 'bc1qfake0deposit0address0for0the0e2e0test000';
@@ -504,7 +503,7 @@ test('on the fork: buy WBEAM with ETH, then sell some back; what arrived is what
   }));
 
 test('IP privacy: only this origin, the BEAM node, buybeam.my (mocked here) and the chosen Ethereum server; no CSP violation', async () => {
-  const hosts = foreignHosts(rec, srv.url, [NODE]).sort();
+  const hosts = foreignHosts(rec, srv.url).sort();
   const allowed = ['https://buybeam.my', `https://${STACK}`];
   for (const x of hosts) assert.ok(allowed.includes(x), `unexpected host ${x}`);
   assert.deepEqual(rec.csp, []);

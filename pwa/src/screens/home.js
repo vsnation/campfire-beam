@@ -11,6 +11,7 @@
  *   - "How do I get BEAM?" -> Buy opens a choice: BEAM in this wallet (buybeam.my) or WBEAM on Ethereum.
  *   - "Can I get a short name, or claim a code I was given?" -> BEAM names and Airdrop codes, on one line with
  *     dApps under the buttons, one tap each.
+ *   - "My own node is down" -> the sync line says so, with "Use random nodes" right under it (never automatic).
  *   - "What if this phone or this app's web address is gone?" -> a wallet imported from wallet.db has
  *     no 12 words: until it is exported once, a banner asks for a copy outside this device (one tap
  *     to Backup; "Later" for a week).
@@ -26,6 +27,7 @@ import { applyUpdate } from '../lib/update_ui.js';
 import { chainSwitch } from './eth_screens.js';
 import { openBuyChooser } from './buy_screens.js';
 import { loaderBehind } from '../lib/loader.js';
+import { switchToRandom } from './node.js';
 
 export function syncLine(sync) {
   const cls = sync.state === 'synced' ? 'ok' : sync.state === 'offline' || sync.state === 'stalled' || sync.state === 'behind' ? 'bad' : 'wait';
@@ -92,6 +94,9 @@ export default function home(app) {
         pend.length ? h('div', { class: 'pending', text: pend.join(' · ') }) : null,
         syncLine(s.sync),
         h('p', { class: 'small', 'data-testid': 'sync-detail', text: s.sync.detail }),
+        s.sync.state === 'offline' && s.sync.ownNode
+          ? h('button', { class: 'btn btn-secondary btn-small sync-action', 'data-testid': 'home-use-random', onclick: () => switchToRandom(app) }, 'Use random nodes')
+          : null,
       ),
     );
 
