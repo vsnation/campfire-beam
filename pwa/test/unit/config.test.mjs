@@ -9,6 +9,7 @@ import { CATALOGUE, sourceUrl, REMOTE_ORIGINS } from '../../src/lib/dapps/catalo
 import { NODES } from '../../src/lib/nodes.js';
 import { DEFAULT_PREFS } from '../../src/lib/store.js';
 import { connectSources, ETH_RPC_HOSTS, DEFAULT_ETH_RPC, PRICE_HOST, TX_EXPLORER, originOf, txExplorerUrl } from '../../src/lib/eth/hosts.js';
+import { buyConnectSources } from '../../src/lib/buy/hosts.js';
 
 const pwa = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -17,10 +18,13 @@ test('the app offers exactly the nodes the CSP allows', () => {
   assert.ok(HEADER_NODES.includes(DEFAULT_PREFS.node));
 });
 
-test('connect-src: this origin, the wss nodes, the pinned dApp package directory and the Ethereum servers of lib/eth/hosts.js only (no explorer, no other host)', () => {
+test('connect-src: this origin, the wss nodes, the pinned dApp package directory, the Ethereum servers of lib/eth/hosts.js and buybeam.my\'s buy API only (no explorer, no other host)', () => {
   const connect = CSP.split(';').map((d) => d.trim()).find((d) => d.startsWith('connect-src'));
   const sources = connect.split(/\s+/).slice(1);
-  assert.deepEqual(sources, ["'self'", ...HEADER_NODES.map((n) => `wss://${n}`), DAPP_PACKAGE_SOURCE, ...connectSources()]);
+  assert.deepEqual(sources, ["'self'", ...HEADER_NODES.map((n) => `wss://${n}`), DAPP_PACKAGE_SOURCE, ...connectSources(), ...buyConnectSources()]);
+  // Buy BEAM: buybeam.my's buy API path only, never the whole host.
+  assert.deepEqual(buyConnectSources(), ['https://buybeam.my/api/v1/buy/']);
+  assert.ok(!sources.includes('https://buybeam.my'));
   assert.deepEqual(connectSources(), [
     'https://eth2.stackwallet.com',
     'https://ethereum-rpc.publicnode.com',

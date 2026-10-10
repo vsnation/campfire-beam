@@ -25,9 +25,13 @@
 //   Ethereum wallet) and CoinGecko's price path for the bridge (only after
 //   the person allows it). All six are in one release, because this policy is
 //   inlined into the loader and changing it renames the loader.
+//   Buy BEAM asks buybeam.my's buy API (src/lib/buy/hosts.js,
+//   buyConnectSources()): that one path, not the whole host, and only once the
+//   person opens Buy BEAM.
 
 import { SOURCE_HOST, SOURCE_COMMIT } from '../src/lib/dapps/catalogue.js';
 import { connectSources as ethConnectSources } from '../src/lib/eth/hosts.js';
+import { buyConnectSources } from '../src/lib/buy/hosts.js';
 
 export const NODES = [
   'eu-nodes.mainnet.beam.mw:8200',
@@ -42,7 +46,7 @@ export const CSP = [
   "default-src 'self'",
   "script-src 'self' 'wasm-unsafe-eval'",
   "worker-src 'self'",
-  `connect-src 'self' ${NODES.map((n) => `wss://${n}`).join(' ')} ${DAPP_PACKAGE_SOURCE} ${ethConnectSources().join(' ')}`,
+  `connect-src 'self' ${NODES.map((n) => `wss://${n}`).join(' ')} ${DAPP_PACKAGE_SOURCE} ${ethConnectSources().join(' ')} ${buyConnectSources().join(' ')}`,
   "img-src 'self' data: blob:",
   "style-src 'self'",
   "font-src 'self'",
