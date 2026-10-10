@@ -26,7 +26,7 @@ import { PWA, launch, recordedPage, shot, waitScreen, sleep, SHOTS } from './har
 import { createWallet, waitHome, waitSynced } from './flows.mjs';
 import { startStaticHost } from './static_host.mjs';
 import { EXPLORER_UPSTREAMS } from '../../tools/headers.mjs';
-import { verifyReleaseSignature, verifyManifest, verifyFile } from '../../src/lib/release.js';
+import { verifyReleaseSignature, verifyManifest, verifyFile, compareVersions } from '../../src/lib/release.js';
 
 const PORT = Number(process.env.CAMPFIRE_PAGES_PORT || 8797); // and PORT + 1
 const PUBLIC = 'https://vsnation.github.io/beam-campfire-pwa/';
@@ -212,16 +212,17 @@ test('the publicly served release (installed, with a wallet) takes this one thro
   }
   const oldLoader = manifest.files.map((f) => f.path).find((p) => /^sw(-[0-9a-f]+)?\.js$/.test(p));
   console.log(`# public release ${release.version} (${manifest.files.length} files, manifest ${release.manifest_sha256.slice(0, 16)}…, loader ${oldLoader}) downloaded and verified`);
-  // When the public site already serves this version, update to the next patch
-  // version built from this tree, so the move between loaders is always tested.
+  // When the public site already serves this version or a later one, update to
+  // the next patch version after it, built from this tree, so the move between
+  // loaders is always tested (an older one would rightly be refused).
   let next = rel;
   let nextVersion = pkg.version;
-  if (release.version === pkg.version) {
-    const v = pkg.version.split('.').map(Number);
+  if (compareVersions(release.version, pkg.version) >= 0) {
+    const v = release.version.split('.').map(Number);
     nextVersion = `${v[0]}.${v[1]}.${v[2] + 1}`;
     next = join(tmp, 'rel-next');
     execFileSync(process.execPath, [join(PWA, 'tools', 'build.mjs'), '--out', next, '--version', nextVersion, '--quiet'], { cwd: PWA });
-    console.log(`# the public site already serves ${pkg.version}; updating it to ${nextVersion} built from this tree`);
+    console.log(`# the public site serves ${release.version} (this tree: ${pkg.version}); updating it to ${nextVersion} built from this tree`);
   }
 
   // Serve it like Pages does, install it, and make a wallet with it.
