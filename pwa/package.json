@@ -36,7 +36,8 @@
     "e2e:live:names-airdrop": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live_names_airdrop.mjs",
     "e2e:buy": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/buy.test.mjs",
     "e2e:bridge-ui": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/bridge_ui.test.mjs",
-    "e2e:loader-move": "node tools/stage_engine.mjs && node --test --test-concurrency=1 test/e2e/loader_move.test.mjs"
+    "e2e:loader-move": "node tools/stage_engine.mjs && node --test --test-concurrency=1 test/e2e/loader_move.test.mjs",
+    "e2e:back": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/back.test.mjs"
   },
   "devDependencies": {
     "jsqr": "1.4.0",

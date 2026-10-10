@@ -1,5 +1,6 @@
 // The privacy-relevant configuration agrees everywhere it is written down.
 import test from 'node:test';
+import { recoveryConnectSources } from '../../src/lib/recovery.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -69,7 +70,10 @@ test('the own node is a page policy only: the loader keeps its own, the dApp fra
 test('connect-src: this origin, the wss nodes, the pinned dApp package directory, the Ethereum servers of lib/eth/hosts.js and buybeam.my\'s buy API only (no explorer, no other host)', () => {
   const connect = CSP.split(';').map((d) => d.trim()).find((d) => d.startsWith('connect-src'));
   const sources = connect.split(/\s+/).slice(1);
-  assert.deepEqual(sources, ["'self'", ...HEADER_NODES.map((n) => `wss://${n}`), DAPP_PACKAGE_SOURCE, ...connectSources(), ...buyConnectSources()]);
+  assert.deepEqual(sources, ["'self'", ...HEADER_NODES.map((n) => `wss://${n}`), DAPP_PACKAGE_SOURCE, ...connectSources(), ...buyConnectSources(), ...recoveryConnectSources()]);
+  // The snapshot on a copy without a relay: that one path of BEAM Campfire's server.
+  assert.deepEqual(recoveryConnectSources(), ['https://pwa.buybeam.my/recovery/']);
+  assert.ok(!sources.includes('https://pwa.buybeam.my'));
   // Buy BEAM: buybeam.my's buy API path only, never the whole host.
   assert.deepEqual(buyConnectSources(), ['https://buybeam.my/api/v1/buy/']);
   assert.ok(!sources.includes('https://buybeam.my'));
@@ -159,6 +163,9 @@ test('no source file reaches out to another origin', () => {
       // loader, after this app's own address): exactly the list, only in this file.
       // Besides those, only the scheme it puts in front of a typed address, and its wording.
       if (f.endsWith(join('lib', 'update_sources.js')) && (BUILTIN_SOURCES.includes(u) || u === 'https://${s}' || u === 'https://.')) continue;
+      // BEAM's snapshot through BEAM Campfire's server, for a copy hosted without a relay:
+      // that one file (and the CSP path naming it), only in this file.
+      if (f.endsWith(join('lib', 'recovery.js')) && (u === 'https://${RECOVERY_FALLBACK_HOST}/recovery/mainnet_recovery.bin' || u === 'https://${RECOVERY_FALLBACK_HOST}/recovery/')) continue;
       offenders.push(`${f.slice(pwa.length)}: ${u}`);
     }
   }

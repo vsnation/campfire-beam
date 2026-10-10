@@ -4,6 +4,7 @@ import { engineSupport, loadEngine, nodeGuard, walletFiles } from './lib/engine.
 import { getPrefs, setPrefs, getWalletRecord } from './lib/store.js';
 import { wallet } from './lib/wallet.js';
 import { updates, takeJustUpdated } from './lib/update.js';
+import { installBack } from './lib/back.js';
 import { swSupported, isControlled, clearReloadFlag, installedButBypassed, watchLoader, loaderBehind } from './lib/loader.js';
 import { refreshPersistence } from './lib/storage.js';
 import { reconcileOwnNode } from './lib/own_node.js';
@@ -240,6 +241,8 @@ app.continueBoot = async function continueBoot() {
   app.go(app.record ? 'unlock' : 'welcome', updated ? { updated } : {});
   if (updated && !app.record) toast(updated, 6000);
 };
+
+installBack(app);
 
 boot().catch((e) => {
   console.error(e);

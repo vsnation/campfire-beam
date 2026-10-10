@@ -139,7 +139,7 @@ test('create a wallet on the Pages host and sync with mainnet; nothing asked of 
   await ctx.close();
 });
 
-test('restore with 12 words on a host without the snapshot: the recovery file is the way, plainly; no crash', { timeout: 5 * 60000 }, async () => {
+test('restore with 12 words on a host without the snapshot: it comes from pwa.buybeam.my, said plainly, and the wallet opens', { timeout: 12 * 60000 }, async () => {
   assert.ok(words, 'needs the words from the previous test');
   const { ctx, page, rec } = await freshPage('pages-3');
   await page.goto(host.url);
@@ -161,16 +161,19 @@ test('restore with 12 words on a host without the snapshot: the recovery file is
     await sleep(500);
   }
   await waitScreen(page, 'fastStart');
-  await page.waitForSelector(tid('recovery-file-choose'), { timeout: 30000 });
-  assert.match(await page.getAttribute(tid('recovery-file-choose'), 'class'), /btn-primary/, 'the recovery file is the main way here');
-  assert.match(await page.textContent(tid('recovery-file-help')), /mobile-restore\.beam\.mw\/mainnet\/mainnet_recovery\.bin/);
-  assert.match(await page.textContent('main'), /This site has no copy of it/);
-  await shot(page, 'pages-04-restore-no-snapshot');
+  // GitHub Pages cannot relay BEAM's snapshot; the copy reads it through BEAM Campfire's server.
+  await page.waitForFunction(() => /from pwa\.buybeam\.my \(this site has no copy of it\)/.test(document.querySelector('main').textContent), null, { timeout: 30000 });
+  assert.match(await page.textContent('main'), /pwa\.buybeam\.my sees your IP address/);
+  assert.match(await page.getAttribute(tid('fast-download'), 'class'), /btn-primary/, 'the download is the main way again');
+  await shot(page, 'pages-04-restore-snapshot-from-pwa-buybeam');
   await page.click(tid('fast-download'));
-  await page.waitForSelector('.notice.error', { timeout: 30000 });
-  assert.match(await page.textContent('.notice.error'), /hosted without BEAM's snapshot/);
-  assert.equal(await page.isVisible(tid('recovery-file-choose')), true, 'and the file is still offered');
-  await shot(page, 'pages-05-restore-download-absent');
+  await waitHome(page, { timeout: 10 * 60000 });
+  await waitSynced(page, 5 * 60000);
+  // This address is asked first (it answers 404 here), then BEAM Campfire's server.
+  const snap = rec.requests.filter((u) => /mainnet_recovery\.bin/.test(u));
+  assert.ok(snap.includes('https://pwa.buybeam.my/recovery/mainnet_recovery.bin'), `the snapshot came from pwa.buybeam.my: ${JSON.stringify(snap)}`);
+  assert.ok(snap.every((u) => u === 'https://pwa.buybeam.my/recovery/mainnet_recovery.bin' || u === `${host.url}recovery/mainnet_recovery.bin`), `nowhere else: ${JSON.stringify(snap)}`);
+  await shot(page, 'pages-05-restored-from-pwa-buybeam');
   assert.deepEqual(rec.errors, [], 'no crash');
   await ctx.close();
 });
