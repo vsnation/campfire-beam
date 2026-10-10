@@ -456,7 +456,7 @@ test('(e) a move ready to collect: "Collect", then the approve sheet in the brid
     }
   }
   if (!pick) return t.skip('every recorded message has been claimed since');
-  const id = await page.evaluate(async ({ id, msgId, amount }) => {
+  const id = await page.evaluate(async ({ id, msgId, amount, fee }) => {
     const { bridgeOf } = await import('./screens/bridge_ui.js');
     const { makeCrossing } = await import('./lib/bridge/store.js');
     const { app } = await import('./app.js');
@@ -464,12 +464,12 @@ test('(e) a move ready to collect: "Collect", then the approve sheet in the brid
     const now = Date.now();
     const c = makeCrossing({
       id: `xrecorded${msgId}`, route: id, direction: 'toBeam', state: 'delivered', amount: BigInt(amount) * (id === 'eth' ? 10000000000n : id === 'usdt' ? 1n : 1n) / (id === 'usdt' ? 100n : 1n),
-      receives: BigInt(amount), relayerFee: 1n, beamNetworkFee: 12100000n, ethNetworkFee: 0n, beamWalletId: s.ctl.beamWalletId, ethWalletId: s.ctl.ethWalletId, ethAddress: s.eth.owner,
+      receives: BigInt(amount), relayerFee: BigInt(fee), beamNetworkFee: 12100000n, ethNetworkFee: 200000000000000n, beamWalletId: s.ctl.beamWalletId, ethWalletId: s.ctl.ethWalletId, ethAddress: s.eth.owner,
       createdAt: now - 4 * 60000, updatedAt: now, msgId, deliveredAt: now, lockedAt: now - 3 * 60000,
     });
     await s.ctl.store.save(c);
     return c.id;
-  }, { id: pick.id, msgId: pick.msgId, amount: String(pick.amount) });
+  }, { id: pick.id, msgId: pick.msgId, amount: String(pick.amount), fee: String(e2bRelayerFee(routeById(pick.id), PRICES)) });
   // Locked from Home (from a bridge screen, unlocking would go back to that screen).
   await page.evaluate(() => window.__campfire.go('home'));
   await waitScreen(page, 'home');

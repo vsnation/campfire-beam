@@ -599,6 +599,31 @@ test('to BEAM: the person declines the claim: back to ready to collect, nothing 
   assert.equal((await rig.c.collect(x.id)).state, STATES.claiming);
 });
 
+test('to BEAM: Collect tapped while Campfire is looking at the move waits for the look, then collects', async () => {
+  const rig = new Rig();
+  let x = await rig.move(ethRoute, toBeam, ethUnits(0.01));
+  rig.eth.mineLock(x.lockHash, { msgId: 133 });
+  rig.beam.deliver(ethRoute, 133, x.receives);
+  x = await rig.after(15 * S, x.id);
+  assert.equal(x.state, STATES.delivered);
+  // A look whose BEAM view has not answered yet.
+  const real = rig.beam.remoteMessage.bind(rig.beam);
+  let answer;
+  const held = new Promise((resolve) => (answer = resolve));
+  rig.beam.remoteMessage = async (route, msgId) => {
+    await held;
+    return real(route, msgId);
+  };
+  const looking = rig.c.poll(x.id);
+  const collecting = rig.c.collect(x.id);
+  rig.beam.remoteMessage = real;
+  answer();
+  await looking;
+  x = await collecting;
+  assert.equal(x.state, STATES.claiming);
+  assert.deepEqual(rig.sends(), ['claim eth']);
+});
+
 test('to BEAM: a claim that threw: claimed once the message is gone', async () => {
   const rig = new Rig();
   let x = await rig.move(ethRoute, toBeam, ethUnits(0.01));
