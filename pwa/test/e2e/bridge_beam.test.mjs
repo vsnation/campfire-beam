@@ -206,11 +206,20 @@ test('one full send to Ethereum stops at the consent sheet: what the engine repo
   }, RECEIVER);
   await page.waitForSelector(tid('consent'), { timeout: 120000 });
   await shot(page, 'bridge-01-consent-not-enough');
-  const pay = await page.textContent(tid('consent-pay-0'));
+  // The wallet's own move reads as one (screens/consent.js, bridge rows): shown only when the
+  // engine's report equals the request, so these rows are what the engine reported.
+  const move = await page.textContent(tid('consent-bridge-amount'));
+  const bridgeFee = await page.textContent(tid('consent-bridge-fee'));
   const fee = await page.textContent(tid('consent-fee'));
-  console.log(`# consent: pay "${pay}", fee "${fee}", "${(await page.textContent(tid('consent-not-enough'))).trim()}"`);
-  assert.equal(pay, '1.01 BEAM');
+  const total = await page.textContent(tid('consent-total'));
+  console.log(`# consent: "${await page.textContent(`${tid('consent')} h2`)}", move "${move}", bridge fee "${bridgeFee}", fee "${fee}", total "${total}", "${(await page.textContent(tid('consent-not-enough'))).trim()}"`);
+  assert.equal(await page.getAttribute(tid('consent'), 'data-bridge'), 'send');
+  assert.equal(move, '1 BEAM');
+  assert.equal(bridgeFee, '0.01 BEAM');
   assert.equal(fee, '0.011 BEAM');
+  assert.equal(total, '1.021 BEAM');
+  assert.equal(await page.textContent(tid('consent-bridge-receives')), '1 WBEAM');
+  assert.equal(await page.getAttribute(tid('consent-bridge-to'), 'data-address'), `0x${RECEIVER}`);
   assert.match(await page.textContent(tid('consent-not-enough')), /^Not enough BEAM\./);
   assert.equal(await page.isVisible(tid('consent-approve')), false, 'no approve button: the engine says it is not enough');
   await page.click(tid('consent-cancel'));
