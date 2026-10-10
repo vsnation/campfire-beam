@@ -483,3 +483,82 @@ details.more.card { padding: 12px 16px; }
 /* Names are shown exactly as registered: Inter would draw "0x4" as "0×4". */
 .names, .consent, .plain { font-feature-settings: 'calt' 0; }
 .names .row .main .s { white-space: normal; }
+/* Buy (screens/buy_*.js): Home's fourth action, the chooser sheet, Buy BEAM and its buys. */
+.btn-row.four { gap: 8px; }
+.btn-row.four .btn { padding: 8px 2px; font-size: 14px; }
+.overline { font-size: 13px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: var(--muted); margin-bottom: -8px; }
+.choice-card { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; text-align: left; border: 1.5px solid transparent; cursor: pointer; color: var(--text); font: inherit; }
+.choice-card:active { border-color: var(--primary); }
+.choice-head { display: flex; align-items: center; gap: 10px; }
+.choice-title { flex: 1; font-size: 18px; font-weight: 700; }
+.choice-text { font-size: 15px; color: var(--text-2); }
+.choice-action { display: flex; align-items: center; gap: 2px; font-weight: 600; color: var(--on-secondary); }
+.choice-action svg { width: 18px; height: 18px; }
+.tag { flex: none; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; }
+.tag.private { background: var(--success-bg); color: var(--success); }
+.tag.public { background: var(--info-bg); color: var(--info); }
+.badge-pair { position: relative; flex: none; display: inline-flex; }
+.badge-mark { position: absolute; right: -3px; bottom: -3px; width: 18px; height: 18px; border-radius: 50%; background: #eef0f8; border: 2px solid var(--surface); display: flex; align-items: center; justify-content: center; }
+.badge-mark img { width: 10px; height: 10px; }
+.asset-badge.coin.three { font-size: 11px; letter-spacing: -0.3px; }
+.asset-badge.coin.small.three { font-size: 8px; }
+.coin-chip { display: inline-flex; flex-direction: column; line-height: 1.1; min-width: 0; }
+.coin-chip .chain { font-size: 11px; font-weight: 500; color: var(--muted); }
+.asset-pick.static { cursor: default; }
+.swap-sub .right { text-align: right; }
+.link-left { justify-content: flex-start; padding-left: 0; min-height: 36px; }
+.row .ico.wait { background: var(--warn-bg); color: var(--warn); }
+.tone-in { color: var(--success) !important; }
+.tone-bad { color: var(--error) !important; }
+.tone-wait { color: var(--yellow) !important; }
+.steps { display: flex; flex-direction: column; gap: 12px; }
+.step-row { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+.step-row.waiting { color: var(--muted); font-weight: 400; }
+.step-mark { width: 22px; height: 22px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; border: 2px solid var(--border); }
+.step-mark svg { width: 14px; height: 14px; stroke-width: 3; }
+.step-row.done .step-mark { background: var(--green); border-color: var(--green); color: #fff; }
+.step-row.active .step-mark { border-color: var(--yellow); color: var(--yellow); }
+.step-row.failed .step-mark { background: var(--red); border-color: var(--red); color: #fff; }
+.exact-amount { padding: 12px 14px; }
+.exact-amount .big { font-size: 20px; font-weight: 700; }
+.address-box .banner { margin-bottom: 6px; }
+/* The primary button stays in sight on a short phone: the actions stick to the bottom while the form scrolls. */
+.sticky-actions .actions { position: sticky; bottom: 0; z-index: 5; background: var(--bg); margin: 12px calc(-1 * var(--gutter)) 0; padding: 10px var(--gutter) calc(10px + var(--safe-bottom)); box-shadow: 0 -1px 0 var(--border); }
+.sticky-actions { padding-bottom: 0; }
+
+/* Buy WBEAM on Uniswap (screens/eth_swap*.js). On a phone the pools are one tap away; from 900 px they sit beside the form. */
+.uni-form { display: flex; flex-direction: column; gap: 12px; }
+.uni-pools { display: none; }
+.uni .topbar .pools-btn { flex: none; color: var(--on-secondary); }
+.kv.kv-tap { width: 100%; background: none; border-left: 0; border-right: 0; border-top: 0; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.kv.kv-tap:last-child { border-bottom: 0; }
+.kv .v.bad { color: var(--error); }
+.kv .v .small { font-weight: 500; }
+.pool-list { display: flex; flex-direction: column; gap: 8px; }
+.pool-row { padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; border: 1.5px solid transparent; }
+.pool-row.used { border-color: var(--green); }
+.pool-row .share { flex: none; font-size: 13px; font-weight: 700; color: var(--success); }
+.depth { height: 4px; border-radius: 2px; background: var(--surface-2); overflow: hidden; }
+.depth > div { height: 100%; width: 0; background: var(--green); }
+.pools-sheet { max-height: 60vh; overflow: auto; }
+.review-amounts { display: flex; flex-direction: column; gap: 12px; }
+.review-line { display: flex; gap: 12px; align-items: flex-start; }
+.review-line .big { font-size: 20px; font-weight: 700; word-break: break-all; }
+.radio { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 2px solid var(--border); }
+.radio.on { border: 6px solid var(--primary); }
+.panel-title { margin: 0; font-size: 18px; }
+@media (min-width: 900px) {
+  #app[data-screen="ethSwap"] { max-width: 1040px; }
+  .uni-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .uni-pools { display: block; position: sticky; top: 12px; max-height: calc(100dvh - 90px); overflow: auto; padding-right: 4px; }
+  .uni .topbar .pools-btn { display: none; }
+  .uni.sticky-actions .actions { position: static; margin: 4px 0 0; padding: 0; box-shadow: none; background: none; }
+  .uni.sticky-actions { padding-bottom: calc(var(--safe-bottom) + 16px); }
+}
+.swap-sub.stacked { flex-direction: column; align-items: flex-start; gap: 0; }
+.qr.qr-small { width: min(56vw, 210px); padding: 8px; }
+/* A sheet's buttons stay in sight while what it explains scrolls. */
+.sheet .sheet-actions { position: sticky; bottom: 0; z-index: 2; display: flex; flex-direction: column; gap: 4px; background: var(--bg); margin: 0 calc(-1 * var(--gutter)) calc(-18px - var(--safe-bottom)); padding: 10px var(--gutter) calc(14px + var(--safe-bottom)); box-shadow: 0 -1px 0 var(--border); }
+.review-line .big { word-break: normal; overflow-wrap: anywhere; }
+.asset-row .end { word-break: normal; overflow-wrap: anywhere; }
+.sheet .sheet-actions { bottom: calc(-18px - var(--safe-bottom)); }

@@ -181,6 +181,9 @@ export function mergeActivity({ address, outbox = [], txs = [], transfers = [] }
       fee: r && r.gasUsed && r.effectiveGasPrice ? BigInt(r.gasUsed) * BigInt(r.effectiveGasPrice) : null,
       state: e.state,
       local: true,
+      // A Uniswap swap or approval sent from this device (lib/eth/uniswap_app.js): what it was for.
+      kind: typeof e.kind === 'string' ? e.kind : null,
+      swapOut: typeof e.tokenOutSymbol === 'string' ? e.tokenOutSymbol : null,
     });
   }
   const items = [...byHash.values()];

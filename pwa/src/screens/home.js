@@ -1,13 +1,14 @@
 /* Home
  * Spec: ONE job: see what I have and start a payment.
- *       Primary CTA: "Send" (when there is nothing to send yet: "Receive"); "Swap" sits beside them.
+ *       Primary CTA: "Send" (when there is nothing to send yet: "Receive"); "Swap" and "Buy" sit beside them.
  *       Taps from app open: 0 after unlock.
  * Exit-intent reasons and answers:
  *   - "Is this number real / up to date?" -> sync line says Synced (and whether a second source
  *     confirmed the height), or exactly how far behind it is.
  *   - "Why can't I send?" -> the reason is written under the button, never a silent grey button.
  *   - "Where did my payment go?" -> recent payments with plain status right below.
- *   - "Empty wallet, now what?" -> the primary button becomes Receive.
+ *   - "Empty wallet, now what?" -> the primary button becomes Receive; Buy is beside it.
+ *   - "How do I get BEAM?" -> Buy opens a choice: BEAM in this wallet (buybeam.my) or WBEAM on Ethereum.
  *   - "Can I get a short name, or claim a code I was given?" -> BEAM names and Airdrop codes, on one line with
  *     dApps under the buttons, one tap each.
  *   - "What if this phone or this app's web address is gone?" -> a wallet imported from wallet.db has
@@ -21,6 +22,7 @@ import { formatAmount } from '../lib/amount.js';
 import { wallet, txStatusText, isPendingTx, isContractTx, contractMoves } from '../lib/wallet.js';
 import { needsBackupPrompt } from '../lib/session.js';
 import { chainSwitch } from './eth_screens.js';
+import { openBuyChooser } from './buy_screens.js';
 
 export function syncLine(sync) {
   const cls = sync.state === 'synced' ? 'ok' : sync.state === 'offline' || sync.state === 'stalled' || sync.state === 'behind' ? 'bad' : 'wait';
@@ -138,8 +140,10 @@ export default function home(app) {
     recvBtn.prepend(icon('receive'));
     const swapBtn = secondary(h('span', {}, 'Swap'), () => app.go('swap'), { disabled: !canSend, 'data-testid': 'swap' });
     swapBtn.prepend(icon('swap'));
+    const buyBtn = secondary(h('span', {}, 'Buy'), () => openBuyChooser(app), { 'data-testid': 'buy' });
+    buyBtn.prepend(icon('buy'));
     const why = !canSend && s.sync.state !== 'synced' ? h('p', { class: 'small center', text: `${hasFunds ? 'Sending and swaps are' : 'Swaps are'} paused: ${s.sync.title.toLowerCase().replace(/[.…]+$/, '')}.` }) : null;
-    put(actionsBox, h('div', { class: 'btn-row three' }, ...(hasFunds ? [sendBtn, recvBtn, swapBtn] : [recvBtn, sendBtn, swapBtn])), why);
+    put(actionsBox, h('div', { class: 'btn-row three four' }, ...(hasFunds ? [sendBtn, recvBtn, swapBtn, buyBtn] : [recvBtn, sendBtn, swapBtn, buyBtn])), why);
   }
 
   function renderBanner() {
@@ -179,6 +183,8 @@ export default function home(app) {
 
   const off = wallet.onChange(render);
   const offU = app.updates.onChange(renderBanner);
+  // Buys still on their way are followed while the wallet is open (one store read when there are none).
+  import('../lib/buy/wiring.js').then((m) => m.followBuys(app)).catch(() => {});
   render(wallet.state);
   renderBanner();
 

@@ -57,6 +57,8 @@ export const ETH_SCREENS = {
   ethSend: lazyScreen(() => import('./eth_send.js')),
   ethTx: lazyScreen(() => import('./eth_tx.js')),
   ethSettings: lazyScreen(() => import('./eth_settings.js')),
+  ethSwap: lazyScreen(() => import('./eth_swap.js')),
+  ethSwapTx: lazyScreen(() => import('./eth_swap_tx.js')),
 };
 
 /**

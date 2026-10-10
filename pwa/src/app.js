@@ -39,6 +39,7 @@ import airdropBatches from './screens/airdrop_batches.js';
 import airdropCodes from './screens/airdrop_codes.js';
 import { installConsent } from './screens/consent.js';
 import { ETH_SCREENS } from './screens/eth_screens.js';
+import { BUY_SCREENS } from './screens/buy_screens.js';
 import { consentLog, contractsState } from './lib/contracts.js';
 
 const SCREENS = {
@@ -46,9 +47,10 @@ const SCREENS = {
   home, send, review, txStatus, receive, activity, settings, changePassword, about, deleteWallet, problem, install, swap, dapps,
   names, airdrop, airdropCreate, airdropBatches, airdropCodes,
   ...ETH_SCREENS,
+  ...BUY_SCREENS,
 };
 // Screens that need an unlocked, running wallet.
-const NEEDS_WALLET = new Set(['home', 'send', 'review', 'txStatus', 'receive', 'activity', 'settings', 'changePassword', 'about', 'swap', 'dapps', 'names', 'airdrop', 'airdropCreate', 'airdropBatches', 'airdropCodes', ...Object.keys(ETH_SCREENS)]);
+const NEEDS_WALLET = new Set(['home', 'send', 'review', 'txStatus', 'receive', 'activity', 'settings', 'changePassword', 'about', 'swap', 'dapps', 'names', 'airdrop', 'airdropCreate', 'airdropBatches', 'airdropCodes', ...Object.keys(ETH_SCREENS), ...Object.keys(BUY_SCREENS)]);
 
 const root = document.getElementById('app');
 

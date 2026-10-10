@@ -29,7 +29,8 @@
     "e2e:dapps": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/dapps.test.mjs",
     "e2e:dapps-live": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/dapps_live.mjs",
     "e2e:names-airdrop": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/names_airdrop.test.mjs",
-    "e2e:live:names-airdrop": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live_names_airdrop.mjs"
+    "e2e:live:names-airdrop": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live_names_airdrop.mjs",
+    "e2e:buy": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/buy.test.mjs"
   },
   "devDependencies": {
     "jsqr": "1.4.0",

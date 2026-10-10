@@ -1,13 +1,14 @@
 /* Ethereum Home (Home's switcher -> Ethereum)
- * Spec: ONE job: see what the Ethereum wallet holds, and start a payment.
- *       Primary CTA: "Send" when there is something to send, otherwise "Receive ETH".
- *       Taps from app open: 1 (Home -> Ethereum); Send or Receive is 2.
+ * Spec: ONE job: see what the Ethereum wallet holds, and buy WBEAM with its ETH.
+ *       Primary CTA: "Buy WBEAM" when there is ETH, otherwise "Receive ETH"; Send and Receive beside it.
+ *       Taps from app open: 1 (Home -> Ethereum); Buy WBEAM, Send or Receive is 2.
  * Exit-intent reasons and answers:
  *   - "Is this balance real / current?" -> the server's name and the block it answered at, or, when
  *     it didn't answer, who failed and two ways out (try again, or pick another server yourself).
  *   - "Where did my payment go?" -> what this device sent shows at once, with its status in words,
  *     before any history index knows of it.
  *   - "Empty, now what?" -> the primary button becomes Receive ETH; the empty list says so.
+ *   - "How do I get WBEAM?" -> Buy WBEAM is the primary as soon as there is ETH to pay with.
  *   - "Where's my BEAM?" -> the switcher at the top is one tap back.
  *   - "Why no history?" -> when History from Stack Wallet is off, a line says so and where to turn it on.
  */
@@ -58,11 +59,14 @@ export default function ethHome(app, params = {}) {
 
     const tokens = TOKENS.map((t) => [t, s.tokens.get(t.symbol)]).filter(([, v]) => v != null && v > 0n);
     const hasFunds = (known && s.eth > 0n) || tokens.length > 0;
-    const sendBtn = (hasFunds ? primary : secondary)(h('span', {}, 'Send'), () => app.go('ethSend'), { disabled: !hasFunds, 'data-testid': 'eth-send' });
+    const hasEth = known && s.eth > 0n;
+    const buyBtn = (hasEth ? primary : secondary)(h('span', {}, 'Buy WBEAM'), () => app.go('ethSwap'), { 'data-testid': 'eth-buy-wbeam' });
+    buyBtn.prepend(icon('buy'));
+    const sendBtn = secondary(h('span', {}, 'Send'), () => app.go('ethSend'), { disabled: !hasFunds, 'data-testid': 'eth-send' });
     sendBtn.prepend(icon('send'));
-    const recvBtn = (hasFunds ? secondary : primary)(h('span', {}, hasFunds ? 'Receive' : 'Receive ETH'), () => app.go('ethReceive'), { 'data-testid': 'eth-receive' });
+    const recvBtn = (hasEth ? secondary : primary)(h('span', {}, hasEth ? 'Receive' : 'Receive ETH'), () => app.go('ethReceive'), { 'data-testid': 'eth-receive' });
     recvBtn.prepend(icon('receive'));
-    put(actionsBox, h('div', { class: 'btn-row' }, ...(hasFunds ? [sendBtn, recvBtn] : [recvBtn, sendBtn])));
+    put(actionsBox, h('div', { class: 'btn-row three' }, ...(hasEth ? [buyBtn, sendBtn, recvBtn] : [recvBtn, sendBtn, buyBtn])));
 
     put(
       tokensBox,
@@ -92,7 +96,7 @@ export default function ethHome(app, params = {}) {
       activityBox,
       h('p', { class: 'section-title', text: 'Recent activity' }),
       items.length
-        ? h('div', { class: 'card list', 'data-testid': 'eth-activity' }, ...items.map((i) => activityRow(i, () => app.go('ethTx', { hash: i.hash, item: i }))))
+        ? h('div', { class: 'card list', 'data-testid': 'eth-activity' }, ...items.map((i) => activityRow(i, () => app.go(i.kind ? 'ethSwapTx' : 'ethTx', { hash: i.hash, item: i }))))
         : h('div', { class: 'card empty', 'data-testid': 'eth-activity-empty' }, icon('activity'), h('p', { text: known ? 'Nothing yet. Payments to and from this address show up here.' : 'Payments show up here once the server has answered.' })),
       !pref.history
         ? h('p', { class: 'small', 'data-testid': 'eth-history-off' }, 'Only what this device sent is shown: History from Stack Wallet is off. ', h('button', { class: 'btn-link', onclick: () => app.go('ethSettings') }, 'Settings'))

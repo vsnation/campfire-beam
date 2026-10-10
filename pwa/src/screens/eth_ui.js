@@ -5,6 +5,7 @@ import { icon } from '../lib/icons.js';
 import { assetBadge, notice } from '../lib/ui.js';
 import { formatUnits, isRoundedDown, DISPLAY_DECIMALS } from '../lib/eth/units.js';
 import { ETH } from '../lib/eth/tokens.js';
+import { compactUnits } from '../lib/compact.js';
 import { ETH_RPC_HOSTS, DEFAULT_ETH_RPC } from '../lib/eth/hosts.js';
 import { ethPrefs } from '../lib/eth/wallet.js';
 
@@ -93,17 +94,49 @@ const STATE_TEXT = {
   rejected: 'Not sent',
 };
 
+/** A Uniswap swap's or approval's title in the activity list, or null for a payment. */
+function swapTitle(item) {
+  const open = item.state === 'signed' || item.state === 'pending';
+  const failed = item.state === 'failed' || item.state === 'replaced' || item.state === 'rejected';
+  if (item.kind === 'swap') {
+    const pair = `${item.asset.symbol} for ${item.swapOut || 'a token'}`;
+    return open ? `Swapping ${pair}` : failed ? `Swap not done (${pair})` : `Swapped ${pair}`;
+  }
+  if (item.kind === 'approve') return open ? `Allowing ${item.asset.symbol} for Uniswap` : failed ? `${item.asset.symbol} not allowed` : `Allowed ${item.asset.symbol} for Uniswap`;
+  if (item.kind === 'approveReset') return `Reset the ${item.asset.symbol} permission`;
+  return null;
+}
+
 /** One row of the Ethereum activity list. */
 export function activityRow(item, onclick) {
   const open = item.state === 'signed' || item.state === 'pending';
   const bad = item.state === 'failed' || item.state === 'replaced' || item.state === 'rejected';
   const title =
+    swapTitle(item) ||
     STATE_TEXT[item.state] ||
     (item.direction === 'in' ? `Received ${item.asset.symbol}` : item.direction === 'self' ? `Sent ${item.asset.symbol} to yourself` : `Sent ${item.asset.symbol}`);
   const when = item.at ? fmtDate(Math.floor(item.at / 1000)) : null;
   const who = item.counterparty ? h('span', { class: 'nowrap', text: `${item.direction === 'in' ? 'from' : 'to'} ${shortAddress(item.counterparty)}` }) : null;
   const sub = [when, when && who ? ' · ' : null, who].filter(Boolean);
   const sign = item.direction === 'in' ? '+' : '−';
+  if (item.kind === 'approve' || item.kind === 'approveReset') {
+    return h(
+      'button',
+      { class: 'row', onclick, 'data-testid': 'eth-activity-row', 'data-hash': item.hash, 'data-state': item.state, 'data-kind': item.kind },
+      h('span', { class: `ico ${bad ? 'fail' : 'swap'}` }, icon(open ? 'clock' : 'check')),
+      h('span', { class: 'main' }, h('div', { class: 't', text: title }), h('div', { class: 's addr', text: when || '' })),
+      h('span', { class: 'end small', text: item.kind === 'approve' ? amountText(item.amount, item.asset) : '' }),
+    );
+  }
+  if (item.kind === 'swap') {
+    return h(
+      'button',
+      { class: 'row', onclick, 'data-testid': 'eth-activity-row', 'data-hash': item.hash, 'data-state': item.state, 'data-kind': 'swap' },
+      h('span', { class: `ico ${bad ? 'fail' : 'swap'}` }, icon(open ? 'clock' : 'swap')),
+      h('span', { class: 'main' }, h('div', { class: 't', text: title }), h('div', { class: 's addr', text: when ? `${when} · Uniswap` : 'Uniswap' })),
+      h('span', { class: 'end', title: amountText(item.amount, item.asset), text: `−${compactUnits(item.amount, item.asset.decimals)} ${item.asset.symbol}` }),
+    );
+  }
   return h(
     'button',
     { class: 'row', onclick, 'data-testid': 'eth-activity-row', 'data-hash': item.hash, 'data-state': item.state },
