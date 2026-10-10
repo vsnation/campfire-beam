@@ -163,6 +163,8 @@ export function presentConsent(app, req) {
     sheet.then((v) => {
       off();
       if (req.signal) req.signal.removeEventListener('abort', onAbort);
+      // The wallet's own screens show a status page; inside a dApp this is the only sign it went.
+      if (v === true && !req.native) toast('Approved and sent. It shows in Activity, usually within a minute.', 6000);
       resolve(v === true);
     });
     if (req.signal) {
