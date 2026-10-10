@@ -31,6 +31,7 @@
     "vendor:noble": "node tools/vendor_noble.mjs",
     "e2e:bridge-beam": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/bridge_beam.test.mjs",
     "e2e:dapps": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/dapps.test.mjs",
+    "e2e:dapp-file": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/dapp_file.test.mjs",
     "e2e:dapps-live": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/dapps_live.mjs",
     "e2e:names-airdrop": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/names_airdrop.test.mjs",
     "e2e:live:names-airdrop": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live_names_airdrop.mjs",

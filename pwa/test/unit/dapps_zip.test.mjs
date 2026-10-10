@@ -49,7 +49,11 @@ test('names that climb out, are absolute, odd or collide are refused', async () 
 });
 
 test('symlinks, encryption, zip64 and other methods are refused', async () => {
-  await refuses(makeZip([{ name: 'link', data: '/etc/passwd', method: 0, externalAttr: 0o120777 << 16 }]), 'unsafe_path', /symlink/);
+  await refuses(makeZip([{ name: 'link', data: '/etc/passwd', method: 0, externalAttr: 0o120777 << 16 }]), 'unsafe_entry', /symlink/);
+  // As the desktop: a symlink whatever system made the archive; a device only from a Unix maker.
+  await refuses(makeZip([{ name: 'link', data: '/etc/passwd', method: 0, externalAttr: 0o120777 << 16, creator: 0 }]), 'unsafe_entry', /symlink/);
+  await refuses(makeZip([{ name: 'dev', data: 'x', method: 0, externalAttr: 0o020644 << 16 }]), 'unsafe_entry', /special/);
+  assert.equal((await readZip(makeZip([{ name: 'dev', data: 'x', method: 0, externalAttr: 0o020644 << 16, creator: 0 }]))).size, 1);
   await refuses(makeZip([{ name: 'a.txt', data: 'x', method: 0, flags: 0x0001 }]), 'unsupported', /encrypted/);
   await refuses(makeZip([{ name: 'a.txt', data: 'x', method: 0 }], { zip64Locator: true }), 'unsupported', /zip64/);
   const z = makeZip([{ name: 'a.txt', data: 'x', method: 0 }]);
@@ -63,6 +67,7 @@ test('symlinks, encryption, zip64 and other methods are refused', async () => {
 test("local and central names must agree; entry count must match", async () => {
   await refuses(makeZip([{ name: 'a.txt', localName: 'b.txt', data: 'x', method: 0 }]), 'format', /names differ/);
   await refuses(makeZip([{ name: 'a.txt', data: 'x', method: 0 }], { countOverride: 2 }), 'format');
+  await refuses(makeZip([{ name: 'a.txt', data: 'x', method: 0 }, { name: 'b.txt', data: 'y', method: 0 }], { countOverride: 1 }), 'format', /more entries/);
   await refuses(new Uint8Array(100), 'format');
 });
 
