@@ -40,7 +40,7 @@ export default function txStatus(app, p) {
           : null,
       ),
       done
-        ? notice('success', 'The receiver accepted the payment and it is on the blockchain.')
+        ? notice('success', p.name ? `It is on the blockchain, waiting in BEAM's name vault for the owner of ${p.name}.beam to claim.` : 'The receiver accepted the payment and it is on the blockchain.')
         : failed
           ? notice(s === 2 ? 'info' : 'error', s === 2 ? 'Nothing was sent. The money stays in your wallet.' : `${tx.failure_reason || 'The payment did not go through.'} The money stays in your wallet.`)
           : notice('info', p.mustBeOnline === false ? 'The payment is on its way to the blockchain.' : "Waiting for the receiver's wallet to come online and accept. Keep BEAM Campfire open; this can take up to 12 hours."),
