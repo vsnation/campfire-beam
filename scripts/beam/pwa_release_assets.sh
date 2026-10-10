@@ -6,7 +6,8 @@
 #
 # Writes to <out dir>:
 #   beam-campfire-web-<version>.zip   every file of the signed build, the same
-#                                     bytes the hosting repository serves
+#                                     bytes the hosting repository serves, with
+#                                     its loader and the hosting configs
 #   release.json, release.sig         the signed release and its signature
 #   manifest.json                     every file's path, size and SHA-256
 #   SHA256SUMS.txt                    of the four files above
@@ -38,17 +39,29 @@ for f in m['files']:
 print(f"{len(m['files'])} files match the manifest")
 PY
 
+# The loader is not in the manifest, but its name is: lib/version.js (a signed
+# file) names it by the start of its SHA-256. Without it a copy cannot install.
+LOADER="$(sed -n 's/^export const LOADER = "\(sw-[0-9a-f]*\.js\)";$/\1/p' "$BUILD/lib/version.js")"
+[[ -n "$LOADER" && -f "$BUILD/$LOADER" ]] || { echo "loader named in lib/version.js is missing: ${LOADER:-none}" >&2; exit 1; }
+want="${LOADER#sw-}"; want="${want%.js}"
+got="$(shasum -a 256 "$BUILD/$LOADER" | cut -c1-${#want})"
+[[ "$got" == "$want" ]] || { echo "$LOADER: its bytes do not match its name" >&2; exit 1; }
+
 mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
 ZIP="$OUT/beam-campfire-web-$VERSION.zip"
 rm -f "$ZIP"
 STAGE="$(mktemp -d)"
 trap 'rm -rf "$STAGE"' EXIT
-python3 -I - "$BUILD" "$STAGE/list" <<'PY'
+python3 -I - "$BUILD" "$STAGE/list" "$LOADER" <<'PY'
 import json, os, sys
-root, out = sys.argv[1], sys.argv[2]
+root, out, loader = sys.argv[1], sys.argv[2], sys.argv[3]
 m = json.load(open(os.path.join(root, 'manifest.json')))
-paths = sorted({f['path'] for f in m['files']} | {'release.json', 'release.sig', 'manifest.json'})
+extra = {'release.json', 'release.sig', 'manifest.json', loader}
+# Hosting help, when the build has it: headers for Netlify/Cloudflare-style
+# hosts, server configs, and how to host a copy.
+extra |= {p for p in ('_headers', 'README.md', 'deploy/nginx.conf', 'deploy/Caddyfile') if os.path.isfile(os.path.join(root, p))}
+paths = sorted({f['path'] for f in m['files']} | extra)
 open(out, 'w').write('\n'.join(paths) + '\n')
 PY
 cp -R "$BUILD/." "$STAGE/tree"

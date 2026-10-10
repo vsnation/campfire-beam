@@ -34,7 +34,7 @@ import { mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync } from 'nod
 import { readFile, stat } from 'node:fs/promises';
 import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
-import { join, normalize, sep } from 'node:path';
+import { join, normalize, sep, resolve as resolvePath } from 'node:path';
 import { chromium } from 'playwright-core';
 import { PWA, CHROME, recordedPage, shot, waitScreen, foreignHosts, sleep, SHOTS } from './harness.mjs';
 import { waitHome, waitSynced } from './flows.mjs';
@@ -361,12 +361,14 @@ before(async () => {
   tmp = mkdtempSync(join(tmpdir(), 'campfire-offline-'));
   assert.equal(cliVersion(join(tmp, 'cli')), WANT_CORE);
   cliWallet = makeWalletDb(join(tmp, 'cliwallet'));
-  rel = join(tmp, 'rel');
-  execFileSync(process.execPath, [join(PWA, 'tools', 'build.mjs'), '--out', rel, '--version', pkg.version, '--quiet'], { cwd: PWA });
+  // OFFLINE_REL_DIR: a release as published (the GitHub release zip, unpacked)
+  // instead of a fresh build, to prove that a copy made from it stands alone.
+  rel = process.env.OFFLINE_REL_DIR ? resolvePath(process.env.OFFLINE_REL_DIR) : join(tmp, 'rel');
+  if (!process.env.OFFLINE_REL_DIR) execFileSync(process.execPath, [join(PWA, 'tools', 'build.mjs'), '--out', rel, '--version', pkg.version, '--quiet'], { cwd: PWA });
   loader = readFileSync(join(rel, 'lib', 'version.js'), 'utf8').match(/LOADER = "(sw-[0-9a-f]+\.js)"/)[1];
   total = JSON.parse(readFileSync(join(rel, 'manifest.json'), 'utf8')).files.length;
   await startServer();
-  console.log(`# release ${pkg.version}: ${total} files, loader ${loader}; screenshots: ${SHOTS}`);
+  console.log(`# release ${JSON.parse(readFileSync(join(rel, 'release.json'), 'utf8')).version}: ${total} files, loader ${loader}; screenshots: ${SHOTS}`);
 });
 
 after(async () => {
