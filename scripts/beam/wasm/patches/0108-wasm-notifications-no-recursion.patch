@@ -1,0 +1,51 @@
+Campfire wasm patch 0108: the address-expiry check does not re-enter itself.
+
+NotificationCenter::checkAddressesExpirationTime() creates a notification
+for every expired address. Creating one notifies the subscribers;
+WalletClient's subscriber recounts the unread notifications
+(updateNotifications -> getUnreadCount -> getNotifications), and
+getNotifications() runs checkAddressesExpirationTime() again, which creates
+the next notification. So the call nests one level (about ten frames) per
+expired address. A wallet with a long history - many addresses, long
+expired - ran out of stack on the web wallet's wallet thread (a browser
+worker): "RangeError: Maximum call stack size exceeded" at start, the wallet
+thread died, nothing ever answered and the app moved between nodes forever.
+Native builds have a much larger stack and survive it.
+
+With this, a call made while one is already running returns at once. The
+outer pass still walks every address and creates every notification; the
+nested recount sees the notifications made so far, and the outer pass
+finishes the rest. Found by importing such a wallet.db (2026-10-10).
+
+--- a/wallet/client/extensions/notifications/notification_center.h
++++ b/wallet/client/extensions/notifications/notification_center.h
+@@ -70,5 +70,6 @@
+ 
+         std::vector<WalletAddress> m_myAddresses;
+         io::Timer::Ptr m_checkoutTimer;
++        bool m_checkingExpiration = false; // Campfire (wasm patch 0108)
+     };
+ } // namespace beam::wallet
+--- a/wallet/client/extensions/notifications/notification_center.cpp
++++ b/wallet/client/extensions/notifications/notification_center.cpp
+@@ -352,6 +352,20 @@
+ 
+     void NotificationCenter::checkAddressesExpirationTime()
+     {
++        // Campfire (wasm patch 0108): not re-entered. A new notification tells the subscribers,
++        // WalletClient recounts the unread ones, and getNotifications() checks the addresses
++        // again: one nesting level per expired address. A wallet with many expired addresses
++        // ran out of stack in a browser worker ("Maximum call stack size exceeded") and its
++        // wallet thread died at start. The outer pass still creates every notification.
++        if (m_checkingExpiration)
++            return;
++        struct Guard
++        {
++            bool& m_Flag;
++            explicit Guard(bool& flag) : m_Flag(flag) { m_Flag = true; }
++            ~Guard() { m_Flag = false; }
++        } guard(m_checkingExpiration);
++
+         for (const auto& address : m_myAddresses)
+         {
+             if (address.isExpired())
