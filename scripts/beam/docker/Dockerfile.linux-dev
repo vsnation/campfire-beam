@@ -14,7 +14,7 @@
 # the project notes for measured timings).
 #
 # Flutter version: 3.47.2, NOT 3.38.5. The pubspec template requires
-# `flutter: ^3.47.2` / Dart >=3.13.0 (docs/building.md still says 3.38.5 and is
+# `flutter: ^3.47.2` / Dart >=3.13.0 (Stack Wallet's upstream docs/building.md still says 3.38.5 and is
 # stale). This matches the pin in the repo-root Dockerfile.
 #
 # Build:  docker build --platform linux/amd64 -t campfire-beam/linux-dev:3.47.2 \
@@ -33,7 +33,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
-# Build deps: the "Linux desktop specific dependencies" from docs/building.md,
+# Build deps: the "Linux desktop specific dependencies" from Stack Wallet's upstream docs/building.md,
 # trimmed to what the Campfire config (TOR + FIRO) needs when secure-storage
 # deps come from the system (-s / USE_SYSTEM_SECURE_STORAGE_DEPS=1), the same
 # choice upstream CI makes. libopencv-dev is required by the camera_linux plugin

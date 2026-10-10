@@ -222,4 +222,4 @@ Highlights include:
 
 ## Building
 
-You can look at the [build instructions](docs/building.md) for more details.
+BEAM Campfire builds like Stack Wallet, the app it comes from: see Stack Wallet's [build instructions](https://github.com/cypherstack/stack_wallet/blob/main/docs/building.md).
