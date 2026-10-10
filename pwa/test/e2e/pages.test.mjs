@@ -258,10 +258,19 @@ test('the publicly served release (installed, with a wallet) takes this one thro
     await shot(page, 'pages-06-update-ready');
     await Promise.all([page.waitForEvent('load', { timeout: 60000 }), page.click(tid('update-apply-sheet'))]);
     await waitScreen(page, 'unlock', 120000);
-    assert.equal(await served(), nextVersion, `the installed ${release.version} now runs ${nextVersion}`);
     // This release's loader has a new name: the page moves to it once; that is not a takeover.
+    // A locked page reloads as soon as the new loader takes over (lib/loader.js onMoved), so
+    // wait until it runs under it - across that reload - before reading anything.
     const loader = readFileSync(join(next, 'lib', 'version.js'), 'utf8').match(/LOADER = "(sw-[0-9a-f]+\.js)"/)[1];
-    await page.waitForFunction((l) => navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL.endsWith(`/${l}`), loader, { timeout: 20000 });
+    for (let t0 = Date.now(); ; ) {
+      const settled = await page
+        .evaluate((l) => Boolean(navigator.serviceWorker.controller && navigator.serviceWorker.controller.scriptURL.endsWith(`/${l}`) && window.__campfire && window.__campfire.loaderBehind() === false && document.getElementById('app')?.dataset.screen === 'unlock'), loader)
+        .catch(() => false);
+      if (settled) break;
+      if (Date.now() - t0 > 60000) throw new Error(`the page did not settle under ${loader}`);
+      await sleep(250);
+    }
+    assert.equal(await served(), nextVersion, `the installed ${release.version} now runs ${nextVersion}`);
     assert.equal(await page.evaluate(() => window.__campfire.intrusion()), null, 'the approved move to the new loader is not mistaken for a takeover');
     assert.equal(await page.evaluate(() => self.crossOriginIsolated), true);
     await page.fill(tid('unlock-pw'), PASSWORD);
