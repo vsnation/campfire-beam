@@ -74,7 +74,15 @@
     send({ t: 'rpc', json: typeof json === 'string' ? json : JSON.stringify(json) });
   }
   function deliver(json) {
-    if (qtListeners.length) qtListeners.slice().forEach(function (f) { f(json); });
+    // Each Qt listener gets the result even when another one throws (as Qt signals do).
+    if (qtListeners.length)
+      qtListeners.slice().forEach(function (f) {
+        try {
+          f(json);
+        } catch (err) {
+          setTimeout(function () { throw err; }, 0);
+        }
+      });
     else if (callback) callback(json);
     else document.dispatchEvent(new CustomEvent('onCallWalletApiResult', { detail: json }));
   }
