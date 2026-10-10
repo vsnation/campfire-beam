@@ -477,7 +477,7 @@ export default function dapps(app, params = {}) {
     const bar = h(
       'header',
       { class: 'dapp-bar' },
-      h('button', { class: 'icon-btn', 'aria-label': `Close ${manifest.name}`, 'data-testid': 'dapp-close', onclick: () => closeRunner() }, icon('close')),
+      h('button', { class: 'icon-btn', 'aria-label': `Close ${manifest.name}`, 'data-testid': 'dapp-close', 'data-back': '1', onclick: () => closeRunner() }, icon('close')),
       dappIcon(e, 'dapp-bar-icon'),
       h('h1', { text: manifest.name }),
       h('button', { class: 'icon-btn', 'aria-label': 'More', 'data-testid': 'dapp-more', onclick: () => moreSheet(e, manifest) }, icon('more')),
@@ -713,7 +713,7 @@ export default function dapps(app, params = {}) {
   refresh();
 
   const el = screen(
-    { title: 'dApps', back: () => app.go('home') },
+    { title: 'dApps', back: () => app.back('home') },
     h('p', { class: 'lead', text: "BEAM's own dApps, and any you install from a file. Each runs walled off from your wallet: nothing leaves it without your OK." }),
     topNote,
     listBox,
