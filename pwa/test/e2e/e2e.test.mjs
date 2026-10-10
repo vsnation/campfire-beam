@@ -261,20 +261,25 @@ test('restore: the same 12 words in a fresh browser profile, with the snapshot d
   }
 });
 
-test('find coins from other wallets: Settings -> snapshot import turns scanning on', { timeout: 20 * 60000 }, async () => {
+test('Rescan: Settings -> snapshot, coins rebuilt, scanning on, addresses kept, offered again', { timeout: 20 * 60000 }, async () => {
+  const addrsBefore = await page.evaluate(() => window.__campfire.addresses());
   await page.evaluate(() => window.__campfire.go('settings'));
   await waitScreen(page, 'settings');
-  await page.click(tid('find-coins'));
+  await page.click(tid('rescan-row'));
   await waitScreen(page, 'fastStart');
   await page.waitForSelector(tid('fast-download'));
-  await shot(page, 'e2e-26a-find-coins');
+  assert.match(await page.textContent(tid('fast-download')), /and rescan$/);
+  await shot(page, 'e2e-26a-rescan');
   await page.click(tid('fast-download'));
   await waitHome(page, { timeout: 15 * 60000 });
   await waitSynced(page, 10 * 60000);
   assert.equal(await page.evaluate(() => window.__campfire.scanning()), true);
+  assert.equal((await page.evaluate(() => window.__campfire.record())).scan, true);
+  const addrsAfter = await page.evaluate(() => window.__campfire.addresses());
+  for (const a of addrsBefore) assert.ok(addrsAfter.includes(a), 'an address is gone after the rescan');
   await page.evaluate(() => window.__campfire.go('settings'));
   await waitScreen(page, 'settings');
-  assert.equal(await page.isVisible(tid('find-coins')), false, 'offered only while the wallet does not scan');
+  assert.equal(await page.isVisible(tid('rescan-row')), true, 'Rescan stays in Settings');
 });
 
 test('IP privacy: the page contacted only this origin and the chosen node; the guard refused nothing', async () => {

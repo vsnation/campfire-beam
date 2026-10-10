@@ -41,7 +41,7 @@ export default function unlock(app, params = {}) {
   async function opened(dbPass) {
     app.dbPass = dbPass;
     pw.value = '';
-    if (!app.record.setupDone) return app.go(app.prefs.ipAck ? 'fastStart' : 'ipNotice', { first: true });
+    if (!app.record.setupDone) return app.go('fastStart', { first: true });
     put(msg, notice('info', 'Opening your wallet…'));
     try {
       // Kept running behind the lock for a payment under way: carry on with it.

@@ -40,10 +40,8 @@ export async function restoreFunder(page, words, password, prefix = 'live-A') {
   await page.fill(tid('pw1'), password);
   await page.fill(tid('pw2'), password);
   await page.click(tid('save-password'));
-  await page.waitForFunction(() => ['passkeySetup', 'ipNotice'].includes(document.getElementById('app').dataset.screen), null, { timeout: 30000 });
+  await page.waitForFunction(() => ['passkeySetup', 'ipNotice', 'fastStart'].includes(document.getElementById('app').dataset.screen), null, { timeout: 30000 });
   if ((await page.evaluate(() => document.getElementById('app').dataset.screen)) === 'passkeySetup') await page.click(tid('passkey-skip'));
-  await waitScreen(page, 'ipNotice');
-  await page.click(tid('ip-connect'));
   await waitScreen(page, 'fastStart');
   await shot(page, `${prefix}-02-fast-start-restore`);
   await page.click(tid('fast-download'));

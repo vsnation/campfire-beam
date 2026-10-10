@@ -5,7 +5,7 @@
   "rules_signature_contains": "3928666-96df3f33ee02ad9e",
   "files": {
     "wasm-client.js": "f4e61c591a1882f2129407c1ab9430dd83019910e235374c89a30af994f25e82",
-    "wasm-client.wasm": "760eb2c769b3e557cc13bdb67686fc99584d97b6cb25ee21b0d13f408f484ce3",
+    "wasm-client.wasm": "8dd836cc1193ce9710a4aabedb6cecc1b5d41ff864544c0565eb7207b80c22dd",
     "wasm-client.worker.js": "eff6668e83689221c3515bd0b29bf9db9a1c8067a73213be4abe142f396a4e0e"
   },
   "patches": [
@@ -14,6 +14,7 @@
     "scripts/beam/wasm/patches/0103-wasm-configured-node-only.patch",
     "scripts/beam/wasm/patches/0104-wasm-connection-events.patch",
     "scripts/beam/wasm/patches/0105-wasm-rekey-file-for-export.patch",
-    "scripts/beam/wasm/patches/0106-wasm-export-owner-key.patch"
+    "scripts/beam/wasm/patches/0106-wasm-export-owner-key.patch",
+    "scripts/beam/wasm/patches/0107-wasm-rescan.patch"
   ]
 }

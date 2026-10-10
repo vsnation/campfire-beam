@@ -1,0 +1,175 @@
+Campfire wasm patch 0107: Rescan.
+
+A wallet restored from its 12 words finds its coins by reading BEAM's
+recovery snapshot once, then the blocks after it. When a balance is still
+wrong (the snapshot was skipped or interrupted, or another copy of the seed
+spent coins while this wallet was not reading blocks), BEAM's wallets offer
+Rescan: Wallet::Rescan forgets every coin, except those a transaction under
+way is creating, and finds them again from the blockchain. Without an owned
+node that means reading every block since genesis, an hour or more in a
+browser, and the wasm client did not expose it at all.
+
+This adds WasmWalletClient.setRescan(bool), called before startWallet()
+together with importRecovery/importRecoveryFromFile. The snapshot import
+then runs as WalletDB::RescanFromRecovery: the coins and shielded coins are
+forgotten (those created by pending, in-progress or registering
+transactions are kept, as Wallet::Rescan keeps them), the stored UTXO events
+are dropped, and the snapshot is imported, all in one database transaction.
+If the snapshot cannot be read, the transaction is rolled back and the
+wallet is exactly as it was. Transaction history and addresses are kept.
+
+--- a/wallet/core/wallet_db.h
++++ b/wallet/core/wallet_db.h
+@@ -480,6 +480,8 @@
+ 
+ 		// returns false if callback asked to stop verification.
+ 		bool ImportRecovery(const std::string& path, INegotiatorGateway& gateway, IRecoveryProgress&);
++		// Campfire (wasm patch 0107): ImportRecovery after forgetting every coin, as a rescan.
++		virtual bool RescanFromRecovery(const std::string& path, INegotiatorGateway& gateway, IRecoveryProgress& prog) { return false; }
+ 
+         // Allocates new Key ID, used for generation of the blinding factor
+         // Will return the next id starting from a random base created during wallet initialization
+@@ -829,6 +831,8 @@
+         bool get_AppData(const Blob& name, const Blob&, ByteBuffer&) override;
+         void set_AppData(const Blob& name, const Blob&, const Blob*) override;
+         void ClearAppData(const Blob& name) override;
++
++        bool RescanFromRecovery(const std::string& path, INegotiatorGateway& gateway, IRecoveryProgress& prog) override; // Campfire (wasm patch 0107)
+ 
+     private:
+         static std::shared_ptr<WalletDB> initBase(const std::string& path, const SecString& password, bool separateDBForPrivateData);
+--- a/wallet/core/wallet_db.cpp
++++ b/wallet/core/wallet_db.cpp
+@@ -3034,6 +3034,56 @@
+         }
+         return false;
+ 	}
++
++    // Campfire (wasm patch 0107): Rescan from BEAM's recovery snapshot.
++    // Wallet::Rescan forgets every coin, except those a transaction under way is
++    // creating, and finds them again from the blockchain; a wallet without an
++    // owned node does that by reading every block since genesis. Here they are
++    // found again from the snapshot instead, so a coin that another copy of the
++    // seed spent while this wallet was not reading blocks stops showing as there.
++    // Forgetting and importing are one database transaction: if the snapshot
++    // cannot be read, the wallet is exactly as it was.
++    bool WalletDB::RescanFromRecovery(const std::string& path, INegotiatorGateway& gateway, IRecoveryProgress& prog)
++    {
++        flushDB(); // what came before is kept, whatever happens below
++
++        std::vector<Coin> keep;
++        std::vector<ShieldedCoin> keepShielded;
++        for (const auto& tx : getTxHistory(TxType::ALL, 0, std::numeric_limits<int>::max()))
++        {
++            if (tx.m_status != TxStatus::Pending && tx.m_status != TxStatus::InProgress && tx.m_status != TxStatus::Registering)
++                continue;
++            const auto created = getCoinsCreatedByTx(tx.m_txId);
++            keep.insert(keep.end(), created.begin(), created.end());
++            auto sc = getShieldedCoin(tx.m_txId);
++            if (sc && sc->m_createTxId && *sc->m_createTxId == tx.m_txId)
++                keepShielded.push_back(*sc);
++        }
++
++        bool ok = false;
++        try
++        {
++            clearCoins();
++            clearShieldedCoins();
++            saveCoins(keep);
++            for (const auto& sc : keepShielded)
++                saveShieldedCoin(sc);
++            deleteEventsFrom(0);
++            ok = ImportRecovery(path, gateway, prog);
++        }
++        catch (...)
++        {
++            rollbackDB();
++            throw;
++        }
++        if (!ok)
++        {
++            rollbackDB();
++            return false;
++        }
++        flushDB();
++        return true;
++    }
+ 
+     void IWalletDB::get_SbbsPeerID(ECC::Scalar::Native& sk, PeerID& pid, uint64_t ownID) const
+     {
+--- a/wallet/client/wallet_client.h
++++ b/wallet/client/wallet_client.h
+@@ -127,6 +127,8 @@
+ 
+         IWalletModelAsync::Ptr getAsync();
+         Wallet::Ptr getWallet(); // can return null
++        // Campfire (wasm patch 0107): importRecovery forgets every coin first (a rescan). Set before start().
++        void setRescanOnImport(bool enable) { m_RescanOnImport = enable; }
+         IWalletDB::Ptr getWalletDB();
+         NodeNetwork::Ptr getNodeNetwork(); // may return null
+ 
+@@ -475,6 +477,7 @@
+         beam::Height m_currentHeight = 0;
+         bool m_isConnectionTrusted = false;
+         bool m_isSynced = false;
++        bool m_RescanOnImport = false; // Campfire (wasm patch 0107)
+         std::unique_ptr<Filter> m_shieldedPer24hFilter;
+         beam::wallet::WalletStatus m_status;
+         std::vector<std::pair<beam::Height, beam::TxoID>> m_shieldedCountHistoryPart;
+--- a/wallet/client/wallet_client.cpp
++++ b/wallet/client/wallet_client.cpp
+@@ -2128,7 +2128,9 @@
+         {
+             if (auto w = getWallet())
+             {
+-                if (!m_walletDB->ImportRecovery(path, *w, *this))
++                // Campfire (wasm patch 0107): a rescan forgets every coin first.
++                const bool ok = m_RescanOnImport ? m_walletDB->RescanFromRecovery(path, *w, *this) : m_walletDB->ImportRecovery(path, *w, *this);
++                if (!ok)
+                 {
+                     onWalletError(ErrorType::ImportRecoveryError);
+                 }
+--- a/wasmclient/wasmclient.cpp
++++ b/wasmclient/wasmclient.cpp
+@@ -503,6 +503,17 @@
+     {
+         AssertMainThread();
+         m_BodyRequests = enable;
++    }
++
++    // Campfire (wasm patch 0107): Rescan. With a snapshot set by
++    // importRecovery/importRecoveryFromFile, the wallet forgets every coin
++    // (except those a payment under way is creating) and finds them again from
++    // the snapshot, then reads the blocks after it; if the snapshot cannot be
++    // read, nothing changes. Call before startWallet().
++    void SetRescan(bool enable)
++    {
++        AssertMainThread();
++        m_Rescan = enable;
+     }
+ 
+     // Campfire (wasm patch 0106): "Show owner key". With the owner key a node
+@@ -652,6 +663,7 @@
+ 
+             if (!m_CurrentRecoveryFile.empty())
+             {
++                m_Client->setRescanOnImport(m_Rescan); // Campfire (wasm patch 0107)
+                 m_Client->getAsync()->importRecovery(std::move(m_CurrentRecoveryFile)); // m_CurrentRecoveryFile should be cleared 
+             }
+             m_Client->getAsync()->enableBodyRequests(m_BodyRequests); // Campfire: was always true
+@@ -1180,6 +1192,7 @@
+     IWalletApi::Ptr m_WalletApi;
+     bool m_Headless = false;
+     bool m_BodyRequests = true; // Campfire: upstream behaviour unless the app opts out
++    bool m_Rescan = false; // Campfire (wasm patch 0107)
+     std::string m_CurrentRecoveryFile;
+     // Campfire (wasm patch 0106): exportOwnerKey callbacks, main thread only.
+     std::map<uint32_t, val> m_OwnerKeyCallbacks;
+@@ -1215,6 +1228,7 @@
+         .function("setApproveSendHandler", &WasmWalletClient::SetApproveSendHandler)
+         .function("setApproveContractInfoHandler", &WasmWalletClient::SetApproveContractInfoHandler)
+         .function("setBodyRequests", &WasmWalletClient::SetBodyRequests)
++        .function("setRescan", &WasmWalletClient::SetRescan) // Campfire: wasm patch 0107
+         .function("createAppAPI", &WasmWalletClient::CreateAppAPI)
+         .function("createAppAPI", &WasmWalletClient::CreateAppAPI2)
+         .function("createAppAPI", &WasmWalletClient::CreateAppAPI3)

@@ -55,7 +55,6 @@ export const DEFAULT_PREFS = {
   // The person says their own node runs with this wallet's owner key.
   ownNodeKey: false,
   autoLockMin: 5,
-  ipAck: false,
   a2hsDismissed: false,
 };
 

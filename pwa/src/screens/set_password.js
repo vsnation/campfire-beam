@@ -53,7 +53,7 @@ export default function setPassword(app) {
       app.setup = null;
       // The wallet exists: no setup step before this is a Back target any more.
       if (await passkeyAvailable()) app.go('passkeySetup', { first: true }, { reset: true });
-      else app.go(app.prefs.ipAck ? 'fastStart' : 'ipNotice', { first: true }, { reset: true });
+      else app.go('fastStart', { first: true }, { reset: true });
     } catch (e) {
       cta.disabled = false;
       cta.textContent = 'Protect my wallet';

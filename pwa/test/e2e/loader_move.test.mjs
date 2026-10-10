@@ -115,7 +115,7 @@ async function installOldThenUpdate(label, { refuseLoaderAfterCheck = false } = 
     await sleep(1000);
   }
   const password = `move-${randomBytes(6).toString('hex')}`;
-  await createWallet(page, { password });
+  await createWallet(page, { password, olderRelease: true }); // 0.1.8 asks for the IP notice in setup
   await waitHome(page, { timeout: 5 * 60000 });
   point(next);
   await page.evaluate(() => window.__campfire.go('settings'));

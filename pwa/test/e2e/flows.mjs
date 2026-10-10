@@ -5,11 +5,11 @@ import { waitScreen, shot, sleep } from './harness.mjs';
 const tid = (id) => `[data-testid="${id}"]`;
 
 /**
- * Welcome -> words -> confirm -> password -> (passkey) -> IP notice -> Connect.
+ * Welcome -> words -> confirm -> password -> (passkey) -> it connects (no IP notice in setup).
  * A new wallet then opens by itself (no snapshot download, no block scan).
  * Returns the words (throwaway wallets only) and when Connect was tapped.
  */
-export async function createWallet(page, { password, passkey = false, shots = null }) {
+export async function createWallet(page, { password, passkey = false, shots = null, olderRelease = false }) {
   await waitScreen(page, 'welcome', 60000);
   if (shots) await shot(page, `${shots}-01-welcome`);
   await page.click(tid('create'));
@@ -29,12 +29,12 @@ export async function createWallet(page, { password, passkey = false, shots = nu
     await page.click(`[data-position="${pos}"] [data-word="${words[pos - 1]}"]`);
   }
   await page.click(tid('confirm-words'));
-  await finishProtect(page, { password, passkey, shots });
+  await finishProtect(page, { password, passkey, shots, olderRelease });
   const connectedAt = Date.now();
   return { words, connectedAt };
 }
 
-/** Restore -> paste words -> password -> (skip passkey) -> IP notice -> download the snapshot. */
+/** Restore -> paste words -> password -> (skip passkey) -> download the snapshot. */
 export async function restoreWallet(page, { words, password, shots = null }) {
   await waitScreen(page, 'welcome', 60000);
   await page.click(tid('restore'));
@@ -50,23 +50,32 @@ export async function restoreWallet(page, { words, password, shots = null }) {
   await page.click(tid('fast-download'));
 }
 
-async function finishProtect(page, { password, passkey, shots }) {
+async function finishProtect(page, { password, passkey, shots, olderRelease = false }) {
   await waitScreen(page, 'setPassword');
   await page.fill(tid('pw1'), password);
   await page.fill(tid('pw2'), password);
   if (shots) await shot(page, `${shots}-05-password`);
   await page.click(tid('save-password'));
-  await page.waitForFunction(() => ['passkeySetup', 'ipNotice', 'fastStart'].includes(document.getElementById('app').dataset.screen), null, { timeout: 30000 });
+  await page.waitForFunction(() => ['passkeySetup', 'ipNotice', 'fastStart', 'home'].includes(document.getElementById('app').dataset.screen), null, { timeout: 30000 });
   if ((await page.evaluate(() => document.getElementById('app').dataset.screen)) === 'passkeySetup') {
     if (shots) await shot(page, `${shots}-06-passkey`);
     if (passkey) await page.click(tid('passkey-on'));
     else await page.click(tid('passkey-skip'));
   }
-  await waitScreen(page, 'ipNotice', 30000);
-  if (shots) await shot(page, `${shots}-07-ip-notice`);
-  await page.click(tid('ip-how'));
-  if (shots) await shot(page, `${shots}-08-ip-notice-details`);
-  await page.click(tid('ip-connect'));
+  // Releases before 0.2.6 asked for the IP notice during setup; a test installing one taps through it.
+  if (olderRelease) {
+    await page.waitForFunction(() => ['ipNotice', 'fastStart', 'home'].includes(document.getElementById('app').dataset.screen), null, { timeout: 30000 });
+    if ((await page.evaluate(() => document.getElementById('app').dataset.screen)) === 'ipNotice') await page.click(tid('ip-connect'));
+    return;
+  }
+  await skipsIpNotice(page);
+}
+
+/** Setup goes straight to connecting: the IP privacy notice lives in Settings only (owner, 2026-10-10). */
+export async function skipsIpNotice(page) {
+  await page.waitForFunction(() => ['ipNotice', 'fastStart', 'home'].includes(document.getElementById('app').dataset.screen), null, { timeout: 30000 });
+  const s = await page.evaluate(() => document.getElementById('app').dataset.screen);
+  if (s === 'ipNotice') throw new Error('setup showed the IP privacy notice; it belongs in Settings only');
 }
 
 export async function waitHome(page, { timeout = 15 * 60000, shots = null } = {}) {

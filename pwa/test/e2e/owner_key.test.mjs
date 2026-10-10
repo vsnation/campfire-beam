@@ -29,7 +29,7 @@ import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PWA, startServer, launch, recordedPage, waitScreen, foreignHosts, addVirtualAuthenticator, sleep, SHOTS } from './harness.mjs';
-import { createWallet, waitHome, unlockWithPassword } from './flows.mjs';
+import { createWallet, waitHome, unlockWithPassword, skipsIpNotice } from './flows.mjs';
 import { makeWalletDb, cliVersion, cliOwnerKey, nodeReadsOwnerKey, WANT_CORE, BEAM_CLI, BEAM_NODE } from './walletdb.mjs';
 import { looksLikeOwnerKey, OWNER_KEY_TEXT as T } from '../../src/lib/owner_key.js';
 
@@ -318,10 +318,9 @@ test('an imported wallet.db (made by BEAM\'s CLI): the same flow, and the key BE
     await p2.setInputFiles(tid('import-file'), wdb.path);
     await p2.fill(tid('import-pw'), wdb.password);
     await p2.click(tid('import-submit'));
-    await p2.waitForFunction(() => ['passkeySetup', 'ipNotice'].includes(document.getElementById('app').dataset.screen), null, { timeout: 180000 });
+    await p2.waitForFunction(() => ['passkeySetup', 'ipNotice', 'fastStart', 'home'].includes(document.getElementById('app').dataset.screen), null, { timeout: 180000 });
     if ((await screenName(p2)) === 'passkeySetup') await p2.click(tid('passkey-skip'));
-    await waitScreen(p2, 'ipNotice', 30000);
-    await p2.click(tid('ip-connect'));
+    await skipsIpNotice(p2);
     await waitHome(p2, { timeout: 3 * 60000 });
     assert.equal((await p2.evaluate(() => window.__campfire.record())).imported, true);
     await openBackup(p2);

@@ -208,7 +208,7 @@ export class Wallet {
    * a random start, and the next node whenever this one fails or stalls) or the
    * person's own node "host:port" (only that node, never a fallback).
    */
-  async start({ dbPass, node, recovery = null, onImport = null, bodyRequests = true }) {
+  async start({ dbPass, node, recovery = null, onImport = null, bodyRequests = true, rescan = false }) {
     if (this.session) throw new EngineError('running', 'The wallet is already open.');
     this.gen = (this.gen || 0) + 1;
     this.state = this.emptyState();
@@ -227,6 +227,7 @@ export class Wallet {
       node: this.state.node,
       recovery,
       bodyRequests,
+      rescan,
       onImport: (d, t) => {
         this.state.importProgress = { done: d, total: t };
         this.emit();

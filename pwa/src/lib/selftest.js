@@ -8,7 +8,7 @@
 // it with a password, starts it the way a new wallet starts (no snapshot, no
 // block scan), waits for Synced, makes a receive address, checks which address
 // types a scan-less wallet refuses, reloads, unlocks again, checks the address
-// survived, then imports the recovery snapshot (the restore / "find coins"
+// survived, then imports the recovery snapshot (the restore / Rescan
 // path) and waits for Synced again. The result is POSTed to /__dev/result,
 // which the dev server prints; the throwaway wallet is deleted at the end.
 //
@@ -122,7 +122,6 @@ export async function runSelfTest(app) {
       const password = `selftest-${toHex(randomBytes(6))}`;
       app.setup = { mode: 'create', words: await generatePhrase() };
       await createWallet(app, password);
-      await app.setPrefs({ ipAck: true });
       result.steps.created = true;
       log('throwaway wallet created');
 
@@ -184,7 +183,7 @@ export async function runSelfTest(app) {
     result.steps.resyncAfterReloadMs = Math.round(performance.now() - tr);
     log(`synced again in ${result.steps.resyncAfterReloadMs} ms`);
 
-    // The restore / "find coins" path: snapshot download + import, then scanning on - where this
+    // The restore / Rescan path: snapshot download + import, then scanning on - where this
     // address has the snapshot relay. A plain static host (GitHub Pages) has none: skipped, said so.
     result.env.crossOriginIsolated = self.crossOriginIsolated;
     if (!(await recoverySize())) {
@@ -279,7 +278,6 @@ export async function runImportSelfTest(app) {
       log(`right password opens it: ${result.steps.rightPasswordOpens} (${result.steps.rightPasswordMs} ms)`);
       if (!result.steps.rightPasswordOpens) throw new Error('the right password did not open the file');
       await importWallet(app, info.password);
-      await app.setPrefs({ ipAck: true });
       result.steps.filesAfterImport = await walletFiles();
       const ts = performance.now();
       await wallet.start({ dbPass: app.dbPass, node: app.prefs.node, bodyRequests: false });

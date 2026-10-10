@@ -23,7 +23,7 @@ import { randomBytes } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PWA, startServer, launch, recordedPage, shot, waitScreen, foreignHosts, waitHeightNearExplorer, sleep, SHOTS, NODE_HOSTS } from './harness.mjs';
-import { waitHome, waitSynced, unlockWithPassword } from './flows.mjs';
+import { waitHome, waitSynced, unlockWithPassword, skipsIpNotice } from './flows.mjs';
 import { makeWalletDb, cliVersion, sha256File, openWithCli, WANT_CORE, BEAM_CLI } from './walletdb.mjs';
 import { IMPORT_PROBLEM, NO_PHRASE_NOTICE } from '../../src/lib/wallet_file.js';
 
@@ -210,8 +210,7 @@ test('the right password: the wallet comes in, connects and is Synced on mainnet
   await page.waitForFunction(() => ['passkeySetup', 'ipNotice', 'fastStart', 'home'].includes(document.getElementById('app').dataset.screen), null, { timeout: 180000 });
   console.log(`# right password: wallet added after ${Date.now() - t0} ms`);
   if ((await screenName()) === 'passkeySetup') await page.click(tid('passkey-skip'));
-  await waitScreen(page, 'ipNotice', 30000);
-  await page.click(tid('ip-connect'));
+  await skipsIpNotice(page);
   const connectedAt = Date.now();
   await waitHome(page, { timeout: 5 * 60000 });
   await waitSynced(page, 5 * 60000);
@@ -275,11 +274,12 @@ test('the backup prompt leads to Export wallet.db; the export opens in BEAM\'s n
   await waitSynced(page, 180000);
 });
 
-test('backup shows the no-phrase notice and never words; nothing offers a rescan', { timeout: 120000 }, async () => {
+test('backup shows the no-phrase notice and never words; Rescan is offered without words', { timeout: 120000 }, async () => {
   await page.evaluate(() => window.__campfire.go('settings'));
   await waitScreen(page, 'settings');
   assert.match(await page.textContent(tid('backup-row')), /wallet\.db file and its password/);
-  assert.equal(await page.isVisible(tid('find-coins')), false, 'no "Find coins" scan for an imported wallet');
+  // Rescan keeps wallet.db and rebuilds only its coins, so an imported wallet gets it too.
+  assert.equal(await page.isVisible(tid('rescan-row')), true, 'Rescan is offered for an imported wallet');
   assert.ok(!/12 words/.test(await page.textContent('main')), 'Settings does not mention 12 words for it');
   await shot(page, 'import-08-settings');
   await page.click(tid('backup-row'));
@@ -287,9 +287,15 @@ test('backup shows the no-phrase notice and never words; nothing offers a rescan
   assert.equal((await page.textContent(tid('no-recovery-phrase'))).trim(), NO_PHRASE_NOTICE);
   assert.equal(await page.locator('.word, .words, [data-testid="words"], [data-testid="reveal"]').count(), 0, 'no word grid, no reveal button');
   await shot(page, 'import-09-backup-no-phrase');
-  // A screen that would make or show words cannot be reached for it either.
+  // Its Rescan screen never mentions words; Not now leaves the wallet running.
   await page.evaluate(() => window.__campfire.go('fastStart', { rescan: true }));
+  await waitScreen(page, 'fastStart');
+  await page.waitForSelector(tid('fast-cancel'));
+  assert.ok(!/12 words/.test(await page.textContent('main')), 'the Rescan screen does not mention 12 words for it');
+  await shot(page, 'import-09b-rescan-imported');
+  await page.click(tid('fast-cancel'));
   await waitScreen(page, 'settings');
+  await waitSynced(page, 180000);
   await page.evaluate(() => window.__campfire.go('deleteWallet'));
   await waitScreen(page, 'deleteWallet');
   const del = await page.textContent('main');

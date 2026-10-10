@@ -11,12 +11,14 @@
  *     file and password (it has no words here, and nothing offers to rebuild it from words).
  *   - "What if this app's address dies?" -> Check for updates also asks public copies of the
  *     release, and "Update from another address" takes any copy; both say the app keeps working.
+ *   - "My balance is wrong / coins are missing" -> Rescan, for every wallet (restored, new or
+ *     imported): it rebuilds the coins from BEAM's snapshot and keeps history and addresses.
  */
 import { h, put } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { screen, toast } from '../lib/ui.js';
 import { isOwnNode } from '../lib/own_node.js';
-import { hasPasskey, removePasskey, scanEnabled, isImported } from '../lib/session.js';
+import { hasPasskey, removePasskey, isImported } from '../lib/session.js';
 import { passkeyAvailable } from '../lib/passkey.js';
 import { confirmIdentity } from '../lib/auth_ui.js';
 import { lastCheckText } from '../lib/update.js';
@@ -91,8 +93,9 @@ export default function settings(app) {
     h(
       'div',
       { class: 'card list' },
-      // Imported wallets have no words and nothing here rebuilds or rescans them (as in the desktop app).
-      scanEnabled(app) || isImported(app) ? null : row('download', 'Find coins from other wallets', 'If these 12 words were used in another app (one-time 330 MB scan)', () => app.go('fastStart', { rescan: true }), { 'data-testid': 'find-coins' }),
+      // Rescan keeps wallet.db and rebuilds only its coins (engine patch 0107), so it suits every
+      // wallet, an imported one too: nothing is made from words.
+      row('refresh', 'Rescan', 'If your balance looks wrong', () => app.go('fastStart', { rescan: true }), { 'data-testid': 'rescan-row' }),
       updRow,
       otherRow,
       row('info', 'About', null, () => app.go('about'), { 'data-testid': 'about' }),

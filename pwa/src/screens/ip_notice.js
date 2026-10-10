@@ -1,7 +1,8 @@
-/* IP privacy notice (before the first connection to any BEAM node; also Settings -> IP privacy)
- * Spec: ONE job: tell the person, before anything connects, who can see their IP address.
- *       Primary CTA: "Connect" (secondary: "How to hide my IP"). In Settings: "Done".
- *       Taps from app open: right after setup (create/restore), once per device.
+/* IP privacy (Settings -> IP privacy). Not a setup step: create, restore and import go straight
+ * to connecting (owner, 2026-10-10: optional, never in the way of a new wallet).
+ * Spec: ONE job: say who can see the person's IP address, and how to hide it.
+ *       Primary CTA: "Done" (secondary: "How to hide my IP").
+ *       Taps from app open: 2 (Settings -> IP privacy).
  * Exit-intent reasons and answers:
  *   - "A privacy coin that leaks my IP?" -> said first, with the two fixes that work on an iPhone.
  *   - "Is Private Relay enough?" -> honest: Apple documents it for Safari; for a Home Screen
@@ -17,8 +18,7 @@ import { isImported } from '../lib/session.js';
 export const IP_NOTICE_TEXT =
   'The BEAM node you connect to can see your IP address. To hide it, turn on iCloud Private Relay (Settings → [your name] → iCloud → Private Relay) or use a VPN.';
 
-export default function ipNotice(app, params = {}) {
-  const fromSettings = !params.first;
+export default function ipNotice(app) {
   const details = h(
     'div',
     { class: 'card hidden', 'data-testid': 'ip-details' },
@@ -37,16 +37,10 @@ export default function ipNotice(app, params = {}) {
     toggle.textContent = details.classList.contains('hidden') ? 'How to hide my IP' : 'Hide details';
   }, { 'data-testid': 'ip-how' });
 
-  const cta = fromSettings
-    ? primary('Done', () => app.go('settings'))
-    : primary('Connect', async () => {
-        cta.disabled = true;
-        await app.setPrefs({ ipAck: true, ipAckAt: Date.now() });
-        app.go('fastStart', { first: true }, { replace: true });
-      }, { 'data-testid': 'ip-connect' });
+  const cta = primary('Done', () => app.back('settings'), { 'data-testid': 'ip-done' });
 
   const el = screen(
-    { title: 'IP privacy', back: fromSettings ? () => app.go('settings') : null, actions: [cta, toggle] },
+    { title: 'IP privacy', back: () => app.back('settings'), actions: [cta, toggle] },
     h('div', { class: 'status-icon wait' }, icon('globe')),
     h('p', { class: 'lead', 'data-testid': 'ip-text', text: IP_NOTICE_TEXT }),
     details,

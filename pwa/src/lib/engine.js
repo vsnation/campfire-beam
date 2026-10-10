@@ -647,9 +647,12 @@ export class WalletSession {
  * bodies: right for a freshly generated seed, which has no history. Such a
  * wallet sees the payments it negotiates itself, but not payments to
  * offline/max-privacy addresses or coins moved by another copy of the seed.
+ * rescan=true (engine patch 0107, needs `recovery`): the wallet first forgets
+ * every coin, except those a payment under way is creating, and finds them
+ * again from the snapshot; if the snapshot cannot be read nothing changes.
  * @returns {Promise<{session: WalletSession, imported: Promise<void>|null}>}
  */
-export async function startWallet({ dbPass, node, recovery = null, onImport = null, bodyRequests = true }) {
+export async function startWallet({ dbPass, node, recovery = null, onImport = null, bodyRequests = true, rescan = false }) {
   const M = await loadEngine();
   if (abortedWhy) throw new EngineError('aborted', 'The wallet engine stopped working in this page. Reload to start it again.');
   if (!M.WasmWalletClient.IsInitialized(DB_PATH)) throw new EngineError('missing', 'There is no wallet on this device.');
@@ -657,6 +660,13 @@ export async function startWallet({ dbPass, node, recovery = null, onImport = nu
   const client = new M.WasmWalletClient(DB_PATH, dbPass, node);
   if (typeof client.setBodyRequests === 'function') client.setBodyRequests(Boolean(bodyRequests || recovery));
   else if (!bodyRequests && !recovery) throw new EngineError('engine', 'This engine build cannot start a wallet without scanning (needs patch 0102).');
+  if (rescan) {
+    if (!recovery || typeof client.setRescan !== 'function') {
+      client.delete();
+      throw new EngineError('engine', recovery ? 'This engine build cannot rescan (needs patch 0107).' : 'A rescan needs the snapshot.');
+    }
+    client.setRescan(true);
+  }
   const session = new WalletSession(M, client);
   let imported = null;
   if (recovery) {

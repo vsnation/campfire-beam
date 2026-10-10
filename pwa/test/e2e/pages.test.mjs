@@ -247,7 +247,7 @@ test('the publicly served release (installed, with a wallet) takes this one thro
     await waitScreen(page, 'welcome', 120000);
     assert.equal(await served(), release.version);
     assert.equal(await page.evaluate(() => self.crossOriginIsolated), true, `${release.version} runs isolated on the static host`);
-    await createWallet(page, { password: PASSWORD });
+    await createWallet(page, { password: PASSWORD, olderRelease: true }); // the public release may predate 0.2.6
     await waitHome(page, { timeout: 5 * 60000 });
     await waitSynced(page, 5 * 60000);
     const addrsBefore = await page.evaluate(() => window.__campfire.addresses());

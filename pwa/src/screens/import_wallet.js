@@ -180,7 +180,7 @@ export default function importWalletScreen(app) {
       pw.value = '';
       if (destroyed) return;
       if (await passkeyAvailable()) app.go('passkeySetup', { first: true }, { reset: true });
-      else app.go(app.prefs.ipAck ? 'fastStart' : 'ipNotice', { first: true }, { reset: true });
+      else app.go('fastStart', { first: true }, { reset: true });
     } catch (e) {
       if (destroyed) return;
       setBusy(null);

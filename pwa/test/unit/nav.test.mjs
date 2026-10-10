@@ -96,7 +96,6 @@ test('replace moves on without leaving the screen as a Back target; reset forget
   s.go('setPassword');
   s.go('passkeySetup', { first: true }, { reset: true });
   assert.deepEqual(s.nav.names(), []);
-  s.go('ipNotice', { first: true }, { replace: true });
   s.go('fastStart', { first: true }, { replace: true });
   assert.deepEqual(s.nav.names(), []);
 });

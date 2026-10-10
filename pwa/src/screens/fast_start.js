@@ -1,10 +1,11 @@
-/* Getting ready (after setup) / Find coins from other wallets (Settings)
+/* Getting ready (after setup) / Rescan (Settings)
  * Spec: ONE job: get the wallet in step with the BEAM network.
  *       New wallet, or one imported from its wallet.db: no choice to make - it connects and opens
- *       (no download, ~5 s). An imported wallet is never offered the snapshot scan.
- *       Restore / "Find coins": primary CTA "Download <size> and start"
- *       (secondary on restore: "Skip and scan instead").
- *       Taps from app open: the last setup screen (once per device); Settings -> 2.
+ *       (no download, ~5 s).
+ *       Restore: primary CTA "Download <size> and start" (secondary: "Skip and scan instead").
+ *       Rescan (any wallet): primary CTA "Download <size> and rescan"; the coins are forgotten and
+ *       found again from the snapshot, history and addresses stay (engine patch 0107).
+ *       Taps from app open: the last setup screen (once per device); Settings -> Rescan: 2.
  * Exit-intent reasons and answers:
  *   - "330 MB?!" -> only for restoring or finding coins, said before it starts, with why. "Wi-Fi is
  *     better" only when the browser says this is mobile data (it never says "use Wi-Fi" to someone
@@ -12,13 +13,16 @@
  *   - "Is it stuck?" -> live MB / percent, then the reading step with its own percent.
  *   - "I left the app and it stopped" -> said up front: keep it open; Try again starts over.
  *   - "Something failed" -> what happened, and the way on: try again (or skip and scan on restore).
+ *     A rescan that fails changes nothing, and leaving it starts the wallet again as it was.
+ *   - "Will a rescan break my payment?" -> it waits: with a payment under way it says so and
+ *     points to Activity instead of starting.
  *   - "The BEAM Campfire site is gone" -> the snapshot can come from BEAM directly: download
  *     mainnet_recovery.bin yourself (the exact address is shown) and choose the file; it is read on
  *     this device and checked by the engine exactly like the downloaded one.
  */
 import { h, put } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
-import { primary, secondary, textButton, notice, progressBar } from '../lib/ui.js';
+import { primary, secondary, textButton, notice, progressBar, toast } from '../lib/ui.js';
 import { downloadRecovery, recoverySource, readRecoveryFile, RECOVERY_APPROX_MB, RECOVERY_OFFICIAL, RECOVERY_FALLBACK_HOST } from '../lib/recovery.js';
 import { markSetupDone, scanEnabled, setScan, isImported } from '../lib/session.js';
 import { wallet } from '../lib/wallet.js';
@@ -32,10 +36,6 @@ export default function fastStart(app, params = {}) {
     return { el: h('div') };
   }
   const imported = isImported(app);
-  if (params.rescan && imported) {
-    queueMicrotask(() => app.go('settings'));
-    return { el: h('div') };
-  }
   const rescan = Boolean(params.rescan);
   const restoring = Boolean(app.record && app.record.restored);
   const newWallet = !rescan && !restoring;
@@ -50,11 +50,11 @@ export default function fastStart(app, params = {}) {
 
   const body = h('div', { class: 'content' });
   const actions = h('div', { class: 'actions' });
-  const title = rescan ? 'Find coins from other wallets' : 'Getting ready';
+  const title = rescan ? 'Rescan' : 'Getting ready';
   const el = h(
     'main',
     { class: 'screen' },
-    h('header', { class: 'topbar' }, rescan ? h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => phase === 'choose' && app.go('settings') }, icon('back')) : null, h('h1', { text: title })),
+    h('header', { class: 'topbar' }, rescan ? h('button', { class: 'icon-btn', 'aria-label': 'Back', onclick: () => phase === 'choose' && leave() }, icon('back')) : null, h('h1', { text: title })),
     body,
     actions,
   );
@@ -82,7 +82,7 @@ export default function fastStart(app, params = {}) {
     const offerFile = Boolean(errorText) || noRelay;
     const fileButton = (cls) => h('label', { class: `btn ${cls}`, for: 'recovery-file-input', role: 'button', tabindex: '0', 'data-testid': 'recovery-file-choose' }, icon('file'), h('span', { text: 'Use a recovery file I downloaded' }));
     const lead = rescan
-      ? 'This wallet sees the payments it makes and receives itself. If its 12 words were also used in another wallet app, BEAM Campfire can find those coins by reading a snapshot of the BEAM blockchain once.'
+      ? `Rescan rebuilds your balance from the BEAM blockchain. Use it if your balance looks wrong or coins are missing${imported ? '' : ', for example coins sent to these 12 words in another app'}. Your payment history and addresses stay as they are.`
       : noRelay
         ? "To find your coins, BEAM Campfire reads a snapshot of the BEAM blockchain once. This site has no copy of it, so download BEAM's recovery file and choose it below."
         : fromFallback
@@ -97,22 +97,47 @@ export default function fastStart(app, params = {}) {
             notice('info', h('strong', { text: `The file is ${size}. ` }), 'Download it once, then come back and choose it here.')
           : onMobileData()
             ? notice('warn', h('strong', { text: `This is mobile data: the download is ${size}. ` }), 'Wi-Fi is better. Keep BEAM Campfire open until it finishes; leaving the app pauses it.')
-            : notice('info', h('strong', { text: `A one-time download of ${size}. ` }), 'It takes a few minutes. Keep BEAM Campfire open until it finishes: the screen stays on meanwhile, and if it is interrupted it carries on where it stopped.'),
+            : notice('info', h('strong', { text: `${rescan ? 'A download of' : 'A one-time download of'} ${size}. ` }), 'It takes a few minutes. Keep BEAM Campfire open until it finishes: the screen stays on meanwhile, and if it is interrupted it carries on where it stopped.'),
         h('p', { class: 'small', text: `The snapshot is BEAM's own daily file, checked by the wallet engine against the blockchain's proof of work. It is not stored on your phone after it's read.${fromFallback ? ` ${RECOVERY_FALLBACK_HOST} sees your IP address while it downloads.` : ''}` }),
         errorText ? notice('error', errorText) : null,
       ],
       [
         // No snapshot behind this address (a plain static host, or the site is down): the file the
         // person downloads from BEAM becomes the main way; the download stays as a second try.
-        noRelay ? fileButton('btn-primary') : primary(`Download ${size} and start`, startDownload, { 'data-testid': 'fast-download' }),
+        noRelay ? fileButton('btn-primary') : primary(`Download ${size} and ${rescan ? 'rescan' : 'start'}`, startDownload, { 'data-testid': 'fast-download' }),
         noRelay ? secondary('Try the download anyway', startDownload, { 'data-testid': 'fast-download' }) : offerFile ? fileButton('btn-secondary') : null,
         offerFile
           ? h('p', { class: 'small', 'data-testid': 'recovery-file-help' }, "If the download does not work here, download BEAM's recovery file yourself from ", h('a', { class: 'mono', href: `https://${RECOVERY_OFFICIAL}`, target: '_blank', rel: 'noopener noreferrer', 'data-testid': 'recovery-file-link', text: RECOVERY_OFFICIAL }), ' (about 330 MB; tap it, and on iPhone Safari saves it to Files → Downloads), then come back and choose it here. It is read on this device only.')
           : null,
-        restoring ? textButton('Skip and scan instead (an hour or more)', () => runWallet(null, true), { 'data-testid': 'fast-skip' }) : null,
-        rescan ? textButton('Not now', () => app.go('settings'), { 'data-testid': 'fast-cancel' }) : null,
+        restoring && !rescan ? textButton('Skip and scan instead (an hour or more)', () => runWallet(null, true), { 'data-testid': 'fast-skip' }) : null,
+        rescan ? textButton('Not now', leave, { 'data-testid': 'fast-cancel' }) : null,
       ],
     );
+  }
+
+  // A rescan waits for a payment under way: forgetting coins meanwhile could leave it short.
+  function paymentFirst() {
+    phase = 'choose';
+    view(
+      [
+        h('div', { class: 'status-icon wait' }, icon('clock')),
+        h('p', { class: 'lead', text: 'A payment is under way.' }),
+        h('div', { 'data-testid': 'rescan-wait' }, notice('info', 'Rescan once it has finished, so nothing interrupts it. Activity shows it as Completed when it is done.')),
+      ],
+      [primary('Open Activity', () => app.go('activity'), { 'data-testid': 'rescan-activity' }), textButton('Not now', leave, { 'data-testid': 'fast-cancel' })],
+    );
+  }
+
+  // Leaving a rescan: a failed one stopped the wallet (unchanged), so it runs again as it was.
+  async function leave() {
+    if (rescan && !wallet.session) {
+      try {
+        await wallet.start({ dbPass: app.dbPass, node: app.prefs.node, bodyRequests: scanEnabled(app) });
+      } catch {
+        /* Home says the wallet is not connected and offers the way on */
+      }
+    }
+    app.go('settings');
   }
 
   // A locked phone pauses the page: keep the screen on while the snapshot is
@@ -196,12 +221,13 @@ export default function fastStart(app, params = {}) {
     });
     try {
       if (wallet.session) await wallet.stop();
-      await wallet.start({ dbPass: app.dbPass, node: app.prefs.node, recovery: buf, bodyRequests: scan });
+      await wallet.start({ dbPass: app.dbPass, node: app.prefs.node, recovery: buf, bodyRequests: scan, rescan: rescan && Boolean(buf) });
       buf = null;
       off();
       if (scan !== scanEnabled(app)) await setScan(app, scan);
       if (!app.record.setupDone) await markSetupDone(app);
       if (releaseAwake) releaseAwake();
+      if (rescan) toast('Rescan done: your balance is rebuilt from the blockchain.');
       app.go('home');
     } catch (e) {
       off();
@@ -217,6 +243,9 @@ export default function fastStart(app, params = {}) {
             imported ? textButton('Remove it from this device', () => app.go('deleteWallet'), { 'data-testid': 'fast-remove' }) : null,
           ],
         );
+      } else if (rescan && e.code === 'import') {
+        // The engine rolled the rescan back: say so, and that the balance is as it was.
+        choose('The snapshot could not be read, so nothing changed: your balance is as it was. Try again; if it keeps failing, use a recovery file you downloaded.');
       } else choose(e.message || 'The wallet did not start.');
     }
   }
@@ -224,6 +253,8 @@ export default function fastStart(app, params = {}) {
   if (newWallet) {
     // A new seed has no history: start at the network's tip, no download, no scan.
     runWallet(null, false);
+  } else if (rescan && wallet.paymentUnderWay()) {
+    paymentFirst();
   } else {
     recoverySource().then((src) => {
       sizeBytes = src ? src.bytes : null;
