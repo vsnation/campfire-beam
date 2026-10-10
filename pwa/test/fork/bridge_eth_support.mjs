@@ -22,6 +22,8 @@ import { encodeCall, abiDecode, selector } from '../../src/lib/eth/abi.js';
 import { bytesToHex, hexToBytes } from '../../src/lib/eth/hex.js';
 import { EthPipe, isBeamReceiverKey } from '../../src/lib/bridge/eth_pipe.js';
 import { PriceFeed } from '../../src/lib/bridge/prices.js';
+import { BridgeController, POLLING } from '../../src/lib/bridge/controller.js';
+import { MemoryBridgeStore } from '../../src/lib/bridge/store.js';
 import { e2bRelayerFee } from '../../src/lib/bridge/fees.js';
 import { routeById } from '../../src/lib/bridge/routes.js';
 import { PRICES } from '../unit/helpers/bridge_fakes.mjs';
@@ -142,6 +144,11 @@ export const AMOUNTS = Object.freeze({
   dai: 10n * ETHER, // 10 DAI
 });
 
+export const groth = (v) => BigInt(Math.round(v * 1e8));
+
+/** What the controller's BEAM half holds: BEAM for the fees, and each wrapped asset to move back (groth). */
+export const BEAM_BALANCES = Object.freeze({ 0: groth(5000), 36: groth(10), 37: groth(1000), 38: groth(1), 39: groth(1000) });
+
 /** The fee Campfire pays for an e2b crossing at the fixture prices (0.02 BEAM worth). */
 export const e2bFee = (route) => e2bRelayerFee(route, PRICES);
 
@@ -240,7 +247,7 @@ export function fixturePrices(clock = () => Date.now()) {
  * The controller's BEAM half for the fork tests: the receive key, BEAM to pay
  * the network fees with, and a pipe on BEAM that has not seen anything yet.
  */
-export function forkBeamSide({ key = randomReceiverKey(), available = { 0: 5000n * 10n ** 8n } } = {}) {
+export function forkBeamSide({ key = randomReceiverKey(), available = BEAM_BALANCES } = {}) {
   return Object.freeze({
     key,
     receiveKey: async () => Uint8Array.from(key),
@@ -260,11 +267,15 @@ export function forkBeamSide({ key = randomReceiverKey(), available = { 0: 5000n
   });
 }
 
-/** The pending nonce and whether the pool holds anything from `who`: proof that nothing was sent. */
-export async function nothingSentBy(who) {
-  const latest = BigInt(await raw('eth_getTransactionCount', [who.address, 'latest']));
-  const pending = BigInt(await raw('eth_getTransactionCount', [who.address, 'pending']));
-  return { latest, pending, none: latest === pending };
+/**
+ * A BridgeController on the fork: `eth` an EthPipe, `beam` forkBeamSide(),
+ * prices from the fixture; polled by the test (autoPoll off), and an approval
+ * not mined yet is looked at again after 250 ms instead of 15 s.
+ */
+export function forkController(eth, beam, prices = fixturePrices().feed) {
+  const c = new BridgeController({ beam, eth, prices, store: new MemoryBridgeStore(), beamWalletId: 'beam-fork', ethWalletId: 'eth-fork', autoPoll: false, polling: { ...POLLING, ethReceiptMs: 250 } });
+  c.setActive({ visible: true, unlocked: true });
+  return c;
 }
 
 export { routeById };

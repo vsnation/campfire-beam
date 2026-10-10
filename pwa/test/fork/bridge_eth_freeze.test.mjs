@@ -18,31 +18,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ROUTES, routeById } from '../../src/lib/bridge/routes.js';
 import { BridgeError } from '../../src/lib/bridge/beam_pipe.js';
-import { BridgeController } from '../../src/lib/bridge/controller.js';
-import { MemoryBridgeStore, STATES, DIRECTIONS } from '../../src/lib/bridge/store.js';
+import { STATES, DIRECTIONS } from '../../src/lib/bridge/store.js';
 import { BLOCKS } from '../../src/lib/bridge/quote.js';
 import { encodeCall, abiDecode, selector, eventTopic } from '../../src/lib/eth/abi.js';
 import { keccak256 } from '../../src/lib/eth/crypto.js';
 import { bytesToHex, utf8ToBytes } from '../../src/lib/eth/hex.js';
-import { forkProblem, withFork, forkRpc, switchableRpc, freshSigner, ethPipeFor, AMOUNTS, e2bFee, giveTokens, sendAs, raw, call, uint, hex, fixturePrices, forkBeamSide } from './bridge_eth_support.mjs';
+import { forkProblem, withFork, forkRpc, switchableRpc, freshSigner, ethPipeFor, AMOUNTS, e2bFee, giveTokens, sendAs, raw, call, uint, hex, groth, forkController, forkBeamSide } from './bridge_eth_support.mjs';
 
 const skip = await forkProblem();
 const T = { skip: skip || false, timeout: 300000 };
 const MIN = 60000;
-const groth = (v) => BigInt(Math.round(v * 1e8));
-
-/** BEAM the controller's BEAM half has: BEAM for the fees, and each wrapped asset to move back. */
-const BEAM_BALANCES = Object.freeze({ 0: groth(5000), 36: groth(10), 37: groth(1000), 38: groth(1), 39: groth(1000) });
 /** What the quotes to Ethereum move (groth, on each route's BEAM grid, above the bridge fee at the fork's gas). */
 const TO_ETHEREUM = Object.freeze({ beam: groth(1000), eth: groth(0.1), wbtc: groth(0.01), usdt: groth(100), dai: groth(10) });
 
 const isCode = (code, re = null) => (e) => e instanceof BridgeError && e.code === code && (re === null || re.test(e.message));
-
-function controllerFor(eth, beam) {
-  const c = new BridgeController({ beam, eth, prices: fixturePrices().feed, store: new MemoryBridgeStore(), beamWalletId: 'beam-fork', ethWalletId: 'eth-fork', autoPoll: false });
-  c.setActive({ visible: true, unlocked: true });
-  return c;
-}
 
 const amountFor = (route, d) => (d === DIRECTIONS.toBeam ? AMOUNTS[route.id] : TO_ETHEREUM[route.id]);
 
@@ -94,11 +83,11 @@ async function frozenOnFork(t, route, freeze, reasons) {
   const rpc = forkRpc();
   const who = await freshSigner();
   await giveTokens(route, who.address, total);
-  const beam = forkBeamSide({ available: BEAM_BALANCES });
+  const beam = forkBeamSide();
 
   // Before: it can go. This side keeps its "not frozen" answer for quotes.
   const kept = ethPipeFor(who, { rpc });
-  const before = controllerFor(kept, beam);
+  const before = forkController(kept, beam);
   for (const d of [DIRECTIONS.toBeam, DIRECTIONS.toEthereum]) {
     const q = await before.quote(route, d, amountFor(route, d));
     assert.equal(q.block, null, `${d} before the freeze: ${q.block && q.block.title}`);
@@ -110,7 +99,7 @@ async function frozenOnFork(t, route, freeze, reasons) {
   await freeze();
 
   // A quote asked now refuses, both ways, and says why.
-  const asked = controllerFor(ethPipeFor(who, { rpc }), beam);
+  const asked = forkController(ethPipeFor(who, { rpc }), beam);
   for (const d of [DIRECTIONS.toBeam, DIRECTIONS.toEthereum]) {
     const q = await asked.quote(route, d, amountFor(route, d));
     assert.equal(q.canMove, false, d);
@@ -209,7 +198,7 @@ test('fork: with the Ethereum server gone, nothing is quoted and nothing is sign
     const ethRoute = routeById('eth');
     const who = await freshSigner();
     await giveTokens(beamRoute, who.address, AMOUNTS.beam + e2bFee(beamRoute));
-    const beam = forkBeamSide({ available: BEAM_BALANCES });
+    const beam = forkBeamSide();
     const { rpc, state } = await switchableRpc();
     const clock = { t: Date.now() };
     const pipe = ethPipeFor(who, { rpc, clock: () => clock.t });
@@ -235,7 +224,7 @@ test('fork: with the Ethereum server gone, nothing is quoted and nothing is sign
 
     // A screen opened on the dead server quotes nothing. (To BEAM the balances
     // come from that server too, and the quote names the balances.)
-    const ctl = controllerFor(ethPipeFor(who, { rpc }), beam);
+    const ctl = forkController(ethPipeFor(who, { rpc }), beam);
     const expect = [
       [beamRoute, DIRECTIONS.toBeam, BLOCKS.network, "Couldn't read your balances"],
       [beamRoute, DIRECTIONS.toEthereum, BLOCKS.network, "Couldn't check that WBEAM can be moved right now"],
