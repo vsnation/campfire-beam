@@ -45,7 +45,7 @@ import { makeWalletDb, openWithCli, cliVersion, WANT_CORE } from './walletdb.mjs
 import { headersFor, mimeFor, EXPLORER_UPSTREAMS } from '../../tools/headers.mjs';
 import { BUILTIN_SOURCES } from '../../src/lib/update_sources.js';
 
-const PORT = 8793;
+const PORT = Number(process.env.CAMPFIRE_OFFLINE_PORT || 8793);
 const HOST = 'campfire.test';
 const ORIGIN = `http://${HOST}:${PORT}/`;
 const NODE = 'eu-nodes.mainnet.beam.mw:8200';

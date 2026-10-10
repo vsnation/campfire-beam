@@ -28,7 +28,7 @@ import { startStaticHost } from './static_host.mjs';
 import { EXPLORER_UPSTREAMS } from '../../tools/headers.mjs';
 import { verifyReleaseSignature, verifyManifest, verifyFile } from '../../src/lib/release.js';
 
-const PORT = 8797;
+const PORT = Number(process.env.CAMPFIRE_PAGES_PORT || 8797); // and PORT + 1
 const PUBLIC = 'https://vsnation.github.io/beam-campfire-pwa/';
 const PASSWORD = `pages-${Math.random().toString(36).slice(2, 10)}`;
 const tid = (id) => `[data-testid="${id}"]`;

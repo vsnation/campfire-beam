@@ -27,7 +27,7 @@ import { waitHome, waitSynced, unlockWithPassword } from './flows.mjs';
 import { makeWalletDb, cliVersion, sha256File, openWithCli, WANT_CORE, BEAM_CLI } from './walletdb.mjs';
 import { IMPORT_PROBLEM, NO_PHRASE_NOTICE } from '../../src/lib/wallet_file.js';
 
-const PORT = 8792;
+const PORT = Number(process.env.CAMPFIRE_IMPORT_PORT || 8792);
 const NODE = 'eu-nodes.mainnet.beam.mw:8200';
 const tid = (id) => `[data-testid="${id}"]`;
 const pkg = JSON.parse(readFileSync(join(PWA, 'package.json'), 'utf8'));

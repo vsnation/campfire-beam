@@ -18,7 +18,7 @@ import jsQR from 'jsqr';
 import { PWA, startServer, launch, recordedPage, addVirtualAuthenticator, shot, waitScreen, foreignHosts, explorerHeight, waitHeightNearExplorer, sleep, SHOTS } from './harness.mjs';
 import { createWallet, restoreWallet, waitHome, waitSynced, unlockWithPassword } from './flows.mjs';
 
-const PORT = 8791;
+const PORT = Number(process.env.CAMPFIRE_E2E_PORT || 8791);
 // The release under test is package.json's version; the update tests build the next ones.
 const V0 = JSON.parse(readFileSync(join(PWA, 'package.json'), 'utf8')).version;
 const nextVersion = (n) => V0.replace(/\d+$/, (p) => String(Number(p) + n));

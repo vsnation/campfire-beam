@@ -48,7 +48,7 @@ const tid = (id) => `[data-testid="${id}"]`;
 const PASSWORD = `mir-${randomBytes(6).toString('hex')}`;
 const pkg = JSON.parse(readFileSync(join(PWA, 'package.json'), 'utf8'));
 const V = (n) => pkg.version.replace(/\d+$/, (p) => String(Number(p) + n));
-const A_PORT = 8811;
+const A_PORT = Number(process.env.CAMPFIRE_MIRRORS_PORT || 8811);
 const ORIGIN = `http://campfire.test:${A_PORT}/`;
 const M_URL = 'https://mirror.test:8812/';
 const M2_URL = 'https://mirror2.test:8813/';
