@@ -97,8 +97,8 @@ export default function ethSwapTx(app, p = {}) {
       h(
         'div',
         { class: 'card flat swap-details' },
-        swap ? h('div', { class: 'kv' }, h('span', { class: 'k', text: state === 'confirmed' ? 'You paid' : 'You pay' }), h('span', { class: 'v', text: amtShown(BigInt(entry.amount), asset) })) : null,
-        swap && out && entry.minimumOut ? h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Ethereum enforced at least' }), h('span', { class: 'v', 'data-testid': 'uni-tx-minimum', title: amt(BigInt(entry.minimumOut), out), text: short(BigInt(entry.minimumOut), out) })) : null,
+        swap ? h('div', { class: 'kv' }, h('span', { class: 'k', text: state === 'confirmed' ? 'You paid' : 'You pay' }), h('span', { class: 'v nowrap', text: amtShown(BigInt(entry.amount), asset) })) : null,
+        swap && out && entry.minimumOut ? h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Ethereum enforced at least' }), h('span', { class: 'v nowrap', 'data-testid': 'uni-tx-minimum', title: amt(BigInt(entry.minimumOut), out), text: short(BigInt(entry.minimumOut), out) })) : null,
         h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Network fee' }), h('span', { class: 'v', 'data-testid': 'uni-tx-fee', 'data-wei': String(fee.wei), text: fee.final ? ethAbout(fee.wei) : `at most ${ethAtMost(fee.wei)}` })),
         entry.receipt ? h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Block' }), h('span', { class: 'v', text: Number(entry.receipt.blockNumber).toLocaleString('en-US') })) : null,
         h('div', { class: 'kv' }, h('span', { class: 'k', text: 'Sent' }), h('span', { class: 'v', text: fmtDate(Math.floor(entry.createdAt / 1000)) })),
