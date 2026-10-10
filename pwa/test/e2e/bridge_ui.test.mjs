@@ -27,6 +27,11 @@
 //     then (the page told it holds 1,000 BEAM) the quote and the approve sheet
 //     with the bridge's words and the engine's "not enough". Never approved:
 //     there is no approve button; Cancel sends nothing.
+// (e) Ready to collect: a record as the controller writes it once a lock has
+//     reached BEAM, for one of the desktop app's recorded messages still
+//     unclaimed on mainnet (somebody else's; this wallet could never claim it),
+//     written into this wallet's sealed store: "Collect", then the approve sheet
+//     in the bridge's words. Its button is never pressed; Cancel sends nothing.
 // Screenshots of every screen and sheet at 390x844 and 1280x800, light and
 // dark, into $CAMPFIRE_SHOTS.
 import test, { before, after } from 'node:test';
@@ -399,7 +404,7 @@ test('(b) to Ethereum from the unfunded BEAM wallet: the quote, then the approve
   assert.equal(await page.getAttribute(tid('consent-bridge-to'), 'data-address'), ETH_ADDR.toLowerCase());
   assert.equal(await page.textContent(tid('consent-fee')), '0.011 BEAM');
   assert.equal(await page.textContent(tid('consent-bridge-time')), 'About 1 hour');
-  assert.match(await page.textContent(tid('consent-bridge-public')), /public on both chains/);
+  assert.equal(await page.isVisible(tid('consent-bridge-public')), false, 'what is missing comes first: the public note is for a move that can be approved');
   assert.match(await page.textContent(tid('consent-not-enough')), /^Not enough BEAM\./);
   assert.equal(await page.isVisible(tid('consent-approve')), false, 'the engine says it is not enough: no approve button');
   // What leaves adds up: 300 + the bridge fee + 0.011, every groth.
@@ -486,21 +491,21 @@ test('(e) a move ready to collect: "Collect", then the approve sheet in the brid
   assert.match(label, /^Collect [0-9.]+ b(ETH|USDT)$|^Collect 0\.02 BEAM$/);
   assert.match(await page.textContent(tid('bridge-collect-fee')), /Network fee 0\.121 BEAM, from your BEAM wallet\./);
   await shots4('24-crossing-ready-to-collect');
-  // Told it holds 0.5 BEAM only for the collect button's own check; the approve sheet then
-  // measures the real wallet (0 BEAM) against the 0.121 BEAM fee.
+  // Told it holds 0.5 BEAM (in the page only), so the sheet looks as it does for a wallet that can
+  // pay the 0.121 BEAM: its button is there and is never pressed. Cancel sends nothing.
   await pretendBeam(50000000n);
   await page.click(tid('bridge-collect'));
-  await pretendBeam(null);
   await page.waitForSelector(`${tid('consent')}[data-bridge="collect"]`, { timeout: 120000 });
   assert.equal(await page.textContent(`${tid('consent')} h2`), 'Collect your coins');
   assert.equal(await page.textContent(tid('consent-fee')), '0.121 BEAM');
-  assert.match(await page.textContent(tid('consent-bridge-from')), new RegExp(`transfer #${pick.msgId}`));
-  assert.match(await page.textContent(tid('consent-not-enough')), /^Not enough BEAM\./);
-  assert.equal(await page.isVisible(tid('consent-approve')), false, 'no approve button');
-  await shots4('25-consent-collect-not-enough');
+  assert.equal(await page.textContent(tid('consent-bridge-from')), "BEAM's official bridge");
+  assert.match(await page.textContent(tid('consent-bridge')), new RegExp(`transfer #${pick.msgId}, from your Ethereum wallet`));
+  assert.equal(await page.textContent(tid('consent-approve')), label, 'the button says the outcome; it is never pressed');
+  assert.equal(await crossingState(['claiming']), 'claiming', 'written down before the claim is shown');
+  await shots4('25-consent-collect');
   await page.click(tid('consent-cancel'));
   await page.waitForSelector(tid('bridge-crossing-error'));
-  assert.match(await page.textContent(tid('bridge-crossing-error')), /nothing was collected/);
+  assert.match(await page.textContent(tid('bridge-crossing-error')), /You did not approve it, so nothing was collected/);
   assert.equal(await crossingState(['delivered']), 'delivered', 'back to ready to collect: nothing was sent');
   const truth = await page.evaluate(async () => {
     const { wallet } = await import('./lib/wallet.js');
@@ -509,6 +514,7 @@ test('(e) a move ready to collect: "Collect", then the approve sheet in the brid
   assert.equal(truth.txs, 0);
   assert.equal(truth.last.decision, 'rejected');
   assert.deepEqual(truth.last.receives.map((r) => r.amount), [String(Number(pick.amount) / 1e8)]);
+  await pretendBeam(null);
 });
 
 test('IP privacy: this origin, the BEAM node, the chosen Ethereum server and (once allowed) CoinGecko; no CSP violation', T(1), async () => {
