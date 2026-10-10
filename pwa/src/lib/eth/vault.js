@@ -76,6 +76,18 @@ export async function deriveWrappingKey(env, dbPass, info = ETH_KEY_INFO) {
   }
 }
 
+/**
+ * The AES-256-GCM key for another envelope sealed under the same dbPass (the
+ * bridge's crossing records): env {kdf, salt, iterations?}, a different HKDF
+ * `info` per purpose. The same derivation and checks as the Ethereum key's.
+ */
+export async function sealingKey(env, dbPass, info) {
+  if (typeof info !== 'string' || !info || info === ETH_KEY_INFO) throw new VaultError('malformed', 'A sealing key needs its own purpose.');
+  if (env.kdf !== KDF_HKDF && env.kdf !== KDF_PBKDF2) throw new VaultError('malformed', 'Unknown key derivation.');
+  if (env.kdf === KDF_PBKDF2) checkIterations(env.iterations);
+  return deriveWrappingKey(env, dbPass, info);
+}
+
 export function checkIterations(n) {
   if (!Number.isSafeInteger(n)) throw new VaultError('malformed', 'Bad PBKDF2 round count.');
   if (n < PBKDF2_MIN_ITERATIONS) throw new VaultError('weak', 'Too few PBKDF2 rounds; refusing.');
