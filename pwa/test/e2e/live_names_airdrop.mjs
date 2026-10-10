@@ -5,8 +5,9 @@
 // Test wallet FUNDER2, restored through the real Restore screen, uses the new
 // screens exactly as a person would, reading every approve sheet before
 // approving it:
-//   1. Names: registers a random 12-character name for 1 year (the $10 tier,
-//      paid in BEAM at the oracle's rate), then sees it under My names.
+//   1. Names: finds a random 12-character name free, with its price. Only with
+//      LIVE_REGISTER_NAME=1 (the owner's go-ahead: about $10, over 1,000 BEAM)
+//      does it register the name for 1 year and see it under My names.
 //   2. Airdrop: creates a batch of 2 codes x 0.001 BEAM, claims one of them back
 //      into the same wallet, then takes the batch back to recover the other.
 // At the end BEAM must have moved by exactly what the sheets said.
@@ -23,6 +24,7 @@ import { waitHome, waitSynced } from './flows.mjs';
 import { tid, log, funderWords, restoreFunder, total, waitTx } from './live_common.mjs';
 
 const PORT = Number(process.env.LIVE_PORT || 8822);
+const REGISTER = process.env.LIVE_REGISTER_NAME === '1';
 const NAME = `cf${Math.random().toString(36).slice(2, 8)}${Math.random().toString(36).slice(2, 6)}`.padEnd(12, 'x').slice(0, 12);
 const NAME_FEE = 1100000n; // 0.011 BEAM
 const MAX_NAME_GROTH = BigInt(Math.round(Number(process.env.LIVE_NAME_MAX_BEAM || 1500) * 1e8));
@@ -104,32 +106,39 @@ try {
   if (NAME.length < 10) throw new Error('refusing: the test name must have 10 or more characters');
   if ((await page.textContent(tid('names-years'))) !== '1 year') throw new Error('refusing: the test registers for the shortest period, 1 year');
   if (usd !== '$10') throw new Error(`refusing: a 12-character name should cost $10 a year, the screen says ${usd}`);
-  const need = estimate + (estimate * 2n) / 100n + NAME_FEE + DROP_LOCK + DROP_FEE * 2n + CANCEL_FEE + 1000000n;
+  const need = (REGISTER ? estimate + (estimate * 2n) / 100n + NAME_FEE : 0n) + DROP_LOCK + DROP_FEE * 2n + CANCEL_FEE + 1000000n;
   if (beam0 < need) throw new Error(`FUNDER2 has ${beam0} groth available; this test needs at least ${need}`);
   if (estimate > MAX_NAME_GROTH) throw new Error(`refusing: the name costs about ${estimate} groth, above LIVE_NAME_MAX_BEAM`);
-  await page.waitForFunction(() => !document.querySelector('[data-testid="names-cta"]').disabled, null, { timeout: 60000 });
-  if ((await page.textContent(tid('names-cta'))) !== `Register ${NAME} for 1 year`) throw new Error('the button does not say what it does');
-  await shot(page, 'live-na-01-name-ready');
-  let seen = await txIds();
-  await page.click(tid('names-cta'));
-  const nameSheet = await approveIf('name', (s) => {
-    if (s.pay2 || s.get) return 'it moves more than one amount';
-    if (!/ BEAM$/.test(s.pay || '')) return `it pays ${s.pay}`;
-    const p = groth(s.pay);
-    if (p > estimate + (estimate * 2n) / 100n) return `it pays ${s.pay}, more than the screen's estimate + 2%`;
-    if (p > MAX_NAME_GROTH) return `it pays ${s.pay}, above LIVE_NAME_MAX_BEAM`;
-    if (groth(s.fee) !== NAME_FEE) return `it charges ${s.fee}`;
-    if (!/^Pay [\d,.]+ BEAM and register /.test(s.button) || !s.button.endsWith(`register ${NAME}`)) return `the button says ${s.button}`;
-    return null;
-  });
-  const namePaid = groth(nameSheet.pay);
-  await page.waitForSelector(`${tid('names-notice')}[data-code="sent"]`, { timeout: 120000 });
-  await shot(page, 'live-na-02-name-sent');
-  const nameTx = await waitTx(page, newTx(seen), 'name registration', 25 * 60000);
-  log('name registered:', JSON.stringify(nameTx));
-  await page.evaluate(() => window.__campfire.go('names'));
-  await page.waitForSelector(`[data-testid="names-mine-row"][data-name="${NAME}"]`, { timeout: 300000 });
-  await shot(page, 'live-na-03-my-names');
+  await shot(page, 'live-na-01-name-found');
+  let namePaid = 0n;
+  let seen;
+  if (!REGISTER) {
+    log("not registering a name: that needs the owner's go-ahead (LIVE_REGISTER_NAME=1)");
+  } else {
+    await page.waitForFunction(() => !document.querySelector('[data-testid="names-cta"]').disabled, null, { timeout: 60000 });
+    if ((await page.textContent(tid('names-cta'))) !== `Register ${NAME} for 1 year`) throw new Error('the button does not say what it does');
+    await shot(page, 'live-na-01-name-ready');
+    seen = await txIds();
+    await page.click(tid('names-cta'));
+    const nameSheet = await approveIf('name', (s) => {
+      if (s.pay2 || s.get) return 'it moves more than one amount';
+      if (!/ BEAM$/.test(s.pay || '')) return `it pays ${s.pay}`;
+      const p = groth(s.pay);
+      if (p > estimate + (estimate * 2n) / 100n) return `it pays ${s.pay}, more than the screen's estimate + 2%`;
+      if (p > MAX_NAME_GROTH) return `it pays ${s.pay}, above LIVE_NAME_MAX_BEAM`;
+      if (groth(s.fee) !== NAME_FEE) return `it charges ${s.fee}`;
+      if (!/^Pay [\d,.]+ BEAM and register /.test(s.button) || !s.button.endsWith(`register ${NAME}`)) return `the button says ${s.button}`;
+      return null;
+    });
+    namePaid = groth(nameSheet.pay);
+    await page.waitForSelector(`${tid('names-notice')}[data-code="sent"]`, { timeout: 120000 });
+    await shot(page, 'live-na-02-name-sent');
+    const nameTx = await waitTx(page, newTx(seen), 'name registration', 25 * 60000);
+    log('name registered:', JSON.stringify(nameTx));
+    await page.evaluate(() => window.__campfire.go('names'));
+    await page.waitForSelector(`[data-testid="names-mine-row"][data-name="${NAME}"]`, { timeout: 300000 });
+    await shot(page, 'live-na-03-my-names');
+  }
 
   // ---------------------------------------------------------------- 2. an airdrop
   await page.evaluate(() => window.__campfire.go('airdropCreate'));
@@ -184,7 +193,7 @@ try {
   // ---------------------------------------------------------------- the balance
   const beam1 = BigInt((await total(page, 0)).available);
   const moved = beam0 - beam1;
-  const want = namePaid + NAME_FEE + (DROP_LOCK + DROP_FEE) + (DROP_FEE - DROP_VALUE) + (CANCEL_FEE - DROP_VALUE);
+  const want = namePaid + (REGISTER ? NAME_FEE : 0n) + (DROP_LOCK + DROP_FEE) + (DROP_FEE - DROP_VALUE) + (CANCEL_FEE - DROP_VALUE);
   log(`after: BEAM available ${beam1}; out ${moved} groth; the sheets said ${want}`);
   if (moved !== want) throw new Error('BEAM did not move by exactly what the sheets said');
   await page.evaluate(() => window.__campfire.go('activity'));
