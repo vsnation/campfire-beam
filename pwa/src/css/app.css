@@ -288,6 +288,7 @@ details.more[open] summary { margin-bottom: 6px; }
 
 .asset-row { cursor: default; }
 .asset-row .end { white-space: normal; max-width: 55%; word-break: break-all; }
+.asset-row .main .t { overflow-wrap: anywhere; }
 .kv button.v { background: none; border: 0; padding: 0; color: var(--on-secondary); cursor: pointer; text-align: right; min-height: 0; }
 
 /* Welcome: three choices fit a 375 x 667 screen; a smaller hero when the Home Screen guide shows. */
@@ -327,6 +328,25 @@ label.btn.disabled { pointer-events: none; opacity: 0.5; }
 .asset-badge.beam { background: none; }
 .asset-badge.beam img { width: 100%; height: 100%; }
 .asset-badge.small { width: 22px; height: 22px; font-size: 10px; }
+/* An asset's own (bundled) icon as a coin; the neutral disc shows while it loads, and for good
+   behind an icon that is not a filled circle itself (framed, with a hairline edge). */
+.asset-badge.asset-icon { position: relative; overflow: hidden; }
+.asset-badge.asset-icon img { display: block; width: 100%; height: 100%; }
+.asset-badge.asset-icon img.cover { object-fit: cover; }
+.asset-badge.asset-icon img.contain { object-fit: contain; }
+.asset-badge.asset-icon.framed img { width: calc(100% - 2 * var(--inset, 0%)); height: calc(100% - 2 * var(--inset, 0%)); }
+.asset-badge.asset-icon.framed::after { content: ''; position: absolute; inset: 0; border-radius: 50%; border: 1px solid var(--border); pointer-events: none; }
+.asset-badge.asset-icon.small.framed::after { border-width: 0.75px; }
+/* A DEX liquidity token: its pool's two coins, the second one ringed in the colour behind it. */
+.asset-badge.pair { position: relative; background: none; --ring: 1.8px; }
+.asset-badge.pair.small { --ring: 1.1px; }
+.asset-badge.pair > .asset-badge { position: absolute; width: 66%; height: 66%; }
+.asset-badge.pair > .asset-badge:first-child { left: 0; top: 0; }
+.asset-badge.pair > .asset-badge:last-child { right: var(--ring); bottom: var(--ring); box-shadow: 0 0 0 var(--ring) var(--coin-gap, var(--surface)); }
+.asset-badge.pair > .asset-badge.pair:last-child { background: var(--coin-gap, var(--surface)); border-radius: 50%; }
+.asset-badge.pair .asset-badge.pair { --ring: 1.2px; }
+.row.on, .asset-pick { --coin-gap: var(--surface-2); }
+.row .main .warn-line { font-size: 13px; color: var(--error); margin-top: 2px; }
 .row .ico.swap { background: var(--info-bg); color: var(--info); }
 .row .end .in { color: var(--success); }
 .row.on { background: var(--surface-2); border-radius: 8px; }
