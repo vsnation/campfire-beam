@@ -35,6 +35,20 @@ export const SHADERS = Object.freeze({
     size: 7430,
     dart: 'lib/wallets/beam/contracts/minter/minter_constants.dart',
   }),
+  // The bridge: one shader drives the four wrapped assets' pipes, the other
+  // BEAM's own (reverse) pipe. Both pins live in one Dart file.
+  pipe: Object.freeze({
+    file: 'pipe_app.wasm',
+    sha256: '6a2ca541ac14e20cdeb55f432bf3d5ee273547844bc92853f1d1282fa6f9a9c3',
+    size: 7840,
+    dart: 'lib/wallets/beam/contracts/bridge/pipe_constants.dart',
+  }),
+  pipeReverse: Object.freeze({
+    file: 'pipe_reverse_app.wasm',
+    sha256: '6310f8af645dc85e093ab975209a60ca1b71197d92841c78fdac70088341415e',
+    size: 5876,
+    dart: 'lib/wallets/beam/contracts/bridge/pipe_constants.dart',
+  }),
 });
 
 export const SHADER_DIR = 'shaders';
@@ -61,7 +75,8 @@ export async function verifyShader(key, bytes) {
 const cache = new Map();
 
 /**
- * The verified bytes of shader `key` ("amm", "bans", "airdrop", "minter"),
+ * The verified bytes of shader `key` ("amm", "bans", "airdrop", "minter",
+ * "pipe", "pipeReverse"),
  * fetched from this release on first use. Concurrent calls share one fetch;
  * a failure is not cached.
  * @returns {Promise<Uint8Array>}

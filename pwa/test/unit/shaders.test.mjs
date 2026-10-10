@@ -8,7 +8,7 @@ import { checkShaders, REPO_ROOT } from '../../tools/shader_check.mjs';
 
 test('the shaders in the repository match their pins and the desktop app pins the same bytes', async () => {
   const list = await checkShaders();
-  assert.deepEqual(list.map((s) => s.key).sort(), ['airdrop', 'amm', 'bans', 'minter']);
+  assert.deepEqual(list.map((s) => s.key).sort(), ['airdrop', 'amm', 'bans', 'minter', 'pipe', 'pipeReverse']);
 });
 
 /** A copy of the parts of the repository checkShaders reads. */
@@ -44,6 +44,23 @@ test('the build refuses when the desktop pins a different shader', async () => {
     await assert.rejects(checkShaders(dir), /bans_constants\.dart does not pin/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('the two bridge shaders share one Dart file, and each pin is checked against it', async () => {
+  assert.equal(SHADERS.pipe.dart, SHADERS.pipeReverse.dart);
+  for (const [key, edit] of [
+    ['pipeReverse', (t) => t.replace(SHADERS.pipeReverse.sha256, '0'.repeat(64))],
+    ['pipe', (t) => t.replace(`= ${SHADERS.pipe.size};`, `= ${SHADERS.pipe.size + 1};`)],
+  ]) {
+    const dir = repoCopy();
+    try {
+      const f = join(dir, SHADERS[key].dart);
+      writeFileSync(f, edit(readFileSync(f, 'utf8')));
+      await assert.rejects(checkShaders(dir), new RegExp(`${SHADERS[key].file.replace('.', '\\.')}: .*pipe_constants\\.dart does not pin`));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   }
 });
 
