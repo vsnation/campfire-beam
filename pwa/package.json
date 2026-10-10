@@ -1,6 +1,6 @@
 {
   "name": "beam-campfire-pwa",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "private": true,
   "description": "BEAM Campfire: an iOS-first web wallet for BEAM Privacy built on BEAM's own WebAssembly wallet engine.",
   "license": "GPL-3.0-only",
@@ -26,6 +26,7 @@
     "e2e:live": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live.mjs",
     "e2e:live:swap": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live_swap.mjs",
     "e2e:live:dapp": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live_dapp.mjs",
+    "e2e:live:away": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live_receive_away.mjs",
     "test:fork": "node --test --test-concurrency=1 test/fork/*.test.mjs",
     "uniswap:pools": "node tools/uniswap_pools.mjs",
     "vendor:noble": "node tools/vendor_noble.mjs",
@@ -38,7 +39,9 @@
     "e2e:buy": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/buy.test.mjs",
     "e2e:bridge-ui": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/bridge_ui.test.mjs",
     "e2e:loader-move": "node tools/stage_engine.mjs && node --test --test-concurrency=1 test/e2e/loader_move.test.mjs",
-    "e2e:back": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/back.test.mjs"
+    "e2e:back": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/back.test.mjs",
+    "e2e:stop-race": "node tools/stage_engine.mjs && node tools/build.mjs && node --test --test-concurrency=1 test/e2e/stop_race.test.mjs",
+    "e2e:live:native": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live_native_receive.mjs"
   },
   "devDependencies": {
     "jsqr": "1.4.0",
