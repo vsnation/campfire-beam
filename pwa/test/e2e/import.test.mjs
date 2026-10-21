@@ -151,6 +151,14 @@ test('Welcome: three choices, all visible on a 375 x 667 screen without scrollin
     console.log(`# iPhone tab with the Home Screen guide, 375x667: button bottoms ${JSON.stringify(bottoms)}`);
     for (const [id, y] of Object.entries(bottoms)) assert.ok(y <= 667, `${id} above the fold with the guide (${y})`);
     await shot(p2, 'import-01b-welcome-iphone-tab-guide');
+    // "Show me how": why, and the three steps, in a sheet that closes on Got it.
+    assert.match(await p2.textContent(tid('a2hs')), /7 days without a visit/);
+    await p2.click(tid('a2hs-how'));
+    await p2.waitForSelector(tid('a2hs-got-it'));
+    assert.equal(await p2.locator(`${tid('a2hs-steps')} li`).count(), 3);
+    await shot(p2, 'import-01c-welcome-iphone-tab-steps');
+    await p2.click(tid('a2hs-got-it'));
+    await p2.waitForSelector(tid('a2hs-got-it'), { state: 'detached' });
   } finally {
     await ios.close();
   }
