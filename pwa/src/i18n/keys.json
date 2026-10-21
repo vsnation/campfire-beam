@@ -19625,6 +19625,61 @@
       "screens/home.js"
     ]
   },
+  "Add BEAM Campfire to your Home Screen": {
+    "where": [
+      "screens/home_screen_guide.js"
+    ]
+  },
+  "Safari deletes a site's data after 7 days without a visit. The Home Screen app keeps its data.": {
+    "where": [
+      "screens/home_screen_guide.js"
+    ]
+  },
+  "A wallet made in a Safari tab does not move to the Home Screen app.": {
+    "where": [
+      "screens/home_screen_guide.js"
+    ]
+  },
+  "Tap Share {share}. No Share button? Tap {more} or {menu} next to the address first.": {
+    "where": [
+      "screens/home_screen_guide.js"
+    ],
+    "placeholders": [
+      "menu",
+      "more",
+      "share"
+    ]
+  },
+  "Scroll down and tap \"Add to Home Screen\". If you see \"Open as Web App\", leave it on. Tap Add.": {
+    "where": [
+      "screens/home_screen_guide.js"
+    ]
+  },
+  "Open BEAM Campfire from your Home Screen and start your wallet there.": {
+    "where": [
+      "screens/home_screen_guide.js"
+    ]
+  },
+  "Open BEAM Campfire from your Home Screen and restore your wallet there with your 12 words.": {
+    "where": [
+      "screens/home_screen_guide.js"
+    ]
+  },
+  "Open BEAM Campfire from your Home Screen and import your wallet.db file there.": {
+    "where": [
+      "screens/home_screen_guide.js"
+    ]
+  },
+  "Show me how": {
+    "where": [
+      "screens/home_screen_guide.js"
+    ]
+  },
+  "Got it": {
+    "where": [
+      "screens/home_screen_guide.js"
+    ]
+  },
   "Show password": {
     "where": [
       "screens/import_wallet.js",
@@ -19671,19 +19726,6 @@
     ]
   },
   "Checking the release signature…": {
-    "where": [
-      "screens/install.js"
-    ]
-  },
-  "{question} Do it now and open it from there: the Home Screen app sets itself up separately.": {
-    "where": [
-      "screens/install.js"
-    ],
-    "placeholders": [
-      "question"
-    ]
-  },
-  "Adding it to your Home Screen?": {
     "where": [
       "screens/install.js"
     ]
@@ -26103,19 +26145,6 @@
     ]
   },
   "Hide this tip": {
-    "where": [
-      "screens/welcome.js"
-    ]
-  },
-  "Tap Share {icon} in Safari, choose \"Add to Home Screen\", then open BEAM Campfire from there.": {
-    "where": [
-      "screens/welcome.js"
-    ],
-    "placeholders": [
-      "icon"
-    ]
-  },
-  "Home Screen apps keep their data. Safari tabs may lose it after 7 days without use, and a wallet made in a Safari tab does not move to the Home Screen app.": {
     "where": [
       "screens/welcome.js"
     ]
