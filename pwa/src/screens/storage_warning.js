@@ -16,6 +16,7 @@ import { icon } from '../lib/icons.js';
 import { openSheet } from '../lib/ui.js';
 import { evictionRisk } from '../lib/storage.js';
 import { HOME_SCREEN_TEXT, openHomeScreenGuide } from './home_screen_guide.js';
+import { isIosSafariTab } from './welcome.js';
 import { t, tk } from '../lib/i18n.js';
 
 export const EVICTION_SNOOZE_MS = 7 * 24 * 3600 * 1000;
@@ -54,6 +55,8 @@ export const STORAGE_TEXT = Object.freeze({
 export function evictionNotice(app, rerender) {
   if (evictionRisk(app) !== 'safariTab' || !app.record) return null;
   if (app.prefs && app.prefs.evictionNoticeSnoozedUntil > Date.now()) return null;
+  // The steps are an iPhone / iPad Safari's; Safari on a Mac gets the notice without them.
+  const last = app.record.imported ? 'file' : 'words';
   return h(
     'div',
     { class: 'notice warn', 'data-testid': 'eviction-notice' },
@@ -66,7 +69,7 @@ export function evictionNotice(app, rerender) {
       h(
         'div',
         { class: 'btn-row prompt-actions' },
-        h('button', { class: 'btn btn-text btn-small', type: 'button', 'data-testid': 'eviction-how', onclick: () => openHomeScreenGuide(app.record.imported ? 'file' : 'words') }, t(HOME_SCREEN_TEXT.showMe)),
+        isIosSafariTab() ? h('button', { class: 'btn btn-text btn-small', type: 'button', 'data-testid': 'eviction-how', onclick: () => openHomeScreenGuide(last) }, t(HOME_SCREEN_TEXT.showMe)) : null,
         h('button', {
           class: 'btn btn-text btn-small',
           'data-testid': 'eviction-later',

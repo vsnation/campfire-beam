@@ -19630,12 +19630,17 @@
       "screens/home_screen_guide.js"
     ]
   },
-  "Safari deletes a site's data after 7 days without a visit. The Home Screen app keeps its data.": {
+  "Safari deletes a site's data after 7 days without a visit. The Home Screen app is not under that rule.": {
     "where": [
       "screens/home_screen_guide.js"
     ]
   },
   "A wallet made in a Safari tab does not move to the Home Screen app.": {
+    "where": [
+      "screens/home_screen_guide.js"
+    ]
+  },
+  "You don't need to wait here: the Home Screen app sets itself up separately.": {
     "where": [
       "screens/home_screen_guide.js"
     ]
@@ -19650,7 +19655,7 @@
       "share"
     ]
   },
-  "Scroll down and tap \"Add to Home Screen\". If you see \"Open as Web App\", leave it on. Tap Add.": {
+  "Tap \"Add to Home Screen\" (scroll down, or tap More if it is not in the list). If you see \"Open as Web App\", leave it on. Tap Add.": {
     "where": [
       "screens/home_screen_guide.js"
     ]

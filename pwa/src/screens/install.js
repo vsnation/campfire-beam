@@ -77,6 +77,7 @@ export default function install(app) {
         h('h3', { text: t(HOME_SCREEN_TEXT.title) }),
         h('p', { text: `${t(HOME_SCREEN_TEXT.why)} ${t(HOME_SCREEN_TEXT.notMoved)}` }),
         homeScreenSteps('start'),
+        h('p', { class: 'small', 'data-testid': 'install-a2hs-nowait', text: t(HOME_SCREEN_TEXT.noWait) }),
       )
     : null;
 
