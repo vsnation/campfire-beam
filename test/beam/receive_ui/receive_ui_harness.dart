@@ -565,9 +565,10 @@ class ReceiveDb {
   static Future<Directory> open() async {
     final existing = _tmp;
     if (existing != null) return existing;
-    // Isar's own macOS core from the pub cache: a widget test cannot
-    // download it (its HTTP client is a stub), and the host workdir is
-    // re-synced before every run.
+    // Isar's own core (macOS or Linux) from the pub cache: a widget test
+    // cannot download it (its HTTP client is a stub), and the host workdir is
+    // re-synced before every run. On CI this suite can be the first to need
+    // the core, before any other test has downloaded it.
     final lib = _pubCacheIsarCore();
     if (lib != null) {
       await Isar.initializeIsarCore(libraries: {Abi.current(): lib});
@@ -579,13 +580,17 @@ class ReceiveDb {
 }
 
 String? _pubCacheIsarCore() {
-  if (!Platform.isMacOS) return null;
+  final lib = Platform.isMacOS
+      ? 'macos/libisar.dylib'
+      : Platform.isLinux
+      ? 'linux/libisar.so'
+      : null;
+  if (lib == null) return null;
   final cache =
       Platform.environment['PUB_CACHE'] ??
       '${Platform.environment['HOME']}/.pub-cache';
   final f = File(
-    '$cache/hosted/pub.dev/isar_community_flutter_libs-${Isar.version}'
-    '/macos/libisar.dylib',
+    '$cache/hosted/pub.dev/isar_community_flutter_libs-${Isar.version}/$lib',
   );
   return f.existsSync() ? f.path : null;
 }
