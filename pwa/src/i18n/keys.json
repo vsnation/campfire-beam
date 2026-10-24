@@ -480,7 +480,6 @@
   "Cancel": {
     "where": [
       "lib/auth_ui.js",
-      "lib/shared_origin.js",
       "lib/update_ui.js",
       "screens/activity.js",
       "screens/addresses.js",
@@ -7064,103 +7063,6 @@
       "file"
     ]
   },
-  "This copy of BEAM Campfire is at {host}, an address other websites share: they could read a wallet kept here, or change this copy of the app. New wallets are made at BEAM Campfire's own address, {home}.": {
-    "where": [
-      "lib/shared_origin.js"
-    ],
-    "placeholders": [
-      "home",
-      "host"
-    ]
-  },
-  "Go to {host}": {
-    "where": [
-      "lib/shared_origin.js"
-    ],
-    "placeholders": [
-      "host"
-    ]
-  },
-  "If {host} shows anything unexpected, don't enter your words there.": {
-    "where": [
-      "lib/shared_origin.js"
-    ],
-    "placeholders": [
-      "host"
-    ]
-  },
-  "Your 12 words also open your wallet in BEAM Campfire for desktop and Android, or in any other BEAM wallet.": {
-    "where": [
-      "lib/shared_origin.js"
-    ]
-  },
-  "Restore with 12 words here": {
-    "where": [
-      "lib/shared_origin.js"
-    ]
-  },
-  "Import a wallet.db file here": {
-    "where": [
-      "lib/shared_origin.js"
-    ]
-  },
-  "Restore your wallet here?": {
-    "where": [
-      "lib/shared_origin.js"
-    ]
-  },
-  "Import your wallet here?": {
-    "where": [
-      "lib/shared_origin.js"
-    ]
-  },
-  "{host} is shared with other websites. Any of them could read the wallet you import here, or change this copy of the app to see your password as you type.": {
-    "where": [
-      "lib/shared_origin.js"
-    ],
-    "placeholders": [
-      "host"
-    ]
-  },
-  "{host} is shared with other websites. Any of them could read the wallet you restore here, or change this copy of the app to see your words or password as you type.": {
-    "where": [
-      "lib/shared_origin.js"
-    ],
-    "placeholders": [
-      "host"
-    ]
-  },
-  "Do this only if {host} and BEAM Campfire for desktop and Android are out of reach. When you can, move your coins to a new wallet made in one of them.": {
-    "where": [
-      "lib/shared_origin.js"
-    ],
-    "placeholders": [
-      "host"
-    ]
-  },
-  "I understand, restore here": {
-    "where": [
-      "lib/shared_origin.js"
-    ]
-  },
-  "I understand, import here": {
-    "where": [
-      "lib/shared_origin.js"
-    ]
-  },
-  "This copy of BEAM Campfire is at an address other websites share, so it makes no new wallets. Create one at {host}, or in BEAM Campfire for desktop and Android.": {
-    "where": [
-      "lib/shared_origin.js"
-    ],
-    "placeholders": [
-      "host"
-    ]
-  },
-  "This copy of BEAM Campfire is at an address other websites share. Read the warning and confirm it before you restore or import a wallet here.": {
-    "where": [
-      "lib/shared_origin.js"
-    ]
-  },
   "kept": {
     "where": [
       "lib/storage.js"
@@ -9355,11 +9257,6 @@
     "where": [
       "screens/add_wallet.js",
       "screens/welcome.js"
-    ]
-  },
-  "Your wallets here stay as they are and keep working.": {
-    "where": [
-      "screens/add_wallet.js"
     ]
   },
   "Your wallets stay as they are. The new one gets its own password, and its own Face ID if you turn it on.": {
