@@ -72,7 +72,7 @@ test('connect-src: this origin, the wss nodes, the pinned dApp package directory
   const connect = CSP.split(';').map((d) => d.trim()).find((d) => d.startsWith('connect-src'));
   const sources = connect.split(/\s+/).slice(1);
   assert.deepEqual(sources, ["'self'", ...HEADER_NODES.map((n) => `wss://${n}`), DAPP_PACKAGE_SOURCE, ...connectSources(), ...buyConnectSources(), ...intentsConnectSources(), ...recoveryConnectSources()]);
-  // The snapshot on a copy without a relay: that one path of BEAM Campfire's server.
+  // The snapshot on a copy without a relay: that one path of Beam PWA's server.
   assert.deepEqual(recoveryConnectSources(), ['https://pwa.buybeam.my/recovery/']);
   assert.ok(!sources.includes('https://pwa.buybeam.my'));
   // Buy BEAM: buybeam.my's buy API path only, never the whole host.
@@ -173,7 +173,7 @@ test('no source file reaches out to another origin', () => {
       if (f.endsWith(join('lib', 'update_sources.js')) && (BUILTIN_SOURCES.includes(u) || u === 'https://${s}' || u === 'https://.')) continue;
       // That wording again where the screens translate it (lib/loader_words.js): words, not a request.
       if (f.endsWith(join('lib', 'loader_words.js')) && u === 'https://.') continue;
-      // BEAM's snapshot through BEAM Campfire's server, for a copy hosted without a relay:
+      // BEAM's snapshot through Beam PWA's server, for a copy hosted without a relay:
       // that one file (and the CSP path naming it), only in this file.
       if (f.endsWith(join('lib', 'recovery.js')) && (u === 'https://${RECOVERY_FALLBACK_HOST}/recovery/mainnet_recovery.bin' || u === 'https://${RECOVERY_FALLBACK_HOST}/recovery/')) continue;
       // BEAM's explorer page of a transaction, a plain link the person taps in a payment's

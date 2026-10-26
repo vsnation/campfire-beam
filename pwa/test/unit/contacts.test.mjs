@@ -189,7 +189,7 @@ test('a names-paid record that cannot be read is told apart from "never paid" (a
     assert.deepEqual(await C.readNamePin(app, 'alice', kv), { key: null, unread: true });
     // Locked: the same (nothing to compare with).
     assert.deepEqual(await C.readNamePin({ record: app.record, dbPass: null }, 'alice', kv), { key: null, unread: true });
-    assert.equal(C.NAME_PIN_UNREAD, 'BEAM Campfire could not compare this owner with your earlier payments.');
+    assert.equal(C.NAME_PIN_UNREAD, 'Beam PWA could not compare this owner with your earlier payments.');
   } finally {
     for (const f of app.lockHooks) f();
   }

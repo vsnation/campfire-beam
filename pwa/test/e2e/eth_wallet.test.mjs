@@ -76,7 +76,7 @@ async function stackRoute(route) {
   } catch {
     /* not JSON: anvil says so */
   }
-  // Ethereum far dearer than BEAM Campfire pays (as on 2022-05-01, above 8,000 gwei for a few blocks).
+  // Ethereum far dearer than Beam PWA pays (as on 2022-05-01, above 8,000 gwei for a few blocks).
   if (mode === 'dear' && j && !Array.isArray(j) && j.method === 'eth_feeHistory') {
     const base = `0x${(5000n * 10n ** 9n).toString(16)}`;
     return route.fulfill({ status: 200, headers: { ...cors, 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: j.id, result: { oldestBlock: '0x1', baseFeePerGas: Array(6).fill(base), gasUsedRatio: Array(5).fill(0.5), reward: Array(5).fill(['0x3b9aca00']) } }) });
@@ -530,7 +530,7 @@ test('BM-1: a payment the server refused holds back the next one: Home, Send, Bu
     await page.waitForSelector(`${tid('eth-doubt')}[data-hash="${hash}"]`);
     const words = await page.textContent(tid('eth-doubt'));
     assert.match(words, /^Your payment of 0\.001 ETH to 0x[0-9a-fA-F]{4}…[0-9a-fA-F]{4} is "Not sent yet"\. It may still go through, so nothing new is sent from this Ethereum wallet until it is settled, or both could go through\./);
-    assert.match(words, /Wait until BEAM Campfire knows what happened to it, or choose another Ethereum server in Settings: it is checked there\./);
+    assert.match(words, /Wait until Beam PWA knows what happened to it, or choose another Ethereum server in Settings: it is checked there\./);
     await page.fill(tid('eth-send-to'), to);
     await page.fill(tid('eth-send-amount'), '0.002');
     await sleep(400);
@@ -813,7 +813,7 @@ test('RE2-2: a payment in doubt for a day can be forgotten, after a plain warnin
     await ethHomeReady();
   }));
 
-test('BM-6: a fee far above what BEAM Campfire pays is said as such, not as impossible; nothing is signed', { skip: skip || false, timeout: 2 * 60000 }, async () => {
+test('BM-6: a fee far above what Beam PWA pays is said as such, not as impossible; nothing is signed', { skip: skip || false, timeout: 2 * 60000 }, async () => {
   await page.evaluate(() => window.__campfire.go('ethHome'));
   await ethHomeReady();
   mode = 'dear';
@@ -822,7 +822,7 @@ test('BM-6: a fee far above what BEAM Campfire pays is said as such, not as impo
     await waitScreen(page, 'ethSend');
     await page.waitForSelector(`${tid('eth-server-problem')}[data-code="bad_fees"]`, { timeout: 30000 });
     const said = await page.textContent(tid('eth-server-problem'));
-    assert.match(said, /^The network fee is far above anything BEAM Campfire will pay\. Stack Wallet's Ethereum server says Ethereum is that expensive right now\. It has been, but only for minutes at a time\. Nothing was sent, and nothing was paid\./);
+    assert.match(said, /^The network fee is far above anything Beam PWA will pay\. Stack Wallet's Ethereum server says Ethereum is that expensive right now\. It has been, but only for minutes at a time\. Nothing was sent, and nothing was paid\./);
     assert.doesNotMatch(said, /can't be right|cannot have|gwei/);
     await shots4('31-send-fee-too-high');
   } finally {
@@ -980,7 +980,7 @@ test('import by private key: one box knows it is a key, shows the address first;
   assert.equal(await page.evaluate((k) => window.__copied === k, key), true, 'Copy gives the key');
   await page.evaluate(() => delete window.__copied);
   await page.waitForSelector('.toast');
-  assert.equal(await page.textContent('.toast'), 'Private key copied. BEAM Campfire empties the clipboard in 1 minute (clipboard history apps may keep it).');
+  assert.equal(await page.textContent('.toast'), 'Private key copied. Beam PWA empties the clipboard in 1 minute (clipboard history apps may keep it).');
   await page.click(tid('eth-key-hide'));
   assert.equal(await page.getAttribute(tid('eth-key-box'), 'data-state'), 'masked');
   assert.match(await page.textContent(tid('eth-key-text')), /^•{64}$/);

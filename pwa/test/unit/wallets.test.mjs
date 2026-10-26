@@ -371,7 +371,7 @@ test('deleting leaves less behind (ported from the Firo wallet): the passkey is 
   // A step that fails never fails the delete.
   await removeWallet(app, (await listWallets(kv)).find((r) => r.id === A), { ...deps, closeNotifications: async () => { throw new Error('no service worker'); } });
   assert.equal(seen.caches, 1, 'the last wallet: the own-node address and dApp copies go too');
-  assert.deepEqual([...storage.keys()], ['other-site-thing'], "the last wallet: BEAM Campfire's own localStorage goes (theme, update address)");
+  assert.deepEqual([...storage.keys()], ['other-site-thing'], "the last wallet: Beam PWA's own localStorage goes (theme, update address)");
   assert.equal(kv.m.size, 0);
 });
 

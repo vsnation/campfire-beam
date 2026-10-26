@@ -230,7 +230,7 @@ test('one full send to Ethereum stops at the consent sheet: what the engine repo
   console.log(`# consent log: ${JSON.stringify(last)}`);
   // Shown, so expect() passed on what the engine reported: 1.01 BEAM out, 0.011 fee.
   assert.equal(last.decision, 'rejected');
-  assert.equal(last.appName, 'BEAM Campfire');
+  assert.equal(last.appName, 'Beam PWA');
   assert.equal(last.isEnough, false);
   assert.equal(last.fee, '0.011');
   assert.deepEqual(last.spends, [{ assetId: 0, amount: '1.01' }]);

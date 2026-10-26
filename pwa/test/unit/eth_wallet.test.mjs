@@ -762,7 +762,7 @@ test('BM-1: doubt in words: which transaction, "Not sure yet" / "Not sent yet", 
   assert.match(m, /is "Not sent yet"\. It may still go through, so nothing new is sent from this Ethereum wallet until it is settled, or both could go through\. Wait/);
   assert.deepEqual(D.doubtNameParts(pay), { lead: 'your payment of 0.01 ETH to', address: `${ALICE.slice(0, 6)}…${ALICE.slice(-4)}` });
   assert.deepEqual(D.doubtNameParts(swap), { lead: 'your swap of 0.01 ETH', address: null });
-  assert.ok(m.endsWith('Wait until BEAM Campfire knows what happened to it, or choose another Ethereum server in Settings: it is checked there.'));
+  assert.ok(m.endsWith('Wait until Beam PWA knows what happened to it, or choose another Ethereum server in Settings: it is checked there.'));
   assert.ok(!/nothing was sent/i.test(m), 'never "nothing was sent" about the doubtful one');
 });
 

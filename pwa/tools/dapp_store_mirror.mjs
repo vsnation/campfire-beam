@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Brings BEAM Campfire's copy of BEAM's DApp Store up to date (lib/dapps/store_install.js reads it).
+// Brings Beam PWA's copy of BEAM's DApp Store up to date (lib/dapps/store_install.js reads it).
 //
 //   node tools/dapp_store_mirror.mjs <hosting dir> [--dry-run]
 //

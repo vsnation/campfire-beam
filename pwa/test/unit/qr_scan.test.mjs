@@ -1,6 +1,6 @@
 // Scanning (lib/qr_scan.js, lib/qr_worker.js): what a scanned text fills in, the
 // camera's errors in words, and the vendored jsQR is the published file, makes no
-// requests, and reads the QR codes BEAM Campfire itself draws.
+// requests, and reads the QR codes Beam PWA itself draws.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -61,7 +61,7 @@ test('the vendored jsQR is jsqr@1.4.0 dist/jsQR.js byte for byte, with its licen
   }
 });
 
-test('the worker script, run as a classic worker would, reads a QR code BEAM Campfire draws (normal and inverted)', () => {
+test('the worker script, run as a classic worker would, reads a QR code Beam PWA draws (normal and inverted)', () => {
   // A worker's global object is `self`: the context's own global, with its own built-ins.
   const posted = [];
   const self = vm.createContext({});

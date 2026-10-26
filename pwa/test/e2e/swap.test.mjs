@@ -125,7 +125,7 @@ test('swap BEAM -> bETH: live quote, the consent sheet shows what the engine rep
   assert.match(short, /^Not enough BEAM\./);
   assert.equal(await page.isVisible(tid('consent-approve')), false, 'no approve button when the engine says it is not enough');
   assert.match(await page.textContent(tid('consent-receive')), /^Add (BEAM|funds)$/, 'the way out of "not enough" is on the sheet');
-  assert.match(await page.textContent(tid('consent-app')), /BEAM Campfire/);
+  assert.match(await page.textContent(tid('consent-app')), /Beam PWA/);
 
   await page.click(tid('consent-cancel'));
   await page.waitForSelector(tid('swap-result'), { timeout: 30000 });
@@ -141,7 +141,7 @@ test('swap BEAM -> bETH: live quote, the consent sheet shows what the engine rep
   console.log(`# consent log: ${JSON.stringify(last)}`);
   assert.equal(last.decision, 'rejected');
   assert.equal(last.kind, 'contract');
-  assert.equal(last.appName, 'BEAM Campfire');
+  assert.equal(last.appName, 'Beam PWA');
   assert.equal(last.isEnough, false);
   assert.equal(last.fee, '0.011');
   assert.deepEqual(last.spends, [{ assetId: 0, amount: exactPay }]);

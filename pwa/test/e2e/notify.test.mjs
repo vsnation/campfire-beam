@@ -150,7 +150,7 @@ test('a new wallet, synced; Settings → Notifications: off, asked only from the
   // Reminders while the app is closed (Chrome's Periodic Background Sync): off unless turned on.
   assert.equal(await page.isVisible(tid('notify-wakeups')), true, 'offered in Chrome');
   assert.equal(await page.isChecked(tid('notify-wakeups')), false, 'off by default');
-  assert.match(await page.textContent(tid('notify-wakeups-sub')), /with no BEAM Campfire screen open to warn you/);
+  assert.match(await page.textContent(tid('notify-wakeups-sub')), /with no Beam PWA screen open to warn you/);
   // No amounts on the lock screen unless asked for; this suite turns them on to read them.
   assert.equal(await page.isChecked(tid('notify-amounts')), false, 'off by default');
   await page.click(tid('notify-amounts'));
@@ -160,7 +160,7 @@ test('a new wallet, synced; Settings → Notifications: off, asked only from the
   }, null, { label: 'amounts on' });
   await page.click(tid('notify-test'));
   await page.waitForFunction(() => window.__shown.length === 1);
-  assert.deepEqual(await page.evaluate(() => window.__shown[0]), { title: 'BEAM Campfire notifications are on', body: 'A payment will be told like this.', url: '#open=notifications', tag: 'campfire-test' });
+  assert.deepEqual(await page.evaluate(() => window.__shown[0]), { title: 'Beam PWA notifications are on', body: 'A payment will be told like this.', url: '#open=notifications', tag: 'campfire-test' });
   await both('notify-01-settings');
   await page.evaluate(() => window.__campfire.go('settings'));
   await waitScreen(page, 'settings');
@@ -385,7 +385,7 @@ test('an address that expires: Extend in Your addresses, and a reminder 3 days b
   await page.evaluate(() => window.__setHidden(false));
 });
 
-test('app closed: a wake-up shows nothing until "Reminders when BEAM Campfire is closed" is on; then the due reminders', { timeout: 3 * 60000 }, async () => {
+test('app closed: a wake-up shows nothing until "Reminders when Beam PWA is closed" is on; then the due reminders', { timeout: 3 * 60000 }, async () => {
   // Two reminders left for later: one due now, one not.
   await page.evaluate(async () => {
     const { rawStore } = await import('./lib/store.js');
@@ -394,7 +394,7 @@ test('app closed: a wake-up shows nothing until "Reminders when BEAM Campfire is
     const w = (await listWallets())[0];
     const now = Date.now();
     await rawStore.set(walletKey({ record: w }, 'notify-reminders'), [
-      { id: 'rem-test-due', wallet: w.id, kind: 'in', at: now - 1000, title: 'A private payment can now be spent', body: 'Open BEAM Campfire to use it.', url: '#open=coins' },
+      { id: 'rem-test-due', wallet: w.id, kind: 'in', at: now - 1000, title: 'A private payment can now be spent', body: 'Open Beam PWA to use it.', url: '#open=coins' },
       { id: 'rem-test-later', wallet: w.id, kind: 'in', at: now + 86400000, title: 'Later', body: 'Later', url: 'https://evil.example/' },
     ]);
   });

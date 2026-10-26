@@ -50,7 +50,7 @@ test('refused: a copy that is not the listed file, a missing copy, a package tha
   changed[200] ^= 1;
   await assert.rejects(fetchStorePackage(dapp, { fetchImpl: serve(changed) }), (e) => e instanceof StoreInstallError && e.code === 'hashMismatch');
   await assert.rejects(fetchStorePackage(dapp, { fetchImpl: serve(BYTES, 404) }), (e) => e.code === 'notMirrored');
-  assert.match(storeInstallErrorText(new StoreInstallError('notMirrored', ''), 'Test N1'), /isn't in BEAM Campfire's copy of the store yet\. Ask its publisher for the \.dapp file/);
+  assert.match(storeInstallErrorText(new StoreInstallError('notMirrored', ''), 'Test N1'), /isn't in Beam PWA's copy of the store yet\. Ask its publisher for the \.dapp file/);
   const pkg = await readFilePackage(BYTES);
   checkAgainstEntry(pkg, dapp);
   assert.throws(() => checkAgainstEntry(pkg, { ...dapp, name: 'Beam DEX' }), (e) => e.code === 'notThisEntry' && /its name/.test(e.message));

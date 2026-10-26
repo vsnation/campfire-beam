@@ -178,7 +178,7 @@ test('a file is checked, then the confirm sheet: version, unknown publisher, not
   await page.waitForSelector(tid('dapp-install-title'));
   assert.equal(await page.textContent(tid('dapp-install-title')), 'Install Tiny dApp?');
   assert.equal(await page.textContent(tid('dapp-install-meta')), 'Version 1.0.0 · unknown publisher');
-  assert.match(await page.textContent(tid('dapp-install-unchecked')), /BEAM Campfire did not check this dApp: it is not one of BEAM's own dApps\. Install it only if you trust where it came from\./);
+  assert.match(await page.textContent(tid('dapp-install-unchecked')), /Beam PWA did not check this dApp: it is not one of BEAM's own dApps\. Install it only if you trust where it came from\./);
   assert.equal(await page.$(tid('dapp-install-replaces')), null);
   assert.equal(await page.$(tid('dapp-install-copies')), null);
   assert.equal(await page.$$eval('.overlay .btn-primary', (b) => b.length), 1);
@@ -188,7 +188,7 @@ test('a file is checked, then the confirm sheet: version, unknown publisher, not
   await snap('02-confirm');
   await page.click(tid('dapp-install-go'));
   await page.waitForSelector(tid(`dapp-file-${TINY}`));
-  assert.match(await page.textContent(tid(`dapp-file-${TINY}`)), /Version 1\.0\.0 · from a file, not checked by BEAM Campfire/);
+  assert.match(await page.textContent(tid(`dapp-file-${TINY}`)), /Version 1\.0\.0 · from a file, not checked by Beam PWA/);
   const k = await kvKeys();
   assert.deepEqual(k.list, [{ guid: TINY, version: '1.0.0', origins: [] }]);
   assert.deepEqual(k.packages, [TINY]);
@@ -226,7 +226,7 @@ test('the server it tried is asked about by name; Not now keeps it refused for t
 test('the approve sheet says it was installed from a file and not checked', async () => {
   await dappFrame().click('#sign');
   await page.waitForSelector(tid('dapp-sign'));
-  assert.match(await page.textContent('.overlay'), /Installed from a file · not checked by BEAM Campfire/);
+  assert.match(await page.textContent('.overlay'), /Installed from a file · not checked by Beam PWA/);
   assert.match(await page.textContent('.overlay'), /hello from a file/);
   await snap('06-sign-unchecked');
   await page.click(tid('dapp-sign-reject'));
@@ -235,7 +235,7 @@ test('the approve sheet says it was installed from a file and not checked', asyn
 test('the approve sheet for a payment says so too (an empty wallet: nothing can be sent)', async () => {
   dappFrame().evaluate(() => window.payIt()).catch(() => {});
   await page.waitForSelector(tid('consent'), { timeout: 30000 });
-  assert.equal(await page.textContent(tid('consent-unchecked')), 'Installed from a file · not checked by BEAM Campfire');
+  assert.equal(await page.textContent(tid('consent-unchecked')), 'Installed from a file · not checked by Beam PWA');
   assert.match(await page.textContent(tid('consent-app')), /Tiny dApp asks you to approve/);
   await snap('06b-approve-unchecked');
   await page.click(tid('consent-cancel'));
@@ -260,7 +260,7 @@ test('More lists the servers it can reach, each with Remove access', async () =>
   await page.click(tid('dapp-more'));
   await page.waitForSelector(tid('dapp-hosts'));
   assert.deepEqual(await page.$$eval(tid('dapp-host-revoke'), (b) => b.map((x) => x.dataset.host)), [HOST]);
-  assert.match(await page.textContent(tid('dapp-more-meta')), /Version 1\.0\.0 · unknown publisher · installed from a file, not checked by BEAM Campfire\./);
+  assert.match(await page.textContent(tid('dapp-more-meta')), /Version 1\.0\.0 · unknown publisher · installed from a file, not checked by Beam PWA\./);
   await snap('07-more-hosts');
 });
 
@@ -326,14 +326,14 @@ test('a higher version replaces it, and keeps the servers it was allowed', async
 test("a name copying one of BEAM's dApps is warned about; Cancel installs nothing", async () => {
   await install(file('fake-dex.dapp', pkg(manifest({ name: 'Beam DEX', guid: 'feedface0000feedface0000feedface' }))));
   await page.waitForSelector(tid('dapp-install-copies'));
-  assert.equal(await page.textContent(tid('dapp-install-copies')), 'Its name matches Beam DEX, one of the dApps BEAM Campfire checks, but it is a different app.');
+  assert.equal(await page.textContent(tid('dapp-install-copies')), 'Its name matches Beam DEX, one of the dApps Beam PWA checks, but it is a different app.');
   await snap('10-imitation');
   await page.click(tid('dapp-install-cancel'));
   assert.equal((await kvKeys()).list.length, 1);
 });
 
 test('every refusal says what happened and what to do, and installs nothing', async () => {
-  const generic = "This file isn't a dApp package BEAM Campfire can install safely, so nothing was installed. Ask the dApp's publisher for a new copy.";
+  const generic = "This file isn't a dApp package Beam PWA can install safely, so nothing was installed. Ask the dApp's publisher for a new copy.";
   const cases = [
     ['not-a-zip.dapp', Buffer.from('this is not a zip archive at all'), 'cantOpenFile', generic],
     ['no-manifest.dapp', Buffer.from(makeZip([{ name: 'app/index.html', data: 'x' }])), 'cantReadManifest', generic],
@@ -342,8 +342,8 @@ test('every refusal says what happened and what to do, and installs nothing', as
     ['bomb.dapp', pkg(manifest(), [{ name: 'app/zeros.bin', data: new Uint8Array(3 * 1024 * 1024) }]), 'tooLarge', generic],
     ['bidi-name.dapp', pkg(manifest({ name: 'Beam\u202eXED' })), 'invalidFile', generic],
     ['outside-url.dapp', pkg(manifest({ url: 'https://evil.example/index.html' })), 'invalidFile', generic],
-    ['newer-api.dapp', pkg(manifest({ api_version: '9.0', min_api_version: '8.0' })), 'unsupported', 'Tiny dApp needs a newer wallet than this version of BEAM Campfire.'],
-    ['claims-dex.dapp', pkg(manifest({ guid: DEX_GUID, name: 'Beam DEX' })), 'reservedGuid', 'This file claims to be Beam DEX, but it is not the package BEAM Campfire checks, so nothing was installed. Open Beam DEX from the list of dApps instead.'],
+    ['newer-api.dapp', pkg(manifest({ api_version: '9.0', min_api_version: '8.0' })), 'unsupported', 'Tiny dApp needs a newer wallet than this version of Beam PWA.'],
+    ['claims-dex.dapp', pkg(manifest({ guid: DEX_GUID, name: 'Beam DEX' })), 'reservedGuid', 'This file claims to be Beam DEX, but it is not the package Beam PWA checks, so nothing was installed. Open Beam DEX from the list of dApps instead.'],
   ];
   for (const [name, buffer, code, text] of cases) {
     const r = await installError(file(name, buffer));

@@ -177,7 +177,7 @@ test('the steps of a move, each done, under way or still to come', () => {
 
 test('the lock screen says where a move is, never its amount or address', () => {
   const note = lockedNote(crossing(), { blocksLeft: 34 });
-  assert.equal(note, 'Your move to Ethereum was at "34 blocks to go" when BEAM Campfire locked.');
+  assert.equal(note, 'Your move to Ethereum was at "34 blocks to go" when Beam PWA locked.');
   assert.ok(!/300|5a5a|WBEAM/.test(note));
   assert.equal(lockedNote(crossing({ route: 'eth', direction: 'toBeam', state: STATES.delivered, receives: 1000000n, amount: E18 / 100n, relayerFee: 1n, beamNetworkFee: CLAIM_FEE })), 'Your move to BEAM is ready to collect.');
   assert.equal(lockedNote(crossing({ state: STATES.paid })), null);

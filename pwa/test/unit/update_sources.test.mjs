@@ -263,7 +263,7 @@ test('release dates: the newest signed release anyone knows of, with its date', 
 });
 
 test('no CORS, no release, another app, a broken signature: noted, and the next source is asked', async () => {
-  const w = world({ 'wallet.example.org': 'nocors', 'm1.example': new ReleaseError('bad_signature', 'This update is not signed with the BEAM Campfire release key.'), 'm2.example': new ReleaseError('unreachable', 'No BEAM Campfire release is published at this address.'), 'added.example': rel('1.0.3') });
+  const w = world({ 'wallet.example.org': 'nocors', 'm1.example': new ReleaseError('bad_signature', 'This update is not signed with the Beam PWA release key.'), 'm2.example': new ReleaseError('unreachable', 'No Beam PWA release is published at this address.'), 'added.example': rel('1.0.3') });
   const r = await run(w);
   assert.equal(r.result, 'ready');
   assert.equal(r.version, '1.0.3');
@@ -370,10 +370,10 @@ test('progress and result wording', async () => {
   assert.equal(progressText({ step: 'downloading', host: 'cdn.jsdelivr.net', own: false, version: '0.1.9', done: 40, total: 203 }), 'Downloading 0.1.9 from a copy at cdn.jsdelivr.net: 40 of 203 files checked');
   const now = 1_800_000_000_000;
   assert.equal(lastCheckText({ at: now, result: 'ready', version: '0.1.9', host: 'cdn.jsdelivr.net' }, now), 'Last checked just now: version 0.1.9 is ready to install (from a copy at cdn.jsdelivr.net).');
-  assert.equal(lastCheckText({ at: now, result: 'applied', version: '0.1.9', host: 'cdn.jsdelivr.net' }, now), "Last checked just now: updated to 0.1.9 from a copy at cdn.jsdelivr.net, checked against BEAM Campfire's signature.");
-  assert.equal(lastCheckText({ at: now, result: 'applied', version: '0.1.9', host: null }, now), "Last checked just now: updated to 0.1.9, checked against BEAM Campfire's signature.");
+  assert.equal(lastCheckText({ at: now, result: 'applied', version: '0.1.9', host: 'cdn.jsdelivr.net' }, now), "Last checked just now: updated to 0.1.9 from a copy at cdn.jsdelivr.net, checked against Beam PWA's signature.");
+  assert.equal(lastCheckText({ at: now, result: 'applied', version: '0.1.9', host: null }, now), "Last checked just now: updated to 0.1.9, checked against Beam PWA's signature.");
   assert.equal(lastCheckText({ at: now, result: 'needs_own_address', version: '0.2.0' }, now), "Last checked just now: version 0.2.0 needs this app's address to install; your app keeps working.");
-  assert.equal(refusalText({ reason: 'This update is not signed with the BEAM Campfire release key.', from: { host: 'wallet.example.org', own: true } }), 'This update is not signed with the BEAM Campfire release key.');
+  assert.equal(refusalText({ reason: 'This update is not signed with the Beam PWA release key.', from: { host: 'wallet.example.org', own: true } }), 'This update is not signed with the Beam PWA release key.');
 });
 
 // ---------------------------------------------------------------- the build writes it down
@@ -385,7 +385,7 @@ const haveEngine = existsSync(join(pwa, 'vendor', 'engine', 'wasm-client.wasm'))
 test('while a check runs, the sheet says every place is asked and every copy is checked against the signature (#77)', () => {
   assert.equal(
     CHECKING_NOTE,
-    "BEAM Campfire asks its own address and the public copies, and keeps the newest release. Whichever copy it comes from, every file is checked against BEAM Campfire's signature before it is kept. Your app keeps working meanwhile.",
+    "Beam PWA asks its own address and the public copies, and keeps the newest release. Whichever copy it comes from, every file is checked against Beam PWA's signature before it is kept. Your app keeps working meanwhile.",
   );
 });
 

@@ -481,7 +481,7 @@ test('the privileged app: opened at privilege 1, runs only the pinned names shad
     await assert.rejects(app.transact(args.receiveAll(), BANS_SHADER, { intent: { action: 'nameClaim', rows: [['Sent to', 'alice.beam']] } }), (e) => e.code === 'rejected');
     assert.equal(shown.length, 1);
     assert.equal(shown[0].native, true);
-    assert.equal(shown[0].appName, 'BEAM Campfire');
+    assert.equal(shown[0].appName, 'BEAM Campfire'); // the engine's name for the wallet (NATIVE_APP_NAME)
     assert.equal(shown[0].intent.action, 'nameClaim');
     assert.deepEqual(shown[0].receives.map((a) => a.amount), [250000000n]);
     assert.ok(sent.every((s) => s.privilege === 1));

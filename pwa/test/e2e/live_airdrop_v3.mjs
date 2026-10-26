@@ -69,7 +69,7 @@ async function approveIf(p, password, label, problem) {
   const sheet = await readSheet(p);
   log(`${label} sheet:`, JSON.stringify(sheet));
   await shot(p, `live-v3-${label}-sheet`);
-  const why = !/BEAM Campfire/.test(sheet.app || '') ? 'the sheet does not name this wallet' : sheet.notEnough ? `the wallet says: ${sheet.notEnough}` : !sheet.button ? 'no approve button' : problem(sheet);
+  const why = !/Beam PWA/.test(sheet.app || '') ? 'the sheet does not name this wallet' : sheet.notEnough ? `the wallet says: ${sheet.notEnough}` : !sheet.button ? 'no approve button' : problem(sheet);
   if (why) {
     await p.click(tid('consent-cancel')).catch(() => {});
     throw new Error(`refusing the ${label} sheet: ${why}`);

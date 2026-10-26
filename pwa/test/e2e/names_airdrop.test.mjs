@@ -258,7 +258,7 @@ test("names: Register reaches the approve sheet with the engine's figures; not e
   console.log(`# register sheet: ${JSON.stringify(sheet)}`);
   await shots('names-05-consent-not-enough');
   assert.equal(sheet.title, 'Confirm your name');
-  assert.match(sheet.app, /BEAM Campfire/);
+  assert.match(sheet.app, /Beam PWA/);
   assert.match(sheet.pay, /^[\d,]+\.?\d* BEAM$/);
   const pay = groth(sheet.pay);
   assert.ok(pay * 100n >= estimate * 98n && pay * 100n <= estimate * 102n, `sheet ${pay} within 2% of the screen's estimate ${estimate}`);
@@ -319,7 +319,7 @@ test('pay a name from Send: resolved to its owner before Review, shown on Review
 
   // Audit BC-3: the sealed record of names paid before does not open (damaged). Send and Review say
   // the owner could not be compared, instead of treating the name as never paid.
-  const UNREAD = 'BEAM Campfire could not compare this owner with your earlier payments.';
+  const UNREAD = 'Beam PWA could not compare this owner with your earlier payments.';
   const paymentsRecord = async (value) =>
     page.evaluate(async ([v]) => {
       const id = (await window.__campfire.wallets()).find((w) => w.selected).id;

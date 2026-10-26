@@ -47,7 +47,7 @@ test('emptied once due, and the toast says so; nothing is waiting afterwards', a
   const e = env();
   assert.equal(await copySecret('OWNERKEY', 'Owner key copied', { clearMs: 30, nav: e.nav, doc: e.doc, win: e.win, say: e.say }), true);
   assert.equal(e.clip, 'OWNERKEY');
-  assert.equal(e.said[0], 'Owner key copied. BEAM Campfire empties the clipboard in 1 minute (clipboard history apps may keep it).');
+  assert.equal(e.said[0], 'Owner key copied. Beam PWA empties the clipboard in 1 minute (clipboard history apps may keep it).');
   assert.equal(secretOnClipboard(), true);
   await sleep(120);
   assert.equal(e.clip, '');

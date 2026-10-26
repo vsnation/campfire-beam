@@ -1,5 +1,5 @@
 {
-  "Starting BEAM Campfire…": {
+  "Starting Beam PWA…": {
     "where": [
       "app.js",
       "lib/i18n.js"
@@ -12,7 +12,7 @@
       "screens/bridge_words.js"
     ]
   },
-  "BEAM Campfire could not start": {
+  "Beam PWA could not start": {
     "where": [
       "app.js"
     ]
@@ -788,7 +788,7 @@
       "fee"
     ]
   },
-  "This version of BEAM Campfire can't claim name payments yet. They stay safe and waiting for you.": {
+  "This version of Beam PWA can't claim name payments yet. They stay safe and waiting for you.": {
     "where": [
       "lib/bans_inbox.js",
       "screens/names_claim.js"
@@ -871,7 +871,7 @@
       "lib/bridge/beam_pipe.js"
     ]
   },
-  "Your Ethereum server says Ethereum refused this lock, which would mean nothing was locked. A server can be wrong, so BEAM Campfire watches BEAM for it for 30 minutes before saying so.": {
+  "Your Ethereum server says Ethereum refused this lock, which would mean nothing was locked. A server can be wrong, so Beam PWA watches BEAM for it for 30 minutes before saying so.": {
     "where": [
       "lib/bridge/controller.js"
     ]
@@ -891,7 +891,7 @@
       "lib/bridge/controller.js"
     ]
   },
-  "Your Ethereum server refused this lock ({reason}). It may have passed it on before refusing, so BEAM Campfire keeps offering the same signed transaction (never a second one) and watches BEAM for your {coin} for 30 minutes.": {
+  "Your Ethereum server refused this lock ({reason}). It may have passed it on before refusing, so Beam PWA keeps offering the same signed transaction (never a second one) and watches BEAM for your {coin} for 30 minutes.": {
     "where": [
       "lib/bridge/controller.js"
     ],
@@ -910,7 +910,7 @@
       "lib/bridge/controller.js"
     ]
   },
-  "Campfire could not write to this device's storage, so it did not send your {coin}. Nothing was moved.": {
+  "Beam PWA could not write to this device's storage, so it did not send your {coin}. Nothing was moved.": {
     "where": [
       "lib/bridge/controller.js"
     ],
@@ -954,7 +954,7 @@
       "reason"
     ]
   },
-  "Ethereum did not confirm it received your {coin} ({reason}). Campfire keeps looking for it and sends the same signed transaction again if needed; it never signs a second one.": {
+  "Ethereum did not confirm it received your {coin} ({reason}). Beam PWA keeps looking for it and sends the same signed transaction again if needed; it never signs a second one.": {
     "where": [
       "lib/bridge/controller.js"
     ],
@@ -979,7 +979,7 @@
       "coin"
     ]
   },
-  "It arrived on BEAM with a different amount ({amount} {coin}). Campfire will not collect it.": {
+  "It arrived on BEAM with a different amount ({amount} {coin}). Beam PWA will not collect it.": {
     "where": [
       "lib/bridge/controller.js"
     ],
@@ -988,7 +988,7 @@
       "coin"
     ]
   },
-  "Campfire was closed before your {coin} was sent, so nothing was moved. Start again: the permission you gave is kept, so it is one step this time.": {
+  "Beam PWA was closed before your {coin} was sent, so nothing was moved. Start again: the permission you gave is kept, so it is one step this time.": {
     "where": [
       "lib/bridge/controller.js"
     ],
@@ -996,7 +996,7 @@
       "coin"
     ]
   },
-  "Campfire was closed while sending.": {
+  "Beam PWA was closed while sending.": {
     "where": [
       "lib/bridge/controller.js"
     ]
@@ -1006,12 +1006,12 @@
       "lib/bridge/controller.js"
     ]
   },
-  "The lock on Ethereum does not say what Campfire sent. Campfire will not collect anything for it.": {
+  "The lock on Ethereum does not say what Beam PWA sent. Beam PWA will not collect anything for it.": {
     "where": [
       "lib/bridge/controller.js"
     ]
   },
-  "Ethereum does not have your {coin} lock yet, and sending the same signed transaction again failed ({reason}). Campfire keeps trying.": {
+  "Ethereum does not have your {coin} lock yet, and sending the same signed transaction again failed ({reason}). Beam PWA keeps trying.": {
     "where": [
       "lib/bridge/controller.js"
     ],
@@ -1238,7 +1238,7 @@
       "reason"
     ]
   },
-  "Your Ethereum server says Ethereum's gas price is a base fee of {gwei} gwei, far above anything BEAM Campfire will pay.": {
+  "Your Ethereum server says Ethereum's gas price is a base fee of {gwei} gwei, far above anything Beam PWA will pay.": {
     "where": [
       "lib/bridge/eth_pipe.js"
     ],
@@ -1415,7 +1415,7 @@
       "lib/bridge/quote.js"
     ]
   },
-  "The bridge fee follows the price of the coin and of Ethereum gas, and Campfire could not read them. Nothing was sent; try again in a minute.": {
+  "The bridge fee follows the price of the coin and of Ethereum gas, and Beam PWA could not read them. Nothing was sent; try again in a minute.": {
     "where": [
       "lib/bridge/quote.js"
     ]
@@ -1428,7 +1428,7 @@
       "coin"
     ]
   },
-  "Campfire asks Ethereum before every crossing whether {coin} is paused. Your Ethereum node did not answer. Nothing was sent; try again in a minute.": {
+  "Beam PWA asks Ethereum before every crossing whether {coin} is paused. Your Ethereum node did not answer. Nothing was sent; try again in a minute.": {
     "where": [
       "lib/bridge/quote.js"
     ],
@@ -1449,7 +1449,7 @@
       "lib/bridge/quote.js"
     ]
   },
-  "Its network fee is many times its usual level, so BEAM Campfire pays the bridge a capped fee and no more. The bridge pays out once Ethereum gets cheaper, which can take hours or days. Moving later, when it is quieter, costs less.": {
+  "Its network fee is many times its usual level, so Beam PWA pays the bridge a capped fee and no more. The bridge pays out once Ethereum gets cheaper, which can take hours or days. Moving later, when it is quieter, costs less.": {
     "where": [
       "lib/bridge/quote.js"
     ]
@@ -1920,7 +1920,7 @@
       "lib/buy/words.js"
     ]
   },
-  "This is not something you did. Nothing was sent. Try again: BEAM Campfire makes another one.": {
+  "This is not something you did. Nothing was sent. Try again: Beam PWA makes another one.": {
     "where": [
       "lib/buy/words.js"
     ]
@@ -1962,7 +1962,7 @@
       "screens/swap.js"
     ]
   },
-  "buybeam.my couldn't read BEAM Campfire's request": {
+  "buybeam.my couldn't read Beam PWA's request": {
     "where": [
       "lib/buy/words.js"
     ]
@@ -2028,7 +2028,7 @@
       "screens/near_intents.js"
     ]
   },
-  "buybeam.my sent an answer BEAM Campfire didn't expect. Nothing to pay.": {
+  "buybeam.my sent an answer Beam PWA didn't expect. Nothing to pay.": {
     "where": [
       "lib/buy/words.js"
     ]
@@ -2762,17 +2762,17 @@
       "lib/contacts.js"
     ]
   },
-  "BEAM Campfire could not compare this owner with your earlier payments.": {
+  "Beam PWA could not compare this owner with your earlier payments.": {
     "where": [
       "lib/contacts.js"
     ]
   },
-  "BEAM Campfire is busy with another check. Try again in a moment.": {
+  "Beam PWA is busy with another check. Try again in a moment.": {
     "where": [
       "lib/contracts.js"
     ]
   },
-  "BEAM Campfire refused this request: it asks the wallet to run app code with extra privileges. Nothing was sent.": {
+  "Beam PWA refused this request: it asks the wallet to run app code with extra privileges. Nothing was sent.": {
     "where": [
       "lib/contracts.js"
     ]
@@ -2878,12 +2878,12 @@
       "lib/contracts.js"
     ]
   },
-  "Its name reads like BEAM Campfire's own, so its requests could pass for the wallet's.": {
+  "Its name reads like Beam PWA's own, so its requests could pass for the wallet's.": {
     "where": [
       "lib/contracts.js"
     ]
   },
-  "Its publisher's name reads like BEAM Campfire's own, so its requests could pass for the wallet's.": {
+  "Its publisher's name reads like Beam PWA's own, so its requests could pass for the wallet's.": {
     "where": [
       "lib/contracts.js"
     ]
@@ -2970,7 +2970,7 @@
       "size"
     ]
   },
-  "{name} needs a newer wallet than this version of BEAM Campfire.": {
+  "{name} needs a newer wallet than this version of Beam PWA.": {
     "where": [
       "lib/dapps/file_package.js",
       "lib/dapps/store_install.js",
@@ -2980,7 +2980,7 @@
       "name"
     ]
   },
-  "this dApp needs a newer wallet than this version of BEAM Campfire.": {
+  "this dApp needs a newer wallet than this version of Beam PWA.": {
     "where": [
       "lib/dapps/file_package.js"
     ]
@@ -2998,7 +2998,7 @@
       "lib/dapps/file_package.js"
     ]
   },
-  "This file claims to be {name}, but it is not the package BEAM Campfire checks, so nothing was installed. Open {name} from the list of dApps instead.": {
+  "This file claims to be {name}, but it is not the package Beam PWA checks, so nothing was installed. Open {name} from the list of dApps instead.": {
     "where": [
       "lib/dapps/file_package.js"
     ],
@@ -3006,12 +3006,12 @@
       "name"
     ]
   },
-  "This file claims to be one of the dApps BEAM Campfire checks, but it is not the package BEAM Campfire checks, so nothing was installed. Open it from the list of dApps instead.": {
+  "This file claims to be one of the dApps Beam PWA checks, but it is not the package Beam PWA checks, so nothing was installed. Open it from the list of dApps instead.": {
     "where": [
       "lib/dapps/file_package.js"
     ]
   },
-  "BEAM Campfire couldn't save {name} on this device. Check that there is free space, then try again.": {
+  "Beam PWA couldn't save {name} on this device. Check that there is free space, then try again.": {
     "where": [
       "lib/dapps/file_package.js"
     ],
@@ -3019,17 +3019,17 @@
       "name"
     ]
   },
-  "BEAM Campfire couldn't save this dApp on this device. Check that there is free space, then try again.": {
+  "Beam PWA couldn't save this dApp on this device. Check that there is free space, then try again.": {
     "where": [
       "lib/dapps/file_package.js"
     ]
   },
-  "This dApp's name reads like BEAM Campfire's own, so its requests could pass for the wallet's. Nothing was installed. Ask its publisher for a copy under its own name.": {
+  "This dApp's name reads like Beam PWA's own, so its requests could pass for the wallet's. Nothing was installed. Ask its publisher for a copy under its own name.": {
     "where": [
       "lib/dapps/file_package.js"
     ]
   },
-  "This file isn't a dApp package BEAM Campfire can install safely, so nothing was installed. Ask the dApp's publisher for a new copy.": {
+  "This file isn't a dApp package Beam PWA can install safely, so nothing was installed. Ask the dApp's publisher for a new copy.": {
     "where": [
       "lib/dapps/file_package.js"
     ]
@@ -3098,72 +3098,72 @@
       "lib/dapps/package.js"
     ]
   },
-  "BEAM Campfire refused this request: it signs with the key that controls your BEAM names. Nothing was sent.": {
+  "Beam PWA refused this request: it signs with the key that controls your BEAM names. Nothing was sent.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused to sign: the key asked for controls your BEAM names. Nothing was signed.": {
+  "Beam PWA refused to sign: the key asked for controls your BEAM names. Nothing was signed.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused this request: it signs with the key that controls your airdrops. Nothing was sent.": {
+  "Beam PWA refused this request: it signs with the key that controls your airdrops. Nothing was sent.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused to sign: the key asked for controls your airdrops. Nothing was signed.": {
+  "Beam PWA refused to sign: the key asked for controls your airdrops. Nothing was signed.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused this request: it signs with the key that controls the airdrop contract. Nothing was sent.": {
+  "Beam PWA refused this request: it signs with the key that controls the airdrop contract. Nothing was sent.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused to sign: the key asked for controls the airdrop contract. Nothing was signed.": {
+  "Beam PWA refused to sign: the key asked for controls the airdrop contract. Nothing was signed.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused this request: it calls BEAM names (BANS), which holds your names and the payments sent to them. Nothing was sent.": {
+  "Beam PWA refused this request: it calls BEAM names (BANS), which holds your names and the payments sent to them. Nothing was sent.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused this request: it calls BANS name payments vault, which holds your names and the payments sent to them. Nothing was sent.": {
+  "Beam PWA refused this request: it calls BANS name payments vault, which holds your names and the payments sent to them. Nothing was sent.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused this request: it can't read all of it, so it can't show you what would be signed. Nothing was sent.": {
+  "Beam PWA refused this request: it can't read all of it, so it can't show you what would be signed. Nothing was sent.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused this request: it asks the wallet to run the dApp's own code with extra privileges. Nothing was sent.": {
+  "Beam PWA refused this request: it asks the wallet to run the dApp's own code with extra privileges. Nothing was sent.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused this request: it asks for permission to spend more later than it shows you now. Nothing was sent.": {
+  "Beam PWA refused this request: it asks for permission to spend more later than it shows you now. Nothing was sent.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused this request: its description contains hidden characters that could change how it reads. Nothing was sent.": {
+  "Beam PWA refused this request: its description contains hidden characters that could change how it reads. Nothing was sent.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused this request: it lets the dApp's own code redo the call later, without asking you again. BEAM Campfire allows that only for code from BEAM's own dApps. Nothing was sent.": {
+  "Beam PWA refused this request: it lets the dApp's own code redo the call later, without asking you again. Beam PWA allows that only for code from BEAM's own dApps. Nothing was sent.": {
     "where": [
       "lib/dapps/policy.js"
     ]
   },
-  "BEAM Campfire refused this request: it lets BEAM's dApp code redo the call later on another contract than the one that code is made for. Nothing was sent.": {
+  "Beam PWA refused this request: it lets BEAM's dApp code redo the call later on another contract than the one that code is made for. Nothing was sent.": {
     "where": [
       "lib/dapps/policy.js"
     ]
@@ -3173,7 +3173,7 @@
       "lib/dapps/runner.js"
     ]
   },
-  "The dApp reloaded or left its page, so BEAM Campfire closed it.": {
+  "The dApp reloaded or left its page, so Beam PWA closed it.": {
     "where": [
       "lib/dapps/runner.js"
     ]
@@ -3217,7 +3217,7 @@
       "lib/dapps/store.js"
     ]
   },
-  "Its name reads like {name}, which comes with BEAM Campfire. This is a different dApp from another publisher.": {
+  "Its name reads like {name}, which comes with Beam PWA. This is a different dApp from another publisher.": {
     "where": [
       "lib/dapps/store.js"
     ],
@@ -3225,7 +3225,7 @@
       "name"
     ]
   },
-  "It uses the id of {name}, which comes with BEAM Campfire, so it cannot be installed here.": {
+  "It uses the id of {name}, which comes with Beam PWA, so it cannot be installed here.": {
     "where": [
       "lib/dapps/store.js"
     ],
@@ -3277,7 +3277,7 @@
       "lib/dapps/store_install.js"
     ]
   },
-  "{name} uses the id of a dApp that comes with BEAM Campfire, so it can't be installed. Open that dApp from dApps instead.": {
+  "{name} uses the id of a dApp that comes with Beam PWA, so it can't be installed. Open that dApp from dApps instead.": {
     "where": [
       "lib/dapps/store_install.js"
     ],
@@ -3285,7 +3285,7 @@
       "name"
     ]
   },
-  "{name} isn't in BEAM Campfire's copy of the store yet. Ask its publisher for the .dapp file and choose Install from a file, or try again in a few days.": {
+  "{name} isn't in Beam PWA's copy of the store yet. Ask its publisher for the .dapp file and choose Install from a file, or try again in a few days.": {
     "where": [
       "lib/dapps/store_install.js"
     ],
@@ -3306,7 +3306,7 @@
       "lib/dapps/store_install.js"
     ]
   },
-  "{name} is larger than BEAM Campfire installs (32 MB). Nothing was installed.": {
+  "{name} is larger than Beam PWA installs (32 MB). Nothing was installed.": {
     "where": [
       "lib/dapps/store_install.js"
     ],
@@ -3678,7 +3678,7 @@
       "lib/envelope.js"
     ]
   },
-  "Not a BEAM Campfire envelope.": {
+  "Not a Beam PWA envelope.": {
     "where": [
       "lib/envelope.js"
     ]
@@ -3715,7 +3715,7 @@
       "screens/eth_ui.js"
     ]
   },
-  "Wait until BEAM Campfire knows what happened to it, or choose another Ethereum server in Settings: it is checked there.": {
+  "Wait until Beam PWA knows what happened to it, or choose another Ethereum server in Settings: it is checked there.": {
     "where": [
       "lib/eth/doubt.js"
     ]
@@ -3795,7 +3795,7 @@
       "lib/eth/doubt.js"
     ]
   },
-  "BEAM Campfire looks for it once more first. Keep this screen open for a minute, then try again.": {
+  "Beam PWA looks for it once more first. Keep this screen open for a minute, then try again.": {
     "where": [
       "lib/eth/doubt.js"
     ]
@@ -3950,7 +3950,7 @@
       "lib/eth/rpc.js"
     ]
   },
-  "{server} says Ethereum's network fee is a base fee of {gwei} gwei, far above anything BEAM Campfire will pay.": {
+  "{server} says Ethereum's network fee is a base fee of {gwei} gwei, far above anything Beam PWA will pay.": {
     "where": [
       "lib/eth/rpc.js"
     ],
@@ -3959,7 +3959,7 @@
       "server"
     ]
   },
-  "The Ethereum server says Ethereum's network fee is a base fee of {gwei} gwei, far above anything BEAM Campfire will pay.": {
+  "The Ethereum server says Ethereum's network fee is a base fee of {gwei} gwei, far above anything Beam PWA will pay.": {
     "where": [
       "lib/eth/rpc.js"
     ],
@@ -4939,13 +4939,13 @@
       "screens/problem.js"
     ]
   },
-  "This app's web address is serving code BEAM Campfire did not sign. Don't enter your password here.": {
+  "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": {
     "where": [
       "lib/i18n.js",
       "screens/problem.js"
     ]
   },
-  "BEAM Campfire stopped before opening.": {
+  "Beam PWA stopped before opening.": {
     "where": [
       "lib/i18n.js"
     ]
@@ -4961,7 +4961,7 @@
       "screens/problem.js"
     ]
   },
-  "BEAM Campfire needs JavaScript to run the wallet on your device.": {
+  "Beam PWA needs JavaScript to run the wallet on your device.": {
     "where": [
       "lib/i18n.js"
     ]
@@ -5403,11 +5403,6 @@
       "lib/loader_words.js"
     ]
   },
-  "This update is not signed with the BEAM Campfire release key.": {
-    "where": [
-      "lib/loader_words.js"
-    ]
-  },
   "release.json is not JSON.": {
     "where": [
       "lib/loader_words.js"
@@ -5465,11 +5460,6 @@
       "path"
     ]
   },
-  "No BEAM Campfire release is published at this address.": {
-    "where": [
-      "lib/loader_words.js"
-    ]
-  },
   "unknown error": {
     "where": [
       "lib/loader_words.js",
@@ -5483,11 +5473,6 @@
     ],
     "placeholders": [
       "version"
-    ]
-  },
-  "Paste the address of a copy of BEAM Campfire.": {
-    "where": [
-      "lib/loader_words.js"
     ]
   },
   "That address is too long.": {
@@ -5544,23 +5529,6 @@
       "host",
       "path",
       "status"
-    ]
-  },
-  "{path} is far larger than a BEAM Campfire release file.": {
-    "where": [
-      "lib/loader_words.js"
-    ],
-    "placeholders": [
-      "path"
-    ]
-  },
-  "{path} from {host} is far larger than a BEAM Campfire release file.": {
-    "where": [
-      "lib/loader_words.js"
-    ],
-    "placeholders": [
-      "host",
-      "path"
     ]
   },
   "The download of {path} was interrupted.": {
@@ -5659,6 +5627,38 @@
     ],
     "placeholders": [
       "example"
+    ]
+  },
+  "This update is not signed with the Beam PWA release key.": {
+    "where": [
+      "lib/loader_words.js"
+    ]
+  },
+  "No Beam PWA release is published at this address.": {
+    "where": [
+      "lib/loader_words.js"
+    ]
+  },
+  "Paste the address of a copy of Beam PWA.": {
+    "where": [
+      "lib/loader_words.js"
+    ]
+  },
+  "{path} is far larger than a Beam PWA release file.": {
+    "where": [
+      "lib/loader_words.js"
+    ],
+    "placeholders": [
+      "path"
+    ]
+  },
+  "{path} from {host} is far larger than a Beam PWA release file.": {
+    "where": [
+      "lib/loader_words.js"
+    ],
+    "placeholders": [
+      "host",
+      "path"
     ]
   },
   "Asset #{id}": {
@@ -6093,12 +6093,12 @@
       "lib/notify.js"
     ]
   },
-  "BEAM Campfire opens it once the wallet is open.": {
+  "Beam PWA opens it once the wallet is open.": {
     "where": [
       "lib/notify.js"
     ]
   },
-  "BEAM Campfire notifications are on": {
+  "Beam PWA notifications are on": {
     "where": [
       "lib/notify.js"
     ]
@@ -6296,7 +6296,7 @@
       "lib/notify_rules.js"
     ]
   },
-  "It finishes only while BEAM Campfire is open: come back so it can.": {
+  "It finishes only while Beam PWA is open: come back so it can.": {
     "where": [
       "lib/notify_rules.js"
     ]
@@ -6321,7 +6321,7 @@
       "lib/notify_rules.js"
     ]
   },
-  "It finishes only while BEAM Campfire is open. Open it to finish.": {
+  "It finishes only while Beam PWA is open. Open it to finish.": {
     "where": [
       "lib/notify_rules.js"
     ]
@@ -6331,7 +6331,7 @@
       "lib/notify_rules.js"
     ]
   },
-  "Open BEAM Campfire to use it.": {
+  "Open Beam PWA to use it.": {
     "where": [
       "lib/notify_rules.js"
     ]
@@ -6463,7 +6463,7 @@
       "other": "{n} payments did not go through"
     }
   },
-  "BEAM Campfire is open in another tab.": {
+  "Beam PWA is open in another tab.": {
     "where": [
       "lib/one_tab.js"
     ]
@@ -6526,7 +6526,7 @@
       "lib/owner_key.js"
     ]
   },
-  "Your BEAM Campfire password": {
+  "Your Beam PWA password": {
     "where": [
       "lib/owner_key.js"
     ]
@@ -6599,7 +6599,7 @@
       "lib/passkey.js"
     ]
   },
-  "This device already has a BEAM Campfire passkey for this wallet.": {
+  "This device already has a Beam PWA passkey for this wallet.": {
     "where": [
       "lib/passkey.js"
     ]
@@ -6673,7 +6673,7 @@
       "screens/send_extras.js"
     ]
   },
-  "Opens explorer.beam.mw in your browser. It sees your IP address and which transaction you looked up; BEAM Campfire sends it nothing.": {
+  "Opens explorer.beam.mw in your browser. It sees your IP address and which transaction you looked up; Beam PWA sends it nothing.": {
     "where": [
       "lib/payments.js"
     ]
@@ -6791,12 +6791,12 @@
       "lib/payments.js"
     ]
   },
-  "BEAM Campfire may not use the camera. To scan, allow the camera for this app in your phone’s settings (iPhone: Settings → Apps → Safari → Camera), then try again. Or paste the address.": {
+  "Beam PWA may not use the camera. To scan, allow the camera for this app in your phone’s settings (iPhone: Settings → Apps → Safari → Camera), then try again. Or paste the address.": {
     "where": [
       "lib/qr_scan.js"
     ]
   },
-  "This device has no camera BEAM Campfire can use. Paste the address instead.": {
+  "This device has no camera Beam PWA can use. Paste the address instead.": {
     "where": [
       "lib/qr_scan.js"
     ]
@@ -6967,7 +6967,7 @@
       "lib/recovery.js"
     ]
   },
-  "This copy of BEAM Campfire is hosted without BEAM's snapshot. Use a recovery file you download yourself (below), or scan instead.": {
+  "This copy of Beam PWA is hosted without BEAM's snapshot. Use a recovery file you download yourself (below), or scan instead.": {
     "where": [
       "lib/recovery.js"
     ]
@@ -7055,7 +7055,7 @@
       "lib/shaders.js"
     ]
   },
-  "A part of the app is missing ({file}). Reload BEAM Campfire.": {
+  "A part of the app is missing ({file}). Reload Beam PWA.": {
     "where": [
       "lib/shaders.js"
     ],
@@ -7078,7 +7078,7 @@
       "lib/storage.js"
     ]
   },
-  "Storage is busy in another tab. Close other BEAM Campfire tabs and reload.": {
+  "Storage is busy in another tab. Close other Beam PWA tabs and reload.": {
     "where": [
       "lib/store.js"
     ]
@@ -7093,7 +7093,7 @@
       "lib/sync.js"
     ]
   },
-  "Reading the blockchain snapshot. Keep BEAM Campfire open.": {
+  "Reading the blockchain snapshot. Keep Beam PWA open.": {
     "where": [
       "lib/sync.js"
     ]
@@ -7379,7 +7379,7 @@
       "lib/ui.js"
     ]
   },
-  "{what}. BEAM Campfire empties the clipboard in {n} minutes (clipboard history apps may keep it).": {
+  "{what}. Beam PWA empties the clipboard in {n} minutes (clipboard history apps may keep it).": {
     "where": [
       "lib/ui.js"
     ],
@@ -7388,8 +7388,8 @@
       "what"
     ],
     "count": {
-      "one": "{what}. BEAM Campfire empties the clipboard in {n} minute (clipboard history apps may keep it).",
-      "other": "{what}. BEAM Campfire empties the clipboard in {n} minutes (clipboard history apps may keep it)."
+      "one": "{what}. Beam PWA empties the clipboard in {n} minute (clipboard history apps may keep it).",
+      "other": "{what}. Beam PWA empties the clipboard in {n} minutes (clipboard history apps may keep it)."
     }
   },
   "The update did not pass the signature check.": {
@@ -7417,7 +7417,7 @@
       "lib/update_ui.js"
     ]
   },
-  "Updated to {version} from a copy at {host} — checked against BEAM Campfire's signature.": {
+  "Updated to {version} from a copy at {host} — checked against Beam PWA's signature.": {
     "where": [
       "lib/update.js"
     ],
@@ -7426,7 +7426,7 @@
       "version"
     ]
   },
-  "Updated to {version} — checked against BEAM Campfire's signature.": {
+  "Updated to {version} — checked against Beam PWA's signature.": {
     "where": [
       "lib/update.js"
     ],
@@ -7475,7 +7475,7 @@
       "when"
     ]
   },
-  "Last checked {when}: updated to {version} from a copy at {host}, checked against BEAM Campfire's signature.": {
+  "Last checked {when}: updated to {version} from a copy at {host}, checked against Beam PWA's signature.": {
     "where": [
       "lib/update.js"
     ],
@@ -7485,7 +7485,7 @@
       "when"
     ]
   },
-  "Last checked {when}: updated to {version}, checked against BEAM Campfire's signature.": {
+  "Last checked {when}: updated to {version}, checked against Beam PWA's signature.": {
     "where": [
       "lib/update.js"
     ],
@@ -7569,7 +7569,7 @@
       "other": "{n} days ago"
     }
   },
-  "BEAM Campfire asks its own address and the public copies, and keeps the newest release. Whichever copy it comes from, every file is checked against BEAM Campfire's signature before it is kept. Your app keeps working meanwhile.": {
+  "Beam PWA asks its own address and the public copies, and keeps the newest release. Whichever copy it comes from, every file is checked against Beam PWA's signature before it is kept. Your app keeps working meanwhile.": {
     "where": [
       "lib/update_ui.js"
     ]
@@ -7721,7 +7721,7 @@
       "lib/update_ui.js"
     ]
   },
-  "Downloaded from a copy at {host} and checked against BEAM Campfire's signature, file by file. Your wallet and settings stay as they are.": {
+  "Downloaded from a copy at {host} and checked against Beam PWA's signature, file by file. Your wallet and settings stay as they are.": {
     "where": [
       "lib/update_ui.js"
     ],
@@ -7729,7 +7729,7 @@
       "host"
     ]
   },
-  "This version was downloaded and checked against the BEAM Campfire release signature. Your wallet and settings stay as they are.": {
+  "This version was downloaded and checked against the Beam PWA release signature. Your wallet and settings stay as they are.": {
     "where": [
       "lib/update_ui.js"
     ]
@@ -7787,12 +7787,12 @@
       "lib/update_ui.js"
     ]
   },
-  "BEAM Campfire runs from the copy on this device. It does not need its web address to open, unlock, sync, send or receive.": {
+  "Beam PWA runs from the copy on this device. It does not need its web address to open, unlock, sync, send or receive.": {
     "where": [
       "lib/update_ui.js"
     ]
   },
-  "BEAM Campfire {version} changes how the app starts on this device, and that part can only come from the address you installed it from, which still serves version {ownVersion}. Your app keeps working; check again later.": {
+  "Beam PWA {version} changes how the app starts on this device, and that part can only come from the address you installed it from, which still serves version {ownVersion}. Your app keeps working; check again later.": {
     "where": [
       "lib/update_ui.js"
     ],
@@ -7801,7 +7801,7 @@
       "version"
     ]
   },
-  "BEAM Campfire {version} changes how the app starts on this device, and that part can only come from the address you installed it from, which is not serving it right now. Your app keeps working; check again later.": {
+  "Beam PWA {version} changes how the app starts on this device, and that part can only come from the address you installed it from, which is not serving it right now. Your app keeps working; check again later.": {
     "where": [
       "lib/update_ui.js"
     ],
@@ -7847,12 +7847,12 @@
       "lib/update_ui.js"
     ]
   },
-  "Address of a copy of BEAM Campfire": {
+  "Address of a copy of Beam PWA": {
     "where": [
       "lib/update_ui.js"
     ]
   },
-  "Any copy of BEAM Campfire can bring you an update when the app's own address is gone. Paste the address of one. Whatever it sends is checked against BEAM Campfire's signature, so a changed or fake copy can't be installed.": {
+  "Any copy of Beam PWA can bring you an update when the app's own address is gone. Paste the address of one. Whatever it sends is checked against Beam PWA's signature, so a changed or fake copy can't be installed.": {
     "where": [
       "lib/update_ui.js"
     ]
@@ -7894,7 +7894,7 @@
       "other": "Looking for the newest version in {n} places…"
     }
   },
-  "The newest BEAM Campfire release any update source has is from {date}, about {n} months ago. If BEAM Campfire has moved to a new address, a copy there can bring you a newer one. Your app keeps working.": {
+  "The newest Beam PWA release any update source has is from {date}, about {n} months ago. If Beam PWA has moved to a new address, a copy there can bring you a newer one. Your app keeps working.": {
     "where": [
       "lib/update_ui.js"
     ],
@@ -7903,8 +7903,8 @@
       "n"
     ],
     "count": {
-      "one": "The newest BEAM Campfire release any update source has is from {date}, about {n} month ago. If BEAM Campfire has moved to a new address, a copy there can bring you a newer one. Your app keeps working.",
-      "other": "The newest BEAM Campfire release any update source has is from {date}, about {n} months ago. If BEAM Campfire has moved to a new address, a copy there can bring you a newer one. Your app keeps working."
+      "one": "The newest Beam PWA release any update source has is from {date}, about {n} month ago. If Beam PWA has moved to a new address, a copy there can bring you a newer one. Your app keeps working.",
+      "other": "The newest Beam PWA release any update source has is from {date}, about {n} months ago. If Beam PWA has moved to a new address, a copy there can bring you a newer one. Your app keeps working."
     }
   },
   "The receiver's wallet has to come online within about 12 hours to accept it; until then it shows as waiting.": {
@@ -8156,7 +8156,7 @@
       "lib/wallet_data.js"
     ]
   },
-  "Your 12 words bring back your coins, not your address names, payment notes, contacts or payment history. Save them to a file, then bring them into BEAM Campfire on your new device, or into BEAM’s desktop wallet.": {
+  "Your 12 words bring back your coins, not your address names, payment notes, contacts or payment history. Save them to a file, then bring them into Beam PWA on your new device, or into BEAM’s desktop wallet.": {
     "where": [
       "lib/wallet_data.js"
     ]
@@ -8166,7 +8166,7 @@
       "lib/wallet_data.js"
     ]
   },
-  "Your address names, payment notes, contacts and payment history, in a file you can bring into BEAM Campfire on another device or into BEAM’s desktop wallet, without the whole wallet.db.": {
+  "Your address names, payment notes, contacts and payment history, in a file you can bring into Beam PWA on another device or into BEAM’s desktop wallet, without the whole wallet.db.": {
     "where": [
       "lib/wallet_data.js"
     ]
@@ -8208,7 +8208,7 @@
       "lib/wallet_data.js"
     ]
   },
-  "BEAM Campfire on another device brings it in with “Bring in wallet data”; BEAM’s desktop wallet with Settings → Import wallet data.": {
+  "Beam PWA on another device brings it in with “Bring in wallet data”; BEAM’s desktop wallet with Settings → Import wallet data.": {
     "where": [
       "lib/wallet_data.js"
     ]
@@ -8281,7 +8281,7 @@
       "lib/wallet_data.js"
     ]
   },
-  "This file is larger than {mb} MB, more than BEAM Campfire reads as wallet data. Check that it is the file from “Save wallet data”.": {
+  "This file is larger than {mb} MB, more than Beam PWA reads as wallet data. Check that it is the file from “Save wallet data”.": {
     "where": [
       "lib/wallet_data.js"
     ],
@@ -8289,7 +8289,7 @@
       "mb"
     ]
   },
-  "BEAM Campfire could not read that file. Choose it again; if it is in iCloud Drive, let it download first.": {
+  "Beam PWA could not read that file. Choose it again; if it is in iCloud Drive, let it download first.": {
     "where": [
       "lib/wallet_data.js",
       "lib/wallet_file.js"
@@ -8300,7 +8300,7 @@
       "lib/wallet_data.js"
     ]
   },
-  "This wallet data file is damaged or was changed after it was saved, so BEAM Campfire does not bring it in. Save a new one from the other wallet.": {
+  "This wallet data file is damaged or was changed after it was saved, so Beam PWA does not bring it in. Save a new one from the other wallet.": {
     "where": [
       "lib/wallet_data.js"
     ]
@@ -8310,7 +8310,7 @@
       "lib/wallet_data.js"
     ]
   },
-  "This file has numbers too large to read safely, so BEAM Campfire does not bring it in. Bring it into BEAM’s desktop wallet instead.": {
+  "This file has numbers too large to read safely, so Beam PWA does not bring it in. Bring it into BEAM’s desktop wallet instead.": {
     "where": [
       "lib/wallet_data.js"
     ]
@@ -8520,7 +8520,7 @@
       "lib/wallet_data_io.js"
     ]
   },
-  "BEAM Campfire could not read this wallet’s own lists just now. Try again in a moment.": {
+  "Beam PWA could not read this wallet’s own lists just now. Try again in a moment.": {
     "where": [
       "lib/wallet_data_io.js"
     ]
@@ -8535,7 +8535,7 @@
       "lib/wallet_data_io.js"
     ]
   },
-  "This wallet has {n} payments, more history than BEAM Campfire can put in one file on this device yet (about {max}). Nothing is lost: wallet.db holds the names, notes and history, so “Export wallet.db” on this screen carries them to BEAM Campfire on another device or to BEAM’s desktop wallet.": {
+  "This wallet has {n} payments, more history than Beam PWA can put in one file on this device yet (about {max}). Nothing is lost: wallet.db holds the names, notes and history, so “Export wallet.db” on this screen carries them to Beam PWA on another device or to BEAM’s desktop wallet.": {
     "where": [
       "lib/wallet_data_io.js"
     ],
@@ -8544,8 +8544,8 @@
       "n"
     ],
     "count": {
-      "one": "This wallet has {n} payment, more history than BEAM Campfire can put in one file on this device yet (about {max}). Nothing is lost: wallet.db holds the names, notes and history, so “Export wallet.db” on this screen carries them to BEAM Campfire on another device or to BEAM’s desktop wallet.",
-      "other": "This wallet has {n} payments, more history than BEAM Campfire can put in one file on this device yet (about {max}). Nothing is lost: wallet.db holds the names, notes and history, so “Export wallet.db” on this screen carries them to BEAM Campfire on another device or to BEAM’s desktop wallet."
+      "one": "This wallet has {n} payment, more history than Beam PWA can put in one file on this device yet (about {max}). Nothing is lost: wallet.db holds the names, notes and history, so “Export wallet.db” on this screen carries them to Beam PWA on another device or to BEAM’s desktop wallet.",
+      "other": "This wallet has {n} payments, more history than Beam PWA can put in one file on this device yet (about {max}). Nothing is lost: wallet.db holds the names, notes and history, so “Export wallet.db” on this screen carries them to Beam PWA on another device or to BEAM’s desktop wallet."
     }
   },
   "Import wallet.db": {
@@ -8553,7 +8553,7 @@
       "lib/wallet_file.js"
     ]
   },
-  "Already have a BEAM wallet as a wallet.db file? Choose it and enter its password. BEAM Campfire makes its own copy; your file is not changed.": {
+  "Already have a BEAM wallet as a wallet.db file? Choose it and enter its password. Beam PWA makes its own copy; your file is not changed.": {
     "where": [
       "lib/wallet_file.js"
     ]
@@ -8583,7 +8583,7 @@
       "lib/wallet_file.js"
     ]
   },
-  "This wallet will have no recovery phrase (12 words) in BEAM Campfire. Keep the original file and its password safe: they are how you get it back.": {
+  "This wallet will have no recovery phrase (12 words) in Beam PWA. Keep the original file and its password safe: they are how you get it back.": {
     "where": [
       "lib/wallet_file.js"
     ]
@@ -8653,7 +8653,7 @@
       "lib/wallet_file.js"
     ]
   },
-  "This wallet was imported from its wallet.db file and has no recovery phrase in BEAM Campfire. Its original file and password are its backup: keep them safe.": {
+  "This wallet was imported from its wallet.db file and has no recovery phrase in Beam PWA. Its original file and password are its backup: keep them safe.": {
     "where": [
       "lib/wallet_file.js"
     ]
@@ -8719,7 +8719,7 @@
       "lib/wallets.js"
     ]
   },
-  "Updates are checked against BEAM Campfire's signature before they are installed. The part of BEAM Campfire that does that check (the loader) comes straight from this app's web address. While BEAM Campfire is open it watches the loader and stops if the address starts serving a different one; it cannot see a change made while it is closed, and the next time it opens, that code runs.": {
+  "Updates are checked against Beam PWA's signature before they are installed. The part of Beam PWA that does that check (the loader) comes straight from this app's web address. While Beam PWA is open it watches the loader and stops if the address starts serving a different one; it cannot see a change made while it is closed, and the next time it opens, that code runs.": {
     "where": [
       "screens/about.js"
     ]
@@ -8933,7 +8933,7 @@
       "screens/about.js"
     ]
   },
-  "BEAM Campfire is part of Campfire for BEAM (GPL-3.0), a fork of Campfire / Stack Wallet. The wallet engine is BEAM's own (Apache-2.0). Inter font: SIL Open Font License 1.1.": {
+  "Beam PWA is part of Campfire for BEAM (GPL-3.0), a fork of Campfire / Stack Wallet. The wallet engine is BEAM's own (Apache-2.0). Inter font: SIL Open Font License 1.1.": {
     "where": [
       "screens/about.js"
     ]
@@ -8990,12 +8990,12 @@
       "label"
     ]
   },
-  "BEAM Campfire has accepted it. The sender's wallet now puts it on the blockchain, so it must be online. Paid from another app on this phone? Open that app again.": {
+  "Beam PWA has accepted it. The sender's wallet now puts it on the blockchain, so it must be online. Paid from another app on this phone? Open that app again.": {
     "where": [
       "screens/activity.js"
     ]
   },
-  "It finishes while both wallets are online: keep BEAM Campfire open.": {
+  "It finishes while both wallets are online: keep Beam PWA open.": {
     "where": [
       "screens/activity.js"
     ]
@@ -9695,7 +9695,7 @@
       "screens/airdrop.js"
     ]
   },
-  "{symbol} is asset #{id}: not on BEAM Campfire's list of known assets.": {
+  "{symbol} is asset #{id}: not on Beam PWA's list of known assets.": {
     "where": [
       "screens/airdrop.js"
     ],
@@ -10219,7 +10219,7 @@
       "screens/airdrop_codes.js"
     ]
   },
-  "Before you share them, BEAM Campfire makes sure every code points to the batch you made, so nobody can swap them for empty ones. The codes appear here once that is done. You can leave this screen and come back.": {
+  "Before you share them, Beam PWA makes sure every code points to the batch you made, so nobody can swap them for empty ones. The codes appear here once that is done. You can leave this screen and come back.": {
     "where": [
       "screens/airdrop_codes.js"
     ]
@@ -10232,7 +10232,7 @@
       "reason"
     ]
   },
-  "Codes hidden while BEAM Campfire is in the background.": {
+  "Codes hidden while Beam PWA is in the background.": {
     "where": [
       "screens/airdrop_codes.js"
     ]
@@ -10584,7 +10584,7 @@
       "screens/split_review.js"
     ]
   },
-  "Share the codes once BEAM Campfire has checked them: it waits for the network to confirm the batch, then checks every code. This takes a few minutes.": {
+  "Share the codes once Beam PWA has checked them: it waits for the network to confirm the batch, then checks every code. This takes a few minutes.": {
     "where": [
       "screens/airdrop_create.js"
     ]
@@ -10694,7 +10694,7 @@
       "screens/home.js"
     ]
   },
-  "A copy of this wallet as a file that opens with your BEAM Campfire password in BEAM Campfire desktop, BEAM's desktop wallet, Light Wallet or the BEAM CLI. It keeps working if this app's web address ever disappears.": {
+  "A copy of this wallet as a file that opens with your Beam PWA password in BEAM Campfire desktop, BEAM's desktop wallet, Light Wallet or the BEAM CLI. It keeps working if this app's web address ever disappears.": {
     "where": [
       "screens/backup.js"
     ]
@@ -10729,7 +10729,7 @@
       "screens/backup.js"
     ]
   },
-  "Its password: the original file opens with the password it had when you imported it; an exported copy opens with your BEAM Campfire password.": {
+  "Its password: the original file opens with the password it had when you imported it; an exported copy opens with your Beam PWA password.": {
     "where": [
       "screens/backup.js"
     ]
@@ -10747,7 +10747,7 @@
       "screens/backup.js"
     ]
   },
-  "BEAM Campfire does not keep a copy of the words, so it cannot show them again. Keep your paper safe and private.": {
+  "Beam PWA does not keep a copy of the words, so it cannot show them again. Keep your paper safe and private.": {
     "where": [
       "screens/backup.js"
     ]
@@ -10775,17 +10775,17 @@
       "screens/backup.js"
     ]
   },
-  "Optional. If this computer is lost, open BEAM Campfire anywhere, choose Import wallet.db and pick the copy in iCloud Drive.": {
+  "Optional. If this computer is lost, open Beam PWA anywhere, choose Import wallet.db and pick the copy in iCloud Drive.": {
     "where": [
       "screens/backup.js"
     ]
   },
-  "Optional. If this phone is lost, open BEAM Campfire anywhere, choose Import wallet.db and pick the copy in iCloud Drive.": {
+  "Optional. If this phone is lost, open Beam PWA anywhere, choose Import wallet.db and pick the copy in iCloud Drive.": {
     "where": [
       "screens/backup.js"
     ]
   },
-  "Optional. If this phone is lost, open BEAM Campfire anywhere, choose Import wallet.db and pick the copy in your cloud storage.": {
+  "Optional. If this phone is lost, open Beam PWA anywhere, choose Import wallet.db and pick the copy in your cloud storage.": {
     "where": [
       "screens/backup.js"
     ]
@@ -10806,7 +10806,7 @@
       "min"
     ]
   },
-  "Your BEAM Campfire password is easy to guess, or too short for a file kept in iCloud Drive. Choose one of at least {min} characters, not a common one, for this copy. You need it to open the copy, so write it down, not in the same account as the copy.": {
+  "Your Beam PWA password is easy to guess, or too short for a file kept in iCloud Drive. Choose one of at least {min} characters, not a common one, for this copy. You need it to open the copy, so write it down, not in the same account as the copy.": {
     "where": [
       "screens/backup.js"
     ],
@@ -10814,7 +10814,7 @@
       "min"
     ]
   },
-  "Your BEAM Campfire password is easy to guess, or too short for a file kept in your cloud storage. Choose one of at least {min} characters, not a common one, for this copy. You need it to open the copy, so write it down, not in the same account as the copy.": {
+  "Your Beam PWA password is easy to guess, or too short for a file kept in your cloud storage. Choose one of at least {min} characters, not a common one, for this copy. You need it to open the copy, so write it down, not in the same account as the copy.": {
     "where": [
       "screens/backup.js"
     ],
@@ -10902,7 +10902,7 @@
       "screens/backup.js"
     ]
   },
-  "BEAM Campfire password": {
+  "Beam PWA password": {
     "where": [
       "screens/backup.js"
     ]
@@ -10938,7 +10938,7 @@
       "reason"
     ]
   },
-  "Enter your BEAM Campfire password.": {
+  "Enter your Beam PWA password.": {
     "where": [
       "screens/backup.js"
     ]
@@ -10968,7 +10968,7 @@
       "screens/backup.js"
     ]
   },
-  "{size} · opens with your BEAM Campfire password": {
+  "{size} · opens with your Beam PWA password": {
     "where": [
       "screens/backup.js"
     ],
@@ -10997,7 +10997,7 @@
       "reason"
     ]
   },
-  "Enter your BEAM Campfire password. The exported file will open with it.": {
+  "Enter your Beam PWA password. The exported file will open with it.": {
     "where": [
       "screens/backup.js"
     ]
@@ -11154,7 +11154,7 @@
       "screens/bridge_crossing.js"
     ]
   },
-  "BEAM Campfire looks again when it is back on screen.": {
+  "Beam PWA looks again when it is back on screen.": {
     "where": [
       "screens/bridge_crossing.js"
     ]
@@ -11546,7 +11546,7 @@
       "screens/bridge_move.js"
     ]
   },
-  "The bridge moves coins between your own BEAM wallet and your own Ethereum wallet, so you need one of each. An Ethereum wallet takes a minute to add, here in BEAM Campfire; then you come back here.": {
+  "The bridge moves coins between your own BEAM wallet and your own Ethereum wallet, so you need one of each. An Ethereum wallet takes a minute to add, here in Beam PWA; then you come back here.": {
     "where": [
       "screens/bridge_move.js"
     ]
@@ -11715,7 +11715,7 @@
       "screens/bridge_review.js"
     ]
   },
-  "BEAM Campfire asks Ethereum again right before signing.": {
+  "Beam PWA asks Ethereum again right before signing.": {
     "where": [
       "screens/bridge_review.js"
     ]
@@ -12006,7 +12006,7 @@
       "screens/bridge_ui.js"
     ]
   },
-  "They were kept exactly as they were; nothing was changed or sent. Lock and unlock BEAM Campfire, then try again.": {
+  "They were kept exactly as they were; nothing was changed or sent. Lock and unlock Beam PWA, then try again.": {
     "where": [
       "screens/bridge_ui.js"
     ]
@@ -12044,7 +12044,7 @@
       "screens/bridge_ui.js"
     ]
   },
-  "To work it out, BEAM Campfire asks CoinGecko for the prices of ETH and of the coin you move, the same prices the bridge uses. CoinGecko sees your IP address, not your wallets. It is asked only while you use the bridge.": {
+  "To work it out, Beam PWA asks CoinGecko for the prices of ETH and of the coin you move, the same prices the bridge uses. CoinGecko sees your IP address, not your wallets. It is asked only while you use the bridge.": {
     "where": [
       "screens/bridge_ui.js"
     ]
@@ -12186,7 +12186,7 @@
       "coin"
     ]
   },
-  "First an Ethereum transaction allows the bridge to take exactly {amount}, then it is sent. Keep BEAM Campfire open for a minute.": {
+  "First an Ethereum transaction allows the bridge to take exactly {amount}, then it is sent. Keep Beam PWA open for a minute.": {
     "where": [
       "screens/bridge_words.js"
     ],
@@ -12199,7 +12199,7 @@
       "screens/bridge_words.js"
     ]
   },
-  "BEAM Campfire watches BEAM for it before saying anything is lost.": {
+  "Beam PWA watches BEAM for it before saying anything is lost.": {
     "where": [
       "screens/bridge_words.js"
     ]
@@ -12244,7 +12244,7 @@
       "screens/bridge_words.js"
     ]
   },
-  "Sent to the bridge {when}. The bridge is sometimes slow when it is busy; BEAM Campfire keeps looking. If you use this wallet on another device too, it may have been collected there.": {
+  "Sent to the bridge {when}. The bridge is sometimes slow when it is busy; Beam PWA keeps looking. If you use this wallet on another device too, it may have been collected there.": {
     "where": [
       "screens/bridge_words.js"
     ],
@@ -12252,7 +12252,7 @@
       "when"
     ]
   },
-  "Sent to the bridge over 30 minutes ago. The bridge is sometimes slow when it is busy; BEAM Campfire keeps looking. If you use this wallet on another device too, it may have been collected there.": {
+  "Sent to the bridge over 30 minutes ago. The bridge is sometimes slow when it is busy; Beam PWA keeps looking. If you use this wallet on another device too, it may have been collected there.": {
     "where": [
       "screens/bridge_words.js"
     ]
@@ -12267,7 +12267,7 @@
       "screens/bridge_words.js"
     ]
   },
-  "BEAM Campfire found it waiting on BEAM for this wallet. Collecting it is a BEAM transaction with a {fee} network fee.": {
+  "Beam PWA found it waiting on BEAM for this wallet. Collecting it is a BEAM transaction with a {fee} network fee.": {
     "where": [
       "screens/bridge_words.js"
     ],
@@ -12352,17 +12352,17 @@
       "coin"
     ]
   },
-  "BEAM Campfire can't tell yet whether it was sent": {
+  "Beam PWA can't tell yet whether it was sent": {
     "where": [
       "screens/bridge_words.js"
     ]
   },
-  "Your BEAM wallet did not confirm sending it. Check its Activity before trying again: BEAM Campfire keeps looking for it and shows it here when it finds it.": {
+  "Your BEAM wallet did not confirm sending it. Check its Activity before trying again: Beam PWA keeps looking for it and shows it here when it finds it.": {
     "where": [
       "screens/bridge_words.js"
     ]
   },
-  "Ethereum did not confirm it. Check your Ethereum wallet before trying again: BEAM Campfire keeps looking for it on BEAM and shows it here when it arrives.": {
+  "Ethereum did not confirm it. Check your Ethereum wallet before trying again: Beam PWA keeps looking for it on BEAM and shows it here when it arrives.": {
     "where": [
       "screens/bridge_words.js"
     ]
@@ -12439,7 +12439,7 @@
       "screens/bridge_words.js"
     ]
   },
-  "Your move to Ethereum was at \"{status}\" when BEAM Campfire locked.": {
+  "Your move to Ethereum was at \"{status}\" when Beam PWA locked.": {
     "where": [
       "screens/bridge_words.js"
     ],
@@ -12452,7 +12452,7 @@
       "screens/bridge_words.js"
     ]
   },
-  "Your move to BEAM was at \"{status}\" when BEAM Campfire locked.": {
+  "Your move to BEAM was at \"{status}\" when Beam PWA locked.": {
     "where": [
       "screens/bridge_words.js"
     ],
@@ -12484,7 +12484,7 @@
       "other": "On its way: {n} BEAM blocks to go"
     }
   },
-  "The bridge pays your Ethereum wallet after {n} BEAM blocks (about one a minute). Nothing needs doing; you can close BEAM Campfire.": {
+  "The bridge pays your Ethereum wallet after {n} BEAM blocks (about one a minute). Nothing needs doing; you can close Beam PWA.": {
     "where": [
       "screens/bridge_words.js"
     ],
@@ -12492,8 +12492,8 @@
       "n"
     ],
     "count": {
-      "one": "The bridge pays your Ethereum wallet after {n} BEAM block (about one a minute). Nothing needs doing; you can close BEAM Campfire.",
-      "other": "The bridge pays your Ethereum wallet after {n} BEAM blocks (about one a minute). Nothing needs doing; you can close BEAM Campfire."
+      "one": "The bridge pays your Ethereum wallet after {n} BEAM block (about one a minute). Nothing needs doing; you can close Beam PWA.",
+      "other": "The bridge pays your Ethereum wallet after {n} BEAM blocks (about one a minute). Nothing needs doing; you can close Beam PWA."
     }
   },
   "{n} blocks to go": {
@@ -12771,7 +12771,7 @@
       "screens/buy_beam.js"
     ]
   },
-  "BEAM Campfire couldn't finish setting up this buy. Nothing was sent. Try again.": {
+  "Beam PWA couldn't finish setting up this buy. Nothing was sent. Try again.": {
     "where": [
       "screens/buy_beam.js"
     ]
@@ -12831,7 +12831,7 @@
       "symbol"
     ]
   },
-  "BEAM Campfire can't send buybeam.my an exact amount of {symbol}. Pick another coin.": {
+  "Beam PWA can't send buybeam.my an exact amount of {symbol}. Pick another coin.": {
     "where": [
       "screens/buy_beam.js"
     ],
@@ -13031,7 +13031,7 @@
       "screens/buy_order.js"
     ]
   },
-  "{amount} shows in your BEAM wallet as soon as BEAM Campfire accepts it: keep it open.": {
+  "{amount} shows in your BEAM wallet as soon as Beam PWA accepts it: keep it open.": {
     "where": [
       "screens/buy_order.js"
     ],
@@ -13039,7 +13039,7 @@
       "amount"
     ]
   },
-  "Your BEAM shows in your BEAM wallet as soon as BEAM Campfire accepts it: keep it open.": {
+  "Your BEAM shows in your BEAM wallet as soon as Beam PWA accepts it: keep it open.": {
     "where": [
       "screens/buy_order.js"
     ]
@@ -13086,7 +13086,7 @@
       "screens/buy_order.js"
     ]
   },
-  "Contact their support with this order (copy it below). BEAM Campfire keeps checking meanwhile.": {
+  "Contact their support with this order (copy it below). Beam PWA keeps checking meanwhile.": {
     "where": [
       "screens/buy_order.js"
     ]
@@ -13153,7 +13153,7 @@
       "screens/buy_order.js"
     ]
   },
-  "Keep BEAM Campfire open until your BEAM arrives. If you close it, open it again within 12 hours.": {
+  "Keep Beam PWA open until your BEAM arrives. If you close it, open it again within 12 hours.": {
     "where": [
       "screens/buy_order.js"
     ]
@@ -13163,12 +13163,12 @@
       "screens/buy_order.js"
     ]
   },
-  "Couldn't reach buybeam.my just now. BEAM Campfire keeps checking.": {
+  "Couldn't reach buybeam.my just now. Beam PWA keeps checking.": {
     "where": [
       "screens/buy_order.js"
     ]
   },
-  "buybeam.my's last answer didn't make sense. BEAM Campfire keeps checking.": {
+  "buybeam.my's last answer didn't make sense. Beam PWA keeps checking.": {
     "where": [
       "screens/buy_order.js"
     ]
@@ -13258,12 +13258,12 @@
       "screens/buy_screens.js"
     ]
   },
-  "This changes how you unlock BEAM Campfire on this device. Your coins and your 12 words stay the same.": {
+  "This changes how you unlock Beam PWA on this device. Your coins and your 12 words stay the same.": {
     "where": [
       "screens/change_password.js"
     ]
   },
-  "This changes how you unlock BEAM Campfire on this device. Your coins stay the same. The original wallet.db file, and the copy inside this browser, still open with the password the file had.": {
+  "This changes how you unlock Beam PWA on this device. Your coins stay the same. The original wallet.db file, and the copy inside this browser, still open with the password the file had.": {
     "where": [
       "screens/change_password.js"
     ]
@@ -14054,7 +14054,7 @@
       "screens/consent.js"
     ]
   },
-  "BEAM Campfire, this wallet": {
+  "Beam PWA, this wallet": {
     "where": [
       "screens/consent.js"
     ]
@@ -14076,7 +14076,7 @@
       "publisher"
     ]
   },
-  "Installed from a file · not checked by BEAM Campfire": {
+  "Installed from a file · not checked by Beam PWA": {
     "where": [
       "screens/consent.js",
       "screens/dapps.js"
@@ -14110,7 +14110,7 @@
       "comment"
     ]
   },
-  "{assets}: not on BEAM Campfire's list of known assets. Check the number if the name matters to you.": {
+  "{assets}: not on Beam PWA's list of known assets. Check the number if the name matters to you.": {
     "where": [
       "screens/consent.js"
     ],
@@ -14425,7 +14425,7 @@
       "publisher"
     ]
   },
-  "Name or id like a dApp of BEAM Campfire’s": {
+  "Name or id like a dApp of Beam PWA’s": {
     "where": [
       "screens/dapp_store.js"
     ]
@@ -14475,7 +14475,7 @@
       "count"
     ]
   },
-  "Anyone can publish in BEAM's DApp Store: BEAM Campfire shows who published each dApp, checks every download against the publisher's record on the chain, and runs it walled off from your wallet.": {
+  "Anyone can publish in BEAM's DApp Store: Beam PWA shows who published each dApp, checks every download against the publisher's record on the chain, and runs it walled off from your wallet.": {
     "where": [
       "screens/dapp_store.js"
     ]
@@ -14600,7 +14600,7 @@
       "screens/dapp_store.js"
     ]
   },
-  "Downloaded from BEAM Campfire's copy of the store at this app's address, and installed only if it is exactly the file {publisher} recorded on the chain (IPFS {cid}…). It runs walled off from your wallet: it can see your balance, and asks before anything leaves it.": {
+  "Downloaded from Beam PWA's copy of the store at this app's address, and installed only if it is exactly the file {publisher} recorded on the chain (IPFS {cid}…). It runs walled off from your wallet: it can see your balance, and asks before anything leaves it.": {
     "where": [
       "screens/dapp_store.js"
     ],
@@ -14609,7 +14609,7 @@
       "publisher"
     ]
   },
-  "Downloaded from BEAM Campfire's copy of the store at this app's address, and installed only if it is exactly the file its publisher recorded on the chain (IPFS {cid}…). It runs walled off from your wallet: it can see your balance, and asks before anything leaves it.": {
+  "Downloaded from Beam PWA's copy of the store at this app's address, and installed only if it is exactly the file its publisher recorded on the chain (IPFS {cid}…). It runs walled off from your wallet: it can see your balance, and asks before anything leaves it.": {
     "where": [
       "screens/dapp_store.js"
     ],
@@ -14628,7 +14628,7 @@
       "screens/dapp_store.js"
     ]
   },
-  "Links open outside BEAM Campfire; the site sees your IP address.": {
+  "Links open outside Beam PWA; the site sees your IP address.": {
     "where": [
       "screens/dapp_store.js"
     ]
@@ -14751,7 +14751,7 @@
       "screens/dapps.js"
     ]
   },
-  "installed from a file, not checked by BEAM Campfire.": {
+  "installed from a file, not checked by Beam PWA.": {
     "where": [
       "screens/dapps.js"
     ]
@@ -14800,7 +14800,7 @@
       "screens/dapps.js"
     ]
   },
-  "from a file, not checked by BEAM Campfire": {
+  "from a file, not checked by Beam PWA": {
     "where": [
       "screens/dapps.js"
     ]
@@ -14810,7 +14810,7 @@
       "screens/dapps.js"
     ]
   },
-  "Built into BEAM Campfire · tournaments on BEAM": {
+  "Built into Beam PWA · tournaments on BEAM": {
     "where": [
       "screens/dapps.js"
     ]
@@ -14844,12 +14844,12 @@
       "screens/dapps.js"
     ]
   },
-  "BEAM Campfire couldn't read your installed dApps. Nothing was changed. Try again; if it keeps happening, reload BEAM Campfire.": {
+  "Beam PWA couldn't read your installed dApps. Nothing was changed. Try again; if it keeps happening, reload Beam PWA.": {
     "where": [
       "screens/dapps.js"
     ]
   },
-  "Built into BEAM Campfire": {
+  "Built into Beam PWA": {
     "where": [
       "screens/dapps.js"
     ]
@@ -14886,7 +14886,7 @@
       "screens/dapps.js"
     ]
   },
-  "dApps run only in the installed BEAM Campfire (the copy checked against its release signature). Open BEAM Campfire from its home screen icon or its web address and try again.": {
+  "dApps run only in the installed Beam PWA (the copy checked against its release signature). Open Beam PWA from its home screen icon or its web address and try again.": {
     "where": [
       "screens/dapps.js"
     ]
@@ -14925,7 +14925,7 @@
       "name"
     ]
   },
-  "Its name matches {name}, one of the dApps BEAM Campfire checks, but it is a different app.": {
+  "Its name matches {name}, one of the dApps Beam PWA checks, but it is a different app.": {
     "where": [
       "screens/dapps.js"
     ],
@@ -14933,7 +14933,7 @@
       "name"
     ]
   },
-  "BEAM Campfire did not check this dApp: it is not one of BEAM's own dApps. Install it only if you trust where it came from. Payments, contract calls and signatures it asks for still come to BEAM Campfire for your approval, it asks before it sees your balance, and what you approve can't be undone.": {
+  "Beam PWA did not check this dApp: it is not one of BEAM's own dApps. Install it only if you trust where it came from. Payments, contract calls and signatures it asks for still come to Beam PWA for your approval, it asks before it sees your balance, and what you approve can't be undone.": {
     "where": [
       "screens/dapps.js"
     ]
@@ -15002,7 +15002,7 @@
       "screens/dapps.js"
     ]
   },
-  "BEAM Campfire couldn't remove {name}. Nothing was changed. Try again.": {
+  "Beam PWA couldn't remove {name}. Nothing was changed. Try again.": {
     "where": [
       "screens/dapps.js"
     ],
@@ -15018,7 +15018,7 @@
       "name"
     ]
   },
-  "Downloads {size} from BEAM's GitHub (raw.githubusercontent.com), once. GitHub sees your IP address. BEAM Campfire checks the file against the fingerprint built into this app before anything runs.": {
+  "Downloads {size} from BEAM's GitHub (raw.githubusercontent.com), once. GitHub sees your IP address. Beam PWA checks the file against the fingerprint built into this app before anything runs.": {
     "where": [
       "screens/dapps.js"
     ],
@@ -15108,7 +15108,7 @@
       "screens/dapps.js"
     ]
   },
-  "{name} could not be opened: BEAM Campfire couldn't read the copy saved on this device. Remove {name}, then install its file again.": {
+  "{name} could not be opened: Beam PWA couldn't read the copy saved on this device. Remove {name}, then install its file again.": {
     "where": [
       "screens/dapps.js"
     ],
@@ -15263,7 +15263,7 @@
       "screens/dapps.js"
     ]
   },
-  "None. When {name} tries to reach a server, BEAM Campfire asks you first.": {
+  "None. When {name} tries to reach a server, Beam PWA asks you first.": {
     "where": [
       "screens/dapps.js"
     ],
@@ -15291,7 +15291,7 @@
       "screens/dapps.js"
     ]
   },
-  "BEAM Campfire couldn't change that. Nothing was changed. Try again.": {
+  "Beam PWA couldn't change that. Nothing was changed. Try again.": {
     "where": [
       "screens/dapps.js"
     ]
@@ -15322,7 +15322,7 @@
       "screens/dapps.js"
     ]
   },
-  "BEAM Campfire couldn't change what {name} may reach. Nothing was changed. Try again.": {
+  "Beam PWA couldn't change what {name} may reach. Nothing was changed. Try again.": {
     "where": [
       "screens/dapps.js"
     ],
@@ -15357,7 +15357,7 @@
       "name"
     ]
   },
-  "Allow it only if you trust {name} and that server: BEAM Campfire checked neither. {name} could also tell the server what you let it see, such as your balance. You can take this back in More (⋯) at any time.": {
+  "Allow it only if you trust {name} and that server: Beam PWA checked neither. {name} could also tell the server what you let it see, such as your balance. You can take this back in More (⋯) at any time.": {
     "where": [
       "screens/dapps.js"
     ],
@@ -15388,7 +15388,7 @@
       "name"
     ]
   },
-  "BEAM Campfire couldn't save that. {name} still can't reach {host}; it will ask again next time.": {
+  "Beam PWA couldn't save that. {name} still can't reach {host}; it will ask again next time.": {
     "where": [
       "screens/dapps.js"
     ],
@@ -15419,7 +15419,7 @@
       "screens/dapps.js"
     ]
   },
-  "BEAM Campfire did not check {name}. Seeing your balance moves nothing: payments still need your OK. You can change your answer in More (⋯).": {
+  "Beam PWA did not check {name}. Seeing your balance moves nothing: payments still need your OK. You can change your answer in More (⋯).": {
     "where": [
       "screens/dapps.js"
     ],
@@ -15445,7 +15445,7 @@
       "name"
     ]
   },
-  "BEAM Campfire couldn't save that. {name} will ask again next time.": {
+  "Beam PWA couldn't save that. {name} will ask again next time.": {
     "where": [
       "screens/dapps.js"
     ],
@@ -15500,7 +15500,7 @@
       "name"
     ]
   },
-  "It opens in your browser, outside BEAM Campfire. That site sees your IP address.": {
+  "It opens in your browser, outside Beam PWA. That site sees your IP address.": {
     "where": [
       "screens/dapps.js"
     ]
@@ -15609,7 +15609,7 @@
       "screens/delete_wallet.js"
     ]
   },
-  "It also keeps saved {list}: BEAM Campfire can't look inside them without this wallet's password.": {
+  "It also keeps saved {list}: Beam PWA can't look inside them without this wallet's password.": {
     "where": [
       "screens/delete_wallet.js"
     ],
@@ -15617,7 +15617,7 @@
       "list"
     ]
   },
-  "This device keeps this wallet's saved {list}, the only record of any still under way. BEAM Campfire can't look inside them without the wallet's password, so it can't tell whether any are. Open the wallet to check them first, if you can.": {
+  "This device keeps this wallet's saved {list}, the only record of any still under way. Beam PWA can't look inside them without the wallet's password, so it can't tell whether any are. Open the wallet to check them first, if you can.": {
     "where": [
       "screens/delete_wallet.js"
     ],
@@ -15630,7 +15630,7 @@
       "screens/delete_wallet.js"
     ]
   },
-  "Its Face ID key (a passkey for {host}, “{passkey}”) is kept by your password manager, not by BEAM Campfire. BEAM Campfire asks it to forget the key; if it is still listed in Passwords or Google Password Manager, delete it there.": {
+  "Its Face ID key (a passkey for {host}, “{passkey}”) is kept by your password manager, not by Beam PWA. Beam PWA asks it to forget the key; if it is still listed in Passwords or Google Password Manager, delete it there.": {
     "where": [
       "screens/delete_wallet.js"
     ],
@@ -15994,7 +15994,7 @@
       "screens/eth_import.js"
     ]
   },
-  "Words are not stored. Only the private key is kept, locked with your BEAM Campfire password.": {
+  "Words are not stored. Only the private key is kept, locked with your Beam PWA password.": {
     "where": [
       "screens/eth_import.js"
     ]
@@ -16086,7 +16086,7 @@
       "screens/eth_privacy.js"
     ]
   },
-  "A VPN you trust covers every app on the phone, including BEAM Campfire. Turn it on before you open the wallet.": {
+  "A VPN you trust covers every app on the phone, including Beam PWA. Turn it on before you open the wallet.": {
     "where": [
       "screens/eth_privacy.js"
     ]
@@ -16647,7 +16647,7 @@
       "screens/eth_start.js"
     ]
   },
-  "No sign-up. The key stays on this device, locked with your BEAM Campfire password.": {
+  "No sign-up. The key stays on this device, locked with your Beam PWA password.": {
     "where": [
       "screens/eth_start.js"
     ]
@@ -16882,7 +16882,7 @@
       "receive"
     ]
   },
-  "BEAM Campfire looked at every Uniswap pool between them, and at routes through ETH, USDC, USDT, DAI, WBTC and WBEAM. Pick another token.": {
+  "Beam PWA looked at every Uniswap pool between them, and at routes through ETH, USDC, USDT, DAI, WBTC and WBEAM. Pick another token.": {
     "where": [
       "screens/eth_swap.js"
     ]
@@ -16931,7 +16931,7 @@
       "screens/eth_swap.js"
     ]
   },
-  "The best-looking pool would not actually trade, so BEAM Campfire left it out. Here is the next best price; nothing was sent.": {
+  "The best-looking pool would not actually trade, so Beam PWA left it out. Here is the next best price; nothing was sent.": {
     "where": [
       "screens/eth_swap.js"
     ]
@@ -17088,7 +17088,7 @@
       "amount"
     ]
   },
-  "Your Ethereum server refused it: \"{reason}\". It most likely did not go through; it shows in your Ethereum activity while BEAM Campfire checks.": {
+  "Your Ethereum server refused it: \"{reason}\". It most likely did not go through; it shows in your Ethereum activity while Beam PWA checks.": {
     "where": [
       "screens/eth_swap_parts.js"
     ],
@@ -17139,7 +17139,7 @@
       "symbol"
     ]
   },
-  "{symbol} only changes a permission from zero, so BEAM Campfire first sets the old one to 0, then to the new amount: two transactions, one confirmation.": {
+  "{symbol} only changes a permission from zero, so Beam PWA first sets the old one to 0, then to the new amount: two transactions, one confirmation.": {
     "where": [
       "screens/eth_swap_parts.js"
     ],
@@ -17229,7 +17229,7 @@
       "screens/eth_swap_parts.js"
     ]
   },
-  "One of the pools on this route would not actually trade, so BEAM Campfire left it out. Go back for the next best price.": {
+  "One of the pools on this route would not actually trade, so Beam PWA left it out. Go back for the next best price.": {
     "where": [
       "screens/eth_swap_parts.js"
     ]
@@ -17360,12 +17360,12 @@
       "screens/eth_swap_tx.js"
     ]
   },
-  "Don't swap again yet. Your Ethereum server refused this transaction, so it has most likely not left, but it may have passed it on before refusing. BEAM Campfire keeps checking it, and offering the same one (never a second), for half an hour; if it never reaches Ethereum, this then says \"Not sent\".": {
+  "Don't swap again yet. Your Ethereum server refused this transaction, so it has most likely not left, but it may have passed it on before refusing. Beam PWA keeps checking it, and offering the same one (never a second), for half an hour; if it never reaches Ethereum, this then says \"Not sent\".": {
     "where": [
       "screens/eth_swap_tx.js"
     ]
   },
-  "Don't allow it again yet. Your Ethereum server refused this transaction, so it has most likely not left, but it may have passed it on before refusing. BEAM Campfire keeps checking it, and offering the same one (never a second), for half an hour; if it never reaches Ethereum, this then says \"Not sent\".": {
+  "Don't allow it again yet. Your Ethereum server refused this transaction, so it has most likely not left, but it may have passed it on before refusing. Beam PWA keeps checking it, and offering the same one (never a second), for half an hour; if it never reaches Ethereum, this then says \"Not sent\".": {
     "where": [
       "screens/eth_swap_tx.js"
     ]
@@ -17532,7 +17532,7 @@
       "screens/eth_tx.js"
     ]
   },
-  "Don't send it again yet. Your Ethereum server refused this payment, so it has most likely not left, but it may have passed it on before refusing. BEAM Campfire keeps checking it, and offering the same payment (never a second one), for half an hour; if it never reaches Ethereum, this then says \"Not sent\".": {
+  "Don't send it again yet. Your Ethereum server refused this payment, so it has most likely not left, but it may have passed it on before refusing. Beam PWA keeps checking it, and offering the same payment (never a second one), for half an hour; if it never reaches Ethereum, this then says \"Not sent\".": {
     "where": [
       "screens/eth_tx.js"
     ]
@@ -17590,7 +17590,7 @@
       "screens/eth_tx.js"
     ]
   },
-  "The network fee is far above anything BEAM Campfire will pay.": {
+  "The network fee is far above anything Beam PWA will pay.": {
     "where": [
       "screens/eth_ui.js"
     ]
@@ -17790,7 +17790,7 @@
       "screens/eth_ui.js"
     ]
   },
-  "BEAM Campfire stops waiting for it, and you can send from this Ethereum wallet again. If it does go through, your balance shows it.": {
+  "Beam PWA stops waiting for it, and you can send from this Ethereum wallet again. If it does go through, your balance shows it.": {
     "where": [
       "screens/eth_ui.js"
     ]
@@ -17813,7 +17813,7 @@
       "screens/eth_ui.js"
     ]
   },
-  "Your Ethereum server refused it for half an hour and never showed it on Ethereum, so most likely it never left and nothing was spent. That is the server's word, not Ethereum's. BEAM Campfire looks for it again each time you open your Ethereum wallet.": {
+  "Your Ethereum server refused it for half an hour and never showed it on Ethereum, so most likely it never left and nothing was spent. That is the server's word, not Ethereum's. Beam PWA looks for it again each time you open your Ethereum wallet.": {
     "where": [
       "screens/eth_ui.js"
     ]
@@ -17997,7 +17997,7 @@
       "warning"
     ]
   },
-  "BEAM Campfire does not keep these words, so it cannot show them again.": {
+  "Beam PWA does not keep these words, so it cannot show them again.": {
     "where": [
       "screens/eth_words.js"
     ]
@@ -18077,12 +18077,12 @@
       "screens/fast_start.js"
     ]
   },
-  "To find your coins, BEAM Campfire reads a snapshot of the BEAM blockchain once. This site has no copy of it, so download BEAM's recovery file and choose it below.": {
+  "To find your coins, Beam PWA reads a snapshot of the BEAM blockchain once. This site has no copy of it, so download BEAM's recovery file and choose it below.": {
     "where": [
       "screens/fast_start.js"
     ]
   },
-  "To find your coins, BEAM Campfire downloads a snapshot of the BEAM blockchain once, from {host} (this site has no copy of it).": {
+  "To find your coins, Beam PWA downloads a snapshot of the BEAM blockchain once, from {host} (this site has no copy of it).": {
     "where": [
       "screens/fast_start.js"
     ],
@@ -18090,7 +18090,7 @@
       "host"
     ]
   },
-  "To find your coins, BEAM Campfire downloads a snapshot of the BEAM blockchain once.": {
+  "To find your coins, Beam PWA downloads a snapshot of the BEAM blockchain once.": {
     "where": [
       "screens/fast_start.js"
     ]
@@ -18111,7 +18111,7 @@
       "size"
     ]
   },
-  "{lead} Wi-Fi is better. Keep BEAM Campfire open until it finishes; leaving the app pauses it.": {
+  "{lead} Wi-Fi is better. Keep Beam PWA open until it finishes; leaving the app pauses it.": {
     "where": [
       "screens/fast_start.js"
     ],
@@ -18127,7 +18127,7 @@
       "size"
     ]
   },
-  "{lead} It takes a few minutes. Keep BEAM Campfire open until it finishes: the screen stays on meanwhile, and if it is interrupted it carries on where it stopped.": {
+  "{lead} It takes a few minutes. Keep Beam PWA open until it finishes: the screen stays on meanwhile, and if it is interrupted it carries on where it stopped.": {
     "where": [
       "screens/fast_start.js"
     ],
@@ -18217,7 +18217,7 @@
       "screens/fast_start.js"
     ]
   },
-  "Keep BEAM Campfire open until this finishes.": {
+  "Keep Beam PWA open until this finishes.": {
     "where": [
       "screens/fast_start.js"
     ]
@@ -18319,12 +18319,12 @@
       "screens/fuddle.js"
     ]
   },
-  "Answers by the BEAM Campfire service": {
+  "Answers by the Beam PWA service": {
     "where": [
       "screens/fuddle.js"
     ]
   },
-  "Answers by another service, not the BEAM Campfire one": {
+  "Answers by another service, not the Beam PWA one": {
     "where": [
       "screens/fuddle.js"
     ]
@@ -19451,7 +19451,7 @@
       "reason"
     ]
   },
-  "BEAM Campfire {version} is ready. It came from a copy at {host} and was checked against the release signature.": {
+  "Beam PWA {version} is ready. It came from a copy at {host} and was checked against the release signature.": {
     "where": [
       "screens/home.js"
     ],
@@ -19460,7 +19460,7 @@
       "version"
     ]
   },
-  "BEAM Campfire {version} is ready. It was checked against the release signature.": {
+  "Beam PWA {version} is ready. It was checked against the release signature.": {
     "where": [
       "screens/home.js"
     ],
@@ -19522,7 +19522,7 @@
       "screens/home.js"
     ]
   },
-  "Add BEAM Campfire to your Home Screen": {
+  "Add Beam PWA to your Home Screen": {
     "where": [
       "screens/home_screen_guide.js"
     ]
@@ -19557,17 +19557,17 @@
       "screens/home_screen_guide.js"
     ]
   },
-  "Open BEAM Campfire from your Home Screen and start your wallet there.": {
+  "Open Beam PWA from your Home Screen and start your wallet there.": {
     "where": [
       "screens/home_screen_guide.js"
     ]
   },
-  "Open BEAM Campfire from your Home Screen and restore your wallet there with your 12 words.": {
+  "Open Beam PWA from your Home Screen and restore your wallet there with your 12 words.": {
     "where": [
       "screens/home_screen_guide.js"
     ]
   },
-  "Open BEAM Campfire from your Home Screen and import your wallet.db file there.": {
+  "Open Beam PWA from your Home Screen and import your wallet.db file there.": {
     "where": [
       "screens/home_screen_guide.js"
     ]
@@ -19609,7 +19609,7 @@
       "wrong"
     ]
   },
-  "Version {version} checked. Opening BEAM Campfire…": {
+  "Version {version} checked. Opening Beam PWA…": {
     "where": [
       "screens/install.js"
     ],
@@ -19617,7 +19617,7 @@
       "version"
     ]
   },
-  "Checked. Opening BEAM Campfire…": {
+  "Checked. Opening Beam PWA…": {
     "where": [
       "screens/install.js"
     ]
@@ -19632,12 +19632,12 @@
       "screens/install.js"
     ]
   },
-  "Setting up BEAM Campfire on this device…": {
+  "Setting up Beam PWA on this device…": {
     "where": [
       "screens/install.js"
     ]
   },
-  "{lead} Every file is checked against the BEAM Campfire release signature before it is used.": {
+  "{lead} Every file is checked against the Beam PWA release signature before it is used.": {
     "where": [
       "screens/install.js"
     ],
@@ -19650,7 +19650,7 @@
       "screens/install.js"
     ]
   },
-  "If the connection drops, nothing is lost: the files already checked are kept, and setup continues the next time you open BEAM Campfire.": {
+  "If the connection drops, nothing is lost: the files already checked are kept, and setup continues the next time you open Beam PWA.": {
     "where": [
       "screens/install.js"
     ]
@@ -19665,7 +19665,7 @@
       "screens/install.js"
     ]
   },
-  "The download has not moved for {seconds} seconds. The connection to the BEAM Campfire site may have dropped.": {
+  "The download has not moved for {seconds} seconds. The connection to the Beam PWA site may have dropped.": {
     "where": [
       "screens/install.js"
     ],
@@ -19678,7 +19678,7 @@
       "screens/install.js"
     ]
   },
-  "Couldn't reach the BEAM Campfire site to finish setting up. Check your connection.": {
+  "Couldn't reach the Beam PWA site to finish setting up. Check your connection.": {
     "where": [
       "screens/install.js"
     ]
@@ -19688,7 +19688,7 @@
       "screens/install.js"
     ]
   },
-  "Open BEAM Campfire": {
+  "Open Beam PWA": {
     "where": [
       "screens/install.js",
       "screens/problem.js"
@@ -19714,7 +19714,7 @@
       "other": "{done} of {n} files checked · {doneMb} of {totalMb} MB"
     }
   },
-  "The download has not moved for {seconds} seconds. The connection to the BEAM Campfire site may have dropped. The {n} files already checked are kept.": {
+  "The download has not moved for {seconds} seconds. The connection to the Beam PWA site may have dropped. The {n} files already checked are kept.": {
     "where": [
       "screens/install.js"
     ],
@@ -19723,8 +19723,8 @@
       "seconds"
     ],
     "count": {
-      "one": "The download has not moved for {seconds} seconds. The connection to the BEAM Campfire site may have dropped. The {n} files already checked are kept.",
-      "other": "The download has not moved for {seconds} seconds. The connection to the BEAM Campfire site may have dropped. The {n} files already checked are kept."
+      "one": "The download has not moved for {seconds} seconds. The connection to the Beam PWA site may have dropped. The {n} files already checked are kept.",
+      "other": "The download has not moved for {seconds} seconds. The connection to the Beam PWA site may have dropped. The {n} files already checked are kept."
     }
   },
   "Setup was stopped. The {n} files already checked are kept; Try again continues from there.": {
@@ -19739,7 +19739,7 @@
       "other": "Setup was stopped. The {n} files already checked are kept; Try again continues from there."
     }
   },
-  "Couldn't reach the BEAM Campfire site to finish setting up. Check your connection. The {n} files already checked are kept; Try again continues from there.": {
+  "Couldn't reach the Beam PWA site to finish setting up. Check your connection. The {n} files already checked are kept; Try again continues from there.": {
     "where": [
       "screens/install.js"
     ],
@@ -19747,8 +19747,8 @@
       "n"
     ],
     "count": {
-      "one": "Couldn't reach the BEAM Campfire site to finish setting up. Check your connection. The {n} files already checked are kept; Try again continues from there.",
-      "other": "Couldn't reach the BEAM Campfire site to finish setting up. Check your connection. The {n} files already checked are kept; Try again continues from there."
+      "one": "Couldn't reach the Beam PWA site to finish setting up. Check your connection. The {n} files already checked are kept; Try again continues from there.",
+      "other": "Couldn't reach the Beam PWA site to finish setting up. Check your connection. The {n} files already checked are kept; Try again continues from there."
     }
   },
   "The BEAM node you connect to can see your IP address. To hide it, turn on iCloud Private Relay (Settings → [your name] → iCloud → Private Relay) or use a VPN.": {
@@ -19756,7 +19756,7 @@
       "screens/ip_notice.js"
     ]
   },
-  "By itself, BEAM Campfire talks to the site it was loaded from and the one BEAM node it is connected to. When you tap Check for updates, it also asks every update source at once: the public copies of BEAM Campfire on GitHub and jsDelivr, and any address you added. Each of them sees your IP address. No analytics.": {
+  "By itself, Beam PWA talks to the site it was loaded from and the one BEAM node it is connected to. When you tap Check for updates, it also asks every update source at once: the public copies of Beam PWA on GitHub and jsDelivr, and any address you added. Each of them sees your IP address. No analytics.": {
     "where": [
       "screens/ip_notice.js"
     ]
@@ -19766,7 +19766,7 @@
       "screens/ip_notice.js"
     ]
   },
-  "A VPN you trust covers every app on the phone, including BEAM Campfire on the Home Screen. Turn it on before you open the wallet.": {
+  "A VPN you trust covers every app on the phone, including Beam PWA on the Home Screen. Turn it on before you open the wallet.": {
     "where": [
       "screens/ip_notice.js"
     ]
@@ -21035,7 +21035,7 @@
       "name"
     ]
   },
-  "Give {name} to another wallet. Ask its owner for their name key: in BEAM Campfire it is under BEAM names → Receive a name.": {
+  "Give {name} to another wallet. Ask its owner for their name key: in Beam PWA it is under BEAM names → Receive a name.": {
     "where": [
       "screens/name_transfer.js"
     ],
@@ -21778,7 +21778,7 @@
       "screens/near_intents.js"
     ]
   },
-  "BEAM Campfire couldn't keep this swap on this device ({reason}), so no address is shown. Nothing was sent. Try again.": {
+  "Beam PWA couldn't keep this swap on this device ({reason}), so no address is shown. Nothing was sent. Try again.": {
     "where": [
       "screens/near_intents.js"
     ],
@@ -21809,7 +21809,7 @@
       "symbol"
     ]
   },
-  "BEAM Campfire couldn't keep this swap. Nothing was sent.": {
+  "Beam PWA couldn't keep this swap. Nothing was sent.": {
     "where": [
       "screens/near_intents.js"
     ]
@@ -22084,7 +22084,7 @@
       "screens/near_intents_deposit.js"
     ]
   },
-  "Couldn't reach NEAR Intents just now. BEAM Campfire keeps checking while this screen is open.": {
+  "Couldn't reach NEAR Intents just now. Beam PWA keeps checking while this screen is open.": {
     "where": [
       "screens/near_intents_deposit.js"
     ]
@@ -22394,17 +22394,17 @@
       "screens/notifications.js"
     ]
   },
-  "BEAM Campfire tells you about your wallet from this device. No server watches it: none can read a BEAM wallet, and the app keeps working without ours.": {
+  "Beam PWA tells you about your wallet from this device. No server watches it: none can read a BEAM wallet, and the app keeps working without ours.": {
     "where": [
       "screens/notifications.js"
     ]
   },
-  "On iPhone: while BEAM Campfire is open. iPhone runs no web app in the background, so when you come back, Home says what happened meanwhile.": {
+  "On iPhone: while Beam PWA is open. iPhone runs no web app in the background, so when you come back, Home says what happened meanwhile.": {
     "where": [
       "screens/notifications.js"
     ]
   },
-  "While BEAM Campfire is open, and in the background until it locks itself (Auto-lock). Reminders (a payment still waiting, a name about to expire) come then too; when BEAM Campfire is closed, only if you turn that on below. When you come back, Home says what happened meanwhile.": {
+  "While Beam PWA is open, and in the background until it locks itself (Auto-lock). Reminders (a payment still waiting, a name about to expire) come then too; when Beam PWA is closed, only if you turn that on below. When you come back, Home says what happened meanwhile.": {
     "where": [
       "screens/notifications.js"
     ]
@@ -22419,7 +22419,7 @@
       "screens/notifications.js"
     ]
   },
-  "Notifications are blocked for BEAM Campfire in this browser's settings. Allow them there, then turn this on again.": {
+  "Notifications are blocked for Beam PWA in this browser's settings. Allow them there, then turn this on again.": {
     "where": [
       "screens/notifications.js"
     ]
@@ -22454,17 +22454,17 @@
       "screens/notifications.js"
     ]
   },
-  "Reminders when BEAM Campfire is closed": {
+  "Reminders when Beam PWA is closed": {
     "where": [
       "screens/notifications.js"
     ]
   },
-  "To show them, this browser wakes BEAM Campfire now and then. A wake-up can also bring in changed code from BEAM Campfire's web address, with no BEAM Campfire screen open to warn you if it is not signed. Off unless you turn it on.": {
+  "To show them, this browser wakes Beam PWA now and then. A wake-up can also bring in changed code from Beam PWA's web address, with no Beam PWA screen open to warn you if it is not signed. Off unless you turn it on.": {
     "where": [
       "screens/notifications.js"
     ]
   },
-  "On iPhone: add BEAM Campfire to your Home Screen first": {
+  "On iPhone: add Beam PWA to your Home Screen first": {
     "where": [
       "screens/notifications.js"
     ]
@@ -22494,7 +22494,7 @@
       "screens/notifications.js"
     ]
   },
-  "On, while BEAM Campfire is open": {
+  "On, while Beam PWA is open": {
     "where": [
       "screens/notifications.js"
     ]
@@ -22519,7 +22519,7 @@
       "screens/notifications.js"
     ]
   },
-  "BEAM Campfire is open in another tab": {
+  "Beam PWA is open in another tab": {
     "where": [
       "screens/one_tab.js"
     ]
@@ -22529,7 +22529,7 @@
       "screens/one_tab.js"
     ]
   },
-  "BEAM Campfire moved to another tab": {
+  "Beam PWA moved to another tab": {
     "where": [
       "screens/one_tab.js"
     ]
@@ -22549,12 +22549,12 @@
       "screens/one_tab.js"
     ]
   },
-  "Close your other BEAM Campfire tabs": {
+  "Close your other Beam PWA tabs": {
     "where": [
       "screens/one_tab.js"
     ]
   },
-  "This browser cannot keep BEAM Campfire to one tab. Close every other BEAM Campfire tab, then reload.": {
+  "This browser cannot keep Beam PWA to one tab. Close every other Beam PWA tab, then reload.": {
     "where": [
       "screens/one_tab.js"
     ]
@@ -22564,7 +22564,7 @@
       "screens/one_tab.js"
     ]
   },
-  "If this keeps happening, this browser cannot run BEAM Campfire safely: open it in another browser and restore your wallet there from its 12 words (or its wallet.db file).": {
+  "If this keeps happening, this browser cannot run Beam PWA safely: open it in another browser and restore your wallet there from its 12 words (or its wallet.db file).": {
     "where": [
       "screens/one_tab.js"
     ]
@@ -22747,7 +22747,7 @@
       "screens/own_node.js"
     ]
   },
-  "The key was hidden when you left BEAM Campfire. Enter your password to show it again.": {
+  "The key was hidden when you left Beam PWA. Enter your password to show it again.": {
     "where": [
       "screens/owner_key.js"
     ]
@@ -22809,7 +22809,7 @@
       "screens/passkey_setup.js"
     ]
   },
-  "Open BEAM Campfire with Face ID or Touch ID instead of typing your password.": {
+  "Open Beam PWA with Face ID or Touch ID instead of typing your password.": {
     "where": [
       "screens/passkey_setup.js"
     ]
@@ -23583,7 +23583,7 @@
       "screens/pool_status.js"
     ]
   },
-  "On its way to the blockchain. This usually takes a minute or two; keep BEAM Campfire open until it is done.": {
+  "On its way to the blockchain. This usually takes a minute or two; keep Beam PWA open until it is done.": {
     "where": [
       "screens/pool_status.js",
       "screens/tx_status.js"
@@ -23700,12 +23700,12 @@
       "screens/problem.js"
     ]
   },
-  "This browser can't run BEAM Campfire": {
+  "This browser can't run Beam PWA": {
     "where": [
       "screens/problem.js"
     ]
   },
-  "{reason} Don't enter your 12 words here. Reload later, or open BEAM Campfire from its official address.": {
+  "{reason} Don't enter your 12 words here. Reload later, or open Beam PWA from its official address.": {
     "where": [
       "screens/problem.js"
     ],
@@ -23713,7 +23713,7 @@
       "reason"
     ]
   },
-  "This copy of BEAM Campfire did not pass its signature check.": {
+  "This copy of Beam PWA did not pass its signature check.": {
     "where": [
       "screens/problem.js"
     ]
@@ -23726,7 +23726,7 @@
       "features"
     ]
   },
-  "BEAM Campfire needs Safari on iOS 16.4 or newer (or a current Chrome, Edge or Firefox), opened over HTTPS from its own address. Private browsing can also block what the wallet needs.": {
+  "Beam PWA needs Safari on iOS 16.4 or newer (or a current Chrome, Edge or Firefox), opened over HTTPS from its own address. Private browsing can also block what the wallet needs.": {
     "where": [
       "screens/problem.js"
     ]
@@ -23784,7 +23784,7 @@
       "screens/problem.js"
     ]
   },
-  "BEAM Campfire is installed": {
+  "Beam PWA is installed": {
     "where": [
       "screens/problem.js"
     ]
@@ -23843,7 +23843,7 @@
       "token"
     ]
   },
-  "A BEAM payment finishes only while both wallets are online. Keep BEAM Campfire open until it arrives. Paying from another app on this phone? Send, come back here, then open that app once more.": {
+  "A BEAM payment finishes only while both wallets are online. Keep Beam PWA open until it arrives. Paying from another app on this phone? Send, come back here, then open that app once more.": {
     "where": [
       "screens/receive.js"
     ]
@@ -23957,7 +23957,7 @@
       "screens/send_extras.js"
     ]
   },
-  "Keep BEAM Campfire open until it completes. If nobody accepts it, it is cancelled and the money stays yours.": {
+  "Keep Beam PWA open until it completes. If nobody accepts it, it is cancelled and the money stays yours.": {
     "where": [
       "screens/review.js"
     ]
@@ -23992,7 +23992,7 @@
       "screens/review.js"
     ]
   },
-  "To be sure it reaches them, ask for their name key (in BEAM Campfire: BEAM names → Receive a name). Its 16 characters must match the owner key above.": {
+  "To be sure it reaches them, ask for their name key (in Beam PWA: BEAM names → Receive a name). Its 16 characters must match the owner key above.": {
     "where": [
       "screens/review.js"
     ]
@@ -24022,7 +24022,7 @@
       "name"
     ]
   },
-  "It is a payment on another network than Ethereum. BEAM Campfire uses Ethereum mainnet only, so nothing was opened.": {
+  "It is a payment on another network than Ethereum. Beam PWA uses Ethereum mainnet only, so nothing was opened.": {
     "where": [
       "screens/scan_go.js"
     ]
@@ -24032,7 +24032,7 @@
       "screens/scan_go.js"
     ]
   },
-  "It is a web link. BEAM Campfire does not open links from codes, so nothing was opened.": {
+  "It is a web link. Beam PWA does not open links from codes, so nothing was opened.": {
     "where": [
       "screens/scan_go.js"
     ]
@@ -24052,7 +24052,7 @@
       "screens/scan_go.js"
     ]
   },
-  "BEAM Campfire couldn't read the clipboard. Copy the text again and tap Scan.": {
+  "Beam PWA couldn't read the clipboard. Copy the text again and tap Scan.": {
     "where": [
       "screens/scan_go.js"
     ]
@@ -24072,7 +24072,7 @@
       "screens/scan_go.js"
     ]
   },
-  "BEAM Campfire does not know what this is, so nothing was opened.": {
+  "Beam PWA does not know what this is, so nothing was opened.": {
     "where": [
       "screens/scan_go.js"
     ]
@@ -24102,7 +24102,7 @@
       "screens/scan_sheet.js"
     ]
   },
-  "That's a web link. BEAM Campfire doesn't open links from codes.": {
+  "That's a web link. Beam PWA doesn't open links from codes.": {
     "where": [
       "screens/scan_sheet.js"
     ]
@@ -24132,7 +24132,7 @@
       "screens/scan_sheet.js"
     ]
   },
-  "The picture stays on this phone: BEAM Campfire reads the code here and keeps nothing.": {
+  "The picture stays on this phone: Beam PWA reads the code here and keeps nothing.": {
     "where": [
       "screens/scan_sheet.js"
     ]
@@ -24826,12 +24826,12 @@
       "screens/storage_warning.js"
     ]
   },
-  "Add BEAM Campfire to your Home Screen (Share, then Add to Home Screen) and open your wallet there from your wallet.db file: the Home Screen app keeps its data.": {
+  "Add Beam PWA to your Home Screen (Share, then Add to Home Screen) and open your wallet there from your wallet.db file: the Home Screen app keeps its data.": {
     "where": [
       "screens/storage_warning.js"
     ]
   },
-  "Add BEAM Campfire to your Home Screen (Share, then Add to Home Screen) and open your wallet there with your 12 words: the Home Screen app keeps its data.": {
+  "Add Beam PWA to your Home Screen (Share, then Add to Home Screen) and open your wallet there with your 12 words: the Home Screen app keeps its data.": {
     "where": [
       "screens/storage_warning.js"
     ]
@@ -24861,12 +24861,12 @@
       "screens/storage_warning.js"
     ]
   },
-  "This browser may clear this site's data when the device runs low on space, and this move's record is kept only here: BEAM Campfire needs it to finish the move. Open BEAM Campfire until the move says Done.": {
+  "This browser may clear this site's data when the device runs low on space, and this move's record is kept only here: Beam PWA needs it to finish the move. Open Beam PWA until the move says Done.": {
     "where": [
       "screens/storage_warning.js"
     ]
   },
-  "Safari deletes a site's data after 7 days without a visit to it, and this move's record is kept only here: BEAM Campfire needs it to finish the move. Open BEAM Campfire until the move says Done.": {
+  "Safari deletes a site's data after 7 days without a visit to it, and this move's record is kept only here: Beam PWA needs it to finish the move. Open Beam PWA until the move says Done.": {
     "where": [
       "screens/storage_warning.js"
     ]
@@ -25154,7 +25154,7 @@
       "screens/swap.js"
     ]
   },
-  "If the price moves against you by more than this before your swap is built, BEAM Campfire stops and shows you the new price. Nothing is sent.": {
+  "If the price moves against you by more than this before your swap is built, Beam PWA stops and shows you the new price. Nothing is sent.": {
     "where": [
       "screens/swap.js"
     ]
@@ -25579,7 +25579,7 @@
       "screens/tx_status.js"
     ]
   },
-  "Waiting for the receiver's wallet to come online and accept. Keep BEAM Campfire open; this can take up to 12 hours.": {
+  "Waiting for the receiver's wallet to come online and accept. Keep Beam PWA open; this can take up to 12 hours.": {
     "where": [
       "screens/tx_status.js"
     ]
@@ -25611,7 +25611,7 @@
       "unit"
     ]
   },
-  "Locked. Your payment keeps going: leave BEAM Campfire open until it's done.": {
+  "Locked. Your payment keeps going: leave Beam PWA open until it's done.": {
     "where": [
       "screens/unlock.js"
     ]
@@ -25658,7 +25658,7 @@
       "screens/unlock.js"
     ]
   },
-  "BEAM Campfire goes back to it once the wallet is open.": {
+  "Beam PWA goes back to it once the wallet is open.": {
     "where": [
       "screens/unlock.js"
     ]
@@ -25699,7 +25699,7 @@
       "name"
     ]
   },
-  "Locked after {n} minutes without use. Your payment keeps going: leave BEAM Campfire open until it's done.": {
+  "Locked after {n} minutes without use. Your payment keeps going: leave Beam PWA open until it's done.": {
     "where": [
       "screens/unlock.js"
     ],
@@ -25707,8 +25707,8 @@
       "n"
     ],
     "count": {
-      "one": "Locked after {n} minute without use. Your payment keeps going: leave BEAM Campfire open until it's done.",
-      "other": "Locked after {n} minutes without use. Your payment keeps going: leave BEAM Campfire open until it's done."
+      "one": "Locked after {n} minute without use. Your payment keeps going: leave Beam PWA open until it's done.",
+      "other": "Locked after {n} minutes without use. Your payment keeps going: leave Beam PWA open until it's done."
     }
   },
   "Locked after {n} minutes without use.": {
@@ -26041,7 +26041,7 @@
       "screens/welcome.js"
     ]
   },
-  "First, add BEAM Campfire to your Home Screen": {
+  "First, add Beam PWA to your Home Screen": {
     "where": [
       "screens/welcome.js"
     ]

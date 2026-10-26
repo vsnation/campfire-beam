@@ -98,7 +98,7 @@ export async function createWallet(app, password) {
   }
 }
 
-/** Imported from a wallet.db and its password: no recovery phrase in BEAM Campfire. */
+/** Imported from a wallet.db and its password: no recovery phrase in Beam PWA. */
 export function isImported(app) {
   return Boolean(app && app.record && app.record.imported);
 }

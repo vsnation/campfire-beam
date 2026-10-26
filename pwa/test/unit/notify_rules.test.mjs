@@ -1,4 +1,4 @@
-// What BEAM Campfire tells the person about, worked out on the device (lib/notify_rules.js), and
+// What Beam PWA tells the person about, worked out on the device (lib/notify_rules.js), and
 // where a tap on a notification may open the app (lib/notify.js parseOpen).
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -51,7 +51,7 @@ test('the words: amounts only when allowed; verified tickers only; a tap opens t
   assert.equal(wordsFor({ type: 'contractDone', tx: dapp }, { contractTitle: (t) => t.appname }).title, 'A call by \u201cRe-verify your wallet now\u201d: done');
   assert.equal(wordsFor({ type: 'contractFailed', tx: dapp }, { contractTitle: (t) => t.appname }).title, 'A call by \u201cRe-verify your wallet now\u201d: did not go through');
   assert.equal(wordsFor({ type: 'contractDone', tx: dapp }, { contractTitle: () => 'DEX swap' }).title, 'DEX swap: done', "the wallet's own label is not framed");
-  assert.match(wordsFor({ type: 'arriving', tx: tx('1', { status: 1 }) }).body, /finishes only while BEAM Campfire is open/);
+  assert.match(wordsFor({ type: 'arriving', tx: tx('1', { status: 1 }) }).body, /finishes only while Beam PWA is open/);
   assert.equal(wordsFor({ type: 'received', tx: tx('1') }, { walletName: 'Savings' }).body, 'Tap to see it in Activity. In Savings.');
 });
 
@@ -124,8 +124,8 @@ test('reminders an earlier version stored are rewritten to name nothing, at the 
   const { plainReminders } = await import('../../src/lib/notify_rules.js');
   const now = 1_700_000_000_000;
   const old = [
-    { id: `rem-arr-${'b1'.repeat(16)}`, wallet: 'w1', kind: 'underway', at: now + 1, title: 'Your payment is still waiting', body: 'It finishes only while BEAM Campfire is open. Open it to finish. In Savings.', url: `#open=activity&tx=${'b1'.repeat(16)}` },
-    { id: 'rem-priv-coin-77', wallet: 'w1', kind: 'in', at: now + 2, title: 'A private payment can now be spent', body: 'Open BEAM Campfire to use it.', url: '#open=coins' },
+    { id: `rem-arr-${'b1'.repeat(16)}`, wallet: 'w1', kind: 'underway', at: now + 1, title: 'Your payment is still waiting', body: 'It finishes only while Beam PWA is open. Open it to finish. In Savings.', url: `#open=activity&tx=${'b1'.repeat(16)}` },
+    { id: 'rem-priv-coin-77', wallet: 'w1', kind: 'in', at: now + 2, title: 'A private payment can now be spent', body: 'Open Beam PWA to use it.', url: '#open=coins' },
     { id: 'rem-name-alice-1', wallet: 'w1', kind: 'contracts', at: now + 3, title: 'alice.beam expires in 1 day', body: 'Renew it in BEAM names so it stays yours.', url: '#open=names' },
     { id: 'rem-name-alice-7', wallet: 'w1', kind: 'contracts', at: now + 4, title: 'alice.beam expires in 7 days', body: 'Renew it in BEAM names so it stays yours.', url: '#open=names' },
     { id: `rem-addr-0011ab${'cd'.repeat(5)}`, wallet: 'w1', kind: 'in', at: now + 5, title: 'An address of yours (From Alex) expires in 3 days', body: 'x', url: '#open=addresses' },

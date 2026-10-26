@@ -58,7 +58,7 @@ export default function welcome(app) {
       // Compact when the Home Screen guide must fit above the fold too (375x667 without scrolling).
       { class: `hero${guide ? ' compact' : ''}` },
       h('img', { src: 'img/logo.svg', alt: '' }),
-      h('h1', { text: 'BEAM Campfire' }), // i18n-ignore: the brand
+      h('h1', { text: 'Beam PWA' }), // i18n-ignore: the brand
       h('p', { text: t('Your privacy. Your wallet. Your BEAM.') }),
     ),
     guide,
@@ -75,7 +75,7 @@ function a2hsGuide(app) {
     h(
       'div',
       { class: 'banner' },
-      h('h3', { class: 'grow', text: t('First, add BEAM Campfire to your Home Screen') }),
+      h('h3', { class: 'grow', text: t('First, add Beam PWA to your Home Screen') }),
       h('button', {
         class: 'icon-btn',
         'aria-label': t('Hide this tip'),

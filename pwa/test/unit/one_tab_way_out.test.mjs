@@ -1,5 +1,5 @@
 // Release audit RE3-1: in a browser whose lock manager cannot say which tab holds the wallet, the
-// fail-closed screen ("Close your other BEAM Campfire tabs, then reload") comes back after every
+// fail-closed screen ("Close your other Beam PWA tabs, then reload") comes back after every
 // reload. Its way out, another browser and the wallet's words or file, is said under the button, and
 // above it once the screen comes back in the same tab.
 import test from 'node:test';
@@ -13,8 +13,8 @@ function memory() {
 }
 
 test('the words: another browser, and the 12 words or the wallet.db file', () => {
-  assert.equal(UNCHECKED_LEAD, 'This browser cannot keep BEAM Campfire to one tab. Close every other BEAM Campfire tab, then reload.');
-  assert.equal(UNCHECKED_WAY_OUT, 'If this keeps happening, this browser cannot run BEAM Campfire safely: open it in another browser and restore your wallet there from its 12 words (or its wallet.db file).');
+  assert.equal(UNCHECKED_LEAD, 'This browser cannot keep Beam PWA to one tab. Close every other Beam PWA tab, then reload.');
+  assert.equal(UNCHECKED_WAY_OUT, 'If this keeps happening, this browser cannot run Beam PWA safely: open it in another browser and restore your wallet there from its 12 words (or its wallet.db file).');
 });
 
 test('counted per tab: the first time, then again after a reload; storage that cannot be used counts as the first', () => {

@@ -80,7 +80,7 @@ try {
   };
   log('sheet:', JSON.stringify(sheet));
   await shot(page, 'live-swap-04-sheet');
-  if (!/BEAM Campfire/.test(sheet.app)) throw new Error('the sheet does not name this wallet');
+  if (!/Beam PWA/.test(sheet.app)) throw new Error('the sheet does not name this wallet');
   if (!/BEAM/.test(sheet.pay) || groth(sheet.pay) > MAX_PAY_GROTH) throw new Error(`refusing: the sheet pays ${sheet.pay}`);
   if (groth(sheet.fee) !== FEE_GROTH) throw new Error(`refusing: the sheet charges ${sheet.fee}`);
   if (!/FOMO/.test(sheet.get)) throw new Error(`refusing: the sheet gives ${sheet.get}`);

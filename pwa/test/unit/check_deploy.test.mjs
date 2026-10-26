@@ -23,7 +23,7 @@ async function site(priv) {
   const loaderBody = 'self.addEventListener("fetch", () => {});\n';
   const loader = `sw-${sha(Buffer.from(loaderBody)).slice(0, 16)}.js`;
   const files = {
-    'index.html': Buffer.from('<!doctype html><title>BEAM Campfire</title>'),
+    'index.html': Buffer.from('<!doctype html><title>Beam PWA</title>'),
     'app.js': Buffer.from('console.log(1);'),
     'css/app.css': Buffer.from('body{}'),
     'lib/version.js': Buffer.from(`export const LOADER = ${JSON.stringify(loader)};\n`),

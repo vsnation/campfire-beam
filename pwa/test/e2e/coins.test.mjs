@@ -271,7 +271,7 @@ test('payment notifications: asked once from the switch; in front, a banner for 
   const notified = await page.evaluate(() => window.__notified);
   assert.deepEqual(notified.map((n) => n.title), [], 'in front: the banner says it, no system notification');
   await both('coins-10-banner');
-  // The split is named as BEAM Campfire names it, and only its fee left.
+  // The split is named as Beam PWA names it, and only its fee left.
   const split = page.locator('[data-split="1"]').first();
   assert.match(await split.textContent(), /Split into coins.*0\.9 BEAM.*−0\.00118 BEAM/);
   await page.click(tid('pay-banner-open'));

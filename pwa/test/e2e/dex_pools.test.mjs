@@ -329,7 +329,7 @@ test('the new-pool sheet with enough BEAM: approving needs the tick first', { ti
     const { presentConsent } = await import('./screens/consent.js');
     const { wallet } = await import('./lib/wallet.js');
     const req = {
-      id: 'x', kind: 'contract', appId: 'x', appName: 'BEAM Campfire', native: true, unchecked: false, comment: '', fee: 1471000n, feeText: '0.01471', isEnough: true,
+      id: 'x', kind: 'contract', appId: 'x', appName: 'Beam PWA', native: true, unchecked: false, comment: '', fee: 1471000n, feeText: '0.01471', isEnough: true,
       spends: [{ assetId: 0, amount: 1000000000n, amountText: '10' }], receives: [], address: null, isOnline: null,
       intent: { action: 'poolCreate', rows: [['New pool', 'BEAM/FOMO · 0.05% fee']], warn: 'The 10 BEAM deposit stays locked in the DEX until the pool is empty and you, its creator, close it.', ack: 'I understand the 10 BEAM stays locked until the pool is empty' },
     };

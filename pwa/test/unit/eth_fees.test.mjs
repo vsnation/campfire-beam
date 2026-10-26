@@ -76,11 +76,11 @@ test('base fees Ethereum cannot have produced are refused, not paid: too high, o
     assert.equal(e.data.problem, 'jump');
   };
   // BM-6: too high is a fee Ethereum has charged (over 8,000 gwei for a few blocks on 2022-05-01): said
-  // as more than BEAM Campfire pays, not as impossible.
+  // as more than Beam PWA pays, not as impossible.
   const high = await walletFees(server(Array(6).fill(5000n * GWEI), [GWEI])).catch((x) => x); // the bridge proof of concept's base fee
   assert.ok(high instanceof EthRpcError && high.code === 'bad_fees');
   assert.equal(high.data.problem, 'high');
-  assert.equal(high.message, 'Test server says Ethereum\'s network fee is a base fee of 5000 gwei, far above anything BEAM Campfire will pay.');
+  assert.equal(high.message, 'Test server says Ethereum\'s network fee is a base fee of 5000 gwei, far above anything Beam PWA will pay.');
   assert.equal(baseFeeKind(Array(6).fill(5000n * GWEI)), 'high');
   assert.equal(baseFeeKind([...Array(5).fill(GWEI), 2n * GWEI]), 'jump');
   assert.equal(baseFeeKind([GWEI, GWEI]), null);
@@ -155,10 +155,10 @@ test('to Ethereum: a gas price above the cap is said ("Ethereum is unusually bus
   assert.equal(quoteToEthereum({ route: beam, amount: 100000n * 10n ** 8n, cond: calm, balances: { source: 10n ** 15n, beam: 10n ** 15n, eth: 0n }, ethAddress: TO, now }).warnings.some((x) => x.code === 'gasHigh'), false);
 });
 
-test('BM-6: the words for a fee BEAM Campfire will not pay, and for figures that cannot be right', async () => {
+test('BM-6: the words for a fee Beam PWA will not pay, and for figures that cannot be right', async () => {
   const { badFeesWords } = await import('../../src/screens/eth_ui.js');
   const high = badFeesWords({ code: 'bad_fees', data: { problem: 'high' } }, 'Stack Wallet');
-  assert.equal(high.title, 'The network fee is far above anything BEAM Campfire will pay. ');
+  assert.equal(high.title, 'The network fee is far above anything Beam PWA will pay. ');
   assert.equal(high.detail, "Stack Wallet's Ethereum server says Ethereum is that expensive right now. It has been, but only for minutes at a time. Nothing was sent, and nothing was paid. Try again in a few minutes, or use another server.");
   assert.doesNotMatch(high.detail, /gwei|cannot have/);
   const jump = badFeesWords({ code: 'bad_fees', data: { problem: 'jump' } }, 'PublicNode');

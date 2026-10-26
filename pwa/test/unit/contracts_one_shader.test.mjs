@@ -68,7 +68,7 @@ test('a refusal the engine still sends (a call that timed out here but runs on t
   const app = await openApp({ appName: 'Slow' });
   await assert.rejects(app.view('action=first', SHADER, { timeoutMs: 15 }), (e) => e.code === 'timeout');
   await assert.rejects(app.view('action=second', SHADER), (e) => e instanceof ContractError && e.code === 'busy' && e.message === SHADER_BUSY_TEXT && e.rpc.code === -32017 && e.rpc.data === ENGINE_SHADER_BUSY);
-  assert.equal(SHADER_BUSY_TEXT, 'BEAM Campfire is busy with another check. Try again in a moment.');
+  assert.equal(SHADER_BUSY_TEXT, 'Beam PWA is busy with another check. Try again in a moment.');
   // ...and once the engine is done, the next one goes through.
   await tick(80);
   assert.deepEqual(await app.view('action=third', SHADER), { args: 'action=third' });

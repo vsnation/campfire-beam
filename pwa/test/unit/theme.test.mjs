@@ -1,8 +1,9 @@
-// Settings -> Theme (lib/theme.js, theme-boot.js, css/app.css): like this device, light or dark.
+// Settings -> Appearance (lib/theme.js, theme-boot.js, css/app.css): BEAM's colours (the default) or
+// Campfire red; like this device, light or dark (BEAM: dark unless one is picked).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { THEMES, THEME_WORDS, SKINS, SKIN_WORDS, BARS, readTheme, readSkin, applyTheme, applyLook, setTheme, setSkin, pickSkin } from '../../src/lib/theme.js';
+import { THEMES, THEME_WORDS, SKINS, SKIN_WORDS, BARS, readTheme, readSkin, applyTheme, applyLook, setTheme, setSkin, pickSkin, resetLook, defaultTheme } from '../../src/lib/theme.js';
 
 const src = (p) => readFileSync(new URL(`../../src/${p}`, import.meta.url), 'utf8');
 
@@ -27,13 +28,20 @@ function fakeDoc() {
   };
 }
 
-test('the choice: like this device unless one is saved; anything unknown or unreadable is like this device', () => {
+test('the theme: the one picked, else the colours\' own (BEAM dark, Campfire red like this device)', () => {
   assert.deepEqual(THEMES, ['system', 'light', 'dark']);
   assert.equal(THEME_WORDS.system, 'Like this device');
-  assert.equal(readTheme(memoryStorage()), 'system');
-  assert.equal(readTheme(memoryStorage({ 'campfire-theme': 'dark' })), 'dark');
-  assert.equal(readTheme(memoryStorage({ 'campfire-theme': 'purple' })), 'system');
-  assert.equal(readTheme(blocked), 'system');
+  assert.equal(readTheme(memoryStorage()), 'dark', 'a new install: BEAM, dark');
+  assert.equal(readTheme(memoryStorage({ 'campfire-theme': 'system' })), 'system', 'like this device, picked on purpose');
+  assert.equal(readTheme(memoryStorage({ 'campfire-theme': 'light' })), 'light');
+  assert.equal(readTheme(memoryStorage({ 'campfire-theme': 'purple' })), 'dark');
+  assert.equal(readTheme(memoryStorage({ 'campfire-skin': 'campfire' })), 'system', 'Campfire red follows the device');
+  assert.equal(readTheme(memoryStorage({ 'campfire-skin': 'campfire', 'campfire-theme': 'dark' })), 'dark');
+  // 0.2.19 saved Dark with the flag when BEAM was picked: no theme was picked.
+  assert.equal(readTheme(memoryStorage({ 'campfire-skin': 'beam', 'campfire-theme': 'dark', 'campfire-theme-auto': '1' })), 'dark');
+  assert.equal(readTheme(blocked), 'dark');
+  assert.equal(defaultTheme('beam'), 'dark');
+  assert.equal(defaultTheme('campfire'), 'system');
 });
 
 test('applied: the palette attribute, the native controls and the browser bar', () => {
@@ -54,14 +62,18 @@ test('applied: the palette attribute, the native controls and the browser bar', 
   assert.equal(d.scheme.attrs.content, 'light dark');
 });
 
-test('saved and applied at once; like this device leaves nothing saved; blocked storage still applies', () => {
+test('saved and applied at once, like this device too (it is no longer the default); blocked storage still applies', () => {
   const st = memoryStorage();
   const d = fakeDoc();
   assert.equal(setTheme('dark', { storage: st, doc: d }), 'dark');
   assert.equal(st.m.get('campfire-theme'), 'dark');
   assert.equal(d.documentElement.dataset.theme, 'dark');
   setTheme('system', { storage: st, doc: d });
-  assert.equal(st.m.has('campfire-theme'), false);
+  assert.equal(st.m.get('campfire-theme'), 'system');
+  assert.equal('theme' in d.documentElement.dataset, false);
+  st.m.set('campfire-theme-auto', '1');
+  setTheme('dark', { storage: st, doc: d });
+  assert.equal(st.m.has('campfire-theme-auto'), false, 'picked on purpose now');
   const d2 = fakeDoc();
   assert.equal(setTheme('light', { storage: blocked, doc: d2 }), 'light');
   assert.equal(d2.documentElement.dataset.theme, 'light');
@@ -91,7 +103,7 @@ test("css: the dark palette under the device's dark mode and under Dark is one p
   }
 });
 
-// ---------------------------------------------------------------- colours: Campfire red or BEAM (#80)
+// ---------------------------------------------------------------- colours: BEAM or Campfire red (#80)
 
 const css = src('css/app.css');
 const tokens = (body) => Object.fromEntries([...body.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)].map((x) => [x[1], x[2].trim()]));
@@ -108,13 +120,14 @@ const PALETTES = {
 };
 const COLOUR_KEYS = Object.keys(PALETTES['campfire dark']);
 
-test('colours: Campfire red unless BEAM is saved; anything unknown or unreadable is Campfire red', () => {
-  assert.deepEqual(SKINS, ['campfire', 'beam']);
-  assert.deepEqual(SKIN_WORDS, { campfire: 'Campfire red', beam: 'BEAM' });
-  assert.equal(readSkin(memoryStorage()), 'campfire');
-  assert.equal(readSkin(memoryStorage({ 'campfire-skin': 'beam' })), 'beam');
-  assert.equal(readSkin(memoryStorage({ 'campfire-skin': 'purple' })), 'campfire');
-  assert.equal(readSkin(blocked), 'campfire');
+test('colours: BEAM unless Campfire red is saved; anything unknown or unreadable is BEAM', () => {
+  assert.deepEqual(SKINS, ['beam', 'campfire']);
+  assert.deepEqual(SKIN_WORDS, { beam: 'BEAM', campfire: 'Campfire red' });
+  assert.equal(readSkin(memoryStorage()), 'beam');
+  assert.equal(readSkin(memoryStorage({ 'campfire-skin': 'beam' })), 'beam', 'as 0.2.19 saved it');
+  assert.equal(readSkin(memoryStorage({ 'campfire-skin': 'campfire' })), 'campfire');
+  assert.equal(readSkin(memoryStorage({ 'campfire-skin': 'purple' })), 'beam');
+  assert.equal(readSkin(blocked), 'beam');
 });
 
 test('colours applied with the theme: the attribute, and the browser bar in that palette', () => {
@@ -131,9 +144,9 @@ test('colours applied with the theme: the attribute, and the browser bar in that
   assert.equal('skin' in d.documentElement.dataset, false, 'Campfire red: no attribute');
   assert.equal(d.documentElement.dataset.theme, 'dark', 'the theme stays');
   assert.equal(d.light.attrs.content, '#1c1d22');
-  assert.equal(st.m.has('campfire-skin'), false, 'the default leaves nothing saved');
+  assert.equal(st.m.get('campfire-skin'), 'campfire');
   setSkin('beam', { storage: st, doc: d });
-  assert.equal(st.m.get('campfire-skin'), 'beam');
+  assert.equal(st.m.has('campfire-skin'), false, 'the default leaves nothing saved');
   const d2 = fakeDoc();
   assert.equal(setSkin('beam', { storage: blocked, doc: d2 }), 'beam', 'storage blocked: this page only');
   assert.equal(d2.documentElement.dataset.skin, 'beam');
@@ -142,54 +155,90 @@ test('colours applied with the theme: the attribute, and the browser bar in that
   for (const m of ['light', 'dark']) assert.equal(PALETTES[`campfire ${m}`]['bg-top'], PALETTES[`campfire ${m}`].bg, `campfire ${m}: no band`);
 });
 
-test('BEAM is dark by default: picking it turns a device-following theme to Dark, and Campfire red undoes that', () => {
-  // Following the device: BEAM comes dark, and the Theme row is told so.
+test('a theme nobody picked follows the colours; one picked on purpose is never changed', () => {
+  // Nothing picked: Campfire red follows the device, and BEAM comes back dark. Nothing is saved for either.
   let st = memoryStorage();
   let d = fakeDoc();
+  applyLook({ theme: 'dark', skin: 'beam' }, d); // as index.html and theme-boot.js start it
+  assert.deepEqual(pickSkin('campfire', { storage: st, doc: d }), { skin: 'campfire', theme: 'system' });
+  assert.deepEqual([...st.m.keys()], ['campfire-skin']);
+  assert.equal('theme' in d.documentElement.dataset, false);
+  assert.equal(d.light.attrs.content, '#fff1f1');
   assert.deepEqual(pickSkin('beam', { storage: st, doc: d }), { skin: 'beam', theme: 'dark' });
-  assert.equal(st.m.get('campfire-theme'), 'dark', 'kept: the next start opens dark before the first paint');
+  assert.equal(st.m.size, 0);
   assert.equal(d.documentElement.dataset.theme, 'dark');
   assert.equal(d.documentElement.dataset.skin, 'beam');
   assert.equal(d.light.attrs.content, '#04325a', "the bar in BEAM's dark colour");
-  // Back to Campfire red: the device's own light or dark again, nothing left saved.
-  assert.deepEqual(pickSkin('campfire', { storage: st, doc: d }), { skin: 'campfire', theme: 'system' });
-  assert.equal(st.m.size, 0);
-  assert.equal('theme' in d.documentElement.dataset, false);
-  // A theme picked after BEAM came dark is the person's own: Campfire red keeps it.
-  pickSkin('beam', { storage: st, doc: d });
-  setTheme('dark', { storage: st, doc: d });
-  assert.deepEqual(pickSkin('campfire', { storage: st, doc: d }), { skin: 'campfire', theme: 'dark' });
-  // Light picked on purpose: BEAM stays light.
-  st = memoryStorage({ 'campfire-theme': 'light' });
+  // 0.2.19's BEAM-came-dark pair counts as nothing picked: Campfire red follows the device again.
+  st = memoryStorage({ 'campfire-skin': 'beam', 'campfire-theme': 'dark', 'campfire-theme-auto': '1' });
+  assert.deepEqual(pickSkin('campfire', { storage: st, doc: fakeDoc() }), { skin: 'campfire', theme: 'system' });
+  assert.deepEqual([...st.m.entries()], [['campfire-skin', 'campfire']]);
+  // Picked on purpose, each of them: kept both ways.
+  for (const theme of ['light', 'dark', 'system']) {
+    st = memoryStorage({ 'campfire-theme': theme });
+    d = fakeDoc();
+    applyTheme(theme, d);
+    assert.deepEqual(pickSkin('campfire', { storage: st, doc: d }), { skin: 'campfire', theme }, theme);
+    assert.deepEqual(pickSkin('beam', { storage: st, doc: d }), { skin: 'beam', theme }, theme);
+    assert.equal(st.m.get('campfire-theme'), theme);
+  }
+  // Storage blocked: the page stands in. Nothing picked follows the colours; a theme picked here stays.
   d = fakeDoc();
-  applyTheme('light', d); // as theme-boot.js puts it on before the first paint
-  assert.deepEqual(pickSkin('beam', { storage: st, doc: d }), { skin: 'beam', theme: 'light' });
-  assert.equal(d.documentElement.dataset.theme, 'light');
-  assert.deepEqual(pickSkin('campfire', { storage: st, doc: d }), { skin: 'campfire', theme: 'light' });
-  // Dark picked on purpose, then BEAM and back: still dark.
-  st = memoryStorage({ 'campfire-theme': 'dark' });
-  pickSkin('beam', { storage: st, doc: fakeDoc() });
-  assert.equal(pickSkin('campfire', { storage: st, doc: fakeDoc() }).theme, 'dark');
-  // Storage blocked: dark on this page anyway, and Campfire red undoes it on this page.
-  d = fakeDoc();
-  assert.deepEqual(pickSkin('beam', { storage: blocked, doc: d }), { skin: 'beam', theme: 'dark' });
-  assert.equal(d.documentElement.dataset.theme, 'dark');
+  resetLook({ storage: blocked, doc: d }); // a fresh page: earlier tests picked themes on this one
   assert.deepEqual(pickSkin('campfire', { storage: blocked, doc: d }), { skin: 'campfire', theme: 'system' });
-  assert.equal('theme' in d.documentElement.dataset, false);
-  // Storage blocked and Light on this page: BEAM stays light.
-  d = fakeDoc();
-  applyTheme('light', d);
-  assert.deepEqual(pickSkin('beam', { storage: blocked, doc: d }), { skin: 'beam', theme: 'light' });
+  assert.deepEqual(pickSkin('beam', { storage: blocked, doc: d }), { skin: 'beam', theme: 'dark' });
+  setTheme('light', { storage: blocked, doc: d });
+  assert.deepEqual(pickSkin('campfire', { storage: blocked, doc: d }), { skin: 'campfire', theme: 'light' });
 });
 
-test('before the first paint: theme-boot.js sets the colours and the bar from the same key, the same values', () => {
+test('every wallet deleted: back to a new install, BEAM and dark, nothing saved', () => {
+  const st = memoryStorage({ 'campfire-skin': 'campfire', 'campfire-theme': 'light', 'campfire-theme-auto': '1' });
+  const d = fakeDoc();
+  applyLook({ theme: 'light', skin: 'campfire' }, d);
+  resetLook({ storage: st, doc: d });
+  assert.equal(st.m.size, 0);
+  assert.equal(d.documentElement.dataset.skin, 'beam');
+  assert.equal(d.documentElement.dataset.theme, 'dark');
+  assert.match(src('lib/wallets.js'), /resetLook\(\{ storage \}\)/);
+});
+
+test('before the first paint: theme-boot.js decides as lib/theme.js does, and index.html carries the default', () => {
   const boot = src('theme-boot.js');
   assert.match(src('lib/theme.js'), /const SKIN_KEY = 'campfire-skin';/);
-  assert.match(boot, /localStorage\.getItem\('campfire-skin'\) === 'beam'/);
-  assert.match(boot, /setAttribute\('data-skin', 'beam'\)/);
-  assert.match(boot, new RegExp(`var bars = \\{ light: '${BARS.beam.light}', dark: '${BARS.beam.dark}' \\};`));
+  assert.match(src('lib/theme.js'), /const AUTO_DARK_KEY = 'campfire-theme-auto';/);
+  assert.match(boot, /localStorage\.getItem\('campfire-skin'\) === 'campfire'/);
+  assert.match(boot, /localStorage\.getItem\('campfire-theme-auto'\) === '1'/);
+  assert.match(boot, new RegExp(`skin === 'beam' \\? \\{ light: '${BARS.beam.light}', dark: '${BARS.beam.dark}' \\} : \\{ light: '${BARS.campfire.light}', dark: '${BARS.campfire.dark}' \\}`));
   const html = src('index.html');
   assert.ok(html.indexOf('theme-boot.js') > html.lastIndexOf('name="theme-color"'), 'the bar tags are read before it runs');
+  assert.match(html, /<html lang="en" data-skin="beam" data-theme="dark">/);
+  assert.equal([...html.matchAll(/name="theme-color" content="([^"]+)"/g)].map((m) => m[1]).join(), `${BARS.beam.dark},${BARS.beam.dark}`);
+  assert.match(html, /<meta name="color-scheme" content="dark">/);
+  const manifest = JSON.parse(src('manifest.webmanifest'));
+  assert.equal(manifest.theme_color, BARS.beam.dark);
+  assert.equal(manifest.background_color, PALETTES['beam dark'].bg);
+  // Run it: each saved state gives what lib/theme.js reads.
+  const cases = [
+    [{}, { skin: 'beam', theme: 'dark' }],
+    [{ 'campfire-skin': 'campfire' }, { skin: 'campfire', theme: 'system' }],
+    [{ 'campfire-skin': 'campfire', 'campfire-theme': 'light' }, { skin: 'campfire', theme: 'light' }],
+    [{ 'campfire-skin': 'beam', 'campfire-theme': 'dark', 'campfire-theme-auto': '1' }, { skin: 'beam', theme: 'dark' }],
+    [{ 'campfire-theme': 'system' }, { skin: 'beam', theme: 'system' }],
+  ];
+  for (const [saved, want] of cases) {
+    const st = memoryStorage(saved);
+    assert.deepEqual({ skin: readSkin(st), theme: readTheme(st) }, want, JSON.stringify(saved));
+    const d = fakeDoc();
+    const attrs = {};
+    const root = { setAttribute: (k, v) => (attrs[k] = v), removeAttribute: (k) => delete attrs[k] };
+    const doc = { documentElement: root, querySelectorAll: d.querySelectorAll, querySelector: d.querySelector };
+    new Function('localStorage', 'document', boot)(st, doc);
+    assert.equal(attrs['data-skin'] ?? 'campfire', want.skin === 'beam' ? 'beam' : 'campfire', JSON.stringify(saved));
+    assert.equal(attrs['data-theme'] ?? 'system', want.theme, JSON.stringify(saved));
+    const forced = want.theme === 'system' ? null : want.theme;
+    assert.equal(d.light.attrs.content, BARS[want.skin][forced || 'light']);
+    assert.equal(d.dark.attrs.content, BARS[want.skin][forced || 'dark']);
+  }
 });
 
 test('css: BEAM gives every colour Campfire has, light and dark, and its two dark blocks are one palette', () => {

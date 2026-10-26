@@ -177,15 +177,15 @@ test("a name that copies one of BEAM's dApps under another guid is named, case a
 
 test('every refusal has words that name the next step and blame nobody', () => {
   const t = (code, extra) => installErrorText(new InstallError(code, 'x', extra), 'Tiny dApp');
-  assert.equal(t('unsupported'), 'Tiny dApp needs a newer wallet than this version of BEAM Campfire.');
+  assert.equal(t('unsupported'), 'Tiny dApp needs a newer wallet than this version of Beam PWA.');
   assert.equal(t('alreadyInstalled'), 'Tiny dApp is already installed.');
-  assert.match(t('reservedGuid', { dappName: 'Beam DEX' }), /claims to be Beam DEX, but it is not the package BEAM Campfire checks, so nothing was installed\. Open Beam DEX from the list of dApps instead\./);
+  assert.match(t('reservedGuid', { dappName: 'Beam DEX' }), /claims to be Beam DEX, but it is not the package Beam PWA checks, so nothing was installed\. Open Beam DEX from the list of dApps instead\./);
   assert.match(t('storage'), /couldn't save Tiny dApp on this device\. Check that there is free space, then try again\./);
   for (const code of ['cantOpenFile', 'cantReadManifest', 'invalidFile', 'tooLarge', 'unsafeEntry', 'unsafePath']) {
-    assert.equal(t(code), "This file isn't a dApp package BEAM Campfire can install safely, so nothing was installed. Ask the dApp's publisher for a new copy.");
+    assert.equal(t(code), "This file isn't a dApp package Beam PWA can install safely, so nothing was installed. Ask the dApp's publisher for a new copy.");
   }
   assert.match(installErrorText(new Error('x'), 'Tiny dApp'), /Nothing was changed\. Try again\./);
-  assert.equal(t('walletName'), "This dApp's name reads like BEAM Campfire's own, so its requests could pass for the wallet's. Nothing was installed. Ask its publisher for a copy under its own name.");
+  assert.equal(t('walletName'), "This dApp's name reads like Beam PWA's own, so its requests could pass for the wallet's. Nothing was installed. Ask its publisher for a copy under its own name.");
   for (const s of [t('storage'), t('invalidFile'), t('reservedGuid', { dappName: 'Beam DEX' }), t('walletName')]) assert.doesNotMatch(s, /\byou (did|made|picked a wrong)\b/i);
 });
 

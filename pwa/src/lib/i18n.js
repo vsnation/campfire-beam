@@ -17,7 +17,7 @@
 // entries only (an empty value means "not translated yet": English).
 //
 // What never goes through here: amounts, addresses, transaction ids, asset tickers and names, BEAM
-// names, the brand names (BEAM, BEAM Campfire, Campfire), dApp content, the 12 words (BEAM's word
+// names, the brand names (BEAM, Beam PWA, Campfire), dApp content, the 12 words (BEAM's word
 // list is English only), the engine's own error texts, and numbers' formatting (always '1,234.5').
 //
 // The choice is kept in this browser's localStorage (one per device, for every wallet), like the
@@ -43,16 +43,16 @@ export const tk = (text) => text;
 
 // Texts loader-watch.js and the splash show before any module runs (their keys; see EARLY_STORAGE_KEY).
 export const EARLY_KEYS = Object.freeze([
-  tk('Starting BEAM Campfire…'),
+  tk('Starting Beam PWA…'),
   tk('Starting'),
   tk('Stop: unsigned code'),
-  tk("This app's web address is serving code BEAM Campfire did not sign. Don't enter your password here."),
-  tk('BEAM Campfire stopped before opening.'),
+  tk("This app's web address is serving code Beam PWA did not sign. Don't enter your password here."),
+  tk('Beam PWA stopped before opening.'),
   tk('Your coins are on the BEAM blockchain, not in this app. Open them in BEAM Campfire desktop or another BEAM wallet, with your 12 words or with your exported wallet.db file and its password.'),
   tk('Close this app now. Do not reopen it from the same address or enter any password or words in it.'),
 ]);
 // index.html's <noscript>: no script runs there, so tools/build.mjs writes each translated line into it.
-export const NOSCRIPT_TEXT = tk('BEAM Campfire needs JavaScript to run the wallet on your device.');
+export const NOSCRIPT_TEXT = tk('Beam PWA needs JavaScript to run the wallet on your device.');
 
 /** The placeholders a text uses, sorted: 'Send {amount} to {name}' -> ['amount', 'name']. */
 export function placeholdersOf(text) {
@@ -61,7 +61,7 @@ export function placeholdersOf(text) {
 const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 /**
- * The language a device's preference list asks for: the first entry BEAM Campfire has (en-*, ru-*,
+ * The language a device's preference list asks for: the first entry Beam PWA has (en-*, ru-*,
  * ja-*, and every zh-* as Simplified Chinese), else English.
  */
 export function deviceLanguage(languages) {

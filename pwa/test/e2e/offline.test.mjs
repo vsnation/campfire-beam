@@ -52,10 +52,10 @@ const PASSWORD = `off-${randomBytes(6).toString('hex')}`;
 const tid = (id) => `[data-testid="${id}"]`;
 const pkg = JSON.parse(readFileSync(join(PWA, 'package.json'), 'utf8'));
 
-const HOSTILE_SW = `// not BEAM Campfire
+const HOSTILE_SW = `// not Beam PWA
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
-self.addEventListener('fetch', (e) => e.respondWith(new Response('<h1>Not BEAM Campfire</h1>', { headers: { 'Content-Type': 'text/html' } })));
+self.addEventListener('fetch', (e) => e.respondWith(new Response('<h1>Not Beam PWA</h1>', { headers: { 'Content-Type': 'text/html' } })));
 `;
 const PARKING = '<!doctype html><html><head><title>campfire.test is for sale</title></head><body><h1>This domain is parked</h1><p>Buy it now!</p></body></html>';
 
@@ -318,11 +318,11 @@ async function exportWallet(name, { screenshot = false } = {}) {
     fileName = got.name;
   }
   assert.match(fileName, /^beam-campfire-wallet-\d{4}-\d\d-\d\d\.db$/);
-  // The exported file opens in BEAM's native 7.5.14493 core with the BEAM Campfire password,
+  // The exported file opens in BEAM's native 7.5.14493 core with the Beam PWA password,
   // and it is this wallet: every address the app has is in it.
   const appAddrs = await page.evaluate(() => window.__campfire.addresses());
   const cli = openWithCli(dest, PASSWORD, join(tmp, 'cli'));
-  assert.equal(cli.opened, true, `${name}: the exported wallet.db opens in BEAM's native core with the BEAM Campfire password`);
+  assert.equal(cli.opened, true, `${name}: the exported wallet.db opens in BEAM's native core with the Beam PWA password`);
   for (const a of appAddrs) assert.ok(cli.addresses.includes(a), `${name}: address ${a.slice(0, 8)}… is in the exported file`);
   assert.equal(openWithCli(dest, `${PASSWORD}-wrong`, join(tmp, 'cli')).opened, false, 'a wrong password does not open it');
   console.log(`# ${name}: exported ${readFileSync(dest).length} bytes; BEAM CLI ${WANT_CORE} opened it, ${appAddrs.length} address(es) match`);
@@ -390,7 +390,7 @@ test('first run: splash at once, live progress, the address dies midway, nothing
   slowMs = 300;
   await coldStart({ waitUntil: 'commit' });
   // Before any script ran: the static splash from index.html, never a blank page.
-  await page.waitForFunction(() => document.styleSheets.length > 0 && /Starting BEAM Campfire/.test(document.getElementById('app')?.textContent || ''), null, { timeout: 30000, polling: 50 });
+  await page.waitForFunction(() => document.styleSheets.length > 0 && /Starting Beam PWA/.test(document.getElementById('app')?.textContent || ''), null, { timeout: 30000, polling: 50 });
   await sleep(150);
   await shot(page, 'offline-01-splash');
   await waitScreen(page, 'install', 120000);
@@ -552,11 +552,11 @@ test('hostile takeover: different loader code at the address -> the running app 
   await unlock();
   await waitSynced(page, 180000);
   mode = 'hostile';
-  // The browser's daily loader check, made now: it gets valid JavaScript that is not BEAM Campfire's.
+  // The browser's daily loader check, made now: it gets valid JavaScript that is not Beam PWA's.
   await page.evaluate(() => navigator.serviceWorker.getRegistration().then((reg) => reg.update()).catch(() => {}));
   await waitScreen(page, 'problem', 30000);
   await page.waitForSelector(tid('tripwire'));
-  assert.match(await page.textContent(tid('tripwire')), /This app's web address is serving code BEAM Campfire did not sign\. Don't enter your password here\./);
+  assert.match(await page.textContent(tid('tripwire')), /This app's web address is serving code Beam PWA did not sign\. Don't enter your password here\./);
   assert.ok(await page.evaluate(() => window.__campfire.intrusion()), 'the tripwire fired');
   await page.waitForFunction(() => window.__campfire.running() === false, null, { timeout: 30000 });
   await page.evaluate(() => window.__campfire.go('home'));

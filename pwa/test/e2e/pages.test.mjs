@@ -95,7 +95,7 @@ test('first open on a header-less static host: setup screen, install under the s
   }
   console.log(`# screens on first open: ${screens.filter((x) => x !== 'install-shot').join(' -> ')}`);
   assert.ok(screens.includes('install'), 'the setup screen came first');
-  assert.ok(!screens.includes('problem'), 'never "this browser can\'t run BEAM Campfire"');
+  assert.ok(!screens.includes('problem'), 'never "this browser can\'t run Beam PWA"');
   const env = await page.evaluate(async () => {
     const reg = await navigator.serviceWorker.getRegistration();
     return { iso: self.crossOriginIsolated, sab: typeof SharedArrayBuffer, controller: navigator.serviceWorker.controller && new URL(navigator.serviceWorker.controller.scriptURL).pathname, scope: reg && new URL(reg.scope).pathname };
@@ -161,7 +161,7 @@ test('restore with 12 words on a host without the snapshot: it comes from pwa.bu
     await sleep(500);
   }
   await waitScreen(page, 'fastStart');
-  // GitHub Pages cannot relay BEAM's snapshot; the copy reads it through BEAM Campfire's server.
+  // GitHub Pages cannot relay BEAM's snapshot; the copy reads it through Beam PWA's server.
   await page.waitForFunction(() => /from pwa\.buybeam\.my \(this site has no copy of it\)/.test(document.querySelector('main').textContent), null, { timeout: 30000 });
   assert.match(await page.textContent('main'), /pwa\.buybeam\.my sees your IP address/);
   assert.match(await page.getAttribute(tid('fast-download'), 'class'), /btn-primary/, 'the download is the main way again');
@@ -169,7 +169,7 @@ test('restore with 12 words on a host without the snapshot: it comes from pwa.bu
   await page.click(tid('fast-download'));
   await waitHome(page, { timeout: 10 * 60000 });
   await waitSynced(page, 5 * 60000);
-  // This address is asked first (it answers 404 here), then BEAM Campfire's server.
+  // This address is asked first (it answers 404 here), then Beam PWA's server.
   const snap = rec.requests.filter((u) => /mainnet_recovery\.bin/.test(u));
   assert.ok(snap.includes('https://pwa.buybeam.my/recovery/mainnet_recovery.bin'), `the snapshot came from pwa.buybeam.my: ${JSON.stringify(snap)}`);
   assert.ok(snap.every((u) => u === 'https://pwa.buybeam.my/recovery/mainnet_recovery.bin' || u === `${host.url}recovery/mainnet_recovery.bin`), `nowhere else: ${JSON.stringify(snap)}`);

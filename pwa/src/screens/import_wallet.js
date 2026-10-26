@@ -5,7 +5,7 @@
  *       Taps from app open: Welcome -> Import (1) -> Choose wallet.db (2) -> pick it in Files
  *       -> password -> Import my wallet (3). Then Face ID (or skip) and Connect, like any new wallet.
  * Exit-intent reasons and answers:
- *   - "Will this change or break my original file?" -> first line: BEAM Campfire makes its own copy;
+ *   - "Will this change or break my original file?" -> first line: Beam PWA makes its own copy;
  *     your file is not changed.
  *   - "Does my file go to a server?" -> it is read on this device only; nothing is uploaded (the
  *     line under the button says the file stays here).

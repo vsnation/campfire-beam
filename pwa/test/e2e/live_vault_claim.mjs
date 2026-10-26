@@ -39,7 +39,7 @@
 // If it stops after the deposit, 0.05 BEAM waits in the vault for FUNDER2's names key: run it again
 // with LIVE_VAULT_CLAIM_ONLY=1 (or BEAM names → Claim, here or in BEAM's desktop wallet).
 //
-// Every wait follows its own transaction by id, and keeps the app in use: BEAM Campfire locks after
+// Every wait follows its own transaction by id, and keeps the app in use: Beam PWA locks after
 // 5 minutes without a tap, and once the payment it kept going behind the lock is done it stops the
 // engine and forgets the list this test reads (what made the first run's deposit look unfinished).
 // If the lock screen shows anyway, the test unlocks with its password, as a person would.
@@ -93,7 +93,7 @@ async function approveIf(label, problem) {
   const sheet = await readSheet();
   log(`${label} sheet:`, JSON.stringify(sheet));
   await shot(page, `live-vc-${label}-sheet`);
-  const why = !/BEAM Campfire/.test(sheet.app || '') ? 'the sheet does not name this wallet' : sheet.notEnough ? `the wallet says: ${sheet.notEnough}` : !sheet.button ? 'no approve button' : problem(sheet);
+  const why = !/Beam PWA/.test(sheet.app || '') ? 'the sheet does not name this wallet' : sheet.notEnough ? `the wallet says: ${sheet.notEnough}` : !sheet.button ? 'no approve button' : problem(sheet);
   if (why) {
     await page.click(tid('consent-cancel')).catch(() => {});
     throw new Error(`refusing the ${label} sheet: ${why}`);

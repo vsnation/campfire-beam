@@ -292,11 +292,11 @@ test('2. own address dead, M serves N+1: found there, verified, applied; a cold 
   await page.waitForFunction(() => /Downloading/.test(document.querySelector('[data-testid="update-progress"]')?.textContent || ''), null, { timeout: 120000, polling: 50 });
   assert.match(await page.textContent(tid('update-progress')), new RegExp(`^Downloading ${V(1).replace(/\./g, '\\.')} from a copy at ${esc(M_HOST)}: \\d+ of \\d+ files checked$`));
   // Issue #77: every place is asked on purpose, and a copy's files pass the same signature check.
-  assert.equal(await page.textContent(tid('update-checking-note')), "BEAM Campfire asks its own address and the public copies, and keeps the newest release. Whichever copy it comes from, every file is checked against BEAM Campfire's signature before it is kept. Your app keeps working meanwhile.");
+  assert.equal(await page.textContent(tid('update-checking-note')), "Beam PWA asks its own address and the public copies, and keeps the newest release. Whichever copy it comes from, every file is checked against Beam PWA's signature before it is kept. Your app keeps working meanwhile.");
   await shots('mirrors-01-downloading-from-copy');
   await page.waitForSelector(tid('update-apply-sheet'), { timeout: 180000 });
   M.delayMs = 0;
-  assert.match(await page.textContent(tid('update-ready-text')), new RegExp(`Downloaded from a copy at ${esc(M_HOST)} and checked against BEAM Campfire's signature`));
+  assert.match(await page.textContent(tid('update-ready-text')), new RegExp(`Downloaded from a copy at ${esc(M_HOST)} and checked against Beam PWA's signature`));
   await shots('mirrors-02-ready-from-copy');
 
   // Issue #78: "Delete this download" in the sheet. The staged release and its files go, the
@@ -355,7 +355,7 @@ test('2. own address dead, M serves N+1: found there, verified, applied; a cold 
   await Promise.all([page.waitForEvent('load', { timeout: 60000 }), page.click(tid('update-apply'))]);
   await waitScreen(page, 'unlock', 60000);
   await page.waitForSelector(tid('updated-notice'), { timeout: 10000 });
-  assert.equal(await page.textContent(tid('updated-notice')), `Updated to ${V(1)} from a copy at ${M_HOST} — checked against BEAM Campfire's signature.`);
+  assert.equal(await page.textContent(tid('updated-notice')), `Updated to ${V(1)} from a copy at ${M_HOST} — checked against Beam PWA's signature.`);
   await shots('mirrors-04-updated-from-copy');
   assert.equal(await servedVersion(), V(1));
   // Cold start, own address still dead.

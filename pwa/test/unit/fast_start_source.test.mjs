@@ -33,11 +33,11 @@ test('the screen: the file button in every choice, the how-to only when it is th
   assert.match(s, /const howToFile = Boolean\(errorText\) \|\| noRelay;/);
   assert.match(s, /textButton\(t\('Skip and scan instead \(\{time\}\)', \{ time: t\(SCAN_TIME\) \}\)/);
   assert.match(s, /'data-testid': 'recovery-source'/);
-  // Nothing to type an address into: the snapshot comes from this site, BEAM Campfire's server or a file.
+  // Nothing to type an address into: the snapshot comes from this site, Beam PWA's server or a file.
   assert.doesNotMatch(s, /type: 'url'|inputmode: 'url'/);
 });
 
-test('the page policy is unchanged: the snapshot only from this site or that one path of BEAM Campfire\'s server', () => {
+test('the page policy is unchanged: the snapshot only from this site or that one path of Beam PWA\'s server', () => {
   assert.deepEqual(recoveryConnectSources(), ['https://pwa.buybeam.my/recovery/']);
   const connect = /connect-src ([^;]+)/.exec(CSP)[1].split(/\s+/);
   assert.ok(connect.includes('https://pwa.buybeam.my/recovery/'));

@@ -65,7 +65,7 @@ test('the loader that served the page taking over again stops the page at once, 
   assert.equal(watch.stopped(), true);
   assert.equal(window.stopped, 1, 'nothing else of the page loads');
   assert.equal(document.body.children[0].attrs['data-testid'], 'tripwire-early');
-  assert.match(texts(document.body), /This app's web address is serving code BEAM Campfire did not sign\. Don't enter your password here\./);
+  assert.match(texts(document.body), /This app's web address is serving code Beam PWA did not sign\. Don't enter your password here\./);
   assert.throws(() => (window.__campfireLoaderWatch = null), 'the record cannot be replaced');
 });
 

@@ -1,4 +1,4 @@
-// An iPhone Safari tab is told why and how to add BEAM Campfire to the Home Screen (owner,
+// An iPhone Safari tab is told why and how to add Beam PWA to the Home Screen (owner,
 // 2026-10-21): Safari deletes a site's data after 7 days without a visit; the Home Screen app keeps
 // its data. Since iOS 26 Safari hides Share behind ••• (or ☰) next to the address, so step 1 says so.
 import test from 'node:test';

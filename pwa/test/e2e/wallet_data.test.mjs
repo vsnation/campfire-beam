@@ -191,7 +191,7 @@ test('A: a named address, a contact brought in, a hidden token and a failed paym
   assert.match(await page.textContent('.toast'), /Wallet data saved to your downloads/);
 
   const j = JSON.parse(readFileSync(s.fileA, 'utf8'));
-  assert.deepEqual(Object.keys(j), ['Contacts', 'OwnAddresses', 'TransactionParameters', 'BeamCampfire'], 'BEAM’s three lists, then BEAM Campfire’s part');
+  assert.deepEqual(Object.keys(j), ['Contacts', 'OwnAddresses', 'TransactionParameters', 'BeamCampfire'], 'BEAM’s three lists, then Beam PWA’s part');
   assert.ok(labels(j).includes(LABEL));
   assert.deepEqual(j.Contacts.map((c) => c.Label), [NOTE]);
   const mine = j.TransactionParameters.filter((p) => hex(p.TransactionId) === s.txId);

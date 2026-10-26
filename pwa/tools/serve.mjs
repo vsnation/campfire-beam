@@ -1,4 +1,4 @@
-// BEAM Campfire dev server. Node only, no dependencies.
+// Beam PWA dev server. Node only, no dependencies.
 //
 //   node tools/serve.mjs [--port 8780] [--root dist|src|<dir>] [--selftest]
 //                        [--result-file <path>] [--quiet]
@@ -209,7 +209,7 @@ const server = (host) =>
       if (!res.headersSent) send(res, 500, 'server error');
       else res.destroy();
     }
-  }).listen(port, host, () => log(`BEAM Campfire dev server: http://localhost:${port}/ (root ${rootDir}, ${host}${selftest ? ', selftest on' : ''})`));
+  }).listen(port, host, () => log(`Beam PWA dev server: http://localhost:${port}/ (root ${rootDir}, ${host}${selftest ? ', selftest on' : ''})`));
 
 server('127.0.0.1');
 server('::1').on('error', () => {}); // no IPv6 loopback: fine

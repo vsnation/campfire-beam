@@ -64,7 +64,7 @@ test('the installed app makes no request on its own: no update check at start, n
 test('static splash: index.html shows the app before any script, with no inline script or style', () => {
   const html = readFileSync(join(src, 'index.html'), 'utf8');
   assert.match(html, /<div id="app"><main class="screen splash"/);
-  assert.match(html, /Starting BEAM Campfire/);
+  assert.match(html, /Starting Beam PWA/);
   assert.ok(!/<script(?![^>]*\bsrc=)/.test(html), 'no inline script');
   assert.ok(!/style=|<style/.test(html), 'no inline style (CSP style-src self)');
 });

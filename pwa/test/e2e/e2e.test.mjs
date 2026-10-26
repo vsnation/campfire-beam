@@ -1,4 +1,4 @@
-// BEAM Campfire end-to-end: the installed Google Chrome (headless), the dev
+// Beam PWA end-to-end: the installed Google Chrome (headless), the dev
 // server, and BEAM mainnet. Spends nothing: it uses a throwaway wallet.
 //
 //   npm run e2e        (stages the engine, builds dist/, runs this file)
@@ -346,7 +346,7 @@ test('(g3) a tampered update and a wrongly signed update are refused; the app st
   assert.ok(!(await page.evaluate(() => fetch('app.js').then((r) => r.text()))).includes('tampered'));
   await page.click('.sheet .btn-primary');
 
-  // Wrong key: release.json re-signed by a key that is not BEAM Campfire's.
+  // Wrong key: release.json re-signed by a key that is not Beam PWA's.
   const v4 = build(V3, join(tmp, 'v4'));
   const k = await webcrypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
   const sig = new Uint8Array(await webcrypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, k.privateKey, readFileSync(join(v4, 'release.json'))));
@@ -354,7 +354,7 @@ test('(g3) a tampered update and a wrongly signed update are refused; the app st
   pointLive(v4);
   await openSettingsAndCheckUpdates();
   await page.waitForSelector('text=Update refused', { timeout: 120000 });
-  assert.match(await page.textContent('.sheet .notice'), /not signed with the BEAM Campfire release key/);
+  assert.match(await page.textContent('.sheet .notice'), /not signed with the Beam PWA release key/);
   await shot(page, 'e2e-29-update-refused-signature');
   assert.equal(await servedVersion(), V1);
   pointLive(join(PWA, 'dist'));

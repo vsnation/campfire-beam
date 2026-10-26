@@ -276,7 +276,7 @@ test("create a token: the cost from the Minter itself, the rules as you type, th
   console.log(`# create sheet: ${JSON.stringify(sheet)}`);
   await shots('07-create-consent');
   assert.equal(sheet.title, 'Confirm your new token');
-  assert.match(sheet.app, /BEAM Campfire/);
+  assert.match(sheet.app, /Beam PWA/);
   assert.equal(sheet.pay, '60 BEAM');
   assert.equal(sheet.fee, '0.0167 BEAM', "the engine's fee for create_token's declared charge");
   assert.equal(sheet.total, '60.0167 BEAM');

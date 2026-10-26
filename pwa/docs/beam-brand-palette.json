@@ -508,7 +508,7 @@
   },
   "light_theme": "None in any BEAM product (desktop, extension, Android, iOS, website). A light BEAM look has to be derived.",
   "campfire_skin": {
-    "note": "BEAM Campfire's optional BEAM colours. 'exact' = BEAM's own value (from the wallet_ui list); 'derived' = how it was made. Every text colour reads at 4.5:1 or more on what it sits on (pwa/test/unit/theme.test.mjs; the app's test/beam/theme/beam_theme_test.dart).",
+    "note": "Beam PWA's optional BEAM colours. 'exact' = BEAM's own value (from the wallet_ui list); 'derived' = how it was made. Every text colour reads at 4.5:1 or more on what it sits on (pwa/test/unit/theme.test.mjs; the app's test/beam/theme/beam_theme_test.dart).",
     "dark": {
       "bg": {
         "hex": "#042548",

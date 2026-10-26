@@ -124,7 +124,7 @@ test('first-run setup: the version appears once the signed release names it, and
   slowMs = 0;
   await waitScreen(page, 'welcome', 120000);
   const lines = await page.evaluate(() => JSON.parse(sessionStorage.getItem('__lines') || '[]'));
-  assert.ok(lines.includes(`Version ${VERSION} checked. Opening BEAM Campfire…`), `the last line said it: ${JSON.stringify(lines.slice(-3))}`);
+  assert.ok(lines.includes(`Version ${VERSION} checked. Opening Beam PWA…`), `the last line said it: ${JSON.stringify(lines.slice(-3))}`);
 });
 
 test('Welcome: "Version X" in small print, last on the screen; Create still in sight on a small phone', { timeout: 2 * 60000 }, async () => {

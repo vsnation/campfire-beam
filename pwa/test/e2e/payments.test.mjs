@@ -5,7 +5,7 @@
 //   npm run e2e:payments
 //
 // The camera is Chrome's fake camera playing a picture of a QR code (a y4m file made here from
-// BEAM Campfire's own QR encoder): the real getUserMedia → video → canvas → worker → jsQR path,
+// Beam PWA's own QR encoder): the real getUserMedia → video → canvas → worker → jsQR path,
 // under the app's real headers (Permissions-Policy camera=(self)).
 // A failed payment with a note is made by sending from the empty wallet: the engine builds no
 // transaction without coins, so nothing can leave it; the record that is left is "Not sent",

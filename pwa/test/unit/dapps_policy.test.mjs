@@ -53,7 +53,7 @@ test('calls to BEAM names or their vault are refused, also as the second call', 
   }
 });
 
-test('a call signed with a key BEAM Campfire uses is refused', () => {
+test('a call signed with a key Beam PWA uses is refused', () => {
   for (const k of Object.keys(RESERVED_KEYS)) {
     assert.throws(() => checkContractData(new Uint8Array(invokeData([invokeEntry({ contractId: cid(0xa1), sigs: [someKey, k] })]))), refused('reserved_key'));
   }
@@ -78,7 +78,7 @@ test('the reserved key hashes are SHA-256("bvm.m.key\\0" || id) of the BANS, air
     // Airdrop v3's CreatorID{cid, 0} (app.cpp): the key that takes back this wallet's v3 batches.
     [h(Buffer.concat([Buffer.from(AIRDROP_V3_CID, 'hex'), Buffer.from([0])]))]: 'your airdrops',
   };
-  assert.equal(KNOWN_CONTRACTS[AIRDROP_V3_CID], 'BEAM Campfire airdrops');
+  assert.equal(KNOWN_CONTRACTS[AIRDROP_V3_CID], 'Beam PWA airdrops');
   assert.equal(await reservedUseOfKeyMaterial(`${AIRDROP_V3_CID}00`), 'your airdrops');
   assert.deepEqual({ ...RESERVED_KEYS }, expect);
   assert.equal(await keyHashOf(BANS_CID), h(Buffer.from(BANS_CID, 'hex')));

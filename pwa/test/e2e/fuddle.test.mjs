@@ -328,7 +328,7 @@ test('dApps -> Fuddle: the game waiting for a guess first, then the tournaments 
   const { page } = live;
   await go(page, 'dapps');
   await page.waitForSelector(tid('dapp-fuddle'));
-  assert.match(await page.textContent(tid('dapp-fuddle-state')), /Built into BEAM Campfire/);
+  assert.match(await page.textContent(tid('dapp-fuddle-state')), /Built into Beam PWA/);
   await shots(page, '02-dapps-live');
   await page.click(tid('dapp-fuddle'));
   await waitScreen(page, 'fuddle');
@@ -340,7 +340,7 @@ test('dApps -> Fuddle: the game waiting for a guess first, then the tournaments 
   assert.match(rows[1].text, /Entry 1 BEAM · prize pool 3\.8541 BEAM/);
   assert.match(rows[1].text, /Entries close in about 5 hours · ends in about 12 hours/);
   assert.match(rows[1].text, /\d of 4 places free/);
-  assert.match(rows[1].text, /Answers by the BEAM Campfire service/);
+  assert.match(rows[1].text, /Answers by the Beam PWA service/);
   const mine = await page.$$eval(`${tid('fuddle-mine')} .row`, (els) => els.map((e) => [e.dataset.testid, e.dataset.outcome, e.querySelector('.s').textContent]));
   assert.deepEqual(mine.map((m) => m[1]), ['playing', 'failed'], 'what is in play or owes money; finished games are under All your games');
   assert.match(mine[1][2], /Take back 1\.68 BEAM/);

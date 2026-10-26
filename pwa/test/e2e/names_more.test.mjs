@@ -330,7 +330,7 @@ test('buy a name listed on mainnet: its price, then the shader’s purchase on t
   console.log(`# buy sheet: ${JSON.stringify(sheet)}`);
   await shots('05-buy-consent');
   assert.equal(sheet.title, 'Confirm your purchase');
-  assert.match(sheet.app, /BEAM Campfire, this wallet/);
+  assert.match(sheet.app, /Beam PWA, this wallet/);
   assert.equal(sheet.pay.replace(/,/g, ''), `${BigInt(price) / 100000000n} BEAM`.replace(/,/g, ''));
   assert.equal(sheet.fee, '0.011 BEAM');
   assert.deepEqual(sheet.extras.map(([k]) => k), ['Name', 'Yours until']);
@@ -415,7 +415,7 @@ test('the transfer’s approve sheet when the wallet can pay: the button waits f
     const { app } = await import('./app.js');
     const { presentConsent } = await import('./screens/consent.js');
     return presentConsent(app, {
-      id: 'x', kind: 'contract', native: true, appName: 'BEAM Campfire', isEnough: true, fee: 1100000n, feeText: '0.011', spends: [], receives: [],
+      id: 'x', kind: 'contract', native: true, appName: 'Beam PWA', isEnough: true, fee: 1100000n, feeText: '0.011', spends: [], receives: [],
       intent: { action: 'nameTransfer', name, rows: [['Name', `${name}.beam`], ['New owner', check]], warn: `This can't be undone. Only the new owner can give ${name} back.`, ack: 'I checked all 16 characters with the new owner' },
     });
   }, [MINE, '72e3 68c0 … 570d 51ef']);

@@ -1,7 +1,7 @@
 // "Move names, notes and history" (issue #55): BEAM's wallet data file (storage::ExportDataToJson,
 // the desktop wallet's and the CLI's) checked before any of it reaches the engine, what it holds
 // counted, an import planned so nothing here is overwritten and nothing is added twice, the engine
-// fed in pieces it can hold, BEAM Campfire's extras added without touching BEAM's bytes, and the
+// fed in pieces it can hold, Beam PWA's extras added without touching BEAM's bytes, and the
 // engine wrapper (wasm patch 0110) refusing, timing out and stopping as it should.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -72,7 +72,7 @@ test('only BEAM wallet data passes: garbage, other JSON and damaged entries are 
 
 test('what a file holds: addresses and the ones a person named, contacts, payments and notes, address book, hidden tokens', () => {
   const text = file({
-    own: [addr('a', { label: 'Rent from Ana' }), addr('b', { label: 'default', index: 1791706454000000 }), addr('c', { label: 'BEAM Campfire', index: 1791706454000002 }), addr('d', { label: '', index: 1791706454000003 })],
+    own: [addr('a', { label: 'Rent from Ana' }), addr('b', { label: 'default', index: 1791706454000000 }), addr('c', { label: 'Beam PWA', index: 1791706454000002 }), addr('d', { label: '', index: 1791706454000003 })],
     contacts: [addr('e', { index: 0, label: 'Ana' }), addr('f', { index: 0, label: '' })],
     txs: [tx(1, 'Dinner, Friday'), tx(2), tx(3, '  ')],
     extras: { v: 1, contacts: [{ name: 'Bob', address: TOKEN('9') }, { name: 'Ana again', address: TOKEN('e') }, { name: '', address: TOKEN('8') }, 'junk'], hiddenTokens: [190, 0, -1, 'x', 190, 47] },
@@ -81,9 +81,9 @@ test('what a file holds: addresses and the ones a person named, contacts, paymen
   assert.equal(r.ok, true);
   assert.deepEqual(r.summary, { own: 4, ownNamed: 1, contacts: 2, txs: 3, notes: 1, book: 2, people: 2, hiddenTokens: 2 });
   assert.deepEqual(r.data.extras.hiddenTokens, [47, 190]);
-  assert.deepEqual(D.bookFromData(r.data).map((c) => c.name), ['Bob', 'Ana again'], 'a BEAM Campfire file: its own address book, not BEAM’s list');
+  assert.deepEqual(D.bookFromData(r.data).map((c) => c.name), ['Bob', 'Ana again'], 'a Beam PWA file: its own address book, not BEAM’s list');
   // BEAM's list names an address after the last payment's note (it saves every address it pays):
-  // from BEAM Campfire it is not the address book. From the desktop wallet it is its Contacts tab.
+  // from Beam PWA it is not the address book. From the desktop wallet it is its Contacts tab.
   const payees = D.parseWalletData(file({ contacts: [addr('e', { index: 0, label: 'Dinner, Friday' })], extras: { v: 1 } }));
   assert.deepEqual(payees.summary, { own: 0, ownNamed: 0, contacts: 1, txs: 0, notes: 0, book: 0, people: 0, hiddenTokens: 0 });
   const desktop = D.parseWalletData(file({ contacts: [addr('e', { index: 0, label: 'Ana' }), addr('f', { index: 0, label: '' })] }));
@@ -229,9 +229,9 @@ test('the engine gets pieces it can hold: own addresses first, a payment never s
   assert.ok(D.CHUNK_MAX_BYTES < 11e6, 'measured: 11 MB fits the engine, 14.7 MB stops it');
 });
 
-test('BEAM Campfire’s part is added without touching BEAM’s bytes, and reads back', () => {
+test('Beam PWA’s part is added without touching BEAM’s bytes, and reads back', () => {
   const beam = file({ own: [addr('a', { label: 'Rent' })], txs: [tx(1)] });
-  // Written even when empty: it marks the address book as BEAM Campfire's, not BEAM's list of payees.
+  // Written even when empty: it marks the address book as Beam PWA's, not BEAM's list of payees.
   assert.equal(D.withExtras(beam, {}), `${beam.slice(0, -1)},"${D.EXTRAS_KEY}":{"v":1}}`);
   assert.equal(D.withExtras(beam, { contacts: [], hiddenTokens: [] }), D.withExtras(beam, {}));
   const out = D.withExtras(beam, { contacts: [{ name: 'Bob', address: TOKEN('9'), id: 'secret-ish', createdAt: 1 }], hiddenTokens: [190, 47] });

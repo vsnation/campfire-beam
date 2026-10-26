@@ -1,4 +1,4 @@
-// What Activity calls a contract transaction: BEAM Campfire's titles (BeamTxText.contractLabel),
+// What Activity calls a contract transaction: Beam PWA's titles (BeamTxText.contractLabel),
 // not "Done". invoke_data amounts are from the contract's side: positive left the wallet.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -35,7 +35,7 @@ test('airdrop, names, minter, burn', () => {
 test('an unknown contract: the dApp that made it, else "Contract call"; never "Done"', () => {
   const cid = 'ab'.repeat(32);
   assert.equal(contractLabel(tx(cid, [[0, 1]], { appname: 'BeamX DAO' })), 'BeamX DAO');
-  assert.equal(contractLabel(tx(cid, [[0, 1]], { appname: 'BEAM Campfire' })), 'Contract call');
+  assert.equal(contractLabel(tx(cid, [[0, 1]], { appname: 'Beam PWA' })), 'Contract call');
   assert.equal(contractLabel(tx(cid, [[0, 1]])), 'Contract call');
   assert.equal(contractLabel({ tx_type: 12, status: 3 }), 'Contract call');
   assert.equal(contractStatusText(tx(cid, [])), 'Completed');

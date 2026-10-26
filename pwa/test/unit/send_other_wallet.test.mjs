@@ -1,4 +1,4 @@
-// Re-audit RE1-12: paying another wallet of this device. BEAM Campfire runs one wallet in one tab at
+// Re-audit RE1-12: paying another wallet of this device. Beam PWA runs one wallet in one tab at
 // a time, and a regular payment needs the receiving wallet open too, so Send says how it goes: the
 // other wallet's offline address, or switching to it after sending and then back. Which wallet an
 // address belongs to cannot be known while that wallet is locked (its addresses are only in its own

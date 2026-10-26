@@ -177,7 +177,7 @@ test('not in the copy: said plainly, with a way on (its .dapp file)', { timeout:
   await waitScreen(page, 'dappStoreItem');
   await page.waitForSelector(tid('store-item-cta'));
   await page.click(tid('store-item-cta'));
-  await page.waitForFunction(() => /isn't in BEAM Campfire's copy of the store yet/.test(document.querySelector('[data-testid="store-item-msg"]')?.textContent || ''), null, { timeout: 60000 });
+  await page.waitForFunction(() => /isn't in Beam PWA's copy of the store yet/.test(document.querySelector('[data-testid="store-item-msg"]')?.textContent || ''), null, { timeout: 60000 });
   assert.equal(await page.isVisible(tid('store-item-from-file')), true);
   await both('store-05-not-mirrored');
 });

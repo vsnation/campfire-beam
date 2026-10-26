@@ -95,7 +95,7 @@ test('the scanner leaves names alone: classes, ids, keys, compared values, logs,
     "  localStorage.getItem('campfire-theme');",
     "  fetch('https://explorer.example/api');",
     "  const x = { 'Content-Type': 'application/json' };",
-    "  return 'BEAM Campfire';",
+    "  return 'Beam PWA';",
     "}",
   ].join('\n');
   assert.deepEqual(texts(code), []);

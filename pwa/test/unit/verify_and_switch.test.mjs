@@ -26,7 +26,7 @@ async function keyPair() {
 /** A checkout of the hosting repository: the signed files plus what such a repository also has. */
 async function checkout(dir, priv, { version = '1.0.0', files = null } = {}) {
   const body = files || {
-    'index.html': '<!doctype html><title>BEAM Campfire</title>',
+    'index.html': '<!doctype html><title>Beam PWA</title>',
     'app.js': 'console.log(1);',
     'lib/version.js': 'export const LOADER = "sw-0000000000000000.js";\n',
     'sw-0000000000000000.js': 'self.x = 1;\n',

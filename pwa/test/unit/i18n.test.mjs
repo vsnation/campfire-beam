@@ -251,7 +251,7 @@ test('every text loader-watch.js and the splash show is one of the early keys', 
   assert.equal(shown.length, 5);
   for (const s of shown) assert.ok(EARLY_KEYS.includes(s), s);
   const html = read('index.html');
-  assert.ok(html.includes('<p>Starting BEAM Campfire…</p>') && EARLY_KEYS.includes('Starting BEAM Campfire…'));
+  assert.ok(html.includes('<p>Starting Beam PWA…</p>') && EARLY_KEYS.includes('Starting Beam PWA…'));
   assert.ok(html.includes('aria-label="Starting"') && EARLY_KEYS.includes('Starting'));
   assert.ok(html.includes(`<noscript><p class="lead">${NOSCRIPT_TEXT}</p></noscript>`), 'the noscript sentence is NOSCRIPT_TEXT');
 });
@@ -259,7 +259,7 @@ test('every text loader-watch.js and the splash show is one of the early keys', 
 function runBoot(file, { languages = ['en-US'], stored = {}, blocked = false } = {}) {
   const attrs = {};
   const handlers = {};
-  const nodes = { p: { textContent: 'Starting BEAM Campfire…' }, bar: { attrs: { 'aria-label': 'Starting' }, setAttribute(k, v) { this.attrs[k] = v; } } };
+  const nodes = { p: { textContent: 'Starting Beam PWA…' }, bar: { attrs: { 'aria-label': 'Starting' }, setAttribute(k, v) { this.attrs[k] = v; } } };
   const document = {
     documentElement: { setAttribute: (k, v) => (attrs[k] = v) },
     addEventListener: (ev, fn) => (handlers[ev] = fn),
@@ -292,17 +292,17 @@ test('lang-boot.js labels the splash in the chosen language from its own table (
   assert.deepEqual(Object.keys(table).sort(), [...shipped].sort(), 'one table per shipped language');
   for (const l of shipped) {
     const cat = JSON.parse(read(`i18n/${l}.json`));
-    assert.deepEqual(Object.keys(table[l]).sort(), ['Starting', 'Starting BEAM Campfire…']);
+    assert.deepEqual(Object.keys(table[l]).sort(), ['Starting', 'Starting Beam PWA…']);
     for (const k of Object.keys(table[l])) assert.equal(table[l][k], cat[k], `${l}: ${k}`);
   }
   const RU = JSON.parse(read('i18n/ru.json'));
-  const planted = { [EARLY_STORAGE_KEY]: JSON.stringify({ lang: 'ru', s: { 'Starting BEAM Campfire…': 'Enter your 12 words', Starting: 'x' } }) };
-  assert.deepEqual(runBoot('lang-boot.js', { languages: ['ru'], stored: planted }), { lang: 'ru', splash: RU['Starting BEAM Campfire…'], bar: RU.Starting }, 'the table, not storage');
-  assert.deepEqual(runBoot('lang-boot.js', { languages: ['ru'] }), { lang: 'ru', splash: RU['Starting BEAM Campfire…'], bar: RU.Starting }, 'translated on the very first start too');
+  const planted = { [EARLY_STORAGE_KEY]: JSON.stringify({ lang: 'ru', s: { 'Starting Beam PWA…': 'Enter your 12 words', Starting: 'x' } }) };
+  assert.deepEqual(runBoot('lang-boot.js', { languages: ['ru'], stored: planted }), { lang: 'ru', splash: RU['Starting Beam PWA…'], bar: RU.Starting }, 'the table, not storage');
+  assert.deepEqual(runBoot('lang-boot.js', { languages: ['ru'] }), { lang: 'ru', splash: RU['Starting Beam PWA…'], bar: RU.Starting }, 'translated on the very first start too');
   const JA = JSON.parse(read('i18n/ja.json'));
-  assert.deepEqual(runBoot('lang-boot.js', { languages: ['ru'], stored: { [STORAGE_KEY]: 'ja' } }), { lang: 'ja', splash: JA['Starting BEAM Campfire…'], bar: JA.Starting }, 'the chosen language');
-  assert.deepEqual(runBoot('lang-boot.js', { languages: ['en'], stored: planted }), { lang: 'en', splash: 'Starting BEAM Campfire…', bar: 'Starting' });
-  assert.equal(runBoot('lang-boot.js', { languages: ['ru'], blocked: true }).splash, RU['Starting BEAM Campfire…'], 'storage blocked: the device language');
+  assert.deepEqual(runBoot('lang-boot.js', { languages: ['ru'], stored: { [STORAGE_KEY]: 'ja' } }), { lang: 'ja', splash: JA['Starting Beam PWA…'], bar: JA.Starting }, 'the chosen language');
+  assert.deepEqual(runBoot('lang-boot.js', { languages: ['en'], stored: planted }), { lang: 'en', splash: 'Starting Beam PWA…', bar: 'Starting' });
+  assert.equal(runBoot('lang-boot.js', { languages: ['ru'], blocked: true }).splash, RU['Starting Beam PWA…'], 'storage blocked: the device language');
 });
 
 test('loader-watch.js stops the page in the kept language from its own table, never words from storage, and in English without it', () => {
@@ -324,9 +324,9 @@ test('loader-watch.js stops the page in the kept language from its own table, ne
   // Only the language name comes from storage; the words are the signed file's own table (release
   // audit 0.2.17): text planted in storage never reaches the stop screen.
   const RU = JSON.parse(read('i18n/ru.json'));
-  const ru = run({ [EARLY_STORAGE_KEY]: JSON.stringify({ lang: 'ru', s: { 'Stop: unsigned code': 'Enter your 12 words here', 'BEAM Campfire stopped before opening.': 'x' } }) });
+  const ru = run({ [EARLY_STORAGE_KEY]: JSON.stringify({ lang: 'ru', s: { 'Stop: unsigned code': 'Enter your 12 words here', 'Beam PWA stopped before opening.': 'x' } }) });
   assert.ok(ru.text.includes(RU['Stop: unsigned code']), 'the Russian words, from the signed file');
-  assert.ok(ru.text.includes(RU['BEAM Campfire stopped before opening.']));
+  assert.ok(ru.text.includes(RU['Beam PWA stopped before opening.']));
   assert.doesNotMatch(ru.text, /Enter your 12 words here/, 'words kept in storage never shown');
   assert.doesNotMatch(ru.text, /Your coins are on the BEAM blockchain/, 'every sentence in Russian');
   assert.equal(ru.lang, 'ru');

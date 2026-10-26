@@ -468,7 +468,7 @@ test('6. deleting B (not open) leaves A and C exactly as they were: files and re
   // BM-4: what may still be under way is said, and Delete waits for "Delete anyway".
   await page.waitForSelector(tid('delete-in-flight'));
   assert.equal(await page.getAttribute(tid('delete-in-flight'), 'data-kinds'), 'airdrop buy');
-  assert.match(await page.textContent(tid('delete-in-flight-unseen')), /saved airdrop codes and purchases at buybeam\.my, the only record of any still under way\. BEAM Campfire can't look inside them without the wallet's password/);
+  assert.match(await page.textContent(tid('delete-in-flight-unseen')), /saved airdrop codes and purchases at buybeam\.my, the only record of any still under way\. Beam PWA can't look inside them without the wallet's password/);
   assert.equal(await page.isVisible('[data-testid^="delete-way-"]'), false, 'not open: no way in from here');
   await both(page, 'mw-08-delete-one');
   await page.fill(tid('delete-confirm'), 'DELETE');

@@ -1,6 +1,6 @@
 // Auto-lock also fires while the app is out of sight (audit item ported from the Firo wallet,
 // 5ee127b30). On "hidden" the app only noted the time, and the 15-second check ran only while
-// visible: the lock came on the way back. A BEAM Campfire tab left in the background on a computer
+// visible: the lock came on the way back. A Beam PWA tab left in the background on a computer
 // stayed unlocked for hours or days, with the database password and the running engine in memory,
 // while Settings said "Auto-lock: Also in the background".
 import test from 'node:test';

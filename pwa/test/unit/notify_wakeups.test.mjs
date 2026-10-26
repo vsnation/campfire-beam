@@ -1,7 +1,7 @@
-// Reminders while BEAM Campfire is closed come from Periodic Background Sync, which wakes the loader
+// Reminders while Beam PWA is closed come from Periodic Background Sync, which wakes the loader
 // with no page open; each wake-up is also a moment the browser may install a changed loader that no
 // open page can notice (lib/loader.js). So wake-ups are asked for only when the person turns
-// "Reminders when BEAM Campfire is closed" on, and the loader shows nothing (and asks for no more)
+// "Reminders when Beam PWA is closed" on, and the loader shows nothing (and asks for no more)
 // otherwise, including after an earlier release asked for them by itself (ported from the Firo
 // wallet, a15b0b6ba).
 import test from 'node:test';
@@ -39,7 +39,7 @@ async function appStore(prefs) {
   });
   const tx = db.transaction('kv', 'readwrite');
   tx.objectStore('kv').put(prefs, 'prefs');
-  tx.objectStore('kv').put([{ id: 'rem-arr-1', at: Date.now() - 1000, kind: 'payment', title: 'A payment is still waiting', body: 'Open BEAM Campfire to finish it.', url: '#open=home' }], 'w:abc:notify-reminders');
+  tx.objectStore('kv').put([{ id: 'rem-arr-1', at: Date.now() - 1000, kind: 'payment', title: 'A payment is still waiting', body: 'Open Beam PWA to finish it.', url: '#open=home' }], 'w:abc:notify-reminders');
   await new Promise((ok) => (tx.oncomplete = ok));
   db.close();
 }

@@ -21,7 +21,7 @@
 //      stopped, and writes nothing; both wallets open.
 //   5. The holder closes: a tab showing "open in another tab" goes on by itself to Unlock.
 //   6. A browser whose lock manager cannot be asked (query() rejects; re-audit RE1-1): the tab fails
-//      closed - no IndexedDB, no engine, "Close your other BEAM Campfire tabs", and the lock let go.
+//      closed - no IndexedDB, no engine, "Close your other Beam PWA tabs", and the lock let go.
 //   Both screens at 390 px, light and dark; the primary button fits a 375 x 667 phone.
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -149,7 +149,7 @@ test('1. a second tab shows "open in another tab": no IndexedDB, no engine, no n
   assert.deepEqual(await p2.evaluate(() => window.__idbUsed), [], 'tab 2 opened no IndexedDB database (neither /beam_wallet nor the app store)');
   assert.equal(await p2.evaluate(() => typeof window.BeamModule), 'undefined', 'the wallet engine was not loaded');
   assert.deepEqual(rec2.websockets, [], 'no node contacted');
-  assert.equal(await p2.textContent('.one-tab h1'), 'BEAM Campfire is open in another tab');
+  assert.equal(await p2.textContent('.one-tab h1'), 'Beam PWA is open in another tab');
   assert.equal(await p2.textContent('.one-tab .hero p'), 'It works in one tab at a time, so your wallet data stays intact.');
   assert.equal(await p2.textContent(tid('one-tab-use-here')), 'Use it here instead');
   // No way around it: Welcome (create, restore, import) and the words screen land on the same screen.
@@ -175,7 +175,7 @@ test('2. "Use it here instead": tab 1 locks and saves (what it just did is kept)
   assert.equal(t1.state, 'gone');
   assert.equal(t1.how, 'handed');
   assert.equal(await p1.evaluate(() => window.__campfire.running()), false, "tab 1's engine stopped");
-  assert.equal(await p1.textContent('.one-tab h1'), 'BEAM Campfire moved to another tab');
+  assert.equal(await p1.textContent('.one-tab h1'), 'Beam PWA moved to another tab');
   assert.equal(await p1.textContent('.one-tab .hero p'), 'It works in one tab at a time. Your wallet was locked and saved here before it moved.');
   await both(p1, 'onetab-02-moved');
   await fitsSmallPhone(p1, tid('one-tab-use-here'), 'moved to another tab');
@@ -325,8 +325,8 @@ test('6. a lock manager that cannot be asked: the tab runs no wallet and says to
   assert.equal(t4.how, 'unchecked');
   assert.equal(t4.spent, true);
   assert.equal(await p4.getAttribute('[data-testid="one-tab-moved"]', 'data-how'), 'unchecked');
-  assert.equal(await p4.textContent('.one-tab h1'), 'Close your other BEAM Campfire tabs');
-  assert.equal(await p4.textContent('.one-tab .hero p'), 'This browser cannot keep BEAM Campfire to one tab. Close every other BEAM Campfire tab, then reload.');
+  assert.equal(await p4.textContent('.one-tab h1'), 'Close your other Beam PWA tabs');
+  assert.equal(await p4.textContent('.one-tab .hero p'), 'This browser cannot keep Beam PWA to one tab. Close every other Beam PWA tab, then reload.');
   assert.equal(await p4.textContent(tid('one-tab-reload')), 'Reload');
   assert.deepEqual(await p4.evaluate(() => window.__idbUsed), [], 'no IndexedDB database opened');
   assert.equal(await p4.evaluate(() => typeof window.BeamModule), 'undefined', 'the wallet engine was not loaded');
@@ -338,7 +338,7 @@ test('6. a lock manager that cannot be asked: the tab runs no wallet and says to
   const held = await p2.evaluate(async () => (await navigator.locks.query()).held.map((l) => l.name));
   assert.deepEqual(held, [], 'nobody holds the lock');
   // Release audit RE3-1: the way out of a browser that can never say, under the button the first time...
-  const wayOut = 'If this keeps happening, this browser cannot run BEAM Campfire safely: open it in another browser and restore your wallet there from its 12 words (or its wallet.db file).';
+  const wayOut = 'If this keeps happening, this browser cannot run Beam PWA safely: open it in another browser and restore your wallet there from its 12 words (or its wallet.db file).';
   assert.equal(await p4.textContent(`.actions ${tid('one-tab-way-out')}`), wayOut);
   await both(p4, 'onetab-06-unchecked');
   await fitsSmallPhone(p4, tid('one-tab-reload'), 'cannot keep to one tab');

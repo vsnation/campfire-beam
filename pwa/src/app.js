@@ -1,4 +1,4 @@
-// BEAM Campfire - app controller: boot, screen routing, lock and auto-lock.
+// Beam PWA - app controller: boot, screen routing, lock and auto-lock.
 import { applyLook, readTheme, readSkin } from './lib/theme.js';
 import { t, onLanguageChange } from './lib/i18n.js';
 import { h, clear } from './lib/dom.js';
@@ -101,7 +101,7 @@ const root = document.getElementById('app');
 // lang-boot.js may have done it already from the texts kept for it).
 function labelSplash() {
   const p = root && root.querySelector('.splash .hero p');
-  if (p) p.textContent = t('Starting BEAM Campfire…');
+  if (p) p.textContent = t('Starting Beam PWA…');
   const bar = root && root.querySelector('.splash [role="progressbar"]');
   if (bar) bar.setAttribute('aria-label', t('Starting'));
 }
@@ -233,7 +233,7 @@ export const app = {
   },
 
   /**
-   * The tripwire (lib/loader.js): the web address now serves code BEAM Campfire did not
+   * The tripwire (lib/loader.js): the web address now serves code Beam PWA did not
    * sign. Stop the engine, forget the database password, and say so. Never reload: a
    * reload would run the new code.
    */
@@ -327,7 +327,7 @@ async function boot() {
   if (BUILT && swSupported()) {
     if (isControlled()) {
       clearReloadFlag();
-      // Watches for code BEAM Campfire did not sign. Nothing here contacts the web address.
+      // Watches for code Beam PWA did not sign. Nothing here contacts the web address.
       // After an Update that brought a new loader, the page reloads under it as soon
       // as it has taken over, when nothing is unlocked; otherwise Home offers it.
       watchLoader({ onIntrusion: (why) => app.intruded(why), onMoved: () => (app.dbPass ? app.updates.emit() : location.reload()) }).catch((e) => console.warn('[campfire] loader watch', e.message));
@@ -422,7 +422,7 @@ onLanguageChange(() => {
 boot().catch((e) => {
   console.error(e);
   clear(root);
-  root.appendChild(h('main', { class: 'screen' }, h('div', { class: 'content' }, h('h2', { class: 'title', text: t('BEAM Campfire could not start') }), h('p', { class: 'lead', text: String(e && e.message) }), h('button', { class: 'btn btn-primary', onclick: () => location.reload() }, t('Reload')))));
+  root.appendChild(h('main', { class: 'screen' }, h('div', { class: 'content' }, h('h2', { class: 'title', text: t('Beam PWA could not start') }), h('p', { class: 'lead', text: String(e && e.message) }), h('button', { class: 'btn btn-primary', onclick: () => location.reload() }, t('Reload')))));
 });
 
 // Read-only view for the e2e harness and the in-page self-test. No secrets on it.

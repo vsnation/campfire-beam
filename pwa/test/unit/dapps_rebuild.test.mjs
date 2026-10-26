@@ -1,7 +1,7 @@
 // Contract data the core can redo later with a dApp's own code: a dependent call that misses its
 // block is rebuilt by re-running the stored app body (contract_transaction.cpp RebuildHft), and the
 // variant it signs is never checked against what was approved, apart from the funds (1%). So a
-// dApp may store only an app body BEAM Campfire knows: one from a package the catalogue pins, or
+// dApp may store only an app body Beam PWA knows: one from a package the catalogue pins, or
 // the wallet's own pinned DEX shader, both as the core stores them (compiled).
 import test from 'node:test';
 import assert from 'node:assert/strict';

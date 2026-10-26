@@ -2,7 +2,7 @@
 //
 //   npm run e2e:live
 //
-// Two BEAM Campfire wallets in two browser contexts, open at the same time
+// Two Beam PWA wallets in two browser contexts, open at the same time
 // (BEAM regular payments are interactive: both wallets must be online):
 //   A = test wallet FUNDER2, restored from its 12 words through the
 //       real Restore screen and the recovery snapshot. The words are read from

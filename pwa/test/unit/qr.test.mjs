@@ -50,7 +50,7 @@ test('versions 1..40 each decode at their own capacity edge', () => {
 });
 
 test('UTF-8 text decodes', () => {
-  roundTrip('BEAM Campfire — приватность ✓');
+  roundTrip('Beam PWA — приватность ✓');
 });
 
 test('too much data is refused', () => {

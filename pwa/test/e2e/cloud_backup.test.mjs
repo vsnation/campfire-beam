@@ -1,6 +1,6 @@
 // Settings -> Backup -> "Keep a copy in iCloud Drive" (optional). A new wallet (mainnet, no money)
 // on an iPhone-like browser with a short password: the copy asks for a password of at least 12
-// characters for itself, refuses a wrong BEAM Campfire password, a mismatch and a short one, and
+// characters for itself, refuses a wrong Beam PWA password, a mismatch and a short one, and
 // hands out wallet.db. That file is imported in a fresh browser: the short app password does not
 // open it, the copy's password does, and it is the same wallet (same addresses). There, with a
 // long password, the copy needs no second password.
@@ -151,7 +151,7 @@ test('the copy comes back in a fresh browser with its own password, not the shor
   await page.click(tid('cloud-continue'));
   await page.waitForSelector(tid('cloud-save'), { timeout: 180000 });
   assert.equal(await page.isVisible(tid('cloud-pw1')), false, 'no second password');
-  assert.match(await page.textContent(tid('cloud-opens-with')), /your BEAM Campfire password/);
+  assert.match(await page.textContent(tid('cloud-opens-with')), /your Beam PWA password/);
   assert.match(await page.textContent(tid('cloud-steps')), /Finder/);
   await shot(page, 'cloud-04-ready-mac');
   await page.click(tid('cloud-cancel')).catch(() => page.keyboard.press('Escape'));

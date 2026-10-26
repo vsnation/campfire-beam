@@ -1,4 +1,4 @@
-// The security headers BEAM Campfire must be served with. One list, used by
+// The security headers Beam PWA must be served with. One list, used by
 // the dev server (tools/serve.mjs), the build (which writes deploy/_headers
 // and checks deploy/nginx.conf against it) and the service worker (which
 // re-applies them to every response it serves from its cache).
@@ -37,7 +37,7 @@
 //   (src/lib/intents/hosts.js, intentsConnectSources()): that one path, not
 //   the whole host, and only once the person opens that screen.
 //   BEAM's recovery snapshot, on a copy hosted without a relay, comes from
-//   BEAM Campfire's own server (src/lib/recovery.js,
+//   Beam PWA's own server (src/lib/recovery.js,
 //   recoveryConnectSources()): that one path.
 
 import { SOURCE_HOST, SOURCE_COMMIT } from '../src/lib/dapps/catalogue.js';

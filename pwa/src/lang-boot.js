@@ -27,7 +27,7 @@
   if (!lang) lang = device();
   document.documentElement.setAttribute('lang', lang);
   if (lang === 'en') return;
-  var TEXTS = {"ru": {"Starting BEAM Campfire…": "Запуск BEAM Campfire…", "Starting": "Запуск"}, "zh-Hans": {"Starting BEAM Campfire…": "正在启动 BEAM Campfire…", "Starting": "正在启动"}, "ja": {"Starting BEAM Campfire…": "BEAM Campfireを起動しています…", "Starting": "起動中"}};
+  var TEXTS = {"ru": {"Starting Beam PWA…": "Запуск Beam PWA…", "Starting": "Запуск"}, "zh-Hans": {"Starting Beam PWA…": "正在启动 Beam PWA…", "Starting": "正在启动"}, "ja": {"Starting Beam PWA…": "Beam PWAを起動しています…", "Starting": "起動中"}};
   var words = TEXTS[lang];
   if (!words) return;
   function tr(text) {
@@ -36,7 +36,7 @@
   // Text only (textContent, an attribute): nothing kept here can become markup.
   document.addEventListener('DOMContentLoaded', function () {
     var p = document.querySelector('#app .splash .hero p');
-    if (p) p.textContent = tr('Starting BEAM Campfire…');
+    if (p) p.textContent = tr('Starting Beam PWA…');
     var bar = document.querySelector('#app .splash [role="progressbar"]');
     if (bar) bar.setAttribute('aria-label', tr('Starting'));
   });

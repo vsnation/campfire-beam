@@ -233,7 +233,7 @@ test('navigating the frame to a wallet page loads nothing, and the wallet closes
   assert.ok(children.length >= 1);
   for (const f of children) {
     const r = await f.evaluate(() => ({ text: document.body ? document.body.innerText : '', campfire: typeof window.__campfire })).catch(() => ({ text: '', campfire: 'inaccessible' }));
-    assert.ok(!/BEAM Campfire/.test(r.text) && r.campfire !== 'object', `a wallet page loaded in a frame: ${f.url()}`);
+    assert.ok(!/Beam PWA/.test(r.text) && r.campfire !== 'object', `a wallet page loaded in a frame: ${f.url()}`);
   }
   // The navigation went past the service worker (sandboxed frame) and the server's copy refuses to be framed.
   assert.ok(/GET \/index\.html/.test(server.output.join('')), 'the navigation reached the server, not the verified copy');

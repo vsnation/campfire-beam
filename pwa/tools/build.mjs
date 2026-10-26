@@ -1,4 +1,4 @@
-// Builds a signed BEAM Campfire release.
+// Builds a signed Beam PWA release.
 //
 //   node tools/build.mjs [--out dist] [--version 0.1.0] [--key <private jwk>]
 //                        [--mirrors <url,url,...>|none]

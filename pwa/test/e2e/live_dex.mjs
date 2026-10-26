@@ -72,7 +72,7 @@ async function sheet() {
 }
 
 function refuseUnlessSafe(s, what) {
-  if (!/BEAM Campfire/.test(s.app || '')) throw new Error(`${what}: the sheet does not name this wallet`);
+  if (!/Beam PWA/.test(s.app || '')) throw new Error(`${what}: the sheet does not name this wallet`);
   if (groth(s.fee) !== FEE) throw new Error(`${what}: refusing, the sheet charges ${s.fee}`);
   for (const p of s.pay) if (/ BEAM$/.test(p) && groth(p) > MAX_BEAM_OUT) throw new Error(`${what}: refusing, the sheet pays ${p}`);
 }

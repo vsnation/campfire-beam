@@ -436,10 +436,10 @@ test('relayer gas: eth_feeHistory(0xa, latest, [50]); no answer or a useless one
   assert.equal(gas.at, 12345);
   chain.feeHistory = () => ({ baseFeePerGas: [] });
   await assert.rejects(service(chain).relayerGas(), code('noPrice'));
-  // D-2: base fees far above what BEAM Campfire pays (5,000 gwei; BM-6: Ethereum has charged that,
+  // D-2: base fees far above what Beam PWA pays (5,000 gwei; BM-6: Ethereum has charged that,
   // for minutes, so it is not called impossible), or a jump between blocks, are no price either.
   chain.feeHistory = () => ({ baseFeePerGas: Array(11).fill('0x48c27395000'), reward: Array(10).fill(['0x3b9aca00']) });
-  await assert.rejects(service(chain).relayerGas(), (e) => e.code === 'noPrice' && e.message === "Your Ethereum server says Ethereum's gas price is a base fee of 5000 gwei, far above anything BEAM Campfire will pay.");
+  await assert.rejects(service(chain).relayerGas(), (e) => e.code === 'noPrice' && e.message === "Your Ethereum server says Ethereum's gas price is a base fee of 5000 gwei, far above anything Beam PWA will pay.");
   chain.feeHistory = () => ({ baseFeePerGas: [...Array(10).fill('0x3b9aca00'), '0x77359400'], reward: Array(10).fill(['0x3b9aca00']) });
   await assert.rejects(service(chain).relayerGas(), (e) => e.code === 'noPrice' && /jump/.test(e.message));
   chain.down = true;

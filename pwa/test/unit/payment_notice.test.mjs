@@ -1,4 +1,4 @@
-// Which payments are news (lib/payment_notice.js, BEAM Campfire's BeamWallet._announceIncoming),
+// Which payments are news (lib/payment_notice.js, Beam PWA's BeamWallet._announceIncoming),
 // when a run's news starts, and the browser's notification states. What is told: notify_rules.test.mjs.
 import test from 'node:test';
 import assert from 'node:assert/strict';

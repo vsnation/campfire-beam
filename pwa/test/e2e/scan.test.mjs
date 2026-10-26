@@ -165,7 +165,7 @@ test('an Ethereum address with no Ethereum wallet: says so, with the way to add 
 
 test('a web link, another coin, plain text: shown, never opened', { timeout: 2 * 60000 }, async () => {
   for (const [text, words] of [
-    ['https://example.com/pay?x=1', /web link\. BEAM Campfire does not open links from codes/],
+    ['https://example.com/pay?x=1', /web link\. Beam PWA does not open links from codes/],
     ['bitcoin:bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', /another coin/],
     ['hello world', /does not know what this is/],
   ]) {

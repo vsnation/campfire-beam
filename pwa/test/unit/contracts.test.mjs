@@ -254,10 +254,10 @@ test("an app may not borrow the wallet's own name", async () => {
 test("an app or its publisher may not use a name that reads as the wallet's own", async () => {
   const pub = (name) => ({ key: '02' + 'ab'.repeat(32), name });
   // Accents, Cyrillic and Greek letters, digits for letters, other spacing, extra words.
-  for (const appName of ['BEAM Campf\u00edre', '\u0412\u0415\u0410\u041c Campfire', 'BEAM C\u0430mpfire', '8EAM Campf1re', 'BEAM-Campfire', 'BEAMCAMPFIRE', 'BEAM Campfire Security', 'Official BEAM Campfire']) {
+  for (const appName of ['BEAM Campf\u00edre', '\u0412\u0415\u0410\u041c Campfire', 'BEAM C\u0430mpfire', '8EAM Campf1re', 'BEAM-Campfire', 'BEAMCAMPFIRE', 'BEAM Campfire Security', 'Official BEAM Campfire', 'Beam PWA Security', 'Official Beam PWA', 'B\u0435am P.W.A', 'BEAMPWA']) {
     await assert.rejects(openApp({ appName }), (e) => e.code === 'reserved_name', appName);
   }
-  for (const name of ['BEAM Campf\u00edre', 'B\u0395AM Campfire', 'BEAM Campfire Team']) {
+  for (const name of ['BEAM Campf\u00edre', 'B\u0395AM Campfire', 'BEAM Campfire Team', 'Beam PWA Team']) {
     await assert.rejects(openApp({ appName: 'Some dApp', publisher: pub(name) }), (e) => e.code === 'reserved_name', name);
   }
   // Names that only share a word still open.
@@ -280,7 +280,9 @@ test("BC-5: look-alikes of f, and names one edit from the wallet's, are refused;
     await assert.rejects(openApp({ appName }), (e) => e.code === 'reserved_name', appName);
   }
   await assert.rejects(openApp({ appName: 'Some dApp', publisher: { key: '02' + 'ab'.repeat(32), name: 'BEAM Camp\u0192ire' } }), (e) => e.code === 'reserved_name');
-  for (const appName of ['Campfire Games', 'Beam DEX', 'BEAM NFT Gallery', 'BEAM Camp', 'Beam Campaign', 'Campfire Studio', 'BEAM Fire']) {
+  // The name people see (Beam PWA) is matched as it reads, not within one edit: at seven letters that
+  // would take in other names.
+  for (const appName of ['Campfire Games', 'Beam DEX', 'BEAM NFT Gallery', 'BEAM Camp', 'Beam Campaign', 'Campfire Studio', 'BEAM Fire', 'BeamSwap', 'Beam PWR', 'Beam Pay']) {
     assert.equal(readsAsWallet(appName), false, appName);
   }
 });

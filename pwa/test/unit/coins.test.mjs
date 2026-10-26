@@ -1,4 +1,4 @@
-// Coins and Split coins (lib/coins.js): BEAM Campfire's rules (test/beam/utxo/beam_coins_test.dart
+// Coins and Split coins (lib/coins.js): Beam PWA's rules (test/beam/utxo/beam_coins_test.dart
 // ported), the engine's get_utxo shape, private (max-privacy) coins, a split in the history, and the
 // tx_split hand-over that never splits twice.
 import test from 'node:test';
@@ -64,7 +64,7 @@ test('summary: per asset, spent coins left out, largest first', () => {
   assert.equal(emptySummary(0).largestShare, 0);
 });
 
-test("reads BEAM Campfire's recorded get_utxo answer", () => {
+test("reads Beam PWA's recorded get_utxo answer", () => {
   const raw = JSON.parse(readFileSync(join(here, '..', '..', '..', 'test', 'beam', 'fixtures', 'get_utxo.json'), 'utf8')).result;
   const coins = raw.map(parseCoin);
   const s = coinSummary(coins);
@@ -195,7 +195,7 @@ test('private coins: spendable when the time limit has passed since they arrived
   assert.equal(privateBalanceText(1000000n, 'BEAM', null, 4075742), '0.01 BEAM arrived privately: spendable within 72 hours of arriving');
 });
 
-test('a split in the history: told apart from payments, named as BEAM Campfire names it', () => {
+test('a split in the history: told apart from payments, named as Beam PWA names it', () => {
   const split = { tx_type: 0, income: false, sender: '', receiver: '', status: 3, value: 50000000 };
   assert.equal(isSplitTx(split), true);
   assert.equal(isSplitTx({ ...split, receiver: '1c2d' }), false, 'a payment has a receiver');

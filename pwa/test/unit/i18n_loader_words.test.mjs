@@ -84,7 +84,8 @@ test('a sentence is matched back to its own template with its values, the longes
     const r = loaderTemplate(s);
     assert.ok(r, s);
     assert.equal(r.template, tpl, s);
-    assert.equal(loaderText(s), s, 'English: the same sentence');
+    // English: the same sentence, but with the app's present name (the loader still writes BEAM Campfire).
+    assert.equal(loaderText(s), s.replaceAll('BEAM Campfire', 'Beam PWA'), 'English: the same sentence');
   }
   assert.deepEqual(loaderTemplate('Could not download app.js from mirror.test:8812.'), { template: 'Could not download {path} from {host}.', params: { path: 'app.js', host: 'mirror.test:8812' } });
   assert.equal(loaderTemplate('Something the engine said.'), null);

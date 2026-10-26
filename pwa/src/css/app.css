@@ -1,4 +1,4 @@
-/* BEAM Campfire. Colours from Campfire's theme (asset_sources/default_themes/
+/* Beam PWA. Colours from Campfire's theme (asset_sources/default_themes/
    campfire/light.zip, theme.json). Campfire ships only a light theme; the dark
    palette keeps Campfire's accent and takes its neutrals from Stack Wallet's
    dark theme family. Inter is bundled (fonts/LICENSE.txt, SIL OFL 1.1). */
@@ -147,8 +147,8 @@
 :root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] { color-scheme: dark; }
 
-/* BEAM (Settings -> Appearance -> Colours, issue #80): BEAM's own colours in place of Campfire red.
-   Campfire red stays the default; the logo and the app icon stay Campfire's. Every value is BEAM's,
+/* BEAM (Settings -> Appearance -> Colours, issue #80): BEAM's own colours, or Campfire red in their place.
+   The default since 0.2.20 (owner 2026-10-26); the logo and the app icon stay Campfire's. Every value is BEAM's,
    with its source, in docs/beam-brand-palette.json, and test/unit/theme.test.mjs checks them against it.
    Dark is BEAM's own wallet (desktop beam-ui Mainnet.qml, the same palette in the browser extension,
    Android and iOS): navy #042548 under a #035b8f band at the top, cards #103051, turquoise #00f6d2

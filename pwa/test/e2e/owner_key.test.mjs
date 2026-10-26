@@ -234,7 +234,7 @@ test('the right password, then Face ID: the key; "Copy owner key" copies exactly
   await page.click(tid('okey-copy'));
   await page.waitForSelector('.toast');
   // The clipboard is emptied again after a minute and at the lock (audit A-5), and the toast says so.
-  assert.equal(await page.textContent('.toast'), `${T.copied}. BEAM Campfire empties the clipboard in 1 minute (clipboard history apps may keep it).`);
+  assert.equal(await page.textContent('.toast'), `${T.copied}. Beam PWA empties the clipboard in 1 minute (clipboard history apps may keep it).`);
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), appKey, 'the clipboard holds exactly the key shown');
   await bothSchemes(page, '05-copied', { blurKey: true });
   await page.evaluate(() => navigator.clipboard.writeText(''));

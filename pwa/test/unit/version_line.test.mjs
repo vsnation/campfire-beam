@@ -24,8 +24,8 @@ test('first-run setup: the version is the one the signed release names, and the 
   assert.equal(installVersion({ state: 'downloading', version: '0.2.14', total: 40 }), '0.2.14');
   assert.equal(installVersion({ state: 'done', version: '0.2.14' }), '0.2.14');
   assert.equal(installVersion({ version: 'not a version' }), null);
-  assert.equal(doneLine('0.2.14'), 'Version 0.2.14 checked. Opening BEAM Campfire…');
-  assert.equal(doneLine(null), 'Checked. Opening BEAM Campfire…', 'as before when no version came');
+  assert.equal(doneLine('0.2.14'), 'Version 0.2.14 checked. Opening Beam PWA…');
+  assert.equal(doneLine(null), 'Checked. Opening Beam PWA…', 'as before when no version came');
 });
 
 test('each of the three screens puts the line on itself, last; the style keeps it small and at the bottom', () => {
