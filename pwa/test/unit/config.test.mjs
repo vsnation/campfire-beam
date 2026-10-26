@@ -183,9 +183,6 @@ test('no source file reaches out to another origin', () => {
       // page (opened outside the app; the app fetches nothing from them): the scheme put in front of
       // a website written without one, and one profile address per network, only in this file.
       if (f.endsWith(join('lib', 'dapps', 'store.js')) && ['https://${s}', 'https://x.com/${h}', 'https://t.me/${h}', 'https://www.instagram.com/${h}', 'https://www.linkedin.com/in/${h}'].includes(u)) continue;
-      // Beam PWA's own address, the link a copy on an address other sites share offers in place of
-      // creating a wallet there (a navigation the person taps): that one address, only in this file.
-      if (f.endsWith(join('lib', 'shared_origin.js')) && u === 'https://${HOME_HOST}/') continue;
       offenders.push(`${f.slice(pwa.length)}: ${u}`);
     }
   }
