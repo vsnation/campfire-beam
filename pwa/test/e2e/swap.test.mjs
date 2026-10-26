@@ -141,7 +141,7 @@ test('swap BEAM -> bETH: live quote, the consent sheet shows what the engine rep
   console.log(`# consent log: ${JSON.stringify(last)}`);
   assert.equal(last.decision, 'rejected');
   assert.equal(last.kind, 'contract');
-  assert.equal(last.appName, 'Beam PWA');
+  assert.equal(last.appName, 'BEAM Campfire'); // the engine's name for the wallet (NATIVE_APP_NAME)
   assert.equal(last.isEnough, false);
   assert.equal(last.fee, '0.011');
   assert.deepEqual(last.spends, [{ assetId: 0, amount: exactPay }]);

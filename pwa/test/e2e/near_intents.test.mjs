@@ -381,7 +381,9 @@ test('live: the real NEAR Intents from the page, under its CSP: coins, a price, 
   assert.ok(priced, 'NEAR Intents priced none of BTC, ZEC (see the lines above)');
   const eth = await page.getAttribute(tid('ni-eth'), 'data-wei');
   console.log(`# live price: ${priced.amount} ${priced.sym} -> ${eth} wei (${await text('ni-eth')} ETH), ${await text('ni-fees')}, ${await text('ni-time')}`);
-  await page.waitForFunction(() => !document.querySelector('[data-testid="ni-cta"]').disabled, null, { timeout: 60000 });
+  await page.waitForFunction(() => !document.querySelector('[data-testid="ni-cta"]').disabled, null, { timeout: 60000 }).catch(async (e) => {
+    throw new Error(`the button stayed off: "${await text('ni-reason')}" (${e.message.split('\n')[0]})`);
+  });
   await shots('11-live-priced');
   await page.click(tid('ni-cta'));
   await waitScreen(page, 'nearIntentsDeposit', 90000);

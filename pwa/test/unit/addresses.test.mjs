@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import * as A from '../../src/lib/addresses.js';
 
 const DAY = 86400;
-const a = (address, patch = {}) => ({ address, own: true, expired: false, type: 'regular', comment: 'Beam PWA', create_time: 1000, duration: 0, ...patch });
+const a = (address, patch = {}) => ({ address, own: true, expired: false, type: 'regular', comment: 'BEAM Campfire', create_time: 1000, duration: 0, ...patch });
 
 test('active and expired, newest first; peer addresses left out', () => {
   const list = [a('x1', { create_time: 10 }), a('x2', { create_time: 30 }), a('x3', { expired: true, create_time: 20 }), a('p1', { own: false })];
@@ -17,12 +17,12 @@ test('active and expired, newest first; peer addresses left out', () => {
 
 test('Receive shows the chosen address while it can be paid, else the newest one it made', () => {
   const list = [a('old', { create_time: 10 }), a('new', { create_time: 20 }), a('mine', { create_time: 5, comment: 'From Alex' }), a('off', { type: 'offline', create_time: 40 }), a('gone', { expired: true, create_time: 50 })];
-  assert.equal(A.pickReceiveAddress(list, { label: 'Beam PWA' }), 'new');
-  assert.equal(A.pickReceiveAddress(list, { preferred: 'mine', label: 'Beam PWA' }), 'mine', 'renamed and chosen: still shown');
-  assert.equal(A.pickReceiveAddress(list, { preferred: 'gone', label: 'Beam PWA' }), 'new', 'an expired choice is not shown');
-  assert.equal(A.pickReceiveAddress(list, { preferred: 'off', label: 'Beam PWA' }), 'new', 'offline addresses are for one payment');
-  assert.equal(A.pickReceiveAddress(list, { preferred: 'deleted', label: 'Beam PWA' }), 'new');
-  assert.equal(A.pickReceiveAddress([], { label: 'Beam PWA' }), null);
+  assert.equal(A.pickReceiveAddress(list, { label: 'BEAM Campfire' }), 'new');
+  assert.equal(A.pickReceiveAddress(list, { preferred: 'mine', label: 'BEAM Campfire' }), 'mine', 'renamed and chosen: still shown');
+  assert.equal(A.pickReceiveAddress(list, { preferred: 'gone', label: 'BEAM Campfire' }), 'new', 'an expired choice is not shown');
+  assert.equal(A.pickReceiveAddress(list, { preferred: 'off', label: 'BEAM Campfire' }), 'new', 'offline addresses are for one payment');
+  assert.equal(A.pickReceiveAddress(list, { preferred: 'deleted', label: 'BEAM Campfire' }), 'new');
+  assert.equal(A.pickReceiveAddress([], { label: 'BEAM Campfire' }), null);
   assert.equal(A.canBeCurrent(a('r', { type: 'regular_new' })), true);
   assert.equal(A.canBeCurrent(a('r', { expired: true })), false);
 });
