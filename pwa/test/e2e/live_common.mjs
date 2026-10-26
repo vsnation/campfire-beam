@@ -1,6 +1,6 @@
 // Shared by the live mainnet tests: the test wallet's words (read at run time,
 // never printed or screenshotted) and restoring it through the real screens.
-import { readFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { shot, waitScreen, sleep } from './harness.mjs';
@@ -53,12 +53,29 @@ export const total = (page, assetId) =>
 /** Waits for the first transaction matching [pred] to complete (status 3). */
 export async function waitTx(page, pred, label, timeoutMs = 20 * 60000) {
   const t0 = Date.now();
+  let seen = '';
   while (Date.now() - t0 < timeoutMs) {
     const txs = await page.evaluate(() => window.__campfire.txs());
     const t = txs.find(pred);
+    // Every change of the payment's state, with the engine's own words, so a stall says where it stopped.
+    const now = t ? `status ${t.status} ${t.status_string || ''} ${t.failure_reason || ''}`.trim() : 'not listed yet';
+    if (now !== seen) log(`${label}: ${now} (${Math.round((Date.now() - t0) / 1000)} s)`);
+    seen = now;
     if (t && Number(t.status) === 3) return t;
     if (t && (Number(t.status) === 4 || Number(t.status) === 2)) throw new Error(`${label}: status ${t.status}`);
     await sleep(5000);
   }
   throw new Error(`${label}: not completed in time`);
+}
+
+/**
+ * Appends a throwaway wallet's 12 words to ~/.config/campfire-beam/test_wallets.env as
+ * <label>_WALLET_SEED=<words> (unquoted, as live_receive_away.mjs writes AWAYB; the file stays 0600),
+ * so live_sweep.mjs can bring back what a stopped run left in it. Never printed.
+ */
+export function keepThrowaway(label, words) {
+  if (!Array.isArray(words) || words.length !== 12) throw new Error('keepThrowaway: 12 words expected (not printed)');
+  const file = join(homedir(), '.config', 'campfire-beam', 'test_wallets.env');
+  appendFileSync(file, `\n# ${label}: live test throwaway (${new Date().toISOString()})\n${label}_WALLET_SEED=${words.join(' ')}\n`, { mode: 0o600 });
+  chmodSync(file, 0o600);
 }

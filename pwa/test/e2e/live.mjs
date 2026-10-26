@@ -17,7 +17,7 @@
 // has less than 0.012 BEAM.
 import { startServer, launch, recordedPage, shot, waitScreen, sleep, foreignHosts } from './harness.mjs';
 import { createWallet, waitHome, waitSynced } from './flows.mjs';
-import { tid, log, funderWords as readFunderWords, restoreFunder as restore, total, waitTx } from './live_common.mjs';
+import { tid, log, funderWords as readFunderWords, restoreFunder as restore, total, waitTx, keepThrowaway } from './live_common.mjs';
 
 const MAX_GROTH = 2000000n; // 0.02 BEAM, per payment
 const SEND_GROTH = 1000000n; // 0.01 BEAM
@@ -84,7 +84,10 @@ try {
 
   log('B: creating a throwaway wallet');
   await B.page.goto(srv.url);
-  await createWallet(B.page, { password: pwB, passkey: false });
+  const { words: wordsB } = await createWallet(B.page, { password: pwB, passkey: false });
+  // Kept (never printed) so a run that stops after A paid B leaves nothing stranded: live_sweep.mjs
+  // with SWEEP=LIVEB brings it back (2026-10-26: a stopped run left 0.01 BEAM in a wallet nobody kept).
+  keepThrowaway('LIVEB', wordsB);
   await waitHome(B.page, { timeout: 20 * 60000 });
   await waitSynced(B.page, 15 * 60000);
   await B.page.click(tid('receive'));
