@@ -29,6 +29,7 @@ import { formatAmount } from '../lib/amount.js';
 import { setConsentPresenter, NATIVE_APP_NAME } from '../lib/contracts.js';
 import { confirmIdentity } from '../lib/auth_ui.js';
 import { t, tn, tk } from '../lib/i18n.js';
+import { logoMark } from '../lib/logo.js';
 
 /** "371.76" for the button; the rows above it carry every digit. */
 export function shortAmount(groth) {
@@ -300,7 +301,7 @@ function showConsent(app, req, bridge, bt) {
           h(
             'div',
             { class: 'consent-app', 'data-testid': 'consent-app' },
-            native ? h('img', { src: 'img/logo.svg', alt: '' }) : h('span', { class: 'app-dot' }, icon('globe')),
+            native ? logoMark() : h('span', { class: 'app-dot' }, icon('globe')),
             h('span', { text: native ? t('Beam PWA, this wallet') : t('{name} asks you to approve', { name: req.appName }) }),
           ),
           !native && req.publisher

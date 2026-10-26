@@ -1012,6 +1012,8 @@
     "many": "{n} часов",
     "other": "{n} часа"
   },
+  "Language": "Язык",
+  "Like this device": "Как в системе",
   "The update check took too long.": "Проверка обновлений заняла слишком много времени.",
   "The app is not running from its verified copy yet.": "Приложение ещё не запущено из проверенной копии.",
   "Release key must be a public P-256 JWK.": "Ключ релизов должен быть публичным ключом P-256 в формате JWK.",
@@ -1375,7 +1377,6 @@
     "many": "{n} мин назад",
     "other": "{n} мин назад"
   },
-  "Like this device": "Как в системе",
   "Light": "Светлая",
   "Dark": "Тёмная",
   "Campfire red": "Campfire",
@@ -4548,7 +4549,6 @@
   "Locks after {min} min without use": "Блокируется через {min} мин без использования",
   "Theme": "Тема",
   "Colours": "Цвета",
-  "Language": "Язык",
   "On. Tap to turn off.": "Вкл. Нажмите для выключения.",
   "Turn off Face ID?": "Выключить Face ID?",
   "Turn off": "Выключить",
@@ -4576,7 +4576,7 @@
   "Server, privacy, backup": "Сервер, IP, резервная копия",
   "Appearance": "Оформление",
   "Light or dark": "Светлая/тёмная",
-  "Campfire or BEAM": "Campfire/BEAM",
+  "BEAM or Campfire red": "BEAM или Campfire",
   "If your balance looks wrong": "Если баланс выглядит неверным",
   "Delete wallet from this device": "Удалить кошелёк с этого устройства",
   "Your coins changed.": "Ваши монеты изменились.",

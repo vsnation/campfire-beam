@@ -913,6 +913,8 @@
   "{n} hours": {
     "other": "{n}時間"
   },
+  "Language": "言語",
+  "Like this device": "端末と同じ",
   "The update check took too long.": "アップデートの確認に時間がかかりすぎました。",
   "The app is not running from its verified copy yet.": "アプリはまだ検証済みのコピーから動いていません。",
   "Release key must be a public P-256 JWK.": "リリースキーはP-256の公開鍵JWKである必要があります。",
@@ -1240,7 +1242,6 @@
   "{n} min ago": {
     "other": "{n}分前"
   },
-  "Like this device": "端末と同じ",
   "Light": "ライト",
   "Dark": "ダーク",
   "Campfire red": "Campfireレッド",
@@ -4131,7 +4132,6 @@
   "Locks after {min} min without use": "{min}分間使用しないとロック",
   "Theme": "テーマ",
   "Colours": "配色",
-  "Language": "言語",
   "On. Tap to turn off.": "オン。タップでオフにします。",
   "Turn off Face ID?": "Face IDをオフにしますか？",
   "Turn off": "オフにする",
@@ -4159,7 +4159,7 @@
   "Server, privacy, backup": "サーバー、プライバシー、バックアップ",
   "Appearance": "外観",
   "Light or dark": "ライト/ダーク",
-  "Campfire or BEAM": "Campfire/BEAM",
+  "BEAM or Campfire red": "BEAMまたはCampfireレッド",
   "If your balance looks wrong": "残高がおかしいと思ったら",
   "Delete wallet from this device": "この端末からウォレットを削除",
   "Your coins changed.": "コインが変わりました。",

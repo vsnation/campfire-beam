@@ -428,7 +428,7 @@ export const NAME_CALLS = [
  * template's text comes with {…} where its expressions are.
  */
 // Names that stay as they are in every language: a text made only of these is not words to translate.
-export const BRANDS = ['Beam PWA', 'Campfire', 'BEAM', 'Beam', 'WBEAM', 'bETH', 'bUSDT', 'bWBTC', 'bDAI', 'ETH', 'Ethereum', 'Uniswap', 'NEAR Intents', 'NEAR', 'CoinGecko', 'BeamX', 'FOMO', 'Face ID', 'Touch ID'];
+export const BRANDS = ['Beam PWA', 'BEAM Campfire', 'Campfire', 'BEAM', 'Beam', 'WBEAM', 'bETH', 'bUSDT', 'bWBTC', 'bDAI', 'ETH', 'Ethereum', 'Uniswap', 'NEAR Intents', 'NEAR', 'CoinGecko', 'BeamX', 'FOMO', 'Face ID', 'Touch ID'];
 const BRAND_RE = new RegExp(`\\b(${BRANDS.map((b) => b.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\b`, 'g');
 
 export function wordLike(s) {

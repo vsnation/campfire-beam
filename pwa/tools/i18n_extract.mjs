@@ -1,6 +1,6 @@
 // Regenerates the translation key list and the catalogs from the app's sources.
 //
-//   node tools/i18n_extract.mjs           writes src/i18n/keys.json and brings src/i18n/{ru,zh-Hans,ja}.json
+//   node tools/i18n_extract.mjs           writes src/i18n/keys.json and brings src/i18n/<lang>.json (every language but English)
 //                                         to exactly the English key set (new keys empty, translations kept,
 //                                         keys no longer in the app removed and printed)
 //   node tools/i18n_extract.mjs --check   writes nothing; exits 1 when a file is not up to date
@@ -14,13 +14,13 @@ import { readFileSync, writeFileSync, readdirSync, statSync, existsSync } from '
 import { join, relative, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanSource, placeholders } from './i18n_scan.mjs';
-import { PLURAL_FORMS } from '../src/lib/i18n.js';
+import { PLURAL_FORMS, LANGUAGES, EARLY_KEYS } from '../src/lib/i18n.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const ROOT = join(here, '..');
 export const SRC = join(ROOT, 'src');
 export const I18N_DIR = join(SRC, 'i18n');
-export const TARGETS = ['ru', 'zh-Hans', 'ja'];
+export const TARGETS = LANGUAGES.filter((l) => l !== 'en');
 // Files that are not modules of the page (other contexts, or classic scripts): their words are
 // listed in lib/i18n.js (EARLY_KEYS, NOSCRIPT_TEXT) or mapped by lib/loader_words.js.
 export const NOT_SCANNED_FOR_KEYS = new Set(['sw.js', 'loader-watch.js', 'theme-boot.js', 'lang-boot.js', 'dapp-frame.js', 'node_probe.js']);
@@ -126,6 +126,29 @@ export function keysFile(keys) {
 
 export const json = (o) => `${JSON.stringify(o, null, 2)}\n`;
 
+// The splash (lang-boot.js) and the tripwire's first stop (loader-watch.js) run before any module and
+// read no words from storage: each carries its own table, written here from the catalogs (only
+// translated entries; a language with none is left out and shows English).
+export const SPLASH_KEYS = Object.freeze(EARLY_KEYS.slice(0, 2));
+export const TRIPWIRE_KEYS = Object.freeze(EARLY_KEYS.slice(2));
+export function bootTable(catalogs, keys) {
+  const out = {};
+  for (const lang of TARGETS) {
+    const c = catalogs[lang] || {};
+    const words = {};
+    for (const k of keys) if (typeof c[k] === 'string' && c[k]) words[k] = c[k];
+    if (Object.keys(words).length) out[lang] = words;
+  }
+  return out;
+}
+/** `src` with its `var TEXTS = …;` replaced by `table` (indent: the line's own). */
+export function withTable(src, table) {
+  const m = /^( *)var TEXTS = [\s\S]*?;$/m.exec(src);
+  if (!m) throw new Error('no "var TEXTS = …;" line');
+  const body = JSON.stringify(table, null, 2).replace(/\n/g, `\n${m[1]}`);
+  return src.slice(0, m.index) + `${m[1]}var TEXTS = ${body};` + src.slice(m.index + m[0].length);
+}
+
 function main() {
   const check = process.argv.includes('--check');
   const { keys, conflicts, problems } = collectKeys();
@@ -139,12 +162,18 @@ function main() {
     else writeFileSync(file, text);
   };
   write(join(I18N_DIR, 'keys.json'), json(keysFile(keys)));
+  const catalogs = {};
   for (const lang of TARGETS) {
     const file = join(I18N_DIR, `${lang}.json`);
     const existing = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
     const { catalog, removed } = syncCatalog(keys, existing, lang);
     for (const r of removed) console.log(`i18n: ${lang}: removed ${JSON.stringify(r.key).slice(0, 100)} (its translation was ${JSON.stringify(r.value).slice(0, 100)})`);
     write(file, json(catalog));
+    catalogs[lang] = catalog;
+  }
+  for (const [name, which] of [['lang-boot.js', SPLASH_KEYS], ['loader-watch.js', TRIPWIRE_KEYS]]) {
+    const file = join(SRC, name);
+    write(file, withTable(readFileSync(file, 'utf8'), bootTable(catalogs, which)));
   }
   const plural = [...keys.values()].filter((k) => k.plural).length;
   if (check && stale.length) {

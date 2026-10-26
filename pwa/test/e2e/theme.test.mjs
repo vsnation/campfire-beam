@@ -1,5 +1,5 @@
-// Settings -> Appearance, end to end: Theme (like this device, light, dark) and Colours (Campfire
-// red or BEAM, issue #80). The installed Google Chrome (headless), its own build and port, a
+// Settings -> Appearance, end to end: Colours (BEAM, the default, or Campfire red, issue #80) and
+// Theme (like this device, light, dark; BEAM is dark unless one is picked). The installed Google Chrome (headless), its own build and port, a
 // throwaway mainnet wallet that holds nothing. The device's own light / dark is emulated. A sweep
 // measures the rendered contrast of every visible text on the app's screens in all four palettes.
 //
@@ -42,30 +42,55 @@ test.after(async () => {
 const bg = () => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 const bars = () => page.evaluate(() => [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.getAttribute('content')));
 
-test('first screen: like the device until Dark is saved; then dark from the first paint, whatever the device says', { timeout: 10 * 60000 }, async () => {
-  await page.goto(srv.url);
-  await waitScreen(page, 'welcome', 120000);
-  assert.equal(await bg(), LIGHT_BG, 'a light device: light');
-  await page.emulateMedia({ colorScheme: 'dark' });
-  assert.equal(await bg(), DARK_BG, 'a dark device: dark');
-  await page.emulateMedia({ colorScheme: 'light' });
-  await page.evaluate(() => localStorage.setItem('campfire-theme', 'dark'));
-  // Before app.js runs: the attribute theme-boot.js set while the page head was read.
+test('first screen: BEAM and dark by default, on a light device too; Campfire red follows the device; a saved Light from the first paint', { timeout: 10 * 60000 }, async () => {
+  // Before app.js runs: the attributes theme-boot.js (and index.html) set while the page head was read.
   await page.addInitScript(() => {
     document.addEventListener('readystatechange', () => {
       if (document.readyState === 'interactive' && !window.__atInteractive) window.__atInteractive = { theme: document.documentElement.dataset.theme || null, bg: getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() };
     });
   });
+  await page.goto(srv.url);
+  await waitScreen(page, 'welcome', 120000);
+  assert.deepEqual(await page.evaluate(() => window.__atInteractive), { theme: 'dark', bg: '#042548' }, 'BEAM dark as soon as the page is read');
+  assert.equal(await bg(), BEAM_DARK_BG, 'a light device: BEAM dark all the same');
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.skin), 'beam');
+  assert.deepEqual(await bars(), ['#04325a', '#04325a'], 'the browser bar too');
+  assert.deepEqual(await page.evaluate(() => [localStorage.getItem('campfire-skin'), localStorage.getItem('campfire-theme')]), [null, null], 'the default saves nothing');
+  await shot(page, 'theme-01-welcome-beam-dark');
+
+  // Campfire red, no theme picked: like the device.
+  await page.evaluate(() => localStorage.setItem('campfire-skin', 'campfire'));
   await page.reload();
   await waitScreen(page, 'welcome', 120000);
-  assert.deepEqual(await page.evaluate(() => window.__atInteractive), { theme: 'dark', bg: '#1c1d22' }, 'dark as soon as the page is read');
-  assert.equal(await bg(), DARK_BG);
-  assert.deepEqual(await bars(), ['#1c1d22', '#1c1d22'], 'the browser bar too');
-  await shot(page, 'theme-01-welcome-forced-dark');
+  assert.equal(await bg(), LIGHT_BG, 'a light device: light');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  assert.equal(await bg(), DARK_BG, 'a dark device: dark');
+  await page.emulateMedia({ colorScheme: 'light' });
+
+  // BEAM with Light saved: light from the first paint.
+  await page.evaluate(() => {
+    localStorage.removeItem('campfire-skin');
+    localStorage.setItem('campfire-theme', 'light');
+  });
+  await page.reload();
+  await waitScreen(page, 'welcome', 120000);
+  assert.deepEqual(await page.evaluate(() => window.__atInteractive), { theme: 'light', bg: '#eef4fa' });
+  assert.equal(await bg(), BEAM_LIGHT_BG);
+  assert.deepEqual(await bars(), ['#e0ebf4', '#e0ebf4']);
+
+  // 0.2.19 saved Dark with a flag when BEAM was chosen: that reads as no theme picked (BEAM dark).
+  await page.evaluate(() => {
+    localStorage.setItem('campfire-skin', 'beam');
+    localStorage.setItem('campfire-theme', 'dark');
+    localStorage.setItem('campfire-theme-auto', '1');
+  });
+  await page.reload();
+  await waitScreen(page, 'welcome', 120000);
+  assert.equal(await bg(), BEAM_DARK_BG);
 });
 
-test('Settings -> Theme: Light, Dark and Like this device, at once, and kept after a reload', { timeout: 15 * 60000 }, async () => {
-  await page.evaluate(() => localStorage.removeItem('campfire-theme'));
+test('Settings -> Theme: Dark by default with BEAM; Light and Like this device at once, and kept after a reload', { timeout: 15 * 60000 }, async () => {
+  await page.evaluate(() => localStorage.clear());
   await page.reload();
   await waitScreen(page, 'welcome', 120000);
   await createWallet(page, { password: PASSWORD });
@@ -73,36 +98,32 @@ test('Settings -> Theme: Light, Dark and Like this device, at once, and kept aft
   await page.evaluate(() => window.__campfire.go('settings'));
   await waitScreen(page, 'settings');
   await page.locator(tid('theme-row')).scrollIntoViewIfNeeded();
-  assert.equal(await page.inputValue(tid('theme-select')), 'system');
+  assert.equal(await page.inputValue(tid('theme-select')), 'dark', "BEAM's own: dark");
   assert.deepEqual(await page.$$eval(`${tid('theme-select')} option`, (o) => o.map((x) => x.textContent)), ['Like this device', 'Light', 'Dark']);
-
-  await page.selectOption(tid('theme-select'), 'dark');
-  assert.equal(await bg(), DARK_BG, 'at once, on a light device');
-  assert.equal(await page.evaluate(() => localStorage.getItem('campfire-theme')), 'dark');
-  await shot(page, 'theme-02-settings-dark');
 
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.selectOption(tid('theme-select'), 'light');
-  assert.equal(await bg(), LIGHT_BG, 'Light on a dark device');
+  assert.equal(await bg(), BEAM_LIGHT_BG, 'Light on a dark device');
+  assert.equal(await page.evaluate(() => localStorage.getItem('campfire-theme')), 'light');
   assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme), 'light', 'native controls light too');
-  await shot(page, 'theme-03-settings-light-on-dark-device');
+  await shot(page, 'theme-02-settings-beam-light-on-dark-device');
 
   // Kept: after a reload (the wallet locks), the unlock screen is already light.
   await page.reload();
   await waitScreen(page, 'unlock', 120000);
-  assert.equal(await bg(), LIGHT_BG);
-  assert.deepEqual(await bars(), ['#fff1f1', '#fff1f1']);
+  assert.equal(await bg(), BEAM_LIGHT_BG);
+  assert.deepEqual(await bars(), ['#e0ebf4', '#e0ebf4']);
 
-  // Like this device: follows the (dark) device again and forgets the choice.
+  // Like this device, picked on purpose: follows the (dark) device, and is kept (it is not the default).
   await page.evaluate(async () => (await import('./lib/theme.js')).setTheme('system'));
-  assert.equal(await bg(), DARK_BG);
-  assert.equal(await page.evaluate(() => localStorage.getItem('campfire-theme')), null);
-  assert.deepEqual(await bars(), ['#fff1f1', '#1c1d22'], 'each bar colour for its own device mode');
+  assert.equal(await bg(), BEAM_DARK_BG);
+  assert.equal(await page.evaluate(() => localStorage.getItem('campfire-theme')), 'system');
+  assert.deepEqual(await bars(), ['#e0ebf4', '#04325a'], 'each bar colour for its own device mode');
   await page.emulateMedia({ colorScheme: 'light' });
-  assert.equal(await bg(), LIGHT_BG);
+  assert.equal(await bg(), BEAM_LIGHT_BG);
 });
 
-test('Settings -> Colours: BEAM at once, light and dark; from the first paint after a reload; Campfire red again', { timeout: 10 * 60000 }, async () => {
+test('Settings -> Colours: BEAM by default; Campfire red at once; a theme nobody picked follows the colours', { timeout: 10 * 60000 }, async () => {
   await unlockWithPassword(page, PASSWORD);
   await waitHome(page);
   await page.evaluate(() => window.__campfire.go('settings'));
@@ -113,44 +134,42 @@ test('Settings -> Colours: BEAM at once, light and dark; from the first paint af
     const k = document.querySelector('[data-testid="skin-row"]');
     return { same: t.parentElement === k.parentElement, title: t.parentElement.previousElementSibling.textContent, sub: k.querySelector('.s').textContent };
   });
-  assert.deepEqual(card, { same: true, title: 'Appearance', sub: 'Campfire or BEAM' });
+  assert.deepEqual(card, { same: true, title: 'Appearance', sub: 'BEAM or Campfire red' });
   await page.locator(tid('skin-row')).scrollIntoViewIfNeeded();
-  assert.equal(await page.inputValue(tid('skin-select')), 'campfire', 'Campfire red by default');
-  assert.deepEqual(await page.$$eval(`${tid('skin-select')} option`, (o) => o.map((x) => x.textContent)), ['Campfire red', 'BEAM']);
-  // BEAM is dark by default (owner, 2026-10-14), on a device in light mode too, and the Theme row says so.
-  await page.selectOption(tid('skin-select'), 'beam');
-  assert.equal(await bg(), BEAM_DARK_BG, 'at once, and dark');
-  assert.equal(await page.inputValue(tid('theme-select')), 'dark', 'the Theme row follows');
-  assert.deepEqual(await page.evaluate(() => [localStorage.getItem('campfire-skin'), localStorage.getItem('campfire-theme')]), ['beam', 'dark']);
-  assert.deepEqual(await bars(), ['#04325a', '#04325a']);
-  await shot(page, 'theme-04-settings-beam-dark');
-  // Light on purpose: BEAM's light palette.
-  await page.selectOption(tid('theme-select'), 'light');
-  assert.equal(await bg(), BEAM_LIGHT_BG, 'BEAM, light');
-  assert.deepEqual(await bars(), ['#e0ebf4', '#e0ebf4']);
-  await shot(page, 'theme-05-settings-beam-light');
-  // Like this device: BEAM follows the device (light here) from now on.
-  await page.selectOption(tid('theme-select'), 'system');
-  assert.equal(await bg(), BEAM_LIGHT_BG);
-  assert.deepEqual(await bars(), ['#e0ebf4', '#04325a']);
-  // The logo is Campfire's in either colours.
+  assert.equal(await page.inputValue(tid('skin-select')), 'beam', 'BEAM by default');
+  assert.deepEqual(await page.$$eval(`${tid('skin-select')} option`, (o) => o.map((x) => x.textContent)), ['BEAM', 'Campfire red']);
+  // Like this device was picked (the test before): Campfire red keeps it.
+  await page.selectOption(tid('skin-select'), 'campfire');
+  assert.equal(await bg(), LIGHT_BG, 'Campfire red, light device');
+  assert.equal(await page.inputValue(tid('theme-select')), 'system');
+  assert.deepEqual(await page.evaluate(() => [localStorage.getItem('campfire-skin'), localStorage.getItem('campfire-theme')]), ['campfire', 'system']);
+  assert.deepEqual(await bars(), ['#fff1f1', '#1c1d22']);
+  await shot(page, 'theme-03-settings-campfire-red');
+  // The red original stays (the app icon's); the screens draw the flame in the colours on show.
   assert.equal(await page.evaluate(() => fetch('img/logo.svg').then((r) => r.ok)), true);
 
+  // No theme picked: Campfire red follows the device, and BEAM comes back dark.
+  await page.evaluate(() => localStorage.removeItem('campfire-theme'));
   await page.reload();
   await waitScreen(page, 'unlock', 120000);
-  assert.deepEqual(await page.evaluate(() => window.__atInteractive), { theme: null, bg: '#eef4fa' }, 'BEAM as soon as the page is read');
-  assert.equal(await page.evaluate(() => document.documentElement.dataset.skin), 'beam');
-  assert.deepEqual(await bars(), ['#e0ebf4', '#04325a'], 'the browser bar too');
-  await shot(page, 'theme-06-unlock-beam-light');
+  assert.equal(await bg(), LIGHT_BG);
   await unlockWithPassword(page, PASSWORD);
   await waitHome(page);
   await page.evaluate(() => window.__campfire.go('settings'));
   await waitScreen(page, 'settings');
-  assert.equal(await page.inputValue(tid('skin-select')), 'beam', 'kept');
-  await page.selectOption(tid('skin-select'), 'campfire');
-  assert.equal(await bg(), LIGHT_BG, 'Campfire red again');
-  assert.equal(await page.evaluate(() => localStorage.getItem('campfire-skin')), null, 'the default leaves nothing saved');
-  assert.deepEqual(await bars(), ['#fff1f1', '#1c1d22']);
+  assert.equal(await page.inputValue(tid('skin-select')), 'campfire', 'kept');
+  await page.selectOption(tid('skin-select'), 'beam');
+  assert.equal(await bg(), BEAM_DARK_BG, 'BEAM, dark');
+  assert.equal(await page.inputValue(tid('theme-select')), 'dark', 'the Theme row follows');
+  assert.deepEqual(await page.evaluate(() => [localStorage.getItem('campfire-skin'), localStorage.getItem('campfire-theme')]), [null, null], 'the default leaves nothing saved');
+  assert.deepEqual(await bars(), ['#04325a', '#04325a']);
+  await shot(page, 'theme-04-settings-beam-dark');
+  await page.reload();
+  await waitScreen(page, 'unlock', 120000);
+  assert.equal(await bg(), BEAM_DARK_BG);
+  await shot(page, 'theme-05-unlock-beam-dark');
+  await unlockWithPassword(page, PASSWORD);
+  await waitHome(page);
 });
 
 /**
@@ -223,6 +242,8 @@ const LOOK = [['campfire', 'light'], ['campfire', 'dark'], ['beam', 'light'], ['
 
 test('every visible text on the app\'s screens reads at 4.5:1 (large text 3:1) in Campfire red and BEAM, light and dark', { timeout: 15 * 60000 }, async () => {
   const low = [];
+  // Like this device, so the emulated device mode picks each palette (BEAM alone would stay dark).
+  await page.evaluate(async () => (await import('./lib/theme.js')).setTheme('system'));
   for (const [skin, scheme] of LOOK) {
     await page.evaluate(async (k) => (await import('./lib/theme.js')).setSkin(k), skin);
     await page.emulateMedia({ colorScheme: scheme });
@@ -242,7 +263,7 @@ test('every visible text on the app\'s screens reads at 4.5:1 (large text 3:1) i
       }
     }
   }
-  await page.evaluate(async () => (await import('./lib/theme.js')).setSkin('campfire'));
+  await page.evaluate(async () => (await import('./lib/theme.js')).setSkin('beam'));
   await page.emulateMedia({ colorScheme: 'light' });
   console.log(`# swept ${SWEEP.length} screens x ${LOOK.length} palettes; below the line: ${low.length}`);
   assert.deepEqual(low, []);

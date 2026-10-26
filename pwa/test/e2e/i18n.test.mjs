@@ -236,6 +236,51 @@ const AUDIT = [
   ['minterTokens', {}], ['ownerKey', { from: 'settings' }], ['ethStart', { from: 'settings' }],
 ];
 
+test('the first screen: a German device opens in German; the language mark changes it at once and keeps it; every language fits a 375x667 phone', { timeout: 20 * 60000 }, async () => {
+  if (!srv) srv = await startServer({ root: join(tmp, 'dist'), port: PORT });
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 667 }, deviceScaleFactor: 2, locale: 'de-DE', colorScheme: 'light' });
+  const { page, rec } = await recordedPage(ctx, { label: 'i18n-welcome' });
+  await page.goto(srv.url);
+  await waitScreen(page, 'welcome', 120000);
+  assert.equal(await htmlLang(page), 'de');
+  assert.equal(await page.inputValue(tid('welcome-lang')), 'de', 'the mark names the language on show');
+  assert.equal(await page.textContent(tid('create')), CAT('de')['Create a new wallet']);
+  assert.equal(await page.evaluate(() => localStorage.getItem('campfire-lang')), null, 'never asked: nothing saved');
+  const names = await page.$$eval(`${tid('welcome-lang')} option`, (o) => o.map((x) => [x.value, x.textContent, x.lang]));
+  assert.equal(names.length, 11);
+  assert.ok(names.every(([v, , l]) => v === l), 'each name marked with its own language');
+  await shot(page, 'i18n-welcome-de');
+  await page.selectOption(tid('welcome-lang'), 'es');
+  await page.waitForFunction(() => document.documentElement.lang === 'es');
+  assert.equal(await page.textContent(tid('create')), CAT('es')['Create a new wallet'], 'at once');
+  assert.equal(await page.evaluate(() => localStorage.getItem('campfire-lang')), 'es', 'kept');
+  await page.reload();
+  await waitScreen(page, 'welcome', 120000);
+  assert.equal(await htmlLang(page), 'es', 'after a reload too');
+  // Every language: the first screen's three choices and the language mark on a 375x667 phone, nothing
+  // wider than the screen, no button text cut.
+  const LANGS = ['en', 'es', 'pt-BR', 'fr', 'de', 'tr', 'ru', 'zh-Hans', 'ja', 'ko', 'vi'];
+  const bad = [];
+  for (const l of LANGS) {
+    await page.selectOption(tid('welcome-lang'), l);
+    await page.waitForFunction((x) => document.documentElement.lang === x, l);
+    await page.waitForTimeout(300);
+    const m = await page.evaluate(() => {
+      const vw = document.documentElement.clientWidth;
+      const vh = window.innerHeight;
+      const wide = document.documentElement.scrollWidth > vw + 1;
+      const below = ['create', 'restore', 'import'].filter((id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect().bottom > vh);
+      const cut = [...document.querySelectorAll('button, select')].filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.textContent.trim().slice(0, 40));
+      return { wide, below, cut };
+    });
+    if (m.wide || m.below.length || m.cut.length) bad.push(`${l}: ${JSON.stringify(m)}`);
+    await shot(page, `i18n-welcome-375-${l}`);
+  }
+  assert.deepEqual(bad, []);
+  assert.deepEqual(rec.errors, []);
+  await ctx.close();
+});
+
 test('pseudo-Russian: every word on these screens comes from the catalog', { timeout: 25 * 60000 }, async () => {
   const keys = JSON.parse(readFileSync(join(PWA, 'src', 'i18n', 'keys.json'), 'utf8'));
   const catDir = join(tmp, 'catalogs');

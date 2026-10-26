@@ -23,6 +23,7 @@ import { h, clear } from '../lib/dom.js';
 import { screen, primary, notice } from '../lib/ui.js';
 import { oneTab } from '../lib/one_tab.js';
 import { t, tk, tNodes } from '../lib/i18n.js';
+import { logoMark } from '../lib/logo.js';
 
 // The texts are marked with tk() and translated where they are shown (t(OTHER_TAB_TITLE)).
 export const OTHER_TAB_TITLE = tk('Beam PWA is open in another tab');
@@ -146,7 +147,7 @@ function oneTabScreen(app, { title, lead, testid, spent, how = null }) {
 
   const el = screen(
     { topbar: false, cls: 'one-tab', actions: [btn, hint] },
-    h('div', { class: 'hero', 'data-testid': testid, 'data-how': how || '' }, h('img', { src: 'img/logo.svg', alt: '' }), h('h1', { text: title }), h('p', { text: lead })),
+    h('div', { class: 'hero', 'data-testid': testid, 'data-how': how || '' }, logoMark(), h('h1', { text: title }), h('p', { text: lead })),
     note,
   );
   // Left (another screen took over, e.g. this tab found it cannot check the lock): nothing of this
@@ -178,7 +179,7 @@ function uncheckedTab() {
         again ? null : h('p', { class: 'small center', 'data-testid': 'one-tab-way-out', text: t(UNCHECKED_WAY_OUT) }),
       ],
     },
-    h('div', { class: 'hero', 'data-testid': 'one-tab-moved', 'data-how': 'unchecked' }, h('img', { src: 'img/logo.svg', alt: '' }), h('h1', { text: t(UNCHECKED_TITLE) }), h('p', { text: t(UNCHECKED_LEAD) })),
+    h('div', { class: 'hero', 'data-testid': 'one-tab-moved', 'data-how': 'unchecked' }, logoMark(), h('h1', { text: t(UNCHECKED_TITLE) }), h('p', { text: t(UNCHECKED_LEAD) })),
     wayOut,
   );
   return { el };

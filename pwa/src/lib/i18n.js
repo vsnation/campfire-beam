@@ -1,9 +1,11 @@
-// The app's words in the person's language: English (the source), Russian, Simplified Chinese and
-// Japanese. Settings -> Appearance -> Language; by default the device's language, never asked.
+// The app's words in the person's language: English (the source) and the languages in LANGUAGES.
+// Settings -> Appearance -> Language, or the first screen's language mark; by default the device's
+// language, never asked.
 //
 //   t('Locks after {min} min without use', { min })   a text; English is the key
 //   tn({ one: '{n} code', other: '{n} codes' }, n)       a count (Intl.PluralRules: Russian has
-//                                                        one/few/many/other, Japanese and Chinese other)
+//                                                        one/few/many/other; Chinese, Japanese, Korean
+//                                                        and Vietnamese other only)
 //   tk('Like this device')                               marks a text kept in a constant (module level
 //                                                        or a table); the screen shows t(CONSTANT)
 //   tNodes('Read {guide} first.', { guide: link })       a sentence with an element inside it
@@ -24,17 +26,21 @@
 // theme (lib/theme.js): absent = like this device. lang-boot.js sets <html lang> from the same key
 // before the first paint (CJK glyphs are chosen by it); test/unit/i18n.test.mjs keeps the two equal.
 
-export const LANGUAGES = Object.freeze(['en', 'ru', 'zh-Hans', 'ja']);
+export const LANGUAGES = Object.freeze(['en', 'es', 'pt-BR', 'fr', 'de', 'tr', 'ru', 'zh-Hans', 'ja', 'ko', 'vi']);
 // Each language in its own script, never translated: a person who cannot read the current language
 // still finds theirs. i18n-ignore: each language's own name
-export const LANGUAGE_NAMES = Object.freeze({ en: 'English', ru: 'Русский', 'zh-Hans': '简体中文', ja: '日本語' });
+export const LANGUAGE_NAMES = Object.freeze({ en: 'English', es: 'Español', 'pt-BR': 'Português (Brasil)', fr: 'Français', de: 'Deutsch', tr: 'Türkçe', ru: 'Русский', 'zh-Hans': '简体中文', ja: '日本語', ko: '한국어', vi: 'Tiếng Việt' });
 export const LANGUAGE_CHOICES = Object.freeze(['system', ...LANGUAGES]);
 export const STORAGE_KEY = 'campfire-lang';
 // A few translated texts for the pages that run before the catalog can be read: loader-watch.js
 // (the tripwire's first stop) and the splash in index.html (lang-boot.js). Written from the catalog.
 export const EARLY_STORAGE_KEY = 'campfire-lang-early';
 // The plural forms each language's translation must give (Intl.PluralRules' categories for counts).
-export const PLURAL_FORMS = Object.freeze({ en: Object.freeze(['one', 'other']), ru: Object.freeze(['one', 'few', 'many', 'other']), 'zh-Hans': Object.freeze(['other']), ja: Object.freeze(['other']) });
+// Spanish, Portuguese and French also have 'many', for round millions only ("1 millón de"): a count
+// there takes the 'other' form (tn()), so it is not asked of the translators.
+const ONE_OTHER = Object.freeze(['one', 'other']);
+const OTHER = Object.freeze(['other']);
+export const PLURAL_FORMS = Object.freeze({ en: ONE_OTHER, es: ONE_OTHER, 'pt-BR': ONE_OTHER, fr: ONE_OTHER, de: ONE_OTHER, tr: ONE_OTHER, ru: Object.freeze(['one', 'few', 'many', 'other']), 'zh-Hans': OTHER, ja: OTHER, ko: OTHER, vi: OTHER });
 const CATALOG_TIMEOUT_MS = 4000;
 const PLACEHOLDER = /\{([A-Za-z_][A-Za-z0-9_]*)\}/g;
 
@@ -60,18 +66,15 @@ export function placeholdersOf(text) {
 }
 const sameSet = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
-/**
- * The language a device's preference list asks for: the first entry Beam PWA has (en-*, ru-*,
- * ja-*, and every zh-* as Simplified Chinese), else English.
- */
+// A device language's first part -> the language Beam PWA shows for it: every zh-* as Simplified
+// Chinese, every pt-* as Brazilian Portuguese. lang-boot.js keeps the same table (test/unit/i18n.test.mjs).
+export const DEVICE_BASES = Object.freeze({ en: 'en', es: 'es', pt: 'pt-BR', fr: 'fr', de: 'de', tr: 'tr', ru: 'ru', zh: 'zh-Hans', ja: 'ja', ko: 'ko', vi: 'vi' });
+
+/** The language a device's preference list asks for: the first entry Beam PWA has, else English. */
 export function deviceLanguage(languages) {
   for (const raw of [].concat(languages || [])) {
-    const tag = String(raw || '').toLowerCase();
-    const base = tag.split(/[-_]/)[0];
-    if (base === 'en') return 'en';
-    if (base === 'ru') return 'ru';
-    if (base === 'zh') return 'zh-Hans';
-    if (base === 'ja') return 'ja';
+    const base = String(raw || '').toLowerCase().split(/[-_]/)[0];
+    if (Object.prototype.hasOwnProperty.call(DEVICE_BASES, base)) return DEVICE_BASES[base];
   }
   return 'en';
 }
@@ -166,7 +169,7 @@ function rulesFor(lang) {
   return pluralRules.get(lang);
 }
 
-/** The language the app shows now: 'en', 'ru', 'zh-Hans' or 'ja'. */
+/** The language the app shows now: one of LANGUAGES. */
 export const lang = () => active;
 
 // Chinese and Japanese write no space after their own full stop, comma and the like. Sentences are often

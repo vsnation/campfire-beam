@@ -28,6 +28,7 @@ import { resealAirdropCodes } from './airdrop.js';
 import { notSavedNote } from '../lib/auth_ui.js';
 import { walletNode } from '../lib/nodes.js';
 import { t, tn } from '../lib/i18n.js';
+import { logoMark } from '../lib/logo.js';
 
 export default function unlock(app, params = {}) {
   if (!app.record) {
@@ -141,7 +142,7 @@ export default function unlock(app, params = {}) {
 
   const el = screen(
     { topbar: false },
-    h('div', { class: 'hero' }, h('img', { src: 'img/logo.svg', alt: '' }), h('h1', { text: 'Beam PWA' }), lead), // i18n-ignore: the brand
+    h('div', { class: 'hero' }, logoMark(), h('h1', { text: 'Beam PWA' }), lead), // i18n-ignore: the brand
     picker,
     follow,
     pwBlock,

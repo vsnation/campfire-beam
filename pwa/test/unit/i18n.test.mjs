@@ -54,18 +54,25 @@ async function inLanguage(code, catalog, fn) {
   }
 }
 
-test('the four languages, each named in its own script', () => {
-  assert.deepEqual(LANGUAGES, ['en', 'ru', 'zh-Hans', 'ja']);
-  assert.deepEqual(LANGUAGE_NAMES, { en: 'English', ru: 'Русский', 'zh-Hans': '简体中文', ja: '日本語' });
+test('the eleven languages, each named in its own script', () => {
+  assert.deepEqual(LANGUAGES, ['en', 'es', 'pt-BR', 'fr', 'de', 'tr', 'ru', 'zh-Hans', 'ja', 'ko', 'vi']);
+  assert.deepEqual(LANGUAGE_NAMES, { en: 'English', es: 'Español', 'pt-BR': 'Português (Brasil)', fr: 'Français', de: 'Deutsch', tr: 'Türkçe', ru: 'Русский', 'zh-Hans': '简体中文', ja: '日本語', ko: '한국어', vi: 'Tiếng Việt' });
   assert.deepEqual(PLURAL_FORMS.ru, ['one', 'few', 'many', 'other']);
-  assert.deepEqual(PLURAL_FORMS.ja, ['other']);
-  assert.deepEqual(PLURAL_FORMS['zh-Hans'], ['other']);
+  for (const l of ['es', 'pt-BR', 'fr', 'de', 'tr']) assert.deepEqual(PLURAL_FORMS[l], ['one', 'other'], l);
+  for (const l of ['zh-Hans', 'ja', 'ko', 'vi']) assert.deepEqual(PLURAL_FORMS[l], ['other'], l);
+  // Every category Intl gives a count is either asked of the translators or falls back to 'other' (tn):
+  // Spanish, Portuguese and French 'many' is for round millions only.
+  for (const l of LANGUAGES) {
+    const cats = new Intl.PluralRules(l === 'zh-Hans' ? 'zh' : l).resolvedOptions().pluralCategories;
+    for (const c of cats) assert.ok(PLURAL_FORMS[l].includes(c) || (c === 'many' && ['es', 'pt-BR', 'fr'].includes(l)), `${l} ${c}`);
+  }
 });
 
 test("the device's language: the first one the app has, every Chinese as Simplified, else English", () => {
   const cases = [
     [['ru-RU'], 'ru'], [['ru'], 'ru'], [['ja-JP'], 'ja'], [['ja'], 'ja'], [['zh-CN'], 'zh-Hans'], [['zh-TW'], 'zh-Hans'], [['zh-Hant-HK'], 'zh-Hans'], [['zh'], 'zh-Hans'],
-    [['en-US', 'ru'], 'en'], [['de-DE', 'ru-RU'], 'ru'], [['de-DE', 'fr'], 'en'], [[], 'en'], [undefined, 'en'], [['RU-ru'], 'ru'], [['ja_JP'], 'ja'], [['english'], 'en'],
+    [['es-MX'], 'es'], [['es'], 'es'], [['pt-BR'], 'pt-BR'], [['pt-PT'], 'pt-BR'], [['pt'], 'pt-BR'], [['fr-CA'], 'fr'], [['de-AT'], 'de'], [['tr-TR'], 'tr'], [['ko-KR'], 'ko'], [['vi-VN'], 'vi'],
+    [['en-US', 'ru'], 'en'], [['de-DE', 'ru-RU'], 'de'], [['it-IT', 'pl', 'fr'], 'fr'], [['it-IT', 'pl'], 'en'], [[], 'en'], [undefined, 'en'], [['RU-ru'], 'ru'], [['ja_JP'], 'ja'], [['english'], 'en'],
   ];
   for (const [list, want] of cases) assert.equal(deviceLanguage(list), want, JSON.stringify(list));
   assert.deepEqual(navigatorLanguages({ languages: ['ru-RU', 'en'] }), ['ru-RU', 'en']);
@@ -77,7 +84,8 @@ test('the choice: saved per device, "like this device" when absent, unreadable o
   assert.equal(readLanguageChoice(memoryStorage()), 'system');
   assert.equal(readLanguageChoice(memoryStorage({ [STORAGE_KEY]: 'ru' })), 'ru');
   assert.equal(readLanguageChoice(memoryStorage({ [STORAGE_KEY]: 'zh-Hans' })), 'zh-Hans');
-  assert.equal(readLanguageChoice(memoryStorage({ [STORAGE_KEY]: 'de' })), 'system');
+  assert.equal(readLanguageChoice(memoryStorage({ [STORAGE_KEY]: 'de' })), 'de');
+  assert.equal(readLanguageChoice(memoryStorage({ [STORAGE_KEY]: 'it' })), 'system');
   assert.equal(readLanguageChoice(memoryStorage({ [STORAGE_KEY]: 'ru' }, { blocked: true })), 'system');
   assert.equal(resolveLanguage('system', ['ja-JP']), 'ja');
   assert.equal(resolveLanguage('en', ['ja-JP']), 'en', 'English chosen on a Japanese device');
@@ -190,7 +198,7 @@ test('a catalog that cannot be read leaves English, with the language attribute 
     assert.equal(doc.documentElement.attrs.lang, 'ru', why);
   }
   await activateLanguage('en', { storage: memoryStorage(), doc: fakeDoc(), notify: false });
-  assert.equal(await activateLanguage('de', { storage: memoryStorage(), doc: fakeDoc(), notify: false }), 'en', 'not a language of the app: English');
+  assert.equal(await activateLanguage('it', { storage: memoryStorage(), doc: fakeDoc(), notify: false }), 'en', 'not a language of the app: English');
 });
 
 test('Settings: saved (or forgotten for "like this device"), applied at once, every listener told', async () => {
@@ -357,7 +365,7 @@ test('the release ships each catalog with its usable translations only, and not 
   assert.deepEqual(r.dropped, ['Hi {name}']);
   assert.equal(shippedCatalog({ Reload: '' }, 'ja').text, '{}\n', 'nothing translated: an empty catalog');
   assert.throws(() => shippedCatalog({}, 'en'));
-  assert.throws(() => shippedCatalog({}, 'de'));
+  assert.throws(() => shippedCatalog({}, 'it'));
   assert.ok(NOT_SHIPPED.has('i18n/keys.json') && NOT_SHIPPED.has('i18n/glossary.json'));
   assert.equal(CATALOG_PATH.exec('i18n/zh-Hans.json')[1], 'zh-Hans');
 });

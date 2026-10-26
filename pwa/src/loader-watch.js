@@ -31,6 +31,36 @@
   // this address (release audit 0.2.17). Only the language name comes from storage, checked against
   // these. test/unit/i18n_tripwire.test.mjs keeps this table equal to the catalogs.
   var TEXTS = {
+    "es": {
+      "Stop: unsigned code": "Alto: código sin firmar",
+      "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "La dirección web de esta app está sirviendo código que Beam PWA no firmó. No ingreses tu contraseña aquí.",
+      "Beam PWA stopped before opening.": "Beam PWA se detuvo antes de abrirse.",
+      "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "Cierra esta app ahora. No la vuelvas a abrir desde la misma dirección ni ingreses en ella ninguna contraseña ni palabras."
+    },
+    "pt-BR": {
+      "Stop: unsigned code": "Pare: código não assinado",
+      "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "O endereço web deste app está servindo código que o Beam PWA não assinou. Não digite sua senha aqui.",
+      "Beam PWA stopped before opening.": "O Beam PWA parou antes de abrir.",
+      "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "Feche este app agora. Não o abra de novo pelo mesmo endereço nem digite nenhuma senha ou palavra nele."
+    },
+    "fr": {
+      "Stop: unsigned code": "Arrêt : code non signé",
+      "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "L'adresse web de cette app sert du code que Beam PWA n'a pas signé. Ne saisissez pas votre mot de passe ici.",
+      "Beam PWA stopped before opening.": "Beam PWA s'est arrêtée avant de s'ouvrir.",
+      "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "Fermez cette app maintenant. Ne la rouvrez pas depuis la même adresse et n'y saisissez aucun mot de passe ni aucun mot."
+    },
+    "de": {
+      "Stop: unsigned code": "Stopp: unsignierter Code",
+      "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "Die Webadresse dieser App liefert Code, den Beam PWA nicht signiert hat. Gib hier nicht dein Passwort ein.",
+      "Beam PWA stopped before opening.": "Beam PWA wurde vor dem Öffnen gestoppt.",
+      "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "Schließ diese App jetzt. Öffne sie nicht erneut unter derselben Adresse und gib darin kein Passwort und keine Wörter ein."
+    },
+    "tr": {
+      "Stop: unsigned code": "Dur: imzasız kod",
+      "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "Bu uygulamanın web adresi, Beam PWA'nın imzalamadığı kod sunuyor. Şifrenizi buraya girmeyin.",
+      "Beam PWA stopped before opening.": "Beam PWA açılmadan önce durdu.",
+      "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "Bu uygulamayı şimdi kapatın. Aynı adresten yeniden açmayın ve içine hiçbir şifre veya kelime girmeyin."
+    },
     "ru": {
       "Stop: unsigned code": "Стоп: неподписанный код",
       "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "По веб-адресу этого приложения отдаётся код, который Beam PWA не подписывал. Не вводите здесь пароль.",
@@ -51,6 +81,18 @@
       "Beam PWA stopped before opening.": "Beam PWAは開く前に停止しました。",
       "Your coins are on the BEAM blockchain, not in this app. Open them in BEAM Campfire desktop or another BEAM wallet, with your 12 words or with your exported wallet.db file and its password.": "コインはこのアプリの中ではなく、BEAMブロックチェーン上にあります。BEAM Campfireデスクトップ版または他のBEAMウォレットで、12個の単語、またはエクスポートしたwallet.dbファイルとそのパスワードを使って開いてください。",
       "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "今すぐこのアプリを閉じてください。同じアドレスから開き直したり、パスワードや単語を入力したりしないでください。"
+    },
+    "ko": {
+      "Stop: unsigned code": "중지: 서명되지 않은 코드",
+      "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "이 앱의 웹 주소에서 Beam PWA가 서명하지 않은 코드를 제공하고 있어요. 여기에 비밀번호를 입력하지 마세요.",
+      "Beam PWA stopped before opening.": "Beam PWA가 열리기 전에 멈췄어요.",
+      "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "지금 이 앱을 닫으세요. 같은 주소에서 다시 열거나, 여기에 비밀번호나 복구 단어를 입력하지 마세요."
+    },
+    "vi": {
+      "Stop: unsigned code": "Dừng lại: mã chưa được ký",
+      "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "Địa chỉ web của ứng dụng này đang phục vụ mã mà Beam PWA không ký. Đừng nhập mật khẩu của bạn ở đây.",
+      "Beam PWA stopped before opening.": "Beam PWA đã dừng trước khi mở.",
+      "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "Hãy đóng ứng dụng này ngay. Đừng mở lại nó từ cùng địa chỉ, và đừng nhập bất kỳ mật khẩu hay từ khôi phục nào vào đó."
     }
   };
   var lang = null;

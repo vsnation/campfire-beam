@@ -1,7 +1,8 @@
 {
-  "about": "The words BEAM Campfire uses again and again, for the translators to settle first so both the web wallet and the desktop/phone app use the same ones. Fill ru, zh-Hans and ja for each term, then translate the catalogs (src/i18n/<lang>.json) with these words. 'meaning' says what the term is; 'where' names screens where it appears.",
+  "about": "The words Beam PWA (the web wallet) uses again and again, for the translators to settle first so both the web wallet and the desktop/phone app (BEAM Campfire) use the same ones. Fill each language for each term, then translate the catalogs (src/i18n/<lang>.json) with these words. 'meaning' says what the term is; 'where' names screens where it appears.",
   "keep_as_is": [
     "BEAM",
+    "Beam PWA",
     "BEAM Campfire",
     "Campfire",
     "Ethereum",
@@ -493,7 +494,7 @@
     },
     {
       "en": "signature",
-      "meaning": "The release key's proof that an update or file comes from BEAM Campfire and was not changed.",
+      "meaning": "The release key's proof that an update or file comes from Beam PWA and was not changed.",
       "where": "Update messages, About, the tripwire",
       "ru": "подпись",
       "zh-Hans": "签名",
@@ -525,7 +526,7 @@
     },
     {
       "en": "unsigned code",
-      "meaning": "Code at the app's address that BEAM Campfire did not sign: the app stops and tells the person not to enter a password.",
+      "meaning": "Code at the app's address that Beam PWA did not sign: the app stops and tells the person not to enter a password.",
       "where": "The tripwire screen ('Stop: unsigned code')",
       "ru": "неподписанный код",
       "zh-Hans": "未签名的代码",

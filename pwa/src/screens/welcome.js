@@ -20,7 +20,9 @@ import { h } from '../lib/dom.js';
 import { icon } from '../lib/icons.js';
 import { screen, primary, secondary, versionLine } from '../lib/ui.js';
 import { t } from '../lib/i18n.js';
+import { languagePicker } from '../lib/lang_ui.js';
 import { HOME_SCREEN_TEXT, openHomeScreenGuide } from './home_screen_guide.js';
+import { logoMark } from '../lib/logo.js';
 
 export function isIosSafariTab() {
   const ua = navigator.userAgent;
@@ -53,11 +55,13 @@ export default function welcome(app) {
         h('p', { class: 'small center', text: t('No sign-up. Your keys stay on this device.') }),
       ],
     },
+    // The language, named in itself, for a person whose device language is not the one they want.
+    h('div', { class: 'lang-bar' }, languagePicker()),
     h(
       'div',
       // Compact when the Home Screen guide must fit above the fold too (375x667 without scrolling).
       { class: `hero${guide ? ' compact' : ''}` },
-      h('img', { src: 'img/logo.svg', alt: '' }),
+      logoMark(),
       h('h1', { text: 'Beam PWA' }), // i18n-ignore: the brand
       h('p', { text: t('Your privacy. Your wallet. Your BEAM.') }),
     ),

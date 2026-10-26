@@ -24,6 +24,7 @@ import { registerLoader, readInstallProgress, reloadOnceIntoVerifiedCopy, INTEGR
 import { isIosSafariTab } from './welcome.js';
 import { HOME_SCREEN_TEXT, homeScreenSteps } from './home_screen_guide.js';
 import { t, tn, tNodes } from '../lib/i18n.js';
+import { logoMark } from '../lib/logo.js';
 
 export const STALL_MS = 30000; // no bytes for this long, once downloading: stalled
 export const SLOW_START_MS = 45000; // the browser has not started setup yet: say it is normal
@@ -83,7 +84,7 @@ export default function install(app) {
 
   const el = screen(
     { topbar: false, cls: 'install' },
-    h('div', { class: 'hero compact' }, h('img', { src: 'img/logo.svg', alt: '' }), h('h1', { text: 'Beam PWA' })), // i18n-ignore: the app's name
+    h('div', { class: 'hero compact' }, logoMark(), h('h1', { text: 'Beam PWA' })), // i18n-ignore: the app's name
     h('h2', { class: 'title center', 'data-testid': 'install-title', text: t('Setting up Beam PWA on this device…') }),
     bar,
     line,

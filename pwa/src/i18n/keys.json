@@ -5383,6 +5383,18 @@
       "other": "{n} hours"
     }
   },
+  "Language": {
+    "where": [
+      "lib/lang_ui.js",
+      "screens/settings.js"
+    ]
+  },
+  "Like this device": {
+    "where": [
+      "lib/lang_ui.js",
+      "lib/theme.js"
+    ]
+  },
   "The update check took too long.": {
     "where": [
       "lib/loader.js"
@@ -7282,12 +7294,6 @@
       "one": "{n} min ago",
       "other": "{n} min ago"
     }
-  },
-  "Like this device": {
-    "where": [
-      "lib/theme.js",
-      "screens/settings.js"
-    ]
   },
   "Light": {
     "where": [
@@ -24544,11 +24550,6 @@
       "screens/settings.js"
     ]
   },
-  "Language": {
-    "where": [
-      "screens/settings.js"
-    ]
-  },
   "On. Tap to turn off.": {
     "where": [
       "screens/settings.js"
@@ -24704,7 +24705,7 @@
       "screens/settings.js"
     ]
   },
-  "Campfire or BEAM": {
+  "BEAM or Campfire red": {
     "where": [
       "screens/settings.js"
     ]

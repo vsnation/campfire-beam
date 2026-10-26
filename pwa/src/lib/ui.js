@@ -4,6 +4,7 @@ import { icon } from './icons.js';
 import { badgeText, assetLabel, frameInset, genericIcon } from './meta.js';
 import { APP_VERSION, BUILT } from './version.js';
 import { t, tn } from './i18n.js';
+import { logoMark } from './logo.js';
 
 export function topbar({ title, back, brand = false, right = null }) {
   return h(
@@ -11,7 +12,7 @@ export function topbar({ title, back, brand = false, right = null }) {
     { class: 'topbar' },
     back ? h('button', { class: 'icon-btn', 'aria-label': t('Back'), onclick: back }, icon('back')) : null,
     // brand: true for the app's name, or an element of its own (Home: the open wallet's name).
-    brand instanceof Node ? brand : brand ? h('div', { class: 'brand' }, h('img', { src: 'img/logo.svg', alt: '' }), h('span', { text: 'Beam PWA' })) : h('h1', { text: title || '' }), // i18n-ignore: the app's name
+    brand instanceof Node ? brand : brand ? h('div', { class: 'brand' }, logoMark(), h('span', { text: 'Beam PWA' })) : h('h1', { text: title || '' }), // i18n-ignore: the app's name
     right,
   );
 }

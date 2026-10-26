@@ -913,6 +913,8 @@
   "{n} hours": {
     "other": "{n} 小时"
   },
+  "Language": "语言",
+  "Like this device": "跟随本设备",
   "The update check took too long.": "检查更新耗时过长。",
   "The app is not running from its verified copy yet.": "应用尚未从其已验证的副本运行。",
   "Release key must be a public P-256 JWK.": "发布密钥必须是 P-256 公钥 JWK。",
@@ -1240,7 +1242,6 @@
   "{n} min ago": {
     "other": "{n} 分钟前"
   },
-  "Like this device": "跟随本设备",
   "Light": "浅色",
   "Dark": "深色",
   "Campfire red": "Campfire 红",
@@ -4131,7 +4132,6 @@
   "Locks after {min} min without use": "{min} 分钟不使用后锁定",
   "Theme": "主题",
   "Colours": "配色",
-  "Language": "语言",
   "On. Tap to turn off.": "已开启。点按以关闭。",
   "Turn off Face ID?": "关闭 Face ID？",
   "Turn off": "关闭",
@@ -4159,7 +4159,7 @@
   "Server, privacy, backup": "服务器、隐私、备份",
   "Appearance": "外观",
   "Light or dark": "浅色或深色",
-  "Campfire or BEAM": "Campfire 或 BEAM",
+  "BEAM or Campfire red": "BEAM 或 Campfire 红",
   "If your balance looks wrong": "如果你的余额看起来不对",
   "Delete wallet from this device": "从本设备删除钱包",
   "Your coins changed.": "你的币有变动。",

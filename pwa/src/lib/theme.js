@@ -3,7 +3,7 @@
 //
 // The colours are css/app.css: its dark palette applies under the system's dark mode unless
 // <html data-theme="light">, and always under <html data-theme="dark">; <html data-skin="beam">
-// swaps both palettes for BEAM's (docs/beam-brand-palette.json; the logo and the app icon stay Campfire's). Both choices
+// swaps both palettes for BEAM's (docs/beam-brand-palette.json; the flame follows, lib/logo.js). Both choices
 // are kept in this browser's localStorage (one per device, for every wallet), so they apply from the
 // first screen, before any wallet is unlocked. A theme nobody picked follows the colours: BEAM is dark
 // (owner, 2026-10-14), Campfire red is like this device. With storage blocked the app is BEAM, dark.
