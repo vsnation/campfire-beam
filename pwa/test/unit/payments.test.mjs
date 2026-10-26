@@ -23,7 +23,7 @@ test('the note hint says the truth: BEAM does not send it; a name payment keeps 
 test('the note line: mine on what I sent, my address label on what I received (never Campfire’s own label)', () => {
   assert.deepEqual(P.txNote(sent({ comment: 'Rent' })), { label: 'Note', text: 'Rent' });
   assert.equal(P.txNote(sent({ comment: '' })), null);
-  assert.equal(P.txNote(sent({ income: true, comment: 'Beam PWA' })), null);
+  assert.equal(P.txNote(sent({ income: true, comment: 'BEAM Campfire' })), null);
   assert.deepEqual(P.txNote(sent({ income: true, comment: 'From Alex' })), { label: 'Your address label', text: 'From Alex' });
   assert.equal(P.txNote(sent({ tx_type: 12, comment: 'x' })), null, 'contract calls carry no note');
 });

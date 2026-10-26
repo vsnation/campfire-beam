@@ -72,7 +72,7 @@ test('only BEAM wallet data passes: garbage, other JSON and damaged entries are 
 
 test('what a file holds: addresses and the ones a person named, contacts, payments and notes, address book, hidden tokens', () => {
   const text = file({
-    own: [addr('a', { label: 'Rent from Ana' }), addr('b', { label: 'default', index: 1791706454000000 }), addr('c', { label: 'Beam PWA', index: 1791706454000002 }), addr('d', { label: '', index: 1791706454000003 })],
+    own: [addr('a', { label: 'Rent from Ana' }), addr('b', { label: 'default', index: 1791706454000000 }), addr('c', { label: 'BEAM Campfire', index: 1791706454000002 }), addr('d', { label: '', index: 1791706454000003 })],
     contacts: [addr('e', { index: 0, label: 'Ana' }), addr('f', { index: 0, label: '' })],
     txs: [tx(1, 'Dinner, Friday'), tx(2), tx(3, '  ')],
     extras: { v: 1, contacts: [{ name: 'Bob', address: TOKEN('9') }, { name: 'Ana again', address: TOKEN('e') }, { name: '', address: TOKEN('8') }, 'junk'], hiddenTokens: [190, 0, -1, 'x', 190, 47] },
