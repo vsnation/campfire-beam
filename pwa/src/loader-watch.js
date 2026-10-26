@@ -91,6 +91,7 @@
       "Stop: unsigned code": "중지: 서명되지 않은 코드",
       "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "이 앱의 웹 주소에서 Beam PWA가 서명하지 않은 코드를 제공하고 있어요. 여기에 비밀번호를 입력하지 마세요.",
       "Beam PWA stopped before opening.": "Beam PWA가 열리기 전에 멈췄어요.",
+      "Your coins are on the BEAM blockchain, not in this app. Open them in BEAM Campfire desktop or another BEAM wallet, with your 12 words or with your exported wallet.db file and its password.": "코인은 이 앱이 아니라 BEAM 블록체인에 있어요. BEAM Campfire 데스크톱이나 다른 BEAM 지갑에서 12개 단어로, 또는 내보낸 wallet.db 파일과 그 비밀번호로 여세요.",
       "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "지금 이 앱을 닫으세요. 같은 주소에서 다시 열거나, 여기에 비밀번호나 복구 단어를 입력하지 마세요."
     },
     "vi": {

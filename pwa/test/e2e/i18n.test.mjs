@@ -85,7 +85,7 @@ test('Chrome in Russian: never asked, lang="ru", the Russian catalog\'s words; S
   });
   assert.deepEqual(card, { title: RU.Appearance, rowTitle: RU.Language, sameCard: true });
   assert.equal(await page.inputValue(tid('lang-select')), 'system', 'like this device: nothing was asked or saved');
-  assert.deepEqual(await page.$$eval(`${tid('lang-select')} option`, (o) => o.map((x) => x.textContent)), [RU['Like this device'], 'English', 'Русский', '简体中文', '日本語'], 'each language named in its own script');
+  assert.deepEqual(await page.$$eval(`${tid('lang-select')} option`, (o) => o.map((x) => x.textContent)), [RU['Like this device'], 'English', 'Español', 'Português (Brasil)', 'Français', 'Deutsch', 'Türkçe', 'Русский', '简体中文', '日本語', '한국어', 'Tiếng Việt'], 'each language named in its own script');
   assert.equal(await page.textContent(tid('lang-device')), 'Русский', "the device's language, named under the row");
   assert.equal(await page.getAttribute(tid('lang-device'), 'lang'), 'ru');
   assert.equal(await page.evaluate(() => localStorage.getItem('campfire-lang')), null);
@@ -251,8 +251,8 @@ test('the first screen: a German device opens in German; the language mark chang
   assert.ok(names.every(([v, , l]) => v === l), 'each name marked with its own language');
   await shot(page, 'i18n-welcome-de');
   await page.selectOption(tid('welcome-lang'), 'es');
-  await page.waitForFunction(() => document.documentElement.lang === 'es');
-  assert.equal(await page.textContent(tid('create')), CAT('es')['Create a new wallet'], 'at once');
+  await page.waitForFunction((w) => document.documentElement.lang === 'es' && document.querySelector('[data-testid="create"]')?.textContent === w, CAT('es')['Create a new wallet'], { timeout: 10000 });
+  assert.equal(await page.inputValue(tid('welcome-lang')), 'es', 'the mark follows');
   assert.equal(await page.evaluate(() => localStorage.getItem('campfire-lang')), 'es', 'kept');
   await page.reload();
   await waitScreen(page, 'welcome', 120000);
@@ -263,7 +263,8 @@ test('the first screen: a German device opens in German; the language mark chang
   const bad = [];
   for (const l of LANGS) {
     await page.selectOption(tid('welcome-lang'), l);
-    await page.waitForFunction((x) => document.documentElement.lang === x, l);
+    const want = l === 'en' ? 'Create a new wallet' : CAT(l)['Create a new wallet'] || 'Create a new wallet';
+    await page.waitForFunction(([x, w]) => document.documentElement.lang === x && document.querySelector('[data-testid="create"]')?.textContent === w, [l, want], { timeout: 10000 });
     await page.waitForTimeout(300);
     const m = await page.evaluate(() => {
       const vw = document.documentElement.clientWidth;
@@ -286,7 +287,7 @@ test('pseudo-Russian: every word on these screens comes from the catalog', { tim
   const catDir = join(tmp, 'catalogs');
   mkdirSync(catDir);
   writeFileSync(join(catDir, 'ru.json'), JSON.stringify(pseudoCatalog(keys)));
-  for (const l of ['zh-Hans', 'ja']) writeFileSync(join(catDir, `${l}.json`), '{}');
+  for (const l of ['es', 'pt-BR', 'fr', 'de', 'tr', 'zh-Hans', 'ja', 'ko', 'vi']) writeFileSync(join(catDir, `${l}.json`), '{}');
   execFileSync(process.execPath, [join(PWA, 'tools', 'build.mjs'), '--out', join(tmp, 'pseudo'), '--catalogs', catDir, '--quiet'], { cwd: PWA });
   if (srv) srv.stop(); // the first test's server, if it stopped early
   srv = await startServer({ root: join(tmp, 'pseudo'), port: PORT });

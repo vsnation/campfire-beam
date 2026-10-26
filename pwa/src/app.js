@@ -398,12 +398,14 @@ installBack(app);
 
 // Another language (Settings -> Appearance -> Language): the screen on show is drawn again in it, at
 // the same place, with the same control focused (its catalog is read by then: lib/i18n.js).
+// Only the two screens where a language is chosen (the first screen's mark, Settings) are drawn again:
+// a catalog arriving late must never redraw another screen (redrawing closes every sheet, one mid-send
+// included; release audit 0.2.17). Any other screen shows the new language from the next one on.
+const REDRAWN_ON_LANGUAGE = new Set(['welcome', 'settings']);
 onLanguageChange(() => {
-  if (!app.currentName || app.intrusion) return;
-  // Only Settings, where a language is chosen, is drawn again: a catalog arriving late must never redraw
-  // another screen (redrawing closes every sheet, one mid-send included; release audit 0.2.17). Any
-  // other screen shows the new language from the next one on.
-  if (app.currentName !== 'settings') return;
+  if (!app.currentName || app.intrusion || !REDRAWN_ON_LANGUAGE.has(app.currentName)) return;
+  // A sheet opened meanwhile stays (a redraw closes every sheet): the next screen is in the new language.
+  if (document.querySelector('.overlay')) return;
   const y = window.scrollY;
   const active = document.activeElement;
   const testid = active && active.dataset ? active.dataset.testid : null;
