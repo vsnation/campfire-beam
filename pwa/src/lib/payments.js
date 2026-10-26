@@ -48,7 +48,7 @@ export function noteHint({ toName = false } = {}) {
   return toName ? t("A payment to a name can't keep a note.") : t("BEAM doesn't send it to the receiver.");
 }
 
-export const ADDRESS_COMMENT = 'Beam PWA'; // lib/wallet.js labels the addresses it makes with this
+export const ADDRESS_COMMENT = 'BEAM Campfire'; // kept from before the rename (stored in wallet.db); lib/wallet.js labels the addresses it makes with this
 
 /**
  * The note line a payment shows, or null: what the person wrote on a payment they

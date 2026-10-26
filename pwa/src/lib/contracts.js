@@ -659,12 +659,23 @@ function withinOneEdit(a, b) {
  * sheet and the notifications show an app's and a publisher's name.
  */
 const NATIVE_KEY = canonical(NATIVE_APP_NAME);
-// The name people see, read the same way but without the one-edit match: at seven letters one edit
-// takes in other names ("BeamSwap").
+// The name people see, read the same way. One edit anywhere in a longer name would take in other names
+// ("BeamSwap"), so near misses are matched word by word (release audit 0.2.20, BP-5): a word one edit
+// from "BeamPWA" ("Beam PVA" written together), or a word one edit from "Beam" followed by one one edit
+// from "PWA" ("Bean PWA", "Beam WPA").
 const APP_KEY = canonical(APP_NAME);
+const [APP_FIRST, APP_SECOND] = APP_NAME.split(' ').map(canonical);
+function wordsReadAsApp(name) {
+  const words = String(name).split(/[\s\p{P}\p{S}]+/u).map(canonical).filter(Boolean);
+  for (let i = 0; i < words.length; i++) {
+    if (words[i].length >= APP_KEY.length - 1 && withinOneEdit(words[i], APP_KEY)) return true;
+    if (i + 1 < words.length && withinOneEdit(words[i], APP_FIRST) && withinOneEdit(words[i + 1], APP_SECOND)) return true;
+  }
+  return false;
+}
 export function readsAsWallet(name) {
   const c = canonical(String(name || ''));
-  if (c.includes(NATIVE_KEY) || c.includes(APP_KEY)) return true;
+  if (c.includes(NATIVE_KEY) || c.includes(APP_KEY) || wordsReadAsApp(name)) return true;
   for (let len = NATIVE_KEY.length - 1; len <= NATIVE_KEY.length + 1; len++) {
     for (let i = 0; i + len <= c.length; i++) if (withinOneEdit(c.slice(i, i + len), NATIVE_KEY)) return true;
   }

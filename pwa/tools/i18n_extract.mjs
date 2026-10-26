@@ -142,10 +142,19 @@ export function bootTable(catalogs, keys) {
   return out;
 }
 /** `src` with its `var TEXTS = …;` replaced by `table` (indent: the line's own). */
+// Translations go into these classic scripts as code, so nothing in one may end the table early: JSON
+// leaves U+2028 and U+2029 as they are, and a regular expression (or an old JavaScript engine) reads
+// them as line ends. They are written escaped, and a file that has one raw is refused (release audit
+// 0.2.20: a translation with ";" and U+2028 left its tail in loader-watch.js as code).
+const LINE_SEPARATORS = /[\u2028\u2029]/g;
 export function withTable(src, table) {
-  const m = /^( *)var TEXTS = [\s\S]*?;$/m.exec(src);
-  if (!m) throw new Error('no "var TEXTS = …;" line');
-  const body = JSON.stringify(table, null, 2).replace(/\n/g, `\n${m[1]}`);
+  if (LINE_SEPARATORS.test(src)) throw new Error('a raw U+2028/U+2029 in the file: refusing to rewrite it');
+  LINE_SEPARATORS.lastIndex = 0;
+  const m = /^( *)var TEXTS = (?:\{\}|\{\n[\s\S]*?\n\1\});$/m.exec(src);
+  if (!m) throw new Error('no "var TEXTS = …;" table');
+  const body = JSON.stringify(table, null, 2)
+    .replace(LINE_SEPARATORS, (c) => `\\u${c.charCodeAt(0).toString(16)}`)
+    .replace(/\n/g, `\n${m[1]}`);
   return src.slice(0, m.index) + `${m[1]}var TEXTS = ${body};` + src.slice(m.index + m[0].length);
 }
 

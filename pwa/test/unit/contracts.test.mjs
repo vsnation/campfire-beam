@@ -282,7 +282,11 @@ test("BC-5: look-alikes of f, and names one edit from the wallet's, are refused;
   await assert.rejects(openApp({ appName: 'Some dApp', publisher: { key: '02' + 'ab'.repeat(32), name: 'BEAM Camp\u0192ire' } }), (e) => e.code === 'reserved_name');
   // The name people see (Beam PWA) is matched as it reads, not within one edit: at seven letters that
   // would take in other names.
-  for (const appName of ['Campfire Games', 'Beam DEX', 'BEAM NFT Gallery', 'BEAM Camp', 'Beam Campaign', 'Campfire Studio', 'BEAM Fire', 'BeamSwap', 'Beam PWR', 'Beam Pay']) {
+  // Audit BP-5: a letter off the name people see, word by word.
+  for (const appName of ['Bean PWA', 'Beem PWA', 'Beam PVA', 'Beam WPA', 'Beam PWB', 'BeamPVA', 'Beam\u200bPVA', 'Official Bean PWA', 'Beam-PWA', 'Beam PW']) {
+    assert.equal(readsAsWallet(appName), true, appName);
+  }
+  for (const appName of ['Campfire Games', 'Beam DEX', 'BEAM NFT Gallery', 'BEAM Camp', 'Beam Campaign', 'Campfire Studio', 'BEAM Fire', 'BeamSwap', 'Beam Pay', 'Beam PAD', 'Beam IPA', 'Beam Anonymous Name Service', 'BeamX DAO', 'Beam Asset Minter', 'Liquidity Accumulator', 'Bridges app']) {
     assert.equal(readsAsWallet(appName), false, appName);
   }
 });

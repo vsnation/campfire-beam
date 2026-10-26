@@ -426,6 +426,8 @@ textarea.input { resize: none; min-height: 84px; }
 .row .main { flex: 1; min-width: 0; }
 .row .main .t { font-weight: 600; }
 .row .main .s { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Settings' and the dApp list's second lines are sentences: whole in every language (German, Russian run long). */
+.settings .row .main .s, .dapp-list .dapp-row .main .s, .dapp-store-entry .main .s { white-space: normal; }
 .row .end { text-align: right; font-weight: 600; white-space: nowrap; }
 .row .end.in { color: var(--in); }
 .row .end.out { color: var(--out-text); }
@@ -753,7 +755,8 @@ details.more.card { padding: 12px 16px; }
 .more-entry .tile:active { background: var(--surface-2); }
 .more-entry .ico { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--secondary); color: var(--on-secondary); }
 .more-entry .ico svg { width: 14px; height: 14px; }
-.more-entry .t { max-width: 100%; font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A label may take two lines (Spanish, German, Turkish run long), hyphenated in the page's language, never cut. */
+.more-entry .t { max-width: 100%; font-weight: 600; font-size: 14px; line-height: 1.2; text-align: center; overflow-wrap: break-word; hyphens: auto; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .feature .content > div:empty { display: none; }
 .inline-actions { margin-top: 2px; gap: 6px; }
 .inline-actions .hint { min-height: 0; }
@@ -815,7 +818,7 @@ details.more.card { padding: 12px 16px; }
 .name-row { cursor: pointer; }
 .name-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 8px; }
 .name-row .main .s.sale { color: var(--info); }
-.names-receive-link { align-self: flex-start; width: auto; padding-left: 4px; }
+.names-receive-link { align-self: flex-start; width: auto; max-width: 100%; padding-left: 4px; white-space: normal; text-align: left; }
 .paste-btn { align-self: flex-start; width: auto; }
 .paste-btn svg { width: 16px; height: 16px; }
 .sell-fields { display: flex; gap: 8px; }
@@ -1091,7 +1094,8 @@ details.more.card { padding: 12px 16px; }
 .token-preview { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
 .swatch-v { display: inline-flex; align-items: center; }
 /* Home's line with a fourth tile (Tokens): each tile as wide as its words, the rest shared, so no label is cut on a 360 px phone. */
-.more-entry:has(.tile:nth-child(4)) .tile { flex: 1 1 auto; padding: 7px 2px; }
+.more-entry:has(.tile:nth-child(4)) .tile { flex: 1 1 0; padding: 7px 2px; }
+.more-entry:has(.tile:nth-child(4)) .t { font-size: 13px; }
 .token-head { padding: 12px 14px; }
 /* Several wallets (screens/wallets.js, add_wallet.js): Home's title is the open wallet's name */
 .topbar .brand .wallet-chip { display: inline-flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; background: none; border: 0; padding: 6px 8px 6px 0; margin: -6px 0; border-radius: 10px; color: var(--text); font: inherit; font-weight: 700; font-size: 18px; cursor: pointer; }

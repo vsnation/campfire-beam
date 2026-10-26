@@ -35,30 +35,35 @@
       "Stop: unsigned code": "Alto: código sin firmar",
       "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "La dirección web de esta app está sirviendo código que Beam PWA no firmó. No ingreses tu contraseña aquí.",
       "Beam PWA stopped before opening.": "Beam PWA se detuvo antes de abrirse.",
+      "Your coins are on the BEAM blockchain, not in this app. Open them in BEAM Campfire desktop or another BEAM wallet, with your 12 words or with your exported wallet.db file and its password.": "Tus monedas están en la blockchain de BEAM, no en esta app. Ábrelas en BEAM Campfire para escritorio o en otra billetera BEAM, con tus 12 palabras o con tu archivo wallet.db exportado y su contraseña.",
       "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "Cierra esta app ahora. No la vuelvas a abrir desde la misma dirección ni ingreses en ella ninguna contraseña ni palabras."
     },
     "pt-BR": {
       "Stop: unsigned code": "Pare: código não assinado",
       "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "O endereço web deste app está servindo código que o Beam PWA não assinou. Não digite sua senha aqui.",
       "Beam PWA stopped before opening.": "O Beam PWA parou antes de abrir.",
+      "Your coins are on the BEAM blockchain, not in this app. Open them in BEAM Campfire desktop or another BEAM wallet, with your 12 words or with your exported wallet.db file and its password.": "Suas moedas estão na blockchain BEAM, não neste app. Abra-as no BEAM Campfire para desktop ou em outra carteira BEAM, com suas 12 palavras ou com o arquivo wallet.db exportado e a senha dele.",
       "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "Feche este app agora. Não o abra de novo pelo mesmo endereço nem digite nenhuma senha ou palavra nele."
     },
     "fr": {
       "Stop: unsigned code": "Arrêt : code non signé",
       "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "L'adresse web de cette app sert du code que Beam PWA n'a pas signé. Ne saisissez pas votre mot de passe ici.",
       "Beam PWA stopped before opening.": "Beam PWA s'est arrêtée avant de s'ouvrir.",
+      "Your coins are on the BEAM blockchain, not in this app. Open them in BEAM Campfire desktop or another BEAM wallet, with your 12 words or with your exported wallet.db file and its password.": "Vos fonds sont sur la blockchain BEAM, pas dans cette app. Ouvrez-les dans BEAM Campfire pour ordinateur ou dans un autre portefeuille BEAM, avec vos 12 mots ou avec votre fichier wallet.db exporté et son mot de passe.",
       "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "Fermez cette app maintenant. Ne la rouvrez pas depuis la même adresse et n'y saisissez aucun mot de passe ni aucun mot."
     },
     "de": {
       "Stop: unsigned code": "Stopp: unsignierter Code",
       "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "Die Webadresse dieser App liefert Code, den Beam PWA nicht signiert hat. Gib hier nicht dein Passwort ein.",
       "Beam PWA stopped before opening.": "Beam PWA wurde vor dem Öffnen gestoppt.",
+      "Your coins are on the BEAM blockchain, not in this app. Open them in BEAM Campfire desktop or another BEAM wallet, with your 12 words or with your exported wallet.db file and its password.": "Deine Coins sind auf der BEAM-Blockchain, nicht in dieser App. Öffne sie in BEAM Campfire für den Desktop oder in einem anderen BEAM-Wallet, mit deinen 12 Wörtern oder mit deiner exportierten wallet.db-Datei und ihrem Passwort.",
       "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "Schließ diese App jetzt. Öffne sie nicht erneut unter derselben Adresse und gib darin kein Passwort und keine Wörter ein."
     },
     "tr": {
       "Stop: unsigned code": "Dur: imzasız kod",
       "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "Bu uygulamanın web adresi, Beam PWA'nın imzalamadığı kod sunuyor. Şifrenizi buraya girmeyin.",
       "Beam PWA stopped before opening.": "Beam PWA açılmadan önce durdu.",
+      "Your coins are on the BEAM blockchain, not in this app. Open them in BEAM Campfire desktop or another BEAM wallet, with your 12 words or with your exported wallet.db file and its password.": "Coinleriniz bu uygulamada değil, BEAM blokzincirinde. 12 kelimenizle ya da dışa aktardığınız wallet.db dosyası ve şifresiyle onları BEAM Campfire masaüstünde veya başka bir BEAM cüzdanında açın.",
       "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "Bu uygulamayı şimdi kapatın. Aynı adresten yeniden açmayın ve içine hiçbir şifre veya kelime girmeyin."
     },
     "ru": {
@@ -92,6 +97,7 @@
       "Stop: unsigned code": "Dừng lại: mã chưa được ký",
       "This app's web address is serving code Beam PWA did not sign. Don't enter your password here.": "Địa chỉ web của ứng dụng này đang phục vụ mã mà Beam PWA không ký. Đừng nhập mật khẩu của bạn ở đây.",
       "Beam PWA stopped before opening.": "Beam PWA đã dừng trước khi mở.",
+      "Your coins are on the BEAM blockchain, not in this app. Open them in BEAM Campfire desktop or another BEAM wallet, with your 12 words or with your exported wallet.db file and its password.": "Coin của bạn nằm trên blockchain BEAM, không phải trong ứng dụng này. Hãy mở chúng trong BEAM Campfire bản máy tính hoặc một ví BEAM khác, bằng 12 từ khôi phục của bạn hoặc bằng tệp wallet.db đã xuất cùng mật khẩu của nó.",
       "Close this app now. Do not reopen it from the same address or enter any password or words in it.": "Hãy đóng ứng dụng này ngay. Đừng mở lại nó từ cùng địa chỉ, và đừng nhập bất kỳ mật khẩu hay từ khôi phục nào vào đó."
     }
   };

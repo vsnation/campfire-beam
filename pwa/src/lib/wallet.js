@@ -23,7 +23,7 @@ const DB_COMMIT_MS = 150;
 const LOCKED_RUN_MAX_MS = 12 * 3600 * 1000;
 
 // Written into the wallet (an address's comment): never translated.
-export const ADDRESS_COMMENT = 'Beam PWA';
+export const ADDRESS_COMMENT = 'BEAM Campfire'; // stored in wallet.db as the label of the addresses the app makes: kept from before the rename
 
 /** How a payment to each address type goes out (mirrors BeamSendMode.forType). */
 export function sendModeFor(type) {
