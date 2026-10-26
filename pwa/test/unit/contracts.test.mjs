@@ -283,10 +283,10 @@ test("BC-5: look-alikes of f, and names one edit from the wallet's, are refused;
   // The name people see (Beam PWA) is matched as it reads, not within one edit: at seven letters that
   // would take in other names.
   // Audit BP-5: a letter off the name people see, word by word.
-  for (const appName of ['Bean PWA', 'Beem PWA', 'Beam PVA', 'Beam WPA', 'Beam PWB', 'BeamPVA', 'Beam\u200bPVA', 'Official Bean PWA', 'Beam-PWA', 'Beam PW']) {
+  for (const appName of ['Bean PWA', 'Beem PWA', 'Beam PVA', 'Beam WPA', 'Beam PWB', 'BeamPVA', 'Beam\u200bPVA', 'Official Bean PWA', 'Beam-PWA', 'Beam PW', 'Bean P W A', 'Bean P.W.A.', 'Be an PWA', 'Beam P V A', 'Beam W P A', 'Be@m PWA']) {
     assert.equal(readsAsWallet(appName), true, appName);
   }
-  for (const appName of ['Campfire Games', 'Beam DEX', 'BEAM NFT Gallery', 'BEAM Camp', 'Beam Campaign', 'Campfire Studio', 'BEAM Fire', 'BeamSwap', 'Beam Pay', 'Beam PAD', 'Beam IPA', 'Beam Anonymous Name Service', 'BeamX DAO', 'Beam Asset Minter', 'Liquidity Accumulator', 'Bridges app']) {
+  for (const appName of ['Campfire Games', 'Beam DEX', 'BEAM NFT Gallery', 'BEAM Camp', 'Beam Campaign', 'Campfire Studio', 'BEAM Fire', 'BeamSwap', 'Beam Pay', 'Beam PAD', 'Beam IPA', 'Beam Anonymous Name Service', 'BeamX DAO', 'Beam Asset Minter', 'Liquidity Accumulator', 'Bridges app', 'Beam Swap', 'Beam PvP', 'Beam P2P', 'Beam Pro', 'Beam Pets', 'Beam Pool', 'Beam Vault', 'Beam Web', 'Beam App']) {
     assert.equal(readsAsWallet(appName), false, appName);
   }
 });

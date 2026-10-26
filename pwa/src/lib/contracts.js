@@ -668,8 +668,14 @@ const [APP_FIRST, APP_SECOND] = APP_NAME.split(' ').map(canonical);
 function wordsReadAsApp(name) {
   const words = String(name).split(/[\s\p{P}\p{S}]+/u).map(canonical).filter(Boolean);
   for (let i = 0; i < words.length; i++) {
-    if (words[i].length >= APP_KEY.length - 1 && withinOneEdit(words[i], APP_KEY)) return true;
     if (i + 1 < words.length && withinOneEdit(words[i], APP_FIRST) && withinOneEdit(words[i + 1], APP_SECOND)) return true;
+    // A run of words read together, so spacing or a symbol between letters hides nothing ("Bean P W A",
+    // "Be@m PWA"; audit round 2, R2-1).
+    let run = '';
+    for (let j = i; j < words.length && run.length <= APP_KEY.length; j++) {
+      run += words[j];
+      if (run.length >= APP_KEY.length - 1 && withinOneEdit(run, APP_KEY)) return true;
+    }
   }
   return false;
 }
