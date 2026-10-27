@@ -358,8 +358,7 @@
   },
   "Use one decimal mark, like 1.25": {
     "where": [
-      "lib/amount.js",
-      "lib/minter.js"
+      "lib/amount.js"
     ]
   },
   "Is that {a} or {b}? Write it without the comma, or with a dot for decimals.": {

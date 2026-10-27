@@ -149,6 +149,8 @@ test('amounts to mint or burn: 8 decimals, above 2^53, refused past the ceiling'
   assert.deepEqual(parseUnits(''), { value: null, error: null });
   assert.deepEqual(parseUnits('1'), { value: 100000000n, error: null });
   assert.deepEqual(parseUnits('1,5'), { value: 150000000n, error: null });
+  assert.equal(parseUnits('1,000').value, null, '"1,000" is asked, never read as 1');
+  assert.match(parseUnits('1,000').error, /1000 or 1\.000/);
   assert.deepEqual(parseUnits('.00000001'), { value: 1n, error: null });
   assert.deepEqual(parseUnits('1 000 000 000'), { value: 100000000000000000n, error: null }, 'past 2^53 groth, unlike tx_send');
   assert.equal(parseUnits('0').error, 'The amount must be more than zero.');

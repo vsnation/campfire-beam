@@ -257,6 +257,8 @@ export function installBack(app, win = window) {
   };
   win.addEventListener('pointerup', onTouch, true);
   win.addEventListener('keydown', onTouch, true);
+  // VoiceOver and TalkBack activate with a click and no pointer events.
+  win.addEventListener('click', (e) => e.isTrusted !== false && onTouch(), true);
 
   // A screen, sheet or layer opened or closed (the app's own Back and its tabs too): the entries follow.
   if (typeof win.MutationObserver === 'function' && win.document && win.document.body) {
