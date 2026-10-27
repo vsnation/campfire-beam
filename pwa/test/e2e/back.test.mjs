@@ -31,6 +31,9 @@ const backStack = () => page.evaluate(() => window.__campfire.backStack());
 async function back(expected) {
   await page.goBack({ waitUntil: 'commit' }).catch(() => {});
   if (expected) await waitScreen(page, expected, 15000);
+  // A person's Backs are some time apart: leaving a screen with words or a key, the app retakes the
+  // history's pictures of it in a few ms, and a Back in between is taken as one of those steps.
+  await sleep(200);
 }
 async function topBack(expected) {
   await page.click('.topbar button[aria-label="Back"]');

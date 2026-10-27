@@ -21,12 +21,30 @@
 // in a browser tab, and has nothing to go back to in a Home Screen app. Unless
 // entries of an earlier page of this app lie under it (a reload keeps them),
 // where a Back would start the app again at Unlock: then one entry is kept
-// under the first screen, a Back onto it stays, and its picture is kept that
-// screen's own. Chrome skips entries a page adds before the person has touched
-// it, so they are added from the first tap or key.
+// under the first screen and a Back onto it stays.
+//
+// What the browsers allow (audit of 0.1.16 / 0.2.21):
+// - Chrome skips, on the person's Back, entries a page added with no tap since
+//   its last Back; Safari, entries added more than 10 s after a tap (and the
+//   one before). Skipped, the app's entries are passed over and the earlier
+//   page loads: Unlock again. So an entry is added only within a few seconds of
+//   a tap and never after a Back with none since; a Back that changes nothing
+//   steps forward again onto the entry it left (a traversal marks nothing);
+//   other entries wait for the next tap.
+// - A picture is taken of whatever is painted when an entry is left, and it
+//   stays with the entry, ahead of it too. Recovery words, keys and codes must
+//   not stay in one: an entry left while they were painted (by the app or by
+//   the person's swipe) is stepped onto and off again once they are gone from
+//   the screen, which takes its picture anew; so is the entry under a screen
+//   that stays (its picture is that screen, not what was before it).
 import { isRoot } from './nav.js';
 
 const TABS = new Set(['activity', 'settings', 'ethHome', 'ethStart']);
+// Screens that show or take recovery words, keys or airdrop codes, and the parts that show them in a sheet.
+export const SECRET_SCREENS = new Set(['backup', 'confirmWords', 'restore', 'watch', 'viewKey', 'ownerKey', 'airdropCodes', 'ethWords', 'ethConfirm', 'ethImport', 'ethSettings']);
+const SECRET_PARTS = '[data-testid="words"], .owner-key, [data-testid="eth-key-box"], [data-secret]'; // i18n-ignore: a CSS selector
+// How long after a tap an entry may still be added (Safari: 10 s).
+const TOUCH_MS = 8000;
 
 /** What a Back means on the current screen: 'sheet' | 'layer' | 'button' | 'home' | 'stay'. */
 export function backAction({ overlays, layerBack = null, backButton, screenName }) {
@@ -72,93 +90,169 @@ export function entriesUnder(win) {
   }
 }
 
-export function installBack(app, win = window) {
+export function installBack(app, win = window, { now = () => Date.now() } = {}) {
   const hist = win.history;
   if (!hist || typeof hist.pushState !== 'function') return;
   const doc = Math.random().toString(36).slice(2);
+  const later = (f, ms = 0) => (win.setTimeout || setTimeout)(f, ms);
+  const nav = () => {
+    try {
+      return win.navigation && typeof win.navigation.traverseTo === 'function' && win.navigation.currentEntry ? win.navigation : null;
+    } catch {
+      return null;
+    }
+  };
   let armed = false;
   let floor = 0; // 1: one entry kept under the first screen
   let at = 0; // the entry on show, counted from this page's own
+  let top = 0; // the last entry of this page's (entries above `at` are ahead of it)
   let travelling = 0; // traversals the app asked for that have not arrived yet
+  let then = null; // where to go once they have (a round trip)
   let waiting = false; // a Back waits for a screen still loading
-  const shot = []; // the screen each entry showed when it was left: the swipe's picture of it
+  let touched = -Infinity; // the last tap or key
+  let backSinceTouch = false; // a Back of the person's since then
+  const keys = []; // each entry's Navigation API key, to go straight to it
+  const shot = []; // what each entry showed when it was left: { name, secret }
+  let painted = { name: null, secret: false };
+  let retook = '';
   const ours = (s) => Boolean(s && s.campfire === 'back' && s.doc === doc && Number.isInteger(s.n));
 
   const LOADING = ':scope > main[aria-busy="true"]'; // i18n-ignore: a CSS selector
   const view = () => {
     const d = win.document;
     const root = d.getElementById('app');
-    return { overlays: [...d.querySelectorAll('.overlay')], root, layerBack: root && root.querySelector('[data-back]') };
+    return { d, overlays: [...d.querySelectorAll('.overlay')], root, layerBack: root && root.querySelector('[data-back]') };
+  };
+  const secretOnShow = () => {
+    const { d } = view();
+    return SECRET_SCREENS.has(app.currentName) || Boolean(d.querySelector(SECRET_PARTS));
   };
   const wanted = () => {
     const { overlays, layerBack } = view();
     const trail = app.nav && typeof app.nav.entries === 'function' ? app.nav.entries() : [];
     return floor + stepsFor({ name: app.currentName, params: app.params || {}, trail, layer: Boolean(layerBack), sheets: overlays.length });
   };
+  /** Whether a Back now would leave the screen as it is. */
+  const stays = () => {
+    const { overlays, root, layerBack } = view();
+    const backButton = root && root.querySelector('.topbar button[data-nav="back"]');
+    return backAction({ overlays, layerBack, backButton, screenName: app.currentName }) === 'stay';
+  };
+  const canAdd = () => now() - touched < TOUCH_MS && !backSinceTouch;
+
+  // What the next frame paints, noted once it is painted (pictures are taken of that).
+  let noting = false;
+  const notePaint = () => {
+    if (noting) return;
+    noting = true;
+    const frame = () => {
+      painted = { name: app.currentName, secret: secretOnShow() };
+      later(() => {
+        noting = false;
+        sync();
+      });
+    };
+    if (typeof win.requestAnimationFrame === 'function') win.requestAnimationFrame(frame);
+    else later(frame);
+  };
+
   // A traversal the browser drops (another one took its place) never arrives: after a while the
   // entry on show is read back and the entries follow again.
   let lost = null;
-  const travel = (d) => {
+  const travel = (to, back = null) => {
+    if (to === at) return;
     travelling++;
-    at += d;
+    then = back;
+    const from = at;
     clearTimeout(lost);
-    lost = setTimeout(() => {
+    lost = later(() => {
       if (!travelling) return;
       travelling = 0;
+      then = null;
       if (ours(hist.state)) at = hist.state.n;
       sync();
     }, 2000);
-    hist.go(d);
+    // Straight to the entry by its key: entries a dApp's frame added in between are passed over.
+    const n = nav();
+    if (n && keys[to]) {
+      try {
+        const r = n.traverseTo(keys[to]);
+        if (r && r.committed) r.committed.catch(() => {});
+        if (r && r.finished) r.finished.catch(() => {});
+        return;
+      } catch {
+        /* not one of its entries any more: by count */
+      }
+    }
+    hist.go(to - from);
+  };
+  const push = () => {
+    shot[at] = painted;
+    at++;
+    hist.pushState({ campfire: 'back', doc, n: at }, '');
+    top = at;
+    shot.length = at;
+    const n = nav();
+    keys.length = at;
+    keys[at] = n ? n.currentEntry.key : null;
   };
 
-  /** Brings the entries to what is on show: adds the missing ones, goes back over the rest. */
+  /** Brings the entries to what is on show. */
   function sync() {
     if (!armed || travelling || waiting) return;
     const want = wanted();
-    if (want < at) return travel(want - at);
-    while (at < want) {
-      shot[at] = app.currentName;
-      at++;
-      hist.pushState({ campfire: 'back', doc, n: at }, '');
+    if (want < at) return travel(want);
+    if (want > at) {
+      if (canAdd()) {
+        while (at < want) push();
+      } else {
+        // No tap since: onto the entries there are (the person's Back never wears down the ones
+        // under the screen); any more are added at the next tap.
+        if (top > at) return travel(Math.min(want, top));
+        return;
+      }
     }
-    if (floor && at === floor && shot[floor - 1] !== app.currentName) retake();
+    // Pictures are taken anew only once the screen on show is painted and holds nothing secret
+    // (the secret's leaving is a change that calls this again).
+    if (secretOnShow()) return;
+    if (painted.secret || painted.name !== app.currentName) return notePaint();
+    // A picture of words or a key (an entry left while they were painted): stepped onto and off, it is taken anew.
+    for (let k = top; k >= 0; k--) if (k !== at && shot[k] && shot[k].secret) return travel(k, at);
+    // Under a screen that stays, the picture is that screen's: the swipe shows it staying.
+    if (at >= 1 && stays() && (!shot[at - 1] || shot[at - 1].name !== app.currentName)) {
+      const key = `${at}:${app.currentName}`;
+      if (retook !== key) {
+        retook = key;
+        travel(at - 1, at);
+      }
+    }
   }
 
-  // The entry under the first screen pictures the screen of its last leaving (Unlock, before
-  // Wallet): once the screen on show is painted, stepping onto it and off again takes it anew.
-  let retaking = false;
-  const retake = () => {
-    if (retaking) return;
-    retaking = true;
-    const later = () =>
-      (win.setTimeout || setTimeout)(() => {
-        retaking = false;
-        if (!armed || travelling || waiting || at !== floor || wanted() !== floor || shot[floor - 1] === app.currentName) return;
-        travel(-1);
-      }, 0);
-    if (typeof win.requestAnimationFrame === 'function') win.requestAnimationFrame(later);
-    else later();
-  };
-
   const arm = () => {
-    if (armed) return;
     armed = true;
     floor = entriesUnder(win) ? 1 : 0;
     hist.replaceState({ campfire: 'back', doc, n: 0 }, '');
     at = 0;
+    top = 0;
+    const n = nav();
+    keys[0] = n ? n.currentEntry.key : null;
+    painted = { name: app.currentName, secret: secretOnShow() };
+  };
+  const onTouch = () => {
+    touched = now();
+    backSinceTouch = false;
+    if (!armed) arm();
     sync();
   };
-  const onFirst = () => {
-    win.removeEventListener('pointerdown', onFirst, true);
-    win.removeEventListener('keydown', onFirst, true);
-    arm();
-  };
-  win.addEventListener('pointerdown', onFirst, true);
-  win.addEventListener('keydown', onFirst, true);
+  win.addEventListener('pointerdown', onTouch, true);
+  win.addEventListener('keydown', onTouch, true);
 
   // A screen, sheet or layer opened or closed (the app's own Back and its tabs too): the entries follow.
   if (typeof win.MutationObserver === 'function' && win.document && win.document.body) {
-    new win.MutationObserver(() => sync()).observe(win.document.body, { childList: true, subtree: true });
+    new win.MutationObserver(() => {
+      notePaint();
+      sync();
+    }).observe(win.document.body, { childList: true, subtree: true });
   }
 
   // A screen still loading its code (a spinner, no top bar yet) has no Back:
@@ -201,7 +295,7 @@ export function installBack(app, win = window) {
     } else if (action === 'layer') layerBack.click();
     else if (action === 'button') backButton.click();
     else if (action === 'home') app.go('home');
-    // What the Back opened is on show (or nothing moved: the entry comes back).
+    // What the Back opened is on show; or nothing moved, and the entry it left is stepped onto again.
     sync();
     return action;
   }
@@ -209,15 +303,21 @@ export function installBack(app, win = window) {
   win.addEventListener('popstate', () => {
     if (!armed || !ours(hist.state)) return; // the browser's own, or not this page's
     const n = hist.state.n;
+    const from = at;
+    shot[from] = painted;
+    at = n;
     if (travelling) {
       travelling--;
-      at = n;
-      if (!travelling) sync();
+      if (!travelling) {
+        const next = then;
+        then = null;
+        if (next !== null && next !== at) travel(next);
+        else sync();
+      }
       return;
     }
-    const back = n < at;
-    at = n;
-    if (back) run();
+    backSinceTouch = true;
+    if (n < from) run();
     else sync(); // Forward: there is nothing ahead, back to the screen on show
   });
 }
