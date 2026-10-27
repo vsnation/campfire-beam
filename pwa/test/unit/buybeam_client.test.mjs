@@ -329,7 +329,11 @@ test('amounts: 24 decimals, none is exact; at most min(decimals, 8) digits; word
   assert.equal(amount('250.12345678', 24).nearestExact(), null);
   assert.equal(BuyBeamAmount.parse('0.123456789', 18).error, 'Use at most 8 digits after the point');
   assert.equal(BuyBeamAmount.parse('1.1234567', 6).error, 'Use at most 6 digits after the point');
-  assert.match(BuyBeamAmount.parse('1,5', 8).error, /dot/);
+  // "0,5" is 0.5, as much of the world writes it (user feedback, 2026-10-27); "1,000" is asked, never guessed.
+  assert.equal(BuyBeamAmount.parse('0,5', 6).amount.text, '0.5');
+  assert.equal(BuyBeamAmount.parse('12,75', 6).amount.raw, 12750000n);
+  assert.equal(BuyBeamAmount.parse('1,000', 6).error, 'Is that 1000 or 1.000? Write it without the comma, or with a dot for decimals.');
+  assert.equal(BuyBeamAmount.parse('1,000.50', 6).error, 'Use one decimal mark, like 1.25');
   assert.ok(BuyBeamAmount.parse('abc', 8).error);
   assert.ok(BuyBeamAmount.parse('1e5', 8).error);
   assert.deepEqual(BuyBeamAmount.parse('', 8), { amount: null, error: null });

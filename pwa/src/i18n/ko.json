@@ -60,9 +60,10 @@
   "This batch is not among the codes saved on this device.": "이 묶음은 이 기기에 저장된 코드에 없어요.",
   "Some codes were claimed while this was being prepared. Nothing was sent. Look at the batch again, then take back what is left.": "준비하는 동안 일부 코드가 수령됐어요. 아무것도 보내지 않았어요. 묶음을 다시 확인한 뒤 남은 것을 회수하세요.",
   "This code is from the old airdrop contract. Claiming it there shows the code to the network.": "이전 에어드롭 컨트랙트의 코드예요. 그곳에서 수령하면 네트워크에 코드가 공개돼요.",
+  "Use one decimal mark, like 1.25": "소수점은 하나만 쓰세요. 예: 1.25",
+  "Is that {a} or {b}? Write it without the comma, or with a dot for decimals.": "{a}인가요, {b}인가요? 쉼표 없이 쓰거나, 소수점은 점(.)으로 쓰세요.",
   "Enter an amount.": "금액을 입력하세요.",
   "The amount must be more than zero.": "금액은 0보다 커야 해요.",
-  "Use one decimal mark, like 1.25": "소수점은 하나만 쓰세요. 예: 1.25",
   "Only digits and one decimal mark, like 1.25": "숫자와 소수점 하나만 쓸 수 있어요. 예: 1.25",
   "BEAM has 8 decimal places at most.": "BEAM은 소수점 아래 최대 8자리예요.",
   "That amount is too large.": "금액이 너무 커요.",
@@ -78,7 +79,6 @@
   "{action} with Face ID": "Face ID로 {action}",
   "Use password instead": "비밀번호 사용",
   "Cancel": "취소",
-  "Back": "뒤로",
   "Type a name.": "이름을 입력하세요.",
   "Names need at least 3 characters.": "이름은 3자 이상이어야 해요.",
   "Names can be at most 64 characters.": "이름은 최대 64자까지 쓸 수 있어요.",
@@ -262,7 +262,6 @@
   "No BEAM wallet to keep crossings for.": "이동 내역을 보관할 BEAM 지갑이 없어요.",
   "Unlock the wallet first.": "먼저 지갑 잠금을 해제하세요.",
   "There is no BEAM wallet on this device.": "이 기기에 BEAM 지갑이 없어요.",
-  "Use a dot for decimals, like 0.5": "소수점은 점(.)으로 쓰세요. 예: 0.5",
   "Enter a number, like 0.5": "숫자를 입력하세요. 예: 0.5",
   "That amount is too large": "금액이 너무 커요",
   "Use at most {n} digits after the point": {
@@ -1249,6 +1248,7 @@
   "{n} tokens": {
     "other": "토큰 {n}개"
   },
+  "Back": "뒤로",
   "Main": "메인",
   "Wallet": "지갑",
   "Activity": "활동",

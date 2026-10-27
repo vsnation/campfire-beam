@@ -356,6 +356,21 @@
       "lib/airdrop_v3.js"
     ]
   },
+  "Use one decimal mark, like 1.25": {
+    "where": [
+      "lib/amount.js",
+      "lib/minter.js"
+    ]
+  },
+  "Is that {a} or {b}? Write it without the comma, or with a dot for decimals.": {
+    "where": [
+      "lib/amount.js"
+    ],
+    "placeholders": [
+      "a",
+      "b"
+    ]
+  },
   "Enter an amount.": {
     "where": [
       "lib/amount.js",
@@ -374,13 +389,6 @@
       "screens/pool.js",
       "screens/send.js",
       "screens/swap.js"
-    ]
-  },
-  "Use one decimal mark, like 1.25": {
-    "where": [
-      "lib/amount.js",
-      "lib/eth/units.js",
-      "lib/minter.js"
     ]
   },
   "Only digits and one decimal mark, like 1.25": {
@@ -492,15 +500,6 @@
       "screens/scan_sheet.js",
       "screens/wallet_data.js",
       "screens/wallets.js"
-    ]
-  },
-  "Back": {
-    "where": [
-      "lib/back.js",
-      "lib/ui.js",
-      "screens/burn.js",
-      "screens/fast_start.js",
-      "screens/split_review.js"
     ]
   },
   "Type a name.": {
@@ -1675,12 +1674,6 @@
       "lib/bridge/store.js",
       "lib/buy/store.js",
       "lib/eth/vault.js"
-    ]
-  },
-  "Use a dot for decimals, like 0.5": {
-    "where": [
-      "lib/buy/buybeam.js",
-      "screens/bridge_text.js"
     ]
   },
   "Enter a number, like 0.5": {
@@ -7330,6 +7323,14 @@
       "one": "{n} token",
       "other": "{n} tokens"
     }
+  },
+  "Back": {
+    "where": [
+      "lib/ui.js",
+      "screens/burn.js",
+      "screens/fast_start.js",
+      "screens/split_review.js"
+    ]
   },
   "Main": {
     "where": [

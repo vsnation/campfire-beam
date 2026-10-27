@@ -60,9 +60,10 @@
   "This batch is not among the codes saved on this device.": "Lô này không nằm trong các mã đã lưu trên thiết bị này.",
   "Some codes were claimed while this was being prepared. Nothing was sent. Look at the batch again, then take back what is left.": "Một số mã đã được lấy về trong lúc chuẩn bị. Chưa có gì được gửi. Hãy xem lại lô, rồi thu hồi phần còn lại.",
   "This code is from the old airdrop contract. Claiming it there shows the code to the network.": "Mã này thuộc hợp đồng airdrop cũ. Lấy về ở đó sẽ để lộ mã cho mạng thấy.",
+  "Use one decimal mark, like 1.25": "Dùng một dấu thập phân, ví dụ 1.25",
+  "Is that {a} or {b}? Write it without the comma, or with a dot for decimals.": "Đó là {a} hay {b}? Hãy viết không có dấu phẩy, hoặc dùng dấu chấm cho phần thập phân.",
   "Enter an amount.": "Nhập số tiền.",
   "The amount must be more than zero.": "Số tiền phải lớn hơn 0.",
-  "Use one decimal mark, like 1.25": "Dùng một dấu thập phân, ví dụ 1.25",
   "Only digits and one decimal mark, like 1.25": "Chỉ dùng chữ số và một dấu thập phân, ví dụ 1.25",
   "BEAM has 8 decimal places at most.": "BEAM có tối đa 8 chữ số thập phân.",
   "That amount is too large.": "Số tiền đó quá lớn.",
@@ -78,7 +79,6 @@
   "{action} with Face ID": "{action} bằng Face ID",
   "Use password instead": "Dùng mật khẩu",
   "Cancel": "Hủy",
-  "Back": "Quay lại",
   "Type a name.": "Nhập một tên.",
   "Names need at least 3 characters.": "Tên cần ít nhất 3 ký tự.",
   "Names can be at most 64 characters.": "Tên có tối đa 64 ký tự.",
@@ -262,7 +262,6 @@
   "No BEAM wallet to keep crossings for.": "Không có ví BEAM để lưu các lần chuyển qua cầu.",
   "Unlock the wallet first.": "Hãy mở khóa ví trước.",
   "There is no BEAM wallet on this device.": "Không có ví BEAM nào trên thiết bị này.",
-  "Use a dot for decimals, like 0.5": "Dùng dấu chấm cho phần thập phân, ví dụ 0.5",
   "Enter a number, like 0.5": "Nhập một số, ví dụ 0.5",
   "That amount is too large": "Số tiền đó quá lớn",
   "Use at most {n} digits after the point": {
@@ -1249,6 +1248,7 @@
   "{n} tokens": {
     "other": "{n} token"
   },
+  "Back": "Quay lại",
   "Main": "Nội dung chính",
   "Wallet": "Ví",
   "Activity": "Hoạt động",

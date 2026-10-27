@@ -60,3 +60,9 @@ test('engine values: numbers and *_str strings', () => {
   assert.equal(toJsonNumber(100000n), 100000);
   assert.throws(() => toJsonNumber(9007199254740993n));
 });
+
+test('"1,000" is a thousand in some places and one in others: asked, never guessed', () => {
+  assert.throws(() => parseAmount('1,000'), (e) => e instanceof AmountError && e.code === 'ambiguous' && /1000 or 1\.000/.test(e.message));
+  assert.equal(parseAmount('0,5'), 50000000n);
+  assert.equal(parseAmount('1,0001'), 100010000n);
+});

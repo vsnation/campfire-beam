@@ -60,9 +60,10 @@
   "This batch is not among the codes saved on this device.": "このバッチは、この端末に保存されたコードの中にありません。",
   "Some codes were claimed while this was being prepared. Nothing was sent. Look at the batch again, then take back what is left.": "準備中に一部のコードが受け取られました。何も送信されていません。バッチをもう一度確認してから、残りを取り戻してください。",
   "This code is from the old airdrop contract. Claiming it there shows the code to the network.": "このコードは旧エアドロップコントラクトのものです。そこで受け取ると、コードがネットワークに公開されます。",
+  "Use one decimal mark, like 1.25": "小数点は一つだけ使ってください。例：1.25",
+  "Is that {a} or {b}? Write it without the comma, or with a dot for decimals.": "{a}と{b}のどちらですか？カンマなしで書くか、小数点にはドットを使ってください。",
   "Enter an amount.": "金額を入力してください。",
   "The amount must be more than zero.": "金額はゼロより大きくしてください。",
-  "Use one decimal mark, like 1.25": "小数点は一つだけ使ってください。例：1.25",
   "Only digits and one decimal mark, like 1.25": "数字と小数点一つだけを使ってください。例：1.25",
   "BEAM has 8 decimal places at most.": "BEAMの小数点以下は最大8桁です。",
   "That amount is too large.": "金額が大きすぎます。",
@@ -78,7 +79,6 @@
   "{action} with Face ID": "Face IDで{action}",
   "Use password instead": "パスワードを使う",
   "Cancel": "キャンセル",
-  "Back": "戻る",
   "Type a name.": "ネームを入力してください。",
   "Names need at least 3 characters.": "ネームは3文字以上にしてください。",
   "Names can be at most 64 characters.": "ネームは64文字以内にしてください。",
@@ -262,7 +262,6 @@
   "No BEAM wallet to keep crossings for.": "移動を記録するBEAMウォレットがありません。",
   "Unlock the wallet first.": "先にウォレットのロックを解除してください。",
   "There is no BEAM wallet on this device.": "この端末にはBEAMウォレットがありません。",
-  "Use a dot for decimals, like 0.5": "小数点にはドットを使ってください。例：0.5",
   "Enter a number, like 0.5": "数字を入力してください。例：0.5",
   "That amount is too large": "金額が大きすぎます",
   "Use at most {n} digits after the point": {
@@ -1249,6 +1248,7 @@
   "{n} tokens": {
     "other": "{n}個のトークン"
   },
+  "Back": "戻る",
   "Main": "メイン",
   "Wallet": "ウォレット",
   "Activity": "履歴",

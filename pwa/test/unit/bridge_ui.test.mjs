@@ -41,13 +41,16 @@ test('copies of library values equal the library: timings, directions, symbols, 
   assert.match(readFileSync(join(here, '..', '..', 'src', 'screens', 'eth_screens.js'), 'utf8'), /store\.get\('bridge'\)/);
 });
 
-test('amounts: each chain\'s decimals, at most what a move carries, never a comma or a guess', () => {
+test('amounts: each chain\'s decimals, at most what a move carries, a decimal comma, never a guess', () => {
   assert.deepEqual(T.parseBridgeAmount('', beam, T.TO_ETHEREUM), { value: null, error: null });
   assert.deepEqual(T.parseBridgeAmount('300', beam, T.TO_ETHEREUM), { value: 30000000000n, error: null });
   assert.deepEqual(T.parseBridgeAmount('0.5', eth, T.TO_BEAM), { value: E18 / 2n, error: null });
   assert.deepEqual(T.parseBridgeAmount('.25', eth, T.TO_ETHEREUM), { value: 25000000n, error: null });
   assert.deepEqual(T.parseBridgeAmount('1.123456', usdt, T.TO_BEAM), { value: 1123456n, error: null });
-  assert.equal(T.parseBridgeAmount('1,5', beam, T.TO_ETHEREUM).error, 'Use a dot for decimals, like 0.5');
+  // "1,5" is 1.5, as much of the world writes it (user feedback, 2026-10-27); "1,000" is asked, never guessed.
+  assert.deepEqual(T.parseBridgeAmount('1,5', beam, T.TO_ETHEREUM), { value: 150000000n, error: null });
+  assert.equal(T.parseBridgeAmount('1,000', beam, T.TO_ETHEREUM).error, 'Is that 1000 or 1.000? Write it without the comma, or with a dot for decimals.');
+  assert.equal(T.parseBridgeAmount('1,000.5', beam, T.TO_ETHEREUM).error, 'Use one decimal mark, like 1.25');
   assert.equal(T.parseBridgeAmount('1e5', beam, T.TO_ETHEREUM).error, 'Enter a number, like 0.5');
   assert.equal(T.parseBridgeAmount('.', beam, T.TO_ETHEREUM).error, 'Enter a number, like 0.5');
   assert.equal(T.parseBridgeAmount('0.123456789', eth, T.TO_BEAM).error, 'ETH moves with at most 8 decimals');

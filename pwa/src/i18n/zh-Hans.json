@@ -60,9 +60,10 @@
   "This batch is not among the codes saved on this device.": "本设备保存的领取码中没有此批次。",
   "Some codes were claimed while this was being prepared. Nothing was sent. Look at the batch again, then take back what is left.": "在准备期间有一些领取码被领取了。未发送任何内容。请重新查看此批次，然后收回剩余的部分。",
   "This code is from the old airdrop contract. Claiming it there shows the code to the network.": "此领取码来自旧的空投合约。在那里领取会让网络看到这个领取码。",
+  "Use one decimal mark, like 1.25": "只能使用一个小数点，例如 1.25",
+  "Is that {a} or {b}? Write it without the comma, or with a dot for decimals.": "这是 {a} 还是 {b}？请去掉逗号，或用小数点表示小数。",
   "Enter an amount.": "请输入金额。",
   "The amount must be more than zero.": "金额必须大于零。",
-  "Use one decimal mark, like 1.25": "只能使用一个小数点，例如 1.25",
   "Only digits and one decimal mark, like 1.25": "只能输入数字和一个小数点，例如 1.25",
   "BEAM has 8 decimal places at most.": "BEAM 最多有 8 位小数。",
   "That amount is too large.": "金额太大。",
@@ -78,7 +79,6 @@
   "{action} with Face ID": "用 Face ID {action}",
   "Use password instead": "改用密码",
   "Cancel": "取消",
-  "Back": "返回",
   "Type a name.": "请输入名称。",
   "Names need at least 3 characters.": "名称至少需要 3 个字符。",
   "Names can be at most 64 characters.": "名称最多 64 个字符。",
@@ -262,7 +262,6 @@
   "No BEAM wallet to keep crossings for.": "没有可保存跨链转移记录的 BEAM 钱包。",
   "Unlock the wallet first.": "请先解锁钱包。",
   "There is no BEAM wallet on this device.": "本设备上没有 BEAM 钱包。",
-  "Use a dot for decimals, like 0.5": "请用小数点表示小数，例如 0.5",
   "Enter a number, like 0.5": "请输入数字，例如 0.5",
   "That amount is too large": "金额太大",
   "Use at most {n} digits after the point": {
@@ -1249,6 +1248,7 @@
   "{n} tokens": {
     "other": "{n} 种代币"
   },
+  "Back": "返回",
   "Main": "主导航",
   "Wallet": "钱包",
   "Activity": "记录",
