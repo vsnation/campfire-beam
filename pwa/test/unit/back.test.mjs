@@ -93,7 +93,9 @@ function world({ before = 1, standalone = false, engine = 'chrome', fallback = {
       this.go(t.name, t.params, t.opts);
     },
   };
-  const backButton = () => (fallback[app.currentName] ? { click: () => app.back(fallback[app.currentName]) } : null);
+  // A screen still loading its code has no top bar yet.
+  const backButton = () => (fallback[app.currentName] && !ui.loading ? { click: () => app.back(fallback[app.currentName]) } : null);
+  let between = null;
   const win = {
     history: {
       get state() {
@@ -157,6 +159,12 @@ function world({ before = 1, standalone = false, engine = 'chrome', fallback = {
         frames = [];
         f.forEach((x) => x());
         painted = shown();
+        // Something that happens after a frame was painted and before what waited for it.
+        if (between) {
+          const b = between;
+          between = null;
+          b();
+        }
         const a = afterPaint;
         afterPaint = [];
         a.forEach((x) => x());
@@ -164,12 +172,16 @@ function world({ before = 1, standalone = false, engine = 'chrome', fallback = {
       }
       throw new Error('never still');
     },
-    /** A tap (or key), as the browsers count them. */
+    /** A tap (or key), as the browsers count them: when the finger lifts. */
     tap() {
       lastTap = clock;
       gesture = true;
-      fire('pointerdown');
+      fire('pointerup');
       w.settle();
+    },
+    /** Runs `f` in the next settle, after a frame is painted and before what waited for that frame. */
+    between(f) {
+      between = f;
     },
     /** Time passes with no tap. */
     idle(ms) {
@@ -223,7 +235,7 @@ function world({ before = 1, standalone = false, engine = 'chrome', fallback = {
     /** The traversals asked for are lost. */
     drop: () => queue.splice(0),
   };
-  installBack(app, win, { now: () => clock });
+  installBack(app, win);
   return w;
 }
 
@@ -383,21 +395,59 @@ for (const engine of ['chrome', 'webkit']) {
     }
   });
 
-  test(`${engine}: a screen opened long after the last tap gets its entry at the next tap; Back meanwhile still works`, () => {
+  test(`${engine}: a screen the app opens by itself long after the last tap gets its entry (no Back since), and Back from it goes back`, () => {
     const w = world({ engine, before: 2, standalone: true, fallback: FALLBACK });
     w.go('home');
+    w.tap();
+    w.idle(30000);
+    w.go('activity'); // "Payment received", tapped in the notification while the wallet is open
+    assert.equal(w.at(), 2, 'its entry: no Back since the tap');
+    assert.equal(w.swipe().landed, 'home');
+    assert.equal(w.left(), false);
     w.tap();
     w.go('send');
     w.idle(30000);
     w.go('review'); // opened by itself (a slow step)
-    assert.equal(w.at(), 2, 'not added: it would be skipped');
-    const r = w.swipe();
-    assert.equal(r.landed, 'send', 'one screen back');
-    assert.equal(w.left(), false);
-    w.tap();
-    w.go('review');
     assert.equal(w.at(), 3);
-    assert.equal(w.marked(), false);
+    assert.equal(w.swipe().landed, 'send', 'one screen back (Safari skips one more entry; the app steps up again)');
+    assert.equal(w.left(), false);
+    assert.equal(w.swipe().landed, 'home');
+    assert.equal(w.left(), false);
+  });
+
+  test(`${engine}: words that appear just after a frame was noted are still never kept in a picture`, () => {
+    const w = world({ engine, before: 0, standalone: true, fallback: FALLBACK });
+    w.go('home');
+    w.tap();
+    w.go('settings');
+    w.tap();
+    w.mutate(); // a change: a frame is noted...
+    w.between(() => w.app.go('backup')); // ...and Backup opens before what waited for it
+    w.settle();
+    w.ui.secretPart = true; // "Show the words": a class changes, no element comes or goes
+    w.settle();
+    w.tap();
+    w.app.back('settings');
+    w.settle();
+    w.tap();
+    w.settle();
+    assert.equal(w.app.currentName, 'settings');
+    assert.deepEqual(secretIn(w.pictures()), [], 'the picture taken while the words were up was taken anew');
+    assert.equal(w.forward(), 'settings', 'Forward shows no words');
+  });
+
+  test(`${engine}: a screen still loading is not one that stays: the picture under it stays the screen before`, () => {
+    const w = world({ engine, fallback: FALLBACK });
+    w.go('home');
+    w.tap();
+    w.go('settings');
+    w.tap();
+    w.ui.loading = true;
+    w.go('about');
+    w.ui.loading = false;
+    w.mutate();
+    w.settle();
+    assert.deepEqual(w.swipe(), { picture: 'settings', landed: 'settings' });
   });
 
   test(`${engine}: no picture of recovery words stays in the history: making a wallet, Settings → Backup, a swipe, a lock`, () => {
