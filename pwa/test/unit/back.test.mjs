@@ -181,6 +181,8 @@ function world({ before = 1, standalone = false, navigationApi = false, fallback
     at: () => (entries[idx].state ? entries[idx].state.n : null),
     ahead: () => entries.length - 1 - idx,
     left: () => left,
+    /** The traversals asked for are lost. */
+    drop: () => queue.splice(0),
   };
   installBack(app, win);
   return w;
@@ -365,4 +367,20 @@ test('on a screen still loading, Back waits for its Back; more Backs meanwhile c
   assert.equal(w.app.currentName, 'settings', 'its Back, once');
   assert.equal(w.at(), 1);
   assert.equal(w.left(), false);
+});
+
+test('a traversal the browser dropped does not stop the entries following the screens', async () => {
+  const w = world({ fallback: FALLBACK });
+  w.go('home');
+  w.fire('pointerdown');
+  w.go('settings');
+  w.go('about');
+  w.app.back('settings'); // the app asks to go back over About's entry...
+  w.drop(); // ...and the browser drops it
+  await new Promise((r) => setTimeout(r, 2100));
+  w.settle();
+  assert.equal(w.at(), 1, 'read back and followed again');
+  w.go('about');
+  assert.equal(w.at(), 2);
+  assert.deepEqual(w.swipe(), { picture: 'settings', landed: 'settings' });
 });

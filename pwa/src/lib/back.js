@@ -95,9 +95,19 @@ export function installBack(app, win = window) {
     const trail = app.nav && typeof app.nav.entries === 'function' ? app.nav.entries() : [];
     return floor + stepsFor({ name: app.currentName, params: app.params || {}, trail, layer: Boolean(layerBack), sheets: overlays.length });
   };
+  // A traversal the browser drops (another one took its place) never arrives: after a while the
+  // entry on show is read back and the entries follow again.
+  let lost = null;
   const travel = (d) => {
     travelling++;
     at += d;
+    clearTimeout(lost);
+    lost = setTimeout(() => {
+      if (!travelling) return;
+      travelling = 0;
+      if (ours(hist.state)) at = hist.state.n;
+      sync();
+    }, 2000);
     hist.go(d);
   };
 
