@@ -39,7 +39,9 @@ jobs:
           if grep -vqE '^[^<>]+ <[^<>@]+@users\.noreply\.github\.com>$' "$allowed"; then
             echo "contributors.txt may list GitHub no-reply addresses only"; exit 1
           fi
-          bad=$(git log --format='%an <%ae>' "$base"..HEAD | grep -vxF -f "$allowed" || true)
+          # --no-merges: a pull request is checked out as GitHub's merge commit, made in the
+          # account's numbered no-reply name, not ours.
+          bad=$(git log --no-merges --format='%an <%ae>' "$base"..HEAD | grep -vxF -f "$allowed" || true)
           if [ -n "$bad" ]; then echo "Foreign authors:"; echo "$bad" | sort -u; exit 1; fi
           # A trailer is a line of its own; prose that names one is not.
           trailers=$(git log --format='%h %B' "$base"..HEAD \
