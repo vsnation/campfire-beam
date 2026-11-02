@@ -119,7 +119,8 @@ void main() {
       expect(fomo.verified, isTrue);
       expect(fomo.iconAsset, 'assets/beam/icons/174.png');
       expect(fomo.isPoolShare, isFalse);
-      // CROWN declares NTH_RATIO=1000: 3 decimals, pinned, whatever a node says.
+      // CROWN declares NTH_RATIO=1000: 3 decimals, pinned, whatever a node
+      // says.
       expect(BeamAssetRegistry.build(4).decimals, 3);
       expect(
         BeamAssetRegistry.build(

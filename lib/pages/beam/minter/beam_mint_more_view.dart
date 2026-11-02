@@ -75,7 +75,8 @@ class _BeamMintMoreViewState extends State<BeamMintMoreView> {
     super.dispose();
   }
 
-  /// The token's decimal places (its NTH_RATIO); null while its metadata is not read.
+  /// The token's decimal places (its NTH_RATIO); null while its metadata
+  /// is not read.
   int? get _places => widget.assetNames.decimals(_t.assetId);
 
   String? get _amountProblem {

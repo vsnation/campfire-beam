@@ -173,6 +173,15 @@ class BeamDexDeps implements DexLayout {
   /// metadata is not read: no amount of it is typed then.
   int? decimals(int assetId) => display(assetId).decimals;
 
+  /// [rate] (smallest units of [to] per smallest unit of [from]) as whole
+  /// units of each, each in its own decimals: "1 doggy ≈ 19.02 BEAM".
+  BeamRatio wholeRate(BeamRatio rate, int from, int to) =>
+      rate *
+      BeamRatio(
+        BigInt.from(10).pow(decimals(from) ?? DexFormat.decimals),
+        BigInt.from(10).pow(decimals(to) ?? DexFormat.decimals),
+      );
+
   /// What the wallet can spend of [assetId] right now.
   BigInt available(int assetId) =>
       balances.value[assetId]?.available ?? BigInt.zero;

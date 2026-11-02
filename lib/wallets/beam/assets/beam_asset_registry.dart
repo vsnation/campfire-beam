@@ -57,8 +57,9 @@ abstract final class BeamAssetRegistry {
     BeamAssetMetadata? Function(int assetId)? metadataOf,
   }) {
     final address = BeamAssetContract.addressFor(assetId);
-    // Not known until [metadata] is read: 8 meanwhile, with metadataKnown false (no
-    // amount of it can be typed until then: BeamSendModel, the approve sheet).
+    // Not known until [metadata] is read: 8 meanwhile, with metadataKnown
+    // false (no amount of it can be typed until then: BeamSendModel, the
+    // approve sheet).
     final decimals =
         BeamAssetCatalog.decimalsOf(assetId, metadata) ??
         BeamAssetInfo.beamDecimals;
@@ -159,7 +160,8 @@ abstract final class BeamAssetRegistry {
       assetId: row.assetId,
       name: verified ? look.name : (text?.name ?? row.name),
       symbol: verified ? look.symbol : (text?.symbol ?? row.symbol),
-      // An unverified asset keeps the decimals its metadata gave when the row was built.
+      // An unverified asset keeps the decimals its metadata gave when the
+      // row was built.
       decimals: verified
           ? BeamAssetCatalog.verified[row.assetId]!.decimals
           : row.decimals,

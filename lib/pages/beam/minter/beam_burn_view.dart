@@ -124,7 +124,8 @@ class _BeamBurnViewState extends State<BeamBurnView> {
 
   BigInt get _available => _balances?[_assetId] ?? BigInt.zero;
 
-  /// The token's decimal places (its NTH_RATIO); null while its metadata is not read.
+  /// The token's decimal places (its NTH_RATIO); null while its metadata
+  /// is not read.
   int? get _places => _assetId == null ? null : _names.decimals(_assetId!);
 
   String? get _amountProblem {

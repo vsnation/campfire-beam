@@ -34,7 +34,6 @@ import '../../../utilities/text_styles.dart';
 import '../../../wallets/beam/contracts/dex/beam_dex_quotes.dart';
 import '../../../wallets/beam/contracts/dex/beam_dex_service.dart';
 import '../../../wallets/beam/contracts/dex/beam_pool.dart';
-import '../../../wallets/beam/contracts/dex/beam_ratio.dart';
 import '../../../wallets/beam/contracts/dex/dex_constants.dart';
 import '../../../widgets/beam/dex/dex_amount_field.dart';
 import '../../../widgets/beam/dex/dex_asset_icon.dart';
@@ -490,8 +489,7 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
               valueKey: const Key('dex-pool-price'),
               value:
                   '1 ${a1.symbol} = '
-                  // Whole units of each side, each in its own decimals.
-                  '${DexFormat.number(_pool.spotPriceOf(_pool.aid1) * BeamRatio(BigInt.from(10).pow(deps.decimals(_pool.aid1) ?? DexFormat.decimals), BigInt.from(10).pow(deps.decimals(_pool.aid2) ?? DexFormat.decimals)))} '
+                  '${DexFormat.number(deps.wholeRate(_pool.spotPriceOf(_pool.aid1), _pool.aid1, _pool.aid2))} '
                   '${a2.symbol}',
             ),
             DexDetailRow(

@@ -45,7 +45,8 @@ final pBeamAssetTotals =
 final pBeamAssetBalance =
     Provider.family<Balance, ({String walletId, int assetId})>((ref, key) {
       final totals = ref.watch(pBeamAssetTotals(key.walletId))[key.assetId];
-      // In the asset's own decimals: its cached row's (BEAM's 8 when there is none).
+      // In the asset's own decimals: its cached row's (BEAM's 8 when there
+      // is none).
       final row = ref.watch(pBeamAssetContracts)[key.assetId];
       return beamAssetBalance(
         decimals: row?.decimals ?? BeamAssetInfo.beamDecimals,

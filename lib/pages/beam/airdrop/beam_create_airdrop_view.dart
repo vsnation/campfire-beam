@@ -104,7 +104,8 @@ class _BeamCreateAirdropViewState extends State<BeamCreateAirdropView> {
   late final _amount = TextEditingController(
     text: widget.initialValue == null
         ? ''
-        // Nothing until the asset's decimals are read: a text written as 8 would be read with others.
+        // Nothing until the asset's decimals are read: a text written as 8
+        // would be read with others.
         : BeamUnits.plain(
             widget.initialValue!,
             places: _names.decimals(widget.initialAssetId),
@@ -179,7 +180,8 @@ class _BeamCreateAirdropViewState extends State<BeamCreateAirdropView> {
         : null;
   }
 
-  // In the asset's own decimals (its NTH_RATIO); nothing while they are not read.
+  // In the asset's own decimals (its NTH_RATIO); nothing while they are
+  // not read.
   BigInt? get _value =>
       BeamUnits.parse(_amount.text, places: _names.decimals(_assetId));
 

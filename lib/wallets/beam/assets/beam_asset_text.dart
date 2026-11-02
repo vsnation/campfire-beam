@@ -111,7 +111,8 @@ abstract final class BeamAssetText {
         ? appL10n.assetDecimalsNone(label)
         : appL10n.assetDecimalsOwn(label, d);
     if (available <= BigInt.zero) return own;
-    return '$own ${appL10n.assetDecimalsElsewhere('${formatAmountUnits(available)} $label')}';
+    final there = '${formatAmountUnits(available)} $label';
+    return '$own ${appL10n.assetDecimalsElsewhere(there)}';
   }
 
   /// After a send whose outcome is unknown (the connection dropped and the

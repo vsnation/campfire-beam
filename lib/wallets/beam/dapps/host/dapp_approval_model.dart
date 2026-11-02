@@ -262,7 +262,8 @@ class DappApprovalModel {
       // sign.
       blockedReason: kind == DappApprovalKind.signMessage
           ? null
-          // A paid asset whose decimals are not known: its amount could read 10^n off.
+          // A paid asset whose decimals are not known: its amount could
+          // read 10^n off.
           : unknownPay.isNotEmpty
           ? appL10n.sendAssetDecimalsUnknown(unknownPay.first.unit)
           : spendBlockedReason,
@@ -471,7 +472,8 @@ String dappShortHex(String hex, {int head = 8, int tail = 6}) =>
 /// [amount] smallest units of an asset with [decimals] decimals, with
 /// thousands separators and no trailing zeros: 10000000 → "0.1",
 /// 100000000000 → "1,000" ("1 000" in Russian; "." decimals in every
-/// language). BEAM has 8 decimals, an asset its own ([BeamAssetDisplay.decimals]);
+/// language). BEAM has 8 decimals, an asset its own
+/// ([BeamAssetDisplay.decimals]);
 /// nothing is ever rounded: what is shown is what moves.
 String dappFormatAmount(BigInt amount, {int decimals = 8}) =>
     formatAmountUnits(amount, decimals: decimals);

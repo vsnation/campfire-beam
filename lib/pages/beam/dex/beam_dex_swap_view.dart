@@ -175,7 +175,8 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
     _seq++;
     setState(() {
       if (!_settingShare) _share = null;
-      // In the pay asset's own decimals (its NTH_RATIO); nothing while they are not read.
+      // In the pay asset's own decimals (its NTH_RATIO); nothing while
+      // they are not read.
       _input = DexFormat.parse(text, places: deps.decimals(_pay));
       _quote = null;
       _problem = null;
@@ -359,7 +360,8 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
     if (amount == null || amount == BigInt.zero) {
       return _off(l10n.dexEnterPayAmount(paySym));
     }
-    // What it gets is shown, and checked on the approve sheet, in the receive asset's decimals.
+    // What it gets is shown, and checked on the approve sheet, in the
+    // receive asset's decimals.
     if (deps.decimals(_receive) == null) {
       return _off(l10n.sendAssetDecimalsUnknown(_sym(_receive)));
     }
@@ -592,8 +594,8 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
             label: l10n.dexRateLabel,
             valueKey: const Key('dex-rate'),
             value:
-                // Whole units of each side, each in its own decimals.
-                '1 $paySym ≈ ${DexFormat.number(q.effectiveRate * BeamRatio(BigInt.from(10).pow(deps.decimals(q.payAsset) ?? DexFormat.decimals), BigInt.from(10).pow(deps.decimals(q.receiveAsset) ?? DexFormat.decimals)))} '
+                '1 $paySym ≈ '
+                '${DexFormat.number(deps.wholeRate(q.effectiveRate, q.payAsset, q.receiveAsset))} '
                 '$receiveSym',
           ),
           DexDetailRow(
