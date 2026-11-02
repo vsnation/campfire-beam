@@ -111,7 +111,16 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
   }
 
   void _rebuild() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // A side typed while its decimals were unknown is read now they are known.
+    final unknown = appL10n.dexAmountDecimalsUnknown;
+    if (_in1.error == unknown && deps.decimals(_pool.aid1) != null) {
+      _onChanged(1, _c1.text);
+    }
+    if (_in2.error == unknown && deps.decimals(_pool.aid2) != null) {
+      _onChanged(2, _c2.text);
+    }
+    setState(() {});
   }
 
   void _onPools() {
@@ -338,6 +347,16 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
         );
       }
       return (onPressed: _prepare, reason: null);
+    }
+    // Both sides are paid: each is typed, computed and confirmed in its own
+    // decimals, so neither may be unknown.
+    for (final aid in [_pool.aid1, _pool.aid2]) {
+      if (deps.decimals(aid) == null) {
+        return (
+          onPressed: null,
+          reason: l10n.sendAssetDecimalsUnknown(_sym(aid)),
+        );
+      }
     }
     final err = _in1.error ?? _in2.error;
     if (err != null) return (onPressed: null, reason: err);

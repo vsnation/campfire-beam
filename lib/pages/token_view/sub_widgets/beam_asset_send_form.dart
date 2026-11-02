@@ -36,21 +36,19 @@ import '../../../themes/stack_colors.dart';
 import '../../../utilities/address_utils.dart';
 import '../../../utilities/amount/amount.dart';
 import '../../../utilities/amount/amount_input_formatter.dart';
-import '../../../utilities/amount/amount_unit.dart';
 import '../../../utilities/clipboard_interface.dart';
 import '../../../utilities/constants.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../wallets/beam/assets/beam_asset_providers.dart';
-import '../../../wallets/beam/assets/beam_asset_registry.dart';
 import '../../../wallets/beam/assets/beam_asset_text.dart';
 import '../../../wallets/beam/sync/beam_sync_messages.dart';
 import '../../../wallets/beam/sync/beam_sync_state.dart';
 import '../../../wallets/beam/wallet/beam_send_rules.dart';
-import '../../../wallets/crypto_currency/crypto_currency.dart';
 import '../../../wallets/models/tx_data.dart';
 import '../../../models/isar/models/blockchain_data/address.dart';
 import '../../../wallets/wallet/impl/sub_wallets/beam_asset_wallet.dart';
 import '../../../widgets/beam/beam_decimal_input.dart';
+import '../../../widgets/beam/send/beam_send_format.dart';
 import '../../../widgets/custom_buttons/blue_text_button.dart';
 import '../../../widgets/desktop/primary_button.dart';
 import '../../../widgets/icon_widgets/clipboard_icon.dart';
@@ -96,8 +94,6 @@ class BeamAssetSendForm extends ConsumerStatefulWidget {
 }
 
 class _BeamAssetSendFormState extends ConsumerState<BeamAssetSendForm> {
-  static final _beam = Beam(CryptoCurrencyNetwork.main);
-
   late final TextEditingController _address;
   late final TextEditingController _amount;
   final _addressFocus = FocusNode();
@@ -136,13 +132,10 @@ class _BeamAssetSendFormState extends ConsumerState<BeamAssetSendForm> {
   Amount? _parsedAmount() {
     final text = _amount.text.trim();
     if (text.isEmpty || text.contains(',')) return null;
-    if (!BeamAssetRegistry.decimalsRead(_asset.assetId)) return null;
-    return AmountUnit.normal.tryParse(
-      text,
-      locale: kAppAmountLocale,
-      coin: _beam,
-      tokenContract: _asset,
-    );
+    final places = widget.assetWallet.currentDecimals;
+    if (places == null) return null;
+    final raw = BeamSendFormat.parse(text, places: places);
+    return raw == null ? null : Amount(rawValue: raw, fractionDigits: places);
   }
 
   Future<void> _paste() async {
@@ -170,11 +163,9 @@ class _BeamAssetSendFormState extends ConsumerState<BeamAssetSendForm> {
   /// Fills in the whole balance, ungrouped with a "." ("1000.5"), as the
   /// field takes it.
   void _sendAll(BigInt available) {
-    if (!BeamAssetRegistry.decimalsRead(_asset.assetId)) return;
-    _amount.text = AmountUnit.normal.formatEditable(
-      amount: Amount(rawValue: available, fractionDigits: _asset.decimals),
-      locale: kAppAmountLocale,
-    );
+    final places = widget.assetWallet.currentDecimals;
+    if (places == null) return;
+    _amount.text = BeamSendFormat.editable(available, places: places);
     setState(() {});
   }
 
@@ -387,7 +378,7 @@ class _BeamAssetSendFormState extends ConsumerState<BeamAssetSendForm> {
                   BeamDecimalKeyFormatter('.'),
                   AmountInputFormatter(
                     controller: _amount,
-                    decimals: _asset.decimals,
+                    decimals: widget.assetWallet.currentDecimals ?? 8,
                     locale: kAppAmountLocale,
                   ),
                 ],
@@ -427,6 +418,13 @@ class _BeamAssetSendFormState extends ConsumerState<BeamAssetSendForm> {
                   _asset,
                   locale: locale,
                 );
+                if (widget.assetWallet.currentDecimals == null &&
+                    _amount.text.trim().isNotEmpty) {
+                  // Its decimals are not read yet: nothing typed is read.
+                  return l10n.sendAssetDecimalsUnknown(
+                    BeamAssetText.symbolLabel(_asset),
+                  );
+                }
                 return tooMuch
                     ? l10n.assetsMoreThanYouHave(text)
                     : l10n.assetsAvailable(text);

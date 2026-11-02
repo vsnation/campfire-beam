@@ -164,7 +164,7 @@ class BeamDashboardModel {
               ? c.symbol
               : '${c.symbol} #${c.assetId}',
           amount:
-              '${shortAmount(h.totals.total)} '
+              '${shortAmount(h.totals.total, places: c.decimals)} '
               '${c.isPoolShare ? 'LP' : c.symbol}',
           value:
               fiatValue ??
@@ -205,11 +205,15 @@ class BeamDashboardModel {
   }
 
   /// "568.1297", "1,234,567.5", "0.00012345": at most 4 decimals from 1 up,
-  /// up to 8 below 1 so small balances never read as 0.
-  static String shortAmount(BigInt raw) {
-    final whole = raw ~/ BigInt.from(100000000);
-    final frac = (raw % BigInt.from(100000000)).toString().padLeft(8, '0');
-    final keep = whole > BigInt.zero ? frac.substring(0, 4) : frac;
+  /// all of them below 1 so small balances never read as 0. [places]: the
+  /// asset's decimals (BEAM's 8; CANDY's 1, from its NTH_RATIO).
+  static String shortAmount(BigInt raw, {int places = 8}) {
+    final one = BigInt.from(10).pow(places);
+    final whole = raw ~/ one;
+    final frac = places == 0 ? '' : (raw % one).toString().padLeft(places, '0');
+    final keep = whole > BigInt.zero && frac.length > 4
+        ? frac.substring(0, 4)
+        : frac;
     final trimmed = keep.replaceFirst(RegExp(r'0+$'), '');
     final w = groupThousands(whole.toString());
     if (trimmed.isEmpty) {

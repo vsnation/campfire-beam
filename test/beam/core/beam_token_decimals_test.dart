@@ -20,6 +20,7 @@ import 'package:stackwallet/widgets/beam/airdrop/beam_units.dart';
 import 'package:stackwallet/widgets/beam/dex/dex_format.dart';
 import 'package:stackwallet/widgets/beam/names/names_format.dart';
 import 'package:stackwallet/widgets/beam/send/beam_send_format.dart';
+import 'package:stackwallet/widgets/beam/wallet_home/beam_dashboard_assets.dart';
 
 final _candy = BeamAssetMetadata.parse(
   'STD:SCH_VER=1;N=CANDY;SN=EAT;UN=CANDY;NTHUN=BITE;NTH_RATIO=10;'
@@ -84,6 +85,36 @@ void main() {
     expect(
       BeamSendFormat.atEight(BigInt.one, BeamAssetCatalog.display(7031, null)),
       isNull,
+    );
+  });
+
+  test('two different core reads make an asset\'s decimals unknown', () {
+    BeamAssetCatalog.rememberDecimals(7077, 1);
+    BeamAssetCatalog.rememberDecimals(7077, 1);
+    expect(BeamAssetCatalog.decimalsOf(7077, null), 1);
+    BeamAssetCatalog.rememberDecimals(7077, 6);
+    expect(BeamAssetCatalog.decimalsOf(7077, null), isNull);
+    expect(BeamAssetCatalog.decimalsOf(4, null), 3, reason: 'pinned');
+  });
+
+  test('home list amounts and the DEX\'s too-many-decimals message', () {
+    expect(
+      BeamDashboardModel.shortAmount(BigInt.parse('120375575985'), places: 1),
+      '12,037,557,598.5',
+    );
+    expect(
+      BeamDashboardModel.shortAmount(BigInt.from(1234500), places: 3),
+      '1,234.5',
+    );
+    expect(BeamDashboardModel.shortAmount(BigInt.from(150), places: 0), '150');
+    expect(
+      BeamDashboardModel.shortAmount(BigInt.from(56812972897)),
+      '568.1297',
+    );
+    expect(DexFormat.parse('1.2345', places: 3).error, contains('3'));
+    expect(
+      DexFormat.parse('1.123456789').error,
+      DexFormat.parse('1.123456789', places: 8).error,
     );
   });
 

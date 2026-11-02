@@ -65,7 +65,13 @@ abstract final class DexFormat {
     final whole = dot < 0 ? t : t.substring(0, dot);
     final frac = dot < 0 ? '' : t.substring(dot + 1);
     if (frac.length > places) {
-      return DexAmountInput._(null, appL10n.dexAmountTooManyDecimals);
+      // BEAM's own words for BEAM; a token's count otherwise (CROWN: 3).
+      return DexAmountInput._(
+        null,
+        places == decimals
+            ? appL10n.dexAmountTooManyDecimals
+            : appL10n.unitsTooManyDecimals(places),
+      );
     }
     final w = whole.isEmpty ? BigInt.zero : BigInt.parse(whole);
     final f = frac.isEmpty

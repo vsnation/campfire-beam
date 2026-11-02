@@ -87,6 +87,7 @@ class BeamDexDeps implements DexLayout {
     required this.balances,
     required this.authenticate,
     this.metadataOf = _noMetadata,
+    this.decimalsOf,
     this.assetNames,
     this.hiddenAssetIds = _noneHidden,
     this.fiat,
@@ -114,6 +115,11 @@ class BeamDexDeps implements DexLayout {
   /// On-chain metadata of any asset, for unverified names: every asset the
   /// DEX lists, not only the ones the wallet holds (`BeamAssetDirectory`).
   final BeamAssetMetadata? Function(int assetId) metadataOf;
+
+  /// Each asset's decimals as the wallet's core read them
+  /// (`BeamAssetDirectory.decimalsOf`), never from the explorer's table;
+  /// null: from [metadataOf] (tests).
+  final int? Function(int assetId)? decimalsOf;
 
   /// Fires when [metadataOf] knows more names (the explorer's list of every
   /// asset arrived), so open screens show them; null when names never
@@ -171,7 +177,10 @@ class BeamDexDeps implements DexLayout {
 
   /// [assetId]'s decimal places ([BeamAssetDisplay.decimals]); null while its
   /// metadata is not read: no amount of it is typed then.
-  int? decimals(int assetId) => display(assetId).decimals;
+  int? decimals(int assetId) {
+    final read = decimalsOf;
+    return read == null ? display(assetId).decimals : read(assetId);
+  }
 
   /// [rate] (smallest units of [to] per smallest unit of [from]) as whole
   /// units of each, each in its own decimals: "1 doggy ≈ 19.02 BEAM".

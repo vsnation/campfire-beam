@@ -160,11 +160,11 @@ abstract final class BeamAssetRegistry {
       assetId: row.assetId,
       name: verified ? look.name : (text?.name ?? row.name),
       symbol: verified ? look.symbol : (text?.symbol ?? row.symbol),
-      // An unverified asset keeps the decimals its metadata gave when the
-      // row was built.
+      // A verified asset's are pinned; any other keeps those its metadata
+      // gave, or the ones the core read this run (say as a pool's side).
       decimals: verified
           ? BeamAssetCatalog.verified[row.assetId]!.decimals
-          : row.decimals,
+          : BeamAssetCatalog.decimalsOf(row.assetId, null) ?? row.decimals,
       verified: verified,
       metadataKnown: row.metadataKnown,
       iconAsset: look.icon,

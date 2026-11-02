@@ -125,6 +125,13 @@ class BeamWalletWiring {
   late final BeamAssetDirectory assetDirectory = BeamAssetDirectory(
     readTable: wallet.environment.readAssetTable,
     readOne: (id) async => (await services.api.getAssetInfo(id)).metadata,
+    readAllFromNode: () async => {
+      for (final a in await services.api.assetsList(
+        refresh: true,
+        timeout: const Duration(seconds: 60),
+      ))
+        a.assetId: a.metadata,
+    },
     cache: WalletInfoAssetDirectoryCache(
       info: () => wallet.info,
       isar: () => wallet.mainDB.isar,
@@ -136,11 +143,13 @@ class BeamWalletWiring {
   BeamAssetMetadata? metadataOf(int assetId) =>
       assetDirectory.metadataOf(assetId);
 
-  /// Names and tickers for the airdrop and minter screens.
+  /// Names and tickers for the airdrop and minter screens; decimals only as
+  /// the core read them ([BeamAssetDirectory.decimalsOf]).
   late final BeamAssetNames assetNames = BeamAssetNames(
     loadMetadata: (id) async =>
         assetDirectory.metadataOf(id) ??
         (await services.api.getAssetInfo(id)).metadata,
+    decimalsOf: assetDirectory.decimalsOf,
   );
 
   /// Names for what the wallet holds, and (once the DEX has loaded them)
@@ -211,6 +220,7 @@ class BeamWalletWiring {
       balances: balances,
       authenticate: campfireDexAuthGate,
       metadataOf: metadataOf,
+      decimalsOf: assetDirectory.decimalsOf,
       assetNames: assetDirectory,
       fiat: _fiat,
       onSyncAction: onSyncAction,
@@ -266,6 +276,7 @@ class BeamWalletWiring {
     sync: sync,
     balances: balances,
     metadataOf: metadataOf,
+    decimalsOf: assetDirectory.decimalsOf,
     onSyncAction: onSyncAction,
     onAddFunds: onAddFunds,
     inboxMonitor: services.bansInbox,

@@ -19,6 +19,7 @@ import '../../../../models/paymint/fee_object_model.dart';
 import '../../../../utilities/amount/amount.dart';
 import '../../../../utilities/logger.dart';
 import '../../../beam/api/beam_api.dart';
+import '../../../beam/assets/beam_asset_catalog.dart';
 import '../../../beam/assets/beam_asset_holdings.dart';
 import '../../../beam/assets/beam_asset_registry.dart';
 import '../../../beam/assets/beam_asset_text.dart';
@@ -51,7 +52,9 @@ import '../beam_wallet.dart';
 ///   The network fee is BEAM, not the asset: a wallet with FOMO and no BEAM
 ///   cannot send FOMO, and is told so before anything is built.
 class BeamAssetWallet extends Wallet<Beam> {
-  BeamAssetWallet(this.parent, this.asset) : super(parent.cryptoCurrency);
+  BeamAssetWallet(this.parent, BeamAssetContract asset)
+    : _asset = asset,
+      super(parent.cryptoCurrency);
 
   /// A sub-wallet sharing [parent]'s database, storage and settings.
   factory BeamAssetWallet.load({
@@ -67,7 +70,21 @@ class BeamAssetWallet extends Wallet<Beam> {
   }
 
   final BeamWallet parent;
-  final BeamAssetContract asset;
+
+  /// The asset's row as last read: the page's at first, then each sync's
+  /// ([_syncContract]), so decimals read again since the page opened are the
+  /// ones a payment is typed, shown and checked with.
+  BeamAssetContract _asset;
+  BeamAssetContract get asset => _asset;
+
+  /// The decimals an amount of this asset may be typed and sent with: its
+  /// current ones ([BeamAssetCatalog.decimalsOf]: pinned, or read by the core
+  /// this run) when its row agrees with them; null otherwise (not read yet, or
+  /// the row still holds an older version's 8), when nothing may be sent.
+  int? get currentDecimals {
+    final d = BeamAssetCatalog.decimalsOf(assetId, null);
+    return d != null && d == asset.decimals ? d : null;
+  }
 
   BeamGateLease? _preparedLease;
 
@@ -136,11 +153,12 @@ class BeamAssetWallet extends Wallet<Beam> {
 
   Future<void> _syncContract() async {
     try {
-      await BeamAssetRegistry.sync(
+      final rows = await BeamAssetRegistry.sync(
         isar: mainDB.isar,
         heldIds: [assetId],
         api: parent.coreApi,
       );
+      if (rows[assetId] case final row?) _asset = row;
     } catch (e) {
       Logging.instance.w("BEAM: asset $assetId not refreshed: $e");
     }
@@ -248,6 +266,15 @@ class BeamAssetWallet extends Wallet<Beam> {
       final recipient = recipients.first;
       final address = recipient.address.trim();
       BeamSendRules.checkAddress(address);
+      // Typed with other decimals than the asset has now (its row was read
+      // again meanwhile): nothing is built; the person reads the amount again.
+      final places = currentDecimals;
+      if (places == null || recipient.amount.fractionDigits != places) {
+        throw BeamWalletException(
+          BeamWalletProblem.other,
+          appL10n.sendAssetDecimalsUnknown(BeamAssetText.symbolLabel(asset)),
+        );
+      }
       if (recipient.amount.raw <= BigInt.zero) {
         throw BeamWalletException(
           BeamWalletProblem.invalidAmount,
@@ -376,6 +403,13 @@ class BeamAssetWallet extends Wallet<Beam> {
         return txData.copyWith(txid: sent);
       }
       BeamSendRules.checkSynced(parent.syncAssessment);
+      // The decimals the amount was typed with must still be the asset's.
+      if (recipient.amount.fractionDigits != currentDecimals) {
+        throw BeamWalletException(
+          BeamWalletProblem.other,
+          appL10n.sendAssetDecimalsUnknown(BeamAssetText.symbolLabel(asset)),
+        );
+      }
 
       _handedOff.add(txId);
       String sentId;

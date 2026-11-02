@@ -43,6 +43,7 @@ class BeamNamesDeps {
     required this.sync,
     required this.balances,
     this.metadataOf = _noMetadata,
+    this.decimalsOf,
     this.authenticate = campfireNamesAuthGate,
     this.onSyncAction,
     this.onAddFunds,
@@ -97,8 +98,16 @@ class BeamNamesDeps {
   BeamAssetDisplay display(int assetId) =>
       BeamAssetCatalog.display(assetId, metadataOf(assetId));
 
-  /// [assetId]'s decimal places; null while its metadata is not read.
-  int? decimals(int assetId) => display(assetId).decimals;
+  /// Each asset's decimals as the wallet's core read them
+  /// (`BeamAssetDirectory.decimalsOf`), never from the explorer's table;
+  /// null: from [metadataOf] (tests).
+  final int? Function(int assetId)? decimalsOf;
+
+  /// [assetId]'s decimal places; null while the core has not read them.
+  int? decimals(int assetId) {
+    final read = decimalsOf;
+    return read == null ? display(assetId).decimals : read(assetId);
+  }
 
   /// The symbol to print after an amount of [assetId].
   String symbol(int assetId) {

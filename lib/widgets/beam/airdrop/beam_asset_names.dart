@@ -25,8 +25,15 @@ import 'beam_units.dart';
 /// [loadMetadata] can fetch it) and always with its id, since anyone can
 /// mint an asset and call it anything.
 class BeamAssetNames extends ChangeNotifier {
-  BeamAssetNames({this.loadMetadata, Set<int> Function()? hiddenAssetIds})
-    : _hidden = hiddenAssetIds;
+  BeamAssetNames({
+    this.loadMetadata,
+    Set<int> Function()? hiddenAssetIds,
+    this.decimalsOf,
+  }) : _hidden = hiddenAssetIds;
+
+  /// Each asset's decimals as the wallet's core read them; null: from the
+  /// metadata [loadMetadata] gives (which, from the API, is the core's).
+  final int? Function(int assetId)? decimalsOf;
 
   /// Reads each unverified asset's metadata from the wallet core.
   /// [hiddenAssetIds] are the assets the user hid from the wallet's asset
@@ -56,7 +63,10 @@ class BeamAssetNames extends ChangeNotifier {
   String symbol(int assetId) => display(assetId).symbol;
 
   /// [assetId]'s decimal places; null while its metadata is not read.
-  int? decimals(int assetId) => display(assetId).decimals;
+  int? decimals(int assetId) {
+    final read = decimalsOf;
+    return read == null ? display(assetId).decimals : read(assetId);
+  }
 
   /// `1,234.5 FOMO`, in the asset's own decimals.
   String amount(int assetId, BigInt units) =>

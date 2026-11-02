@@ -176,16 +176,27 @@ abstract final class BeamAssetCatalog {
     if (known != null) return known.decimals;
     final lp = BeamLpTokens.of(assetId);
     if (lp != null && lp.lpToken == assetId) return BeamAssetInfo.beamDecimals;
+    if (_decimalsChanged.contains(assetId)) return null;
     return metadata?.decimals ?? _readDecimals[assetId];
   }
 
-  /// Decimals read from the chain this run ([rememberDecimals]), for places
-  /// that show an asset without its metadata at hand (the history).
+  /// Decimals the wallet's core read from the chain this run
+  /// ([rememberDecimals]): what money screens type and show amounts with when
+  /// they have no core metadata at hand. The explorer's table never sets them.
   static final Map<int, int> _readDecimals = {};
 
-  /// [assetId]'s metadata was just read and gives [decimals].
-  static void rememberDecimals(int assetId, int decimals) =>
-      _readDecimals[assetId] = decimals;
+  /// Assets whose metadata came back with other decimals than first read (a
+  /// lying node, or an id reused after its asset was destroyed): an amount
+  /// typed with the first could be sent read with the second, so they count
+  /// as unknown for the rest of the run (as the web wallet does).
+  static final Set<int> _decimalsChanged = {};
+
+  /// The core just read [assetId]'s metadata, which gives [decimals].
+  static void rememberDecimals(int assetId, int decimals) {
+    final before = _readDecimals[assetId];
+    if (before != null && before != decimals) _decimalsChanged.add(assetId);
+    _readDecimals[assetId] = decimals;
+  }
 
   static const Map<int, BeamKnownAsset> verified = {
     0: BeamKnownAsset(

@@ -17,6 +17,7 @@ import '../contracts/dex/beam_pool.dart';
 import '../models/beam_asset_info.dart';
 import '../price/beam_asset_pricer.dart';
 import '../wallet/beam_balance_mapper.dart';
+import 'beam_asset_catalog.dart';
 import 'beam_asset_registry.dart';
 
 /// What the DEX says right now: prices and which assets are pool shares.
@@ -139,8 +140,13 @@ abstract final class BeamAssetHoldings {
         // Token 0-174-2"): named from the catalogue and the DEX until the
         // next sync names it from the chain.
         contract = BeamAssetRegistry.build(t.assetId);
-      } else if (contract.isPoolShare) {
-        // Cached by an older version as "BEAM / FOMO pool share".
+      } else if (contract.isPoolShare ||
+          contract.decimals !=
+              (BeamAssetCatalog.decimalsOf(t.assetId, null) ??
+                  contract.decimals)) {
+        // Cached by an older version as "BEAM / FOMO pool share", or with
+        // decimals the asset no longer has here (an older version's 8; a
+        // verified asset's pinned ones).
         contract = BeamAssetRegistry.refreshLook(contract);
       }
       final value = market?.pricer.valueInGroth(t.assetId, t.total);

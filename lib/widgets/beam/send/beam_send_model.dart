@@ -549,6 +549,16 @@ class BeamSendModel extends ChangeNotifier {
     if (blocking != null) {
       throw BeamWalletException(BeamWalletProblem.other, blocking.message);
     }
+    // The amount means what the asset's decimals say now: read again with
+    // them, it must be the same, or nothing is built.
+    if (_amount != BeamSendFormat.parse(_amountText, places: asset.decimals)) {
+      _amount = BeamSendFormat.parse(_amountText, places: asset.decimals);
+      _notify();
+      throw BeamWalletException(
+        BeamWalletProblem.other,
+        appL10n.sendAssetDecimalsUnknown(BeamSendFormat.symbol(asset)),
+      );
+    }
     _preparing = true;
     _notify();
     try {

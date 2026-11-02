@@ -87,6 +87,9 @@ void main() {
         pools.singleWhere((p) => p.lpToken == 175).ctl,
         BigInt.parse('2125257813880'),
       );
+      // Known as a DEX share once the pool list names it: 8, as the DEX
+      // contract writes its shares' metadata.
+      BeamLpTokens.learnPools(pools);
       expect(BeamAssetCatalog.decimalsOf(175, null), 8);
     });
   });

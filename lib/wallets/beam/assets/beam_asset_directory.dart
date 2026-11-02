@@ -40,6 +40,7 @@ class BeamAssetDirectory extends ChangeNotifier {
   BeamAssetDirectory({
     this._readTable,
     this._readOne,
+    this._readAllFromNode,
     BeamAssetDirectoryCache? cache,
     DateTime Function()? now,
     this.maxAge = const Duration(days: 1),
@@ -59,6 +60,12 @@ class BeamAssetDirectory extends ChangeNotifier {
 
   final Future<Map<int, String>> Function()? _readTable;
   final Future<BeamAssetMetadata> Function(int assetId)? _readOne;
+
+  /// The core's `assets_list` with `refresh`: every asset, asked of the node.
+  /// Once a run, for assets the core's own database does not have yet (one
+  /// the wallet never held, say the token a swap buys).
+  final Future<Map<int, BeamAssetMetadata>> Function()? _readAllFromNode;
+  bool _readAllTried = false;
   final BeamAssetDirectoryCache? _cache;
   final DateTime Function() _now;
 
@@ -69,6 +76,10 @@ class BeamAssetDirectory extends ChangeNotifier {
   final Duration retryAfter;
 
   final Map<int, BeamAssetMetadata> _known = {};
+
+  /// What the wallet's core read: the only source of an asset's decimals
+  /// ([decimalsOf]). The explorer's table names assets, and nothing more.
+  final Map<int, BeamAssetMetadata> _fromCore = {};
   final Set<int> _wanted = {};
   final Set<int> _coreTried = {};
   DateTime? _tableReadAt;
@@ -79,6 +90,11 @@ class BeamAssetDirectory extends ChangeNotifier {
   /// The on-chain metadata of [assetId], once known; null before that (the
   /// asset shows as "#id").
   BeamAssetMetadata? metadataOf(int assetId) => _known[assetId];
+
+  /// [assetId]'s decimal places as the core read them (pinned for a verified
+  /// asset, 8 for a DEX share); null until the core has read it.
+  int? decimalsOf(int assetId) =>
+      BeamAssetCatalog.decimalsOf(assetId, _fromCore[assetId]);
 
   /// When the explorer's table was last read, or null.
   DateTime? get tableReadAt => _tableReadAt;
@@ -127,10 +143,14 @@ class BeamAssetDirectory extends ChangeNotifier {
     if (read != null) {
       var lookups = 0;
       for (final id in _wanted.toList()) {
-        if (_known.containsKey(id) || _coreTried.contains(id)) continue;
+        // Named by the explorer is not enough: decimals come from the core.
+        if (_fromCore.containsKey(id) || _coreTried.contains(id)) continue;
         if (lookups++ >= maxSingleLookups) break;
         try {
-          _known[id] = await read(id);
+          final m = await read(id);
+          _known[id] = m;
+          _fromCore[id] = m;
+          BeamAssetCatalog.rememberDecimals(id, m.decimals);
           _coreTried.add(id);
           changed = true;
         } on BeamConnectionException {
@@ -143,6 +163,26 @@ class BeamAssetDirectory extends ChangeNotifier {
           // Unknown to the core: stays "#id" for this session.
           _coreTried.add(id);
         }
+      }
+    }
+    final readAll = _readAllFromNode;
+    if (readAll != null &&
+        !_readAllTried &&
+        _wanted.any(
+          (id) => !_fromCore.containsKey(id) && _coreTried.contains(id),
+        )) {
+      _readAllTried = true;
+      try {
+        for (final e in (await readAll()).entries) {
+          if (e.key <= 0) continue;
+          _known[e.key] = e.value;
+          _fromCore[e.key] = e.value;
+          BeamAssetCatalog.rememberDecimals(e.key, e.value.decimals);
+        }
+        changed = true;
+      } catch (_) {
+        // Not answered: those assets keep unknown decimals this run.
+        _readAllTried = false;
       }
     }
     if (!changed || _disposed) return;

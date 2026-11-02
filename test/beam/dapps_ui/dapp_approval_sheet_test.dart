@@ -524,6 +524,14 @@ void main() {
       final rig = _Rig(tester, desktop: false);
       await rig.pump(
         balances: {0: g(5000000000), 174: g(1000000000), 175: g(500000000)},
+        // The withdrawal pays #175: its decimals must be known to approve
+        // it (the host reads every request's assets from the core first).
+        metadata: {
+          175: BeamAssetMetadata.parse(
+            'STD:SCH_VER=1;N=Amm Liquidity Token 0-174-2;SN=AmmL;UN=AMML;'
+            'NTHUN=GROTH',
+          ),
+        },
       );
 
       final a = rig.ask('process_invoke_data', {

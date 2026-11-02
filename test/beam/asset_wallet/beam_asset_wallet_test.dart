@@ -382,6 +382,30 @@ void main() {
       expect(wallet.isBusy, isFalse);
     });
 
+    test('a row saved with an older version\'s 8 sends nothing (CROWN has '
+        '3, pinned)', () async {
+      final crown = BeamAssetWallet.load(
+        parent: wallet,
+        asset: BeamAssetContract(
+          address: BeamAssetContract.addressFor(4),
+          assetId: 4,
+          name: 'Gothic Crown',
+          symbol: 'CROWN',
+          decimals: 8,
+          verified: true,
+          metadataKnown: true,
+        ),
+      );
+      // "0.01 CROWN" read as 8 would be 1,000 CROWN.
+      expect(crown.currentDecimals, isNull);
+      await expectLater(
+        crown.prepareSend(txData: _pay(payee, BigInt.from(1000000))),
+        throwsA(_problem(BeamWalletProblem.other)),
+      );
+      expect(h.core.sent, isEmpty);
+      expect(assetWallet(4).currentDecimals, 3);
+    });
+
     test('other refusals are plain and send nothing', () async {
       final fomo = assetWallet(174);
       await expectLater(

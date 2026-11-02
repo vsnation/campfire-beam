@@ -163,7 +163,15 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
   }
 
   void _rebuild() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    // What was typed while the pay asset's decimals were unknown is read now
+    // that they are known (names and decimals arrive through [deps]).
+    if (_input.error == appL10n.dexAmountDecimalsUnknown &&
+        deps.decimals(_pay) != null) {
+      _onAmountChanged(_amount.text);
+      return;
+    }
+    setState(() {});
   }
 
   String _sym(int asset) => deps.display(asset).symbol;

@@ -244,12 +244,21 @@ abstract final class BeamTxText {
     if (assetId == 0) {
       text = beam.format(value);
     } else {
-      text = AmountFormatter(
-        unit: AmountUnit.normal,
-        locale: beam.locale,
-        coin: beam.coin,
-        maxDecimals: asset.decimals ?? beam.maxDecimals,
-      ).format(value, overrideUnit: asset.symbol);
+      text =
+          AmountFormatter(
+            unit: AmountUnit.normal,
+            locale: beam.locale,
+            coin: beam.coin,
+            // The person's setting; all of a token's decimals past BEAM's 8.
+            maxDecimals: value.fractionDigits > 8
+                ? value.fractionDigits
+                : beam.maxDecimals,
+          ).format(
+            value,
+            overrideUnit: asset.symbol,
+            // Its own decimals, not the coin's 8, cap what is shown.
+            tokenContract: BeamAssetRegistry.build(assetId),
+          );
     }
     if (!sign || raw == BigInt.zero) return text;
     return raw < BigInt.zero ? '−$text' : '+$text';

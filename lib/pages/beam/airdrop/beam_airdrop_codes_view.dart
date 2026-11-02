@@ -245,7 +245,9 @@ class _BeamAirdropCodesViewState extends State<BeamAirdropCodesView> {
     final b = _batch!;
     final csv = AirdropCsv.export(
       b,
-      formatValue: BeamUnits.format,
+      // In the asset's own decimals, as the screen shows the codes.
+      formatValue: (v) =>
+          BeamUnits.format(v, places: _names.decimals(b.assetId)),
       assetLabel: _names.symbol(b.assetId),
     );
     final day = b.createdAt.toIso8601String().substring(0, 10);

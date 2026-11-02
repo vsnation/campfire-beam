@@ -43,11 +43,11 @@ abstract final class BeamAssetText {
     amount: value,
     locale: kAppAmountLocale,
     coin: _beam,
-    // An asset with more decimals than the BEAM setting (doggy's 12) shows
-    // them all: what is shown is what it holds. Fewer are capped at its own.
-    maxDecimalPlaces: maxDecimals > asset.decimals
-        ? maxDecimals
-        : asset.decimals,
+    // The person's BEAM decimals setting, as before; an asset with more than
+    // BEAM's 8 (doggy's 12) shows all of them, or it would read as less.
+    maxDecimalPlaces: asset.decimals > BeamAssetInfo.beamDecimals
+        ? asset.decimals
+        : maxDecimals,
     withUnitName: withUnit,
     overrideUnit: asset.symbol,
     tokenContract: asset,

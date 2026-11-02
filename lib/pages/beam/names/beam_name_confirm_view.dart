@@ -708,6 +708,19 @@ class _BeamNameConfirmViewState extends State<BeamNameConfirmView> {
         reason: l10n.namesSigningPaused,
       );
     }
+    // A token paid with decimals the core has not read: its amount could
+    // read 10^n off, so it is not signed.
+    for (final a in s.youPay.where((a) => a.assetId != 0)) {
+      if (deps.decimals(a.assetId) == null) {
+        return NamesPrimaryAction(
+          deps: deps,
+          buttonKey: const Key('names-confirm-cta'),
+          label: _cta,
+          onPressed: null,
+          reason: l10n.sendAssetDecimalsUnknown(deps.symbol(a.assetId)),
+        );
+      }
+    }
     final short = _shortfall;
     if (short != null) {
       final add = deps.onAddFunds;
