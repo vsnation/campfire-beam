@@ -22,23 +22,34 @@ abstract final class NamesFormat {
   /// The exact amount, all significant decimals, with thousands
   /// separators: `1,162.13166091`. For confirmation screens, where the
   /// user must see precisely what will be signed.
-  static String exact(BigInt units) {
+  ///
+  /// [places]: the asset's decimals (BEAM's 8; an asset's from its
+  /// `NTH_RATIO`, [BeamAssetDisplay.decimals]; null, not read yet, as 8).
+  static String exact(BigInt units, {int? places}) {
+    final p = places ?? 8;
+    final one = BigInt.from(10).pow(p);
     final neg = units.isNegative;
     final a = units.abs();
-    final whole = _thousands(a ~/ _groth);
-    final frac = a
-        .remainder(_groth)
-        .toString()
-        .padLeft(8, '0')
-        .replaceFirst(RegExp(r'0+$'), '');
+    final whole = _thousands(a ~/ one);
+    final frac = p == 0
+        ? ''
+        : a
+              .remainder(one)
+              .toString()
+              .padLeft(p, '0')
+              .replaceFirst(RegExp(r'0+$'), '');
     return '${neg ? '-' : ''}$whole${frac.isEmpty ? '' : '.$frac'}';
   }
 
   /// Rounded for reading: two decimals from 100 up (`1,162.13`), every
   /// significant decimal below that, so a fee still reads `0.011`.
-  static String readable(BigInt units) {
-    if (units.abs() < BigInt.from(100) * _groth) return exact(units);
-    final cents = (units.abs() + BigInt.from(500000)) ~/ BigInt.from(1000000);
+  static String readable(BigInt units, {int? places}) {
+    final p = places ?? 8;
+    if (p <= 2 || units.abs() < BigInt.from(100) * BigInt.from(10).pow(p)) {
+      return exact(units, places: p);
+    }
+    final step = BigInt.from(10).pow(p - 2);
+    final cents = (units.abs() + step ~/ BigInt.two) ~/ step;
     final whole = _thousands(cents ~/ BigInt.from(100));
     final frac = cents
         .remainder(BigInt.from(100))
@@ -62,7 +73,8 @@ abstract final class NamesFormat {
   /// commas only as thousands groups before a "." ("1,000.5"), a lone one
   /// as the decimal point ("0,5" is 0.5, never 5), and "1,000" refused (a
   /// thousand or one?). Stripping every comma read a Russian "0,5" as 5.
-  static BigInt? parse(String text) => BeamUnits.parse(text);
+  static BigInt? parse(String text, {int? places = BeamUnits.decimals}) =>
+      BeamUnits.parse(text, places: places);
 
   /// `$10`, `$1,200`.
   static String usd(int dollars) => '\$${_thousands(BigInt.from(dollars))}';

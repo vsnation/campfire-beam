@@ -75,6 +75,7 @@ Future<void> showBeamCoinList({
   required BuildContext context,
   required BeamCoinSummary coins,
   required String symbol,
+  int? places,
 }) {
   final desktop = BeamLayoutScope.isDesktop(context);
   final rows = [...coins.available, ...coins.locked];
@@ -127,7 +128,7 @@ Future<void> showBeamCoinList({
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        BeamUnits.withSymbol(c.amount, symbol),
+                        BeamUnits.withSymbol(c.amount, symbol, places: places),
                         style: STextStyles.titleBold12(context),
                       ),
                       const SizedBox(height: 2),

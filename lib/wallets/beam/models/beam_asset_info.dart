@@ -60,24 +60,13 @@ class BeamAssetInfo {
   /// the v6 standard with all required fields valid.
   final bool? coreSaysStd;
 
-  /// See [decimalsFor].
-  int get decimals => decimalsFor(assetId);
-
-  /// Decimal places for amounts of [assetId]: always 8.
-  ///
-  /// Every Confidential Asset uses BEAM's groth scale (`Rules::Coin`,
-  /// 10^8 smallest units per unit). The core has no ratio field at all —
-  /// its standard metadata keys are N, SN, UN, NTHUN and OPT_*
-  /// (`wallet/core/assets_utils.cpp`) — and the official desktop wallet reads
-  /// only the smallest unit's *name* (`beam-ui ui/model/assets_manager.cpp`).
-  /// A metadata `NTH_RATIO` is a label some issuers add; showing CROWN
-  /// (`NTH_RATIO=1000`) with 3 decimals would make its balances 10^5 larger
-  /// than in every other BEAM wallet.
-  static int decimalsFor(int assetId) => beamDecimals;
+  /// The places its metadata gives ([BeamAssetMetadata.decimals]); a
+  /// verified asset's are pinned instead (`BeamAssetCatalog.decimalsOf`).
+  int get decimals => assetId == beamAssetId ? beamDecimals : metadata.decimals;
 }
 
-/// Parsed asset metadata: `STD:SCH_VER=1;N=..;SN=..;UN=..;NTHUN=..;OPT_*=..`
-/// (plus non-standard keys such as `NTH_RATIO`, kept as-is in [values]).
+/// Parsed asset metadata: `STD:SCH_VER=1;N=..;SN=..;UN=..;NTHUN=..;
+/// NTH_RATIO=..;OPT_*=..`.
 ///
 /// Mirrors `WalletAssetMeta::Parse` (`wallet/core/assets_utils.cpp`): only
 /// text starting with `STD:` has fields; entries are split on `;` and each
@@ -117,7 +106,31 @@ class BeamAssetMetadata {
   String? get logoUrl => values['OPT_LOGO_URL'];
   String? get faviconUrl => values['OPT_FAVICON_URL'];
 
-  /// The issuer's `NTH_RATIO` label, informational only: no BEAM wallet
-  /// scales amounts by it (see [BeamAssetInfo.decimalsFor]).
+  /// How many smallest units make one whole unit, as the issuer wrote it.
   BigInt? get nthRatio => BigInt.tryParse(values['NTH_RATIO'] ?? '');
+
+  /// `NTH_RATIO=1` up to `10^38` (a supply is at most 2^128-1).
+  static final _powerOfTen = RegExp(r'^10{0,38}$');
+
+  /// Decimal places for amounts of this asset, as BEAM's Asset Descriptor
+  /// v1.0 defines them: `NTH_RATIO` is "the ratio of the smallest asset unit
+  /// to regular unit", 100000000 (8 places) when omitted. CANDY (#31) sets
+  /// 10: 1 place. Only a power of ten can be written as decimal places, so
+  /// anything else (0, 21000000, text) counts as 8, as BEAM's own wallets
+  /// show every asset; so do two different `NTH_RATIO`s in one metadata,
+  /// which wallets keeping the first or the last would read apart. The web
+  /// wallet reads them the same way (`pwa/src/lib/meta.js`).
+  int get decimals {
+    if (!isStdPrefixed) return BeamAssetInfo.beamDecimals;
+    const key = 'NTH_RATIO=';
+    final ratios = {
+      for (final entry in raw.substring(4).split(';'))
+        if (entry.startsWith(key)) entry.substring(key.length),
+    };
+    if (ratios.length != 1) return BeamAssetInfo.beamDecimals;
+    final ratio = ratios.single;
+    return _powerOfTen.hasMatch(ratio)
+        ? ratio.length - 1
+        : BeamAssetInfo.beamDecimals;
+  }
 }

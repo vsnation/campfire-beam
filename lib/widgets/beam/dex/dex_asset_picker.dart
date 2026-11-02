@@ -191,7 +191,7 @@ class _DexAssetPickerState extends State<_DexAssetPicker> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              DexFormat.compact(bal),
+                              DexFormat.compact(bal, places: a.decimals),
                               style: STextStyles.itemSubtitle12(context),
                             ),
                             if (deps.worth(id, bal) case final worth?)

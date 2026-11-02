@@ -371,6 +371,12 @@ class BeamSendModel extends ChangeNotifier {
         quiet: true,
       );
     }
+    if (asset.decimals == null) {
+      return BeamSendIssue(
+        BeamSendField.amount,
+        appL10n.sendAssetDecimalsUnknown(BeamSendFormat.symbol(asset)),
+      );
+    }
     if (a == null || a <= BigInt.zero) {
       return BeamSendIssue(BeamSendField.amount, appL10n.sendAmountAboveZero);
     }
@@ -479,6 +485,8 @@ class BeamSendModel extends ChangeNotifier {
     if (id == _assetId) return;
     _assetId = id;
     _sendAll = false;
+    // The typed text, read again in this asset's decimals.
+    _amount = BeamSendFormat.parse(_amountText, places: asset.decimals);
     _notify();
   }
 
@@ -486,7 +494,8 @@ class BeamSendModel extends ChangeNotifier {
   /// language: [BeamSendFormat.parse]).
   void setAmountText(String text) {
     _amountText = text;
-    _amount = BeamSendFormat.parse(text);
+    // In the asset's own decimals (its NTH_RATIO); nothing while they are not read.
+    _amount = BeamSendFormat.parse(text, places: asset.decimals);
     _sendAll = false;
     _scheduleFee();
     _notify();
@@ -503,8 +512,11 @@ class BeamSendModel extends ChangeNotifier {
       max = have - BeamContractFee.minimum;
       if (max < BigInt.zero) max = BigInt.zero;
     }
-    _amount = max > BigInt.zero ? max : null;
-    _amountText = max > BigInt.zero ? BeamSendFormat.editable(max) : '';
+    final places = asset.decimals;
+    _amount = max > BigInt.zero && places != null ? max : null;
+    _amountText = max > BigInt.zero
+        ? BeamSendFormat.editable(max, places: places)
+        : '';
     _sendAll = max > BigInt.zero;
     _scheduleFee();
     _notify();
@@ -709,6 +721,8 @@ class BeamSendModel extends ChangeNotifier {
     } catch (_) {
       return;
     }
+    // An asset's decimals may have just been read: the typed text means what they say.
+    _amount = BeamSendFormat.parse(_amountText, places: asset.decimals);
     _notify();
   }
 

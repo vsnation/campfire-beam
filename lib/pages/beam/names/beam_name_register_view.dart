@@ -205,7 +205,7 @@ class _BeamNameRegisterViewState extends State<BeamNameRegisterView> {
       _name == null ? null : _params?.estimate(_name!, _years);
 
   String _price(BansAmount a) =>
-      '${NamesFormat.readable(a.amount)} ${deps.symbol(a.assetId)}';
+      '${NamesFormat.readable(a.amount, places: deps.decimals(a.assetId))} ${deps.symbol(a.assetId)}';
 
   Future<void> _get() async {
     final name = _name!;
@@ -664,7 +664,7 @@ class _BeamNameRegisterViewState extends State<BeamNameRegisterView> {
             key,
             label,
             l10n.namesYouHaveThisCosts(
-              '${NamesFormat.readable(have)} ${deps.symbol(price.assetId)}',
+              '${NamesFormat.readable(have, places: deps.decimals(price.assetId))} ${deps.symbol(price.assetId)}',
               _price(BansAmount(price.assetId, need)),
             ),
           );

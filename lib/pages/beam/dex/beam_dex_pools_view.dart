@@ -389,8 +389,8 @@ class _BeamDexPoolsViewState extends State<BeamDexPoolsView> {
                 Text(
                   p.isEmpty
                       ? context.l10n.dexPoolEmptyBadge
-                      : '${DexFormat.compact(p.tok1)} ${a1.symbol} · '
-                            '${DexFormat.compact(p.tok2)} ${a2.symbol}',
+                      : '${DexFormat.compact(p.tok1, places: a1.decimals)} ${a1.symbol} · '
+                            '${DexFormat.compact(p.tok2, places: a2.decimals)} ${a2.symbol}',
                   style: STextStyles.label(context),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

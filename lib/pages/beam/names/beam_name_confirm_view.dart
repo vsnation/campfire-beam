@@ -144,7 +144,7 @@ class _BeamNameConfirmViewState extends State<BeamNameConfirmView> {
   }
 
   String _amount(BansAmount a) =>
-      '${NamesFormat.exact(a.amount)} ${deps.symbol(a.assetId)}';
+      '${NamesFormat.exact(a.amount, places: deps.decimals(a.assetId))} ${deps.symbol(a.assetId)}';
 
   String _beam(BigInt v) => '${NamesFormat.exact(v)} BEAM';
 
@@ -218,8 +218,8 @@ class _BeamNameConfirmViewState extends State<BeamNameConfirmView> {
       final have = deps.available(a.assetId);
       if (have != null && have < a.amount) {
         return context.l10n.namesYouHaveThisNeeds(
-          '${NamesFormat.readable(have)} ${deps.symbol(a.assetId)}',
-          '${NamesFormat.readable(a.amount)} ${deps.symbol(a.assetId)}',
+          '${NamesFormat.readable(have, places: deps.decimals(a.assetId))} ${deps.symbol(a.assetId)}',
+          '${NamesFormat.readable(a.amount, places: deps.decimals(a.assetId))} ${deps.symbol(a.assetId)}',
         );
       }
     }

@@ -36,9 +36,11 @@ class DexAmountInput {
 
 /// Amounts, rates and percentages for the DEX screens.
 ///
-/// Money never goes through `double`: every BEAM asset uses the groth scale
-/// (10^8 smallest units per unit, `BeamAssetInfo.decimalsFor`), so amounts
-/// are formatted from the exact integer.
+/// Money never goes through `double`: amounts are formatted from the exact
+/// integer. BEAM has 8 decimals; an asset the places its metadata's
+/// `NTH_RATIO` gives ([BeamAssetDisplay.decimals]): every function takes them
+/// as [places] (8 when not given; null, not known yet, shows as 8 and parses
+/// as nothing).
 abstract final class DexFormat {
   static const decimals = BeamAssetInfo.beamDecimals;
   static final _unit = BigInt.from(10).pow(decimals);
@@ -47,9 +49,12 @@ abstract final class DexFormat {
   /// Parses a plain decimal ("0.5", "12", ".25", "3."). Thousands
   /// separators and commas are refused by name, never guessed: "1,000"
   /// could mean one thousand or one.
-  static DexAmountInput parse(String text) {
+  static DexAmountInput parse(String text, {int? places = decimals}) {
     final t = text.trim();
     if (t.isEmpty) return DexAmountInput.empty;
+    if (places == null) {
+      return DexAmountInput._(null, appL10n.dexAmountDecimalsUnknown);
+    }
     if (t.contains(',')) {
       return DexAmountInput._(null, appL10n.dexAmountUseDot);
     }
@@ -59,14 +64,14 @@ abstract final class DexFormat {
     final dot = t.indexOf('.');
     final whole = dot < 0 ? t : t.substring(0, dot);
     final frac = dot < 0 ? '' : t.substring(dot + 1);
-    if (frac.length > decimals) {
+    if (frac.length > places) {
       return DexAmountInput._(null, appL10n.dexAmountTooManyDecimals);
     }
     final w = whole.isEmpty ? BigInt.zero : BigInt.parse(whole);
     final f = frac.isEmpty
         ? BigInt.zero
-        : BigInt.parse(frac.padRight(decimals, '0'));
-    final value = w * _unit + f;
+        : BigInt.parse(frac.padRight(places, '0'));
+    final value = w * BigInt.from(10).pow(places) + f;
     if (value >= (BigInt.one << 63)) {
       return DexAmountInput._(null, appL10n.dexAmountTooLarge);
     }
@@ -76,17 +81,22 @@ abstract final class DexFormat {
   /// The exact amount, trailing zeros trimmed, thousands grouped:
   /// 637304113367 → "6,373.04113367". This is what confirmation screens
   /// show: nothing rounded away.
-  static String exact(BigInt groth) => _exact(groth, amountGroupSeparator);
+  static String exact(BigInt groth, {int? places}) =>
+      _exact(groth, amountGroupSeparator, places ?? decimals);
 
   /// The exact amount without grouping, for putting back into a text
   /// field: 10000000 → "0.1".
-  static String plain(BigInt groth) => _exact(groth, '');
+  /// Nothing while [places] is not known: a text written as 8 would be read
+  /// again with the asset's real decimals.
+  static String plain(BigInt groth, {int? places = decimals}) =>
+      places == null ? '' : _exact(groth, '', places);
 
-  static String _exact(BigInt groth, String group) {
+  static String _exact(BigInt groth, String group, int places) {
     final negative = groth.isNegative;
     final v = groth.abs();
-    final whole = v ~/ _unit;
-    final frac = (v % _unit).toString().padLeft(decimals, '0');
+    final unit = BigInt.from(10).pow(places);
+    final whole = v ~/ unit;
+    final frac = places == 0 ? '' : (v % unit).toString().padLeft(places, '0');
     final trimmed = frac.replaceFirst(RegExp(r'0+$'), '');
     final w = groupThousands(whole.toString(), separator: group);
     return '${negative ? '-' : ''}$w${trimmed.isEmpty ? '' : '.$trimmed'}';
@@ -95,9 +105,9 @@ abstract final class DexFormat {
   /// A short amount for lists: rounded down to what people read.
   /// ≥ 1000 → 2 decimals, ≥ 1 → 4, below 1 → 4 significant digits (at most
   /// 8 decimals). The full value is on the confirmation screen.
-  static String compact(BigInt groth) {
+  static String compact(BigInt groth, {int? places}) {
     if (groth == BigInt.zero) return '0';
-    final r = BeamRatio(groth, _unit);
+    final r = BeamRatio(groth, BigInt.from(10).pow(places ?? decimals));
     return number(r);
   }
 

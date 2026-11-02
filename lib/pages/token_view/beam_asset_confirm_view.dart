@@ -29,6 +29,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../l10n/amount_text.dart';
 import '../../l10n/l10n.dart';
 import '../../models/isar/models/beam/beam_asset_contract.dart';
 import '../../notifications/show_flush_bar.dart';
@@ -363,6 +364,19 @@ class _BeamAssetConfirmViewState extends ConsumerState<BeamAssetConfirmView> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(assetLine, style: valueStyle),
+              // An asset with its own decimals: the amount as BEAM's official
+              // wallet and explorer read it (every asset with 8).
+              if (_asset.decimals != 8 && !_asset.isPoolShare) ...[
+                const SizedBox(height: 4),
+                Text(
+                  l10n.amountAtEight(
+                    '${formatAmountUnits(recipient.amount.raw)} '
+                    '${BeamAssetText.symbolLabel(_asset)}',
+                  ),
+                  key: const Key('beamAssetConfirmAtEight'),
+                  style: valueStyle,
+                ),
+              ],
               if (warning != null) ...[
                 const SizedBox(height: 4),
                 Text(

@@ -13,21 +13,35 @@ import '../../../wallets/beam/assets/beam_asset_catalog.dart';
 
 /// Amounts and names on the BEAM send screens.
 ///
-/// Every BEAM asset, BEAM included, counts in units of 10^-8 (the core has
-/// no other scale; see PROGRESS "every BEAM asset has 8 decimals"), so one
-/// formatter serves them all. Amounts that move money are never rounded.
+/// BEAM counts in units of 10^-8; a Confidential Asset in the places its
+/// metadata's `NTH_RATIO` gives ([BeamAssetDisplay.decimals], 8 when it sets
+/// none: CANDY #31 has 1). Amounts that move money are never rounded.
 abstract final class BeamSendFormat {
+  /// BEAM's, and every asset's that sets none of its own.
   static const int decimals = 8;
   static final BigInt _one = BigInt.from(100000000);
 
   /// `123456789012` → `1,234.56789012` (`1 234.56789012` in Russian);
-  /// trailing zeros dropped, "." decimals in every language.
-  static String units(BigInt value) => formatAmountUnits(value);
+  /// trailing zeros dropped, "." decimals in every language. [places]: the
+  /// asset's decimals (null, not known yet: shown as 8).
+  static String units(BigInt value, {int? places}) =>
+      formatAmountUnits(value, decimals: places ?? decimals);
 
   /// `1.5 BEAM`, `10 FOMO`, `3 XYZ #321` (unverified assets always carry
-  /// their id, because anyone can mint an asset and call it anything).
+  /// their id, because anyone can mint an asset and call it anything), in the
+  /// asset's own decimals.
   static String amount(BigInt value, BeamAssetDisplay asset) =>
-      '${units(value)} ${symbol(asset)}';
+      '${units(value, places: asset.decimals)} ${symbol(asset)}';
+
+  /// For an asset with its own decimals: the same amount as BEAM's desktop
+  /// wallet and explorer read it (every asset with 8), so a figure from
+  /// someone using them is not misread 10^n apart. Null for 8 decimals,
+  /// decimals not known yet, and pool shares.
+  static String? atEight(BigInt value, BeamAssetDisplay asset) {
+    final d = asset.decimals;
+    if (d == null || d == decimals || asset.isPoolShare) return null;
+    return '${units(value)} ${symbol(asset)}';
+  }
 
   /// `1.5 BEAM` for asset 0.
   static String beam(BigInt groth) => '${units(groth)} BEAM';
@@ -40,32 +54,39 @@ abstract final class BeamSendFormat {
         : '${asset.symbol} ${asset.idLabel}';
   }
 
-  /// What the user typed, in units; null when it is not a positive amount
-  /// with at most 8 decimals, written with a "." decimal point.
+  /// What the user typed, in units of an asset with [places] decimals (BEAM's
+  /// 8 by default); null when it is not a positive amount with at most that
+  /// many decimals, written with a "." decimal point, or when [places] is null
+  /// (the asset's metadata is not read yet: "1" read as 8 would be 10^8 of a
+  /// whole-number asset).
   ///
   /// The same in every language and on every device (the owner's rule;
   /// lib/l10n/amount_text.dart): a comma is never a decimal point here, so
   /// "0,5" is refused, never 5, and "1,000" is refused, never 1. (On iOS
   /// and macOS the device locale is Russian's own once the app declares
   /// Russian, and its decimal comma would otherwise make "1,000" one BEAM.)
-  static BigInt? parse(String text) {
+  static BigInt? parse(String text, {int? places = decimals}) {
     final t = text.trim();
-    if (t.isEmpty || t.contains(',')) return null;
+    if (places == null || t.isEmpty || t.contains(',')) return null;
     final a = Amount.tryParseEditableAmount(
       t,
       locale: kAppAmountLocale,
-      fractionDigits: decimals,
+      fractionDigits: places,
     );
     if (a == null || a.raw <= BigInt.zero) return null;
     return a.raw;
   }
 
   /// [value] as text the amount field accepts again: no grouping, "."
-  /// decimals.
-  static String editable(BigInt value) => Amount.formatEditableDecimal(
-    Amount(rawValue: value, fractionDigits: decimals).decimal,
-    locale: kAppAmountLocale,
-  );
+  /// decimals, in [places] (the asset's decimals; null: nothing, as a text
+  /// written as 8 would be read again with the real ones).
+  static String editable(BigInt value, {int? places = decimals}) =>
+      places == null
+      ? ''
+      : Amount.formatEditableDecimal(
+          Amount(rawValue: value, fractionDigits: places).decimal,
+          locale: kAppAmountLocale,
+        );
 
   /// `2d37ef…c1a09f`: enough of both ends to compare by eye. The full
   /// address is one tap away (copy).

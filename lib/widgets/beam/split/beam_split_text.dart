@@ -25,9 +25,13 @@ abstract final class BeamSplitText {
   static String get intro => appL10n.splitIntro;
 
   /// "1.2345 BEAM in 1 coin: one payment at a time".
-  static String now(BeamCoinSummary coins, String symbol) {
+  static String now(BeamCoinSummary coins, String symbol, {int? places}) {
     final n = coins.available.length;
-    final total = BeamUnits.withSymbol(coins.availableTotal, symbol);
+    final total = BeamUnits.withSymbol(
+      coins.availableTotal,
+      symbol,
+      places: places,
+    );
     if (n == 0) return appL10n.splitNowNothing;
     if (n == 1) return appL10n.splitNowOneCoin(total);
     final share = (coins.largestShare * 100).round();
@@ -40,8 +44,11 @@ abstract final class BeamSplitText {
   static String get countLabel => appL10n.splitCountLabel;
 
   /// "5 coins of 0.17 BEAM".
-  static String newCoins(BeamSplitPlan plan, String symbol) => appL10n
-      .splitNewCoins(plan.count, BeamUnits.withSymbol(plan.size, symbol));
+  static String newCoins(BeamSplitPlan plan, String symbol, {int? places}) =>
+      appL10n.splitNewCoins(
+        plan.count,
+        BeamUnits.withSymbol(plan.size, symbol, places: places),
+      );
 
   /// The primary button, the outcome: "Split into 5 coins".
   static String cta(int count) => appL10n.splitCta(count);
@@ -68,8 +75,11 @@ abstract final class BeamSplitText {
   );
 
   /// The biometric prompt's reason.
-  static String authReason(BeamSplitPlan plan, String symbol) => appL10n
-      .splitAuthReason(plan.count, BeamUnits.withSymbol(plan.total, symbol));
+  static String authReason(BeamSplitPlan plan, String symbol, {int? places}) =>
+      appL10n.splitAuthReason(
+        plan.count,
+        BeamUnits.withSymbol(plan.total, symbol, places: places),
+      );
 
   static String doneTitle(int count) => appL10n.splitDoneTitle(count);
 

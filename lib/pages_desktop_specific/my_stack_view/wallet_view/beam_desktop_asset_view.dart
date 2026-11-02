@@ -272,6 +272,16 @@ class _DesktopSummary extends ConsumerWidget {
             ),
           ),
         ],
+        if (BeamAssetText.decimalsNote(asset, balance.spendable.raw)
+            case final decimals?) ...[
+          const SizedBox(height: 4),
+          Text(
+            decimals,
+            key: const Key('beamAssetDecimals'),
+            style: STextStyles.desktopTextExtraExtraSmall(context)
+                .copyWith(color: colors.textSubtitle1),
+          ),
+        ],
       ],
     );
   }

@@ -97,6 +97,9 @@ class BeamNamesDeps {
   BeamAssetDisplay display(int assetId) =>
       BeamAssetCatalog.display(assetId, metadataOf(assetId));
 
+  /// [assetId]'s decimal places; null while its metadata is not read.
+  int? decimals(int assetId) => display(assetId).decimals;
+
   /// The symbol to print after an amount of [assetId].
   String symbol(int assetId) {
     final d = display(assetId);

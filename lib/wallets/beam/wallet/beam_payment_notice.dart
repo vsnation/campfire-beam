@@ -31,7 +31,7 @@ class BeamPaymentReceived {
   final String walletName;
   final String txId;
 
-  /// Groth (every BEAM asset has 8 decimals).
+  /// Smallest units: BEAM's groth (8 decimals), an asset's own (its NTH_RATIO).
   final BigInt value;
 
   /// 0 for BEAM.
@@ -42,9 +42,17 @@ class BeamPaymentReceived {
   /// Only a verified asset is named by its ticker: anyone can mint a token
   /// called "BEAM".
   String get title {
-    final amount = Amount(rawValue: value, fractionDigits: 8).decimal;
-    if (assetId == 0) return appL10n.walletPaymentReceived('$amount BEAM');
+    if (assetId == 0) {
+      return appL10n.walletPaymentReceived(
+        '${Amount(rawValue: value, fractionDigits: 8).decimal} BEAM',
+      );
+    }
     final contract = BeamAssetRegistry.build(assetId);
+    // Pinned, or read from its metadata this run; 8 until then.
+    final amount = Amount(
+      rawValue: value,
+      fractionDigits: contract.decimals,
+    ).decimal;
     return contract.verified
         ? appL10n.walletPaymentReceived('$amount ${contract.symbol}')
         : appL10n.walletPaymentReceivedToken('$amount', '$assetId');

@@ -32,6 +32,20 @@ abstract final class BeamAssetRegistry {
   /// hundreds of spam assets must not hold the core up.
   static const int maxSingleLookups = 20;
 
+  /// Unverified assets whose metadata this run has read: each is read once more
+  /// after an update, as rows cached before 2026-11 hold 8 decimals whatever
+  /// their `NTH_RATIO` said.
+  static final Set<int> _readThisRun = {};
+
+  /// Whether [assetId]'s cached row holds decimals read this run: a verified
+  /// asset's or a liquidity token's are pinned; any other's only once its
+  /// metadata was read again since the app started (until then a row may hold
+  /// an older version's 8, and no amount of it may be typed).
+  static bool decimalsRead(int assetId) =>
+      BeamAssetCatalog.verified.containsKey(assetId) ||
+      BeamLpTokens.of(assetId) != null ||
+      _readThisRun.contains(assetId);
+
   /// The row for [assetId] from what is known now. [metadata] is the
   /// on-chain metadata; [pool] the DEX pool whose LP token this is (by
   /// default whatever [BeamLpTokens] knows), and [metadataOf] the metadata
@@ -43,7 +57,11 @@ abstract final class BeamAssetRegistry {
     BeamAssetMetadata? Function(int assetId)? metadataOf,
   }) {
     final address = BeamAssetContract.addressFor(assetId);
-    final decimals = BeamAssetInfo.decimalsFor(assetId);
+    // Not known until [metadata] is read: 8 meanwhile, with metadataKnown false (no
+    // amount of it can be typed until then: BeamSendModel, the approve sheet).
+    final decimals =
+        BeamAssetCatalog.decimalsOf(assetId, metadata) ??
+        BeamAssetInfo.beamDecimals;
     final lp = BeamAssetCatalog.verified.containsKey(assetId)
         ? null
         : pool ?? BeamLpTokens.of(assetId);
@@ -121,7 +139,7 @@ abstract final class BeamAssetRegistry {
         assetId: row.assetId,
         name: name,
         symbol: name,
-        decimals: BeamAssetInfo.decimalsFor(row.assetId),
+        decimals: BeamAssetInfo.beamDecimals,
         verified: fresh.verified,
         metadataKnown: true,
         iconAsset: fresh.iconAsset,
@@ -141,7 +159,10 @@ abstract final class BeamAssetRegistry {
       assetId: row.assetId,
       name: verified ? look.name : (text?.name ?? row.name),
       symbol: verified ? look.symbol : (text?.symbol ?? row.symbol),
-      decimals: BeamAssetInfo.decimalsFor(row.assetId),
+      // An unverified asset keeps the decimals its metadata gave when the row was built.
+      decimals: verified
+          ? BeamAssetCatalog.verified[row.assetId]!.decimals
+          : row.decimals,
       verified: verified,
       metadataKnown: row.metadataKnown,
       iconAsset: look.icon,
@@ -208,7 +229,8 @@ abstract final class BeamAssetRegistry {
     final wanted = <int>{
       for (final id in ids)
         if (!BeamAssetCatalog.verified.containsKey(id) &&
-            !(existing[id]?.metadataKnown ?? false) &&
+            (!(existing[id]?.metadataKnown ?? false) ||
+                !_readThisRun.contains(id)) &&
             BeamLpTokens.of(id) == null)
           id,
       for (final id in ids)
@@ -238,6 +260,10 @@ abstract final class BeamAssetRegistry {
       }
     }
 
+    _readThisRun.addAll(metadata.keys);
+    for (final e in metadata.entries) {
+      BeamAssetCatalog.rememberDecimals(e.key, e.value.decimals);
+    }
     BeamAssetMetadata? metaOf(int id) => metadata[id];
 
     final out = <int, BeamAssetContract>{};

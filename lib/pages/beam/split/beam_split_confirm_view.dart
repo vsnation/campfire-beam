@@ -69,7 +69,11 @@ class _BeamSplitConfirmViewState extends State<BeamSplitConfirmView>
     final symbol = _names.symbol(plan.assetId);
     final tx = await runSend(
       authorize: widget.authorize,
-      reason: BeamSplitText.authReason(plan, symbol),
+      reason: BeamSplitText.authReason(
+        plan,
+        symbol,
+        places: _names.decimals(plan.assetId),
+      ),
       send: () => widget.backend.confirm(widget.prepared),
       explain: (e) {
         final w = beamWalletExceptionFrom(e);
@@ -92,6 +96,7 @@ class _BeamSplitConfirmViewState extends State<BeamSplitConfirmView>
       final plan = p.plan;
       final aid = plan.assetId;
       final symbol = _names.symbol(aid);
+      final places = _names.decimals(aid);
       final before = p.before;
       final coinsNow = before.available.length;
       // The wallet let the prepared split go (it was tried, and failed or
@@ -120,19 +125,27 @@ class _BeamSplitConfirmViewState extends State<BeamSplitConfirmView>
                   label: l10n.splitNowLabel,
                   value: l10n.splitReviewNow(
                     coinsNow,
-                    BeamUnits.withSymbol(before.availableTotal, symbol),
+                    BeamUnits.withSymbol(
+                      before.availableTotal,
+                      symbol,
+                      places: places,
+                    ),
                   ),
                   valueKey: const ValueKey('split-review-now'),
                 ),
                 BeamDetailRow(
                   label: l10n.splitNewCoinsLabel,
-                  value: BeamSplitText.newCoins(plan, symbol),
+                  value: BeamSplitText.newCoins(plan, symbol, places: places),
                   valueKey: const ValueKey('split-review-new'),
                 ),
                 if (plan.change > BigInt.zero)
                   BeamDetailRow(
                     label: l10n.splitChangeLabel,
-                    value: BeamUnits.withSymbol(plan.change, symbol),
+                    value: BeamUnits.withSymbol(
+                      plan.change,
+                      symbol,
+                      places: places,
+                    ),
                   ),
                 BeamDetailRow(
                   label: l10n.beamNetworkFee,

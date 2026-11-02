@@ -34,6 +34,7 @@ import '../../../utilities/text_styles.dart';
 import '../../../wallets/beam/contracts/dex/beam_dex_quotes.dart';
 import '../../../wallets/beam/contracts/dex/beam_dex_service.dart';
 import '../../../wallets/beam/contracts/dex/beam_pool.dart';
+import '../../../wallets/beam/contracts/dex/beam_ratio.dart';
 import '../../../wallets/beam/contracts/dex/dex_constants.dart';
 import '../../../widgets/beam/dex/dex_amount_field.dart';
 import '../../../widgets/beam/dex/dex_asset_icon.dart';
@@ -134,9 +135,9 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
       _problem = null;
       _addQuote = null;
       if (side == 1) {
-        _in1 = DexFormat.parse(text);
+        _in1 = DexFormat.parse(text, places: deps.decimals(_pool.aid1));
       } else {
-        _in2 = DexFormat.parse(text);
+        _in2 = DexFormat.parse(text, places: deps.decimals(_pool.aid2));
       }
       if (!_pool.isEmpty) {
         // One side drives; the other is computed by the shader.
@@ -179,9 +180,15 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
         _quoting = false;
         if (!_pool.isEmpty) {
           if (_edited == 1) {
-            _c2.text = DexFormat.plain(q.amount2);
+            _c2.text = DexFormat.plain(
+              q.amount2,
+              places: deps.decimals(_pool.aid2),
+            );
           } else {
-            _c1.text = DexFormat.plain(q.amount1);
+            _c1.text = DexFormat.plain(
+              q.amount1,
+              places: deps.decimals(_pool.aid1),
+            );
           }
         }
       });
@@ -358,8 +365,8 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
           onPressed: null,
           reason: l10n.dexNotEnoughForDeposit(
             _sym(aid),
-            DexFormat.exact(amount),
-            DexFormat.exact(have),
+            DexFormat.exact(amount, places: deps.decimals(aid)),
+            DexFormat.exact(have, places: deps.decimals(aid)),
           ),
         );
       }
@@ -483,15 +490,16 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
               valueKey: const Key('dex-pool-price'),
               value:
                   '1 ${a1.symbol} = '
-                  '${DexFormat.number(_pool.spotPriceOf(_pool.aid1))} '
+                  // Whole units of each side, each in its own decimals.
+                  '${DexFormat.number(_pool.spotPriceOf(_pool.aid1) * BeamRatio(BigInt.from(10).pow(deps.decimals(_pool.aid1) ?? DexFormat.decimals), BigInt.from(10).pow(deps.decimals(_pool.aid2) ?? DexFormat.decimals)))} '
                   '${a2.symbol}',
             ),
             DexDetailRow(
               label: context.l10n.dexInPoolLabel,
               valueKey: const Key('dex-pool-reserves'),
               value:
-                  '${DexFormat.compact(_pool.tok1)} ${a1.symbol} · '
-                  '${DexFormat.compact(_pool.tok2)} ${a2.symbol}',
+                  '${DexFormat.compact(_pool.tok1, places: deps.decimals(_pool.aid1))} ${a1.symbol} · '
+                  '${DexFormat.compact(_pool.tok2, places: deps.decimals(_pool.aid2))} ${a2.symbol}',
               note: switch (deps.poolSize(_pool)) {
                 null => context.l10n.dexNoPrice,
                 final size => deps.worthOfBeam(size, inBeam: true),
@@ -561,7 +569,7 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
               ),
               Text(
                 context.l10n.dexBalance(
-                  '${DexFormat.compact(deps.available(aid))} ${_sym(aid)}',
+                  '${DexFormat.compact(deps.available(aid), places: deps.decimals(aid))} ${_sym(aid)}',
                 ),
                 style: STextStyles.label(context),
               ),
@@ -585,7 +593,11 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
           DexWorth(
             deps.worth(
               aid,
-              DexFormat.parse((n == 1 ? _c1 : _c2).text).value ?? BigInt.zero,
+              DexFormat.parse(
+                    (n == 1 ? _c1 : _c2).text,
+                    places: deps.decimals(aid),
+                  ).value ??
+                  BigInt.zero,
             ),
             textKey: Key('dex-add-worth-$n'),
           ),
@@ -637,7 +649,7 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
     if (aid == 0) max -= kDexCallFee;
     if (max < BigInt.zero) max = BigInt.zero;
     final c = n == 1 ? _c1 : _c2;
-    c.text = DexFormat.plain(max);
+    c.text = DexFormat.plain(max, places: deps.decimals(aid));
     _onChanged(n, c.text);
   }
 
@@ -669,8 +681,8 @@ class _BeamDexPoolDetailViewState extends State<BeamDexPoolDetailView> {
                 valueKey: const Key('dex-withdraw-back'),
                 value: q == null
                     ? (_quoting ? '…' : '—')
-                    : '${DexFormat.exact(q.amount1)} ${_sym(_pool.aid1)} + '
-                          '${DexFormat.exact(q.amount2)} ${_sym(_pool.aid2)}',
+                    : '${DexFormat.exact(q.amount1, places: deps.decimals(_pool.aid1))} ${_sym(_pool.aid1)} + '
+                          '${DexFormat.exact(q.amount2, places: deps.decimals(_pool.aid2))} ${_sym(_pool.aid2)}',
                 note: q == null ? null : _backWorth(q),
                 noteKey: const Key('dex-withdraw-worth'),
               ),

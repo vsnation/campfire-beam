@@ -125,7 +125,7 @@ class _BeamNameDetailViewState extends State<BeamNameDetailView> {
   }
 
   String _price(BansAmount a) =>
-      '${NamesFormat.readable(a.amount)} ${deps.symbol(a.assetId)}';
+      '${NamesFormat.readable(a.amount, places: deps.decimals(a.assetId))} ${deps.symbol(a.assetId)}';
 
   String _date(int h) => NamesFormat.date(clock.dateOf(h));
 

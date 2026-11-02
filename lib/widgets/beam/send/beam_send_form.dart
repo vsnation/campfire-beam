@@ -113,7 +113,10 @@ class BeamSendFormState extends State<BeamSendForm> {
     _amount = TextEditingController(
       text: widget.initialAmount == null
           ? ''
-          : BeamSendFormat.editable(widget.initialAmount!),
+          : BeamSendFormat.editable(
+              widget.initialAmount!,
+              places: _m.asset.decimals,
+            ),
     );
     _comment = TextEditingController(text: _m.comment);
     for (final f in [_toFocus, _amountFocus, _commentFocus]) {
@@ -172,6 +175,8 @@ class BeamSendFormState extends State<BeamSendForm> {
       truncateOverprecision: true,
     );
     if (parsed == null || parsed.raw <= BigInt.zero) return false;
+    // A beam: link's amount is BEAM, whichever asset was chosen.
+    _m.setAsset(0);
     _amount.text = BeamSendFormat.editable(parsed.raw);
     _m.setAmountText(_amount.text);
     _linkAmountFor = text;
@@ -770,6 +775,22 @@ class BeamSendFormState extends State<BeamSendForm> {
             key: const Key('beamAmountIssue'),
             kind: BeamNoticeKind.error,
             message: issue.message,
+          ),
+        );
+    } else if (_m.amount case final a?
+        when BeamSendFormat.atEight(a, _m.asset) != null) {
+      // An asset with its own decimals: the amount as BEAM's desktop wallet and
+      // explorer read it, so a figure from someone using them is not misread.
+      out
+        ..add(const SizedBox(height: 4))
+        ..add(
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Text(
+              context.l10n.amountAtEight(BeamSendFormat.atEight(a, _m.asset)!),
+              key: const Key('beamSendAtEight'),
+              style: STextStyles.label(context),
+            ),
           ),
         );
     } else if (_m.sendAll && _m.isAddress && _m.assetId == 0) {

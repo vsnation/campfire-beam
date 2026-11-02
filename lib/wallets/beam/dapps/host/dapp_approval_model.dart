@@ -61,13 +61,20 @@ class DappAssetLine {
   /// yet, or no DEX pool that prices the asset).
   final String? fiat;
 
-  /// "0.80368764", "1,000".
-  String get amountText => dappFormatAmount(amount);
+  /// "0.80368764", "1,000", in the asset's own decimals (its NTH_RATIO); in
+  /// smallest units, said so, while they are not known ([decimalsKnown]).
+  String get amountText =>
+      dappFormatAmount(amount, decimals: asset.decimals ?? 0);
+
+  /// The asset's decimals are known: its metadata was read, or it is pinned.
+  bool get decimalsKnown => asset.decimals != null;
 
   /// "0.80368764 FOMO"; an asset Campfire does not vouch for carries its
   /// id, so a look-alike "FOMO" can never read as the verified one:
   /// "1 FOMO (#175)".
-  String get text => '$amountText $unit';
+  String get text => decimalsKnown
+      ? '$amountText $unit'
+      : appL10n.dappsSmallestUnits(amountText, unit);
 
   /// "FOMO", or "FOMO (#175)" for an asset Campfire does not vouch for.
   String get unit {
@@ -171,6 +178,10 @@ class DappApprovalModel {
     DappAssetLine line(DappAssetAmount a) => lineOf(a.assetId, a.amount);
 
     final pays = [for (final a in request.pays) line(a)];
+    final unknownPay = [
+      for (final l in pays)
+        if (!l.decimalsKnown) l,
+    ];
     final receives = [for (final a in request.receives) line(a)];
     final calls = [
       for (final (i, c) in request.calls.indexed)
@@ -251,6 +262,9 @@ class DappApprovalModel {
       // sign.
       blockedReason: kind == DappApprovalKind.signMessage
           ? null
+          // A paid asset whose decimals are not known: its amount could read 10^n off.
+          : unknownPay.isNotEmpty
+          ? appL10n.sendAssetDecimalsUnknown(unknownPay.first.unit)
           : spendBlockedReason,
       available: available == null ? null : Map.unmodifiable(available),
       calls: List.unmodifiable(calls),
@@ -437,7 +451,10 @@ class DappApprovalModel {
       appL10n.dappsShortfall(
         s.unit,
         _need(s.asset.assetId),
-        dappFormatAmount(available?[s.asset.assetId] ?? BigInt.zero),
+        dappFormatAmount(
+          available?[s.asset.assetId] ?? BigInt.zero,
+          decimals: s.asset.decimals ?? 8,
+        ),
       ),
   ];
 
@@ -454,8 +471,8 @@ String dappShortHex(String hex, {int head = 8, int tail = 6}) =>
 /// [amount] smallest units of an asset with [decimals] decimals, with
 /// thousands separators and no trailing zeros: 10000000 → "0.1",
 /// 100000000000 → "1,000" ("1 000" in Russian; "." decimals in every
-/// language). Every BEAM asset has 8 decimals (`BeamAssetInfo.decimalsFor`),
-/// so nothing is ever rounded: what is shown is what moves.
+/// language). BEAM has 8 decimals, an asset its own ([BeamAssetDisplay.decimals]);
+/// nothing is ever rounded: what is shown is what moves.
 String dappFormatAmount(BigInt amount, {int decimals = 8}) =>
     formatAmountUnits(amount, decimals: decimals);
 

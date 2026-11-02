@@ -78,78 +78,83 @@ void main() {
       ? 'set BEAM_LIVE_TCP_PORT and BEAM_LIVE_TCP_KEY to run'
       : null;
 
-  test('read-only calls and push events over TCP line mode', () async {
-    final log = <String>[];
-    final tcp = TcpLineTransport(port: port!, aclKey: key, log: log.add);
-    final guard = ReadOnlyGuard(tcp);
-    final api = BeamApi(guard);
+  test(
+    'read-only calls and push events over TCP line mode',
+    () async {
+      final log = <String>[];
+      final tcp = TcpLineTransport(port: port!, aclKey: key, log: log.add);
+      final guard = ReadOnlyGuard(tcp);
+      final api = BeamApi(guard);
 
-    final events = <BeamEvent>[];
-    final firstState = Completer<BeamEvent>();
-    final sub = guard.events.listen((e) {
-      events.add(e);
-      if ((e.name == 'ev_system_state' || e.name == 'ev_sync_progress') &&
-          !firstState.isCompleted) {
-        firstState.complete(e);
+      final events = <BeamEvent>[];
+      final firstState = Completer<BeamEvent>();
+      final sub = guard.events.listen((e) {
+        events.add(e);
+        if ((e.name == 'ev_system_state' || e.name == 'ev_sync_progress') &&
+            !firstState.isCompleted) {
+          firstState.complete(e);
+        }
+      });
+
+      await guard.connect();
+      expect(guard.isConnected, isTrue);
+
+      final v = await api.getVersion();
+      print(
+        'get_version: api ${v.apiVersion}, beam ${v.beamVersion}, '
+        'network ${v.networkName}',
+      );
+      expect(v.apiVersionMajor, 7);
+
+      final s = await api.walletStatus();
+      final age = DateTime.now().toUtc().difference(s.currentStateTime);
+      print(
+        'wallet_status: height ${s.currentHeight}, is_in_sync ${s.isInSync}, '
+        'block age ${age.inSeconds} s, ${s.totals.length} asset totals',
+      );
+      expect(s.currentHeight, greaterThan(3928666));
+
+      final txs = await api.txList(count: 5);
+      print(
+        'tx_list(count 5): ${txs.length} txs, statuses '
+        '${txs.map((t) => t.status.name).toSet()}',
+      );
+      expect(txs.length, lessThanOrEqualTo(5));
+
+      final assets = await api.assetsList();
+      final labelled = assets.where((a) => a.metadata.nthRatio != null).length;
+      print(
+        'assets_list: ${assets.length} assets, $labelled with an NTH_RATIO '
+        '(each read as its decimals; 8 when it is not a power of ten)',
+      );
+      expect(assets, isNotEmpty);
+
+      final sw = Stopwatch()..start();
+      expect(await api.subscribeEvents(), isTrue);
+      final ev = await firstState.future.timeout(const Duration(seconds: 60));
+      print(
+        'first state event: ${ev.name} after ${sw.elapsedMilliseconds} ms, '
+        'current_height ${ev.data['current_height']}, '
+        'tip_height ${ev.data['tip_height']}',
+      );
+      // Give the initial snapshots of the other streams a moment to land.
+      await Future<void>.delayed(const Duration(seconds: 3));
+      final counts = <String, int>{};
+      for (final e in events) {
+        counts[e.name] = (counts[e.name] ?? 0) + 1;
       }
-    });
+      print('events received: $counts');
+      print('methods sent: ${guard.sent}');
+      print('transport log: ${log.join(' | ')}');
+      expect(guard.sent.toSet().difference(ReadOnlyGuard.allowed), isEmpty);
 
-    await guard.connect();
-    expect(guard.isConnected, isTrue);
-
-    final v = await api.getVersion();
-    print(
-      'get_version: api ${v.apiVersion}, beam ${v.beamVersion}, '
-      'network ${v.networkName}',
-    );
-    expect(v.apiVersionMajor, 7);
-
-    final s = await api.walletStatus();
-    final age = DateTime.now().toUtc().difference(s.currentStateTime);
-    print(
-      'wallet_status: height ${s.currentHeight}, is_in_sync ${s.isInSync}, '
-      'block age ${age.inSeconds} s, ${s.totals.length} asset totals',
-    );
-    expect(s.currentHeight, greaterThan(3928666));
-
-    final txs = await api.txList(count: 5);
-    print(
-      'tx_list(count 5): ${txs.length} txs, statuses '
-      '${txs.map((t) => t.status.name).toSet()}',
-    );
-    expect(txs.length, lessThanOrEqualTo(5));
-
-    final assets = await api.assetsList();
-    final labelled = assets.where((a) => a.metadata.nthRatio != null).length;
-    print(
-      'assets_list: ${assets.length} assets, $labelled with an NTH_RATIO '
-      'label (informational; all shown with 8 decimals)',
-    );
-    expect(assets, isNotEmpty);
-
-    final sw = Stopwatch()..start();
-    expect(await api.subscribeEvents(), isTrue);
-    final ev = await firstState.future.timeout(const Duration(seconds: 60));
-    print(
-      'first state event: ${ev.name} after ${sw.elapsedMilliseconds} ms, '
-      'current_height ${ev.data['current_height']}, '
-      'tip_height ${ev.data['tip_height']}',
-    );
-    // Give the initial snapshots of the other streams a moment to land.
-    await Future<void>.delayed(const Duration(seconds: 3));
-    final counts = <String, int>{};
-    for (final e in events) {
-      counts[e.name] = (counts[e.name] ?? 0) + 1;
-    }
-    print('events received: $counts');
-    print('methods sent: ${guard.sent}');
-    print('transport log: ${log.join(' | ')}');
-    expect(guard.sent.toSet().difference(ReadOnlyGuard.allowed), isEmpty);
-
-    await sub.cancel();
-    await guard.close();
-    expect(guard.isConnected, isFalse);
-  }, skip: skip, timeout: const Timeout(Duration(minutes: 3)));
+      await sub.cancel();
+      await guard.close();
+      expect(guard.isConnected, isFalse);
+    },
+    skip: skip,
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
 
   test('a wrong ACL key is refused by the core', () async {
     final tcp = TcpLineTransport(

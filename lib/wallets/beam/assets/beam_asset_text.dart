@@ -16,7 +16,9 @@ import '../../../utilities/amount/amount.dart';
 import '../../../utilities/amount/amount_unit.dart';
 import '../../crypto_currency/crypto_currency.dart';
 import '../contracts/dex/dex_constants.dart';
+import '../models/beam_asset_info.dart';
 import 'beam_asset_catalog.dart';
+import 'beam_asset_registry.dart';
 
 /// Every user-facing sentence and number format of the asset screens, in
 /// one place so the list, the asset page, send and confirm say the same
@@ -41,7 +43,11 @@ abstract final class BeamAssetText {
     amount: value,
     locale: kAppAmountLocale,
     coin: _beam,
-    maxDecimalPlaces: maxDecimals,
+    // An asset with more decimals than the BEAM setting (doggy's 12) shows
+    // them all: what is shown is what it holds. Fewer are capped at its own.
+    maxDecimalPlaces: maxDecimals > asset.decimals
+        ? maxDecimals
+        : asset.decimals,
     withUnitName: withUnit,
     overrideUnit: asset.symbol,
     tokenContract: asset,
@@ -89,6 +95,25 @@ abstract final class BeamAssetText {
     return '$number ${symbolLabel(asset)}';
   }
 
+  /// For an asset whose metadata sets its own decimals (NTH_RATIO, CANDY's 1):
+  /// how many, and, when [available] is above zero, that BEAM's official
+  /// wallet and explorer (every asset with 8) show this balance differently.
+  /// Null for 8 decimals, a pool share, or decimals not read this run.
+  static String? decimalsNote(BeamAssetContract asset, BigInt available) {
+    final d = asset.decimals;
+    if (d == BeamAssetInfo.beamDecimals ||
+        asset.poolAssetA != null ||
+        !BeamAssetRegistry.decimalsRead(asset.assetId)) {
+      return null;
+    }
+    final label = symbolLabel(asset);
+    final own = d == 0
+        ? appL10n.assetDecimalsNone(label)
+        : appL10n.assetDecimalsOwn(label, d);
+    if (available <= BigInt.zero) return own;
+    return '$own ${appL10n.assetDecimalsElsewhere('${formatAmountUnits(available)} $label')}';
+  }
+
   /// After a send whose outcome is unknown (the connection dropped and the
   /// wallet could not be asked afterwards).
   static String get sendUnknownTitle => appL10n.assetsSendUnknownTitle;
@@ -98,13 +123,18 @@ abstract final class BeamAssetText {
   static String beam(BigInt groth, {required String locale}) =>
       _units(groth, 'BEAM', locale);
 
-  /// [raw] smallest units (8 decimals) as "1,234.5 [unit]", trailing zeros
-  /// dropped, written the app's way ([formatAmountUnits]).
-  static String _units(BigInt raw, String unit, String locale) =>
-      '${formatAmountUnits(raw)} $unit';
+  /// [raw] smallest units of an asset with [decimals] places (BEAM's 8) as
+  /// "1,234.5 [unit]", trailing zeros dropped, written the app's way
+  /// ([formatAmountUnits]).
+  static String _units(
+    BigInt raw,
+    String unit,
+    String locale, [
+    int decimals = 8,
+  ]) => '${formatAmountUnits(raw, decimals: decimals)} $unit';
 
   /// A list row's amount, rounded down to what a person reads: 2 decimals
-  /// from 1,000, 4 from 1, all 8 below ("6,477,953.06 GIGA",
+  /// from 1,000, 4 from 1, all of the asset's below ("6,477,953.06 GIGA",
   /// "568.1297 FOMO", "0.46659234 LP"). The asset page shows every digit.
   static String rounded(
     Amount value,
@@ -113,14 +143,15 @@ abstract final class BeamAssetText {
   }) {
     final raw = value.raw;
     final abs = raw.abs();
-    final one = BigInt.from(100000000);
+    final d = asset.decimals;
+    final one = BigInt.from(10).pow(d);
     final places = abs >= one * BigInt.from(1000)
         ? 2
         : abs >= one
         ? 4
-        : 8;
-    final step = BigInt.from(10).pow(8 - places);
-    return _units(raw ~/ step * step, asset.symbol, locale);
+        : d;
+    final step = BigInt.from(10).pow(d > places ? d - places : 0);
+    return _units(raw ~/ step * step, asset.symbol, locale, d);
   }
 
   /// "≈ 3.214 BEAM": a DEX spot estimate, rounded down to what a person

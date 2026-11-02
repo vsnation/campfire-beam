@@ -137,7 +137,7 @@ class _BeamNamesHomeViewState extends State<BeamNamesHomeView> {
   }
 
   String _price(BansAmount a) =>
-      '${NamesFormat.readable(a.amount)} ${deps.symbol(a.assetId)}';
+      '${NamesFormat.readable(a.amount, places: deps.decimals(a.assetId))} ${deps.symbol(a.assetId)}';
 
   void _onSent(BeamNameSent? sent) {
     if (sent == null || !mounted) return;

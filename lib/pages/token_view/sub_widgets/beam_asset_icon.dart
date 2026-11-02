@@ -54,6 +54,7 @@ BeamAssetDisplay beamAssetLook(BeamAssetContract asset) {
       icon: look.icon,
       color: look.color,
       pool: pool,
+      decimals: asset.decimals,
     );
   }
   final look = BeamAssetCatalog.display(asset.assetId, null);
@@ -65,5 +66,9 @@ BeamAssetDisplay beamAssetLook(BeamAssetContract asset) {
     icon: look.icon,
     color: look.color,
     impersonates: asset.impersonates,
+    // A row whose metadata was not read this run may hold a placeholder 8: unknown.
+    decimals: BeamAssetRegistry.decimalsRead(asset.assetId)
+        ? asset.decimals
+        : null,
   );
 }

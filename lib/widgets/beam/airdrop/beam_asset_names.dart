@@ -55,9 +55,12 @@ class BeamAssetNames extends ChangeNotifier {
   /// The ticker, e.g. `FOMO`, or `#188` for an unnamed asset.
   String symbol(int assetId) => display(assetId).symbol;
 
-  /// `1,234.5 FOMO`.
+  /// [assetId]'s decimal places; null while its metadata is not read.
+  int? decimals(int assetId) => display(assetId).decimals;
+
+  /// `1,234.5 FOMO`, in the asset's own decimals.
   String amount(int assetId, BigInt units) =>
-      BeamUnits.withSymbol(units, symbol(assetId));
+      BeamUnits.withSymbol(units, symbol(assetId), places: decimals(assetId));
 
   /// Uses metadata the caller already has (e.g. the Minter's).
   void remember(int assetId, String? rawMetadata) {

@@ -22,11 +22,16 @@ class BeamKnownAsset {
     required this.symbol,
     required this.color,
     this.icon,
+    this.decimals = BeamAssetInfo.beamDecimals,
   });
 
   final int id;
   final String name;
   final String symbol;
+
+  /// Decimal places, pinned: what its metadata's `NTH_RATIO` declares
+  /// (CROWN: 1000, 3 places), so no node can change them.
+  final int decimals;
 
   /// ARGB.
   final int color;
@@ -47,11 +52,16 @@ class BeamAssetDisplay {
     this.color,
     this.impersonates,
     this.pool,
+    this.decimals,
   });
 
   final int assetId;
   final String name;
   final String symbol;
+
+  /// Decimal places for its amounts ([BeamAssetCatalog.decimalsOf]); null while
+  /// its metadata is not read: shown as 8, never typed or approved.
+  final int? decimals;
 
   /// In [BeamAssetCatalog.verified]. Anything else is shown with its asset
   /// id, because anyone can mint an asset and call it anything.
@@ -157,6 +167,26 @@ abstract final class BeamAssetCatalog {
   /// on-chain metadata (explorer `/assets`, 2026-10-06). CHAD and GIGA each
   /// exist twice: 186/187 are the first MemeClash pair, 190/191 the current
   /// (v9) one.
+  /// Decimal places for amounts of [assetId]: a verified asset's pinned ones,
+  /// a DEX liquidity token's 8 (the DEX contract writes no `NTH_RATIO`), any
+  /// other asset's from its [metadata]; null while that is not read yet, when
+  /// no amount of it may be typed or approved.
+  static int? decimalsOf(int assetId, BeamAssetMetadata? metadata) {
+    final known = verified[assetId];
+    if (known != null) return known.decimals;
+    final lp = BeamLpTokens.of(assetId);
+    if (lp != null && lp.lpToken == assetId) return BeamAssetInfo.beamDecimals;
+    return metadata?.decimals ?? _readDecimals[assetId];
+  }
+
+  /// Decimals read from the chain this run ([rememberDecimals]), for places
+  /// that show an asset without its metadata at hand (the history).
+  static final Map<int, int> _readDecimals = {};
+
+  /// [assetId]'s metadata was just read and gives [decimals].
+  static void rememberDecimals(int assetId, int decimals) =>
+      _readDecimals[assetId] = decimals;
+
   static const Map<int, BeamKnownAsset> verified = {
     0: BeamKnownAsset(
       id: 0,
@@ -171,6 +201,7 @@ abstract final class BeamAssetCatalog {
       symbol: 'CROWN',
       color: 0xFFFFD700,
       icon: '$_icons/4.png',
+      decimals: 3,
     ),
     6: BeamKnownAsset(
       id: 6,
@@ -305,6 +336,7 @@ abstract final class BeamAssetCatalog {
         verified: true,
         icon: known.icon ?? genericIcon(assetId),
         color: known.color,
+        decimals: known.decimals,
       );
     }
     final pool = BeamLpTokens.of(assetId);
@@ -324,6 +356,7 @@ abstract final class BeamAssetCatalog {
       color: genericColor(assetId),
       // Judged on the raw text: cleaning drops a borrowed "#174".
       impersonates: impersonationOf(rawName, rawSymbol),
+      decimals: decimalsOf(assetId, metadata),
     );
   }
 
@@ -353,6 +386,7 @@ abstract final class BeamAssetCatalog {
       icon: unverifiedIcon(pool.lpToken),
       color: genericColor(pool.lpToken),
       pool: pool,
+      decimals: BeamAssetInfo.beamDecimals,
     );
   }
 

@@ -1420,6 +1420,15 @@
   "@airdropStatusWaitingNetwork": {
     "description": "Airdrop (BEAM wallet → Airdrop): an asset is locked into one-time voucher codes; whoever has a code can claim its amount once. Status pill on a batch card (My airdrop batches) or next to one code. The batch was sent and the network has not confirmed it yet. (glossary: batch)"
   },
+  "amountAtEight": "In BEAM’s official wallet and explorer, which show every token with 8 decimal places, this is {amount}.",
+  "@amountAtEight": {
+    "description": "BEAM amounts: a Confidential Asset (token) counts in the decimal places its creator set in its metadata (NTH_RATIO; 8 when it sets none). Under an amount of a token with its own decimal places (Send, payment confirmation): the same amount as BEAM's official wallet and the blockchain explorer show it, so a figure from someone using them is not misread. {amount} is like '1,203.7557598 CANDY #31' (keep as written).",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "appBackupAutoBody": "Auto backup is a custom {appName} feature that offers a convenient backup of your data. To ensure maximum security, we recommend using a unique password that you haven't used anywhere else on the internet before. Your password is not stored.",
   "@appBackupAutoBody": {
     "description": "App backup (the app's own encrypted backup file holding its wallets, address book and preferences; protected by a passphrase the person chooses; it is not the recovery phrase). (glossary: backup) The backup settings (desktop: Settings → the 'Backup and restore' section; phone: Settings → 'Campfire backup & restore'). Auto Backup is the app making that backup file by itself (every 10 minutes, at every start, or after a wallet is closed). Desktop: text under the card's heading 'Auto Backup'. {appName} is the app's full name, e.g. 'BEAM Campfire' (a brand: keep as written). 'Password' here is the backup file's passphrase.",
@@ -1899,6 +1908,36 @@
       "appName": {
         "type": "String",
         "example": "Campfire"
+      }
+    }
+  },
+  "assetDecimalsElsewhere": "BEAM’s official wallet and explorer show every token with 8 decimal places, so there this balance reads {amount}.",
+  "@assetDecimalsElsewhere": {
+    "description": "BEAM amounts: a Confidential Asset (token) counts in the decimal places its creator set in its metadata (NTH_RATIO; 8 when it sets none). Token page, after assetDecimalsOwn: why the same balance looks different in BEAM's official wallet and the explorer. {amount} is like '1,203.75575985 CANDY #31' (keep as written).",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "assetDecimalsNone": "{token} has no decimal places.",
+  "@assetDecimalsNone": {
+    "description": "BEAM amounts: a Confidential Asset (token) counts in the decimal places its creator set in its metadata (NTH_RATIO; 8 when it sets none). Token page: this token counts in whole units only (its creator set it). {token} is like 'DUNBAR #150' (keep as written).",
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "assetDecimalsOwn": "{count, plural, one{{token} has {count} decimal place, as its creator set it.} other{{token} has {count} decimal places, as its creator set it.}}",
+  "@assetDecimalsOwn": {
+    "description": "BEAM amounts: a Confidential Asset (token) counts in the decimal places its creator set in its metadata (NTH_RATIO; 8 when it sets none). Token page: how many decimal places this token has (not 8). {token} is like 'CANDY #31' (keep as written); {count} is the number of decimal places.",
+    "placeholders": {
+      "token": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
       }
     }
   },
@@ -6493,6 +6532,18 @@
       }
     }
   },
+  "dappsSmallestUnits": "{amount} smallest units of {unit}",
+  "@dappsSmallestUnits": {
+    "description": "BEAM amounts: a Confidential Asset (token) counts in the decimal places its creator set in its metadata (NTH_RATIO; 8 when it sets none). dApp approval sheet: an amount of a token whose details the network could not give, in its raw smallest units (only for a token the wallet receives). {amount} is a whole number like '1,000'; {unit} like 'PEPE (#94)' (keep both as written).",
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      },
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
   "dappsStoreAllInstalledBody": "You can still add another one from a .dapp file below.",
   "@dappsStoreAllInstalledBody": {
     "description": "dApps screen (BEAM wallet → dApps): lists the dApps that are installed and the bundled ones that can be installed. A dApp is an app that runs inside the wallet and uses BEAM contracts; the wallet asks the person before it spends anything. Message of the empty Available section. Keep '.dapp' as written (a file type)."
@@ -7213,6 +7264,10 @@
         "type": "int"
       }
     }
+  },
+  "dexAmountDecimalsUnknown": "The wallet is still reading this token from the network. Try again in a moment.",
+  "@dexAmountDecimalsUnknown": {
+    "description": "BEAM amounts: a Confidential Asset (token) counts in the decimal places its creator set in its metadata (NTH_RATIO; 8 when it sets none). DEX (swap, pools): under an amount field, when the token's details (its decimal places) have not arrived from the network yet."
   },
   "dexAmountEnterNumber": "Enter a number, like 0.5",
   "@dexAmountEnterNumber": {
@@ -13061,6 +13116,15 @@
   "sendAmountTooLarge": "That amount is too large.",
   "@sendAmountTooLarge": {
     "description": "BEAM Send screen (wallet → Send; glossary: send): pays BEAM or a BEAM asset (token) to a BEAM address or to a BEAM name (like alice.beam). Error: the amount is larger than any BEAM payment can be."
+  },
+  "sendAssetDecimalsUnknown": "The wallet is still reading {symbol} from the network. Try again in a moment.",
+  "@sendAssetDecimalsUnknown": {
+    "description": "BEAM amounts: a Confidential Asset (token) counts in the decimal places its creator set in its metadata (NTH_RATIO; 8 when it sets none). Shown under an amount field (Send, airdrop, mint, burn, DEX) or on a dApp approval when that token's details (and so its decimal places) have not arrived from the network yet: no amount of it can be read until they have. {symbol} is the token's ticker, e.g. 'CANDY #31' (keep as written).",
+    "placeholders": {
+      "symbol": {
+        "type": "String"
+      }
+    }
   },
   "sendAssetImpersonation": "Not the verified {symbol} (#{id}). Anyone can create an asset with any name; this one is {ownId}.",
   "@sendAssetImpersonation": {

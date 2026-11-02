@@ -75,10 +75,17 @@ class _BeamMintMoreViewState extends State<BeamMintMoreView> {
     super.dispose();
   }
 
+  /// The token's decimal places (its NTH_RATIO); null while its metadata is not read.
+  int? get _places => widget.assetNames.decimals(_t.assetId);
+
   String? get _amountProblem {
-    final p = BeamUnits.problem(_amount.text);
+    final p = BeamUnits.problem(
+      _amount.text,
+      places: _places,
+      symbol: widget.assetNames.display(_t.assetId).label,
+    );
     if (p != null) return p;
-    final v = BeamUnits.parse(_amount.text);
+    final v = BeamUnits.parse(_amount.text, places: _places);
     if (v != null && v > _most) {
       return context.l10n.minterMintMoreAtMost(
         widget.assetNames.amount(_t.assetId, _most),
@@ -89,7 +96,7 @@ class _BeamMintMoreViewState extends State<BeamMintMoreView> {
 
   Future<void> _mint() async {
     if (_preparing) return;
-    final v = BeamUnits.parse(_amount.text);
+    final v = BeamUnits.parse(_amount.text, places: _places);
     if (v == null) return;
     setState(() {
       _preparing = true;
@@ -126,7 +133,7 @@ class _BeamMintMoreViewState extends State<BeamMintMoreView> {
   Widget build(BuildContext context) => BeamSyncGate(
     sync: widget.sync,
     builder: (context, sync) {
-      final v = BeamUnits.parse(_amount.text);
+      final v = BeamUnits.parse(_amount.text, places: _places);
       final ok = v != null && _amountProblem == null;
       final names = widget.assetNames;
       final l10n = context.l10n;
@@ -170,8 +177,9 @@ class _BeamMintMoreViewState extends State<BeamMintMoreView> {
               alignment: Alignment.centerRight,
               child: CustomTextButton(
                 text: l10n.minterMintMoreMost,
-                onTap: () =>
-                    setState(() => _amount.text = BeamUnits.plain(_most)),
+                onTap: () => setState(
+                  () => _amount.text = BeamUnits.plain(_most, places: _places),
+                ),
               ),
             ),
             if (_problem != null) ...[

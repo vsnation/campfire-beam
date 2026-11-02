@@ -86,7 +86,7 @@ class _BeamNameSellViewState extends State<BeamNameSellView> {
 
   String get _priceText => _amount == null
       ? ''
-      : '${NamesFormat.readable(_amount!)} ${deps.symbol(_assetId)}';
+      : '${NamesFormat.readable(_amount!, places: deps.decimals(_assetId))} ${deps.symbol(_assetId)}';
 
   Future<void> _list() async {
     final name = BansName(_name);
@@ -161,7 +161,11 @@ class _BeamNameSellViewState extends State<BeamNameSellView> {
                     inputFormatters: [_AmountFormatter()],
                     textAlignVertical: TextAlignVertical.center,
                     onChanged: (t) => setState(() {
-                      _amount = NamesFormat.parse(t);
+                      // In the chosen asset's own decimals; nothing while they are not read.
+                      _amount = NamesFormat.parse(
+                        t,
+                        places: deps.decimals(_assetId),
+                      );
                       _error = null;
                     }),
                     style: STextStyles.field(context),
@@ -199,7 +203,14 @@ class _BeamNameSellViewState extends State<BeamNameSellView> {
                           ),
                         ),
                     ],
-                    onChanged: (v) => setState(() => _assetId = v ?? 0),
+                    onChanged: (v) => setState(() {
+                      _assetId = v ?? 0;
+                      // The typed price, read again in this asset's decimals.
+                      _amount = NamesFormat.parse(
+                        _controller.text,
+                        places: deps.decimals(_assetId),
+                      );
+                    }),
                   ),
                 ),
               ),

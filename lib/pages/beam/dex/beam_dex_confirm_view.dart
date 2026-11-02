@@ -206,7 +206,7 @@ class _BeamDexConfirmViewState extends State<BeamDexConfirmView> {
   };
 
   String _amount(int assetId, BigInt v) =>
-      '${DexFormat.exact(v)} ${deps.assetName(assetId)}';
+      '${DexFormat.exact(v, places: deps.decimals(assetId))} ${deps.assetName(assetId)}';
 
   /// "Swap 0.02 BEAM": what the swap spends, from the built transaction.
   String get _swapLabel {

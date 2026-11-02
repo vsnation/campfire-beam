@@ -99,5 +99,10 @@ jobs:
       - name: Analyze BEAM code
         run: flutter analyze lib/wallets/beam test/beam
 
+      # The BEAM screens: not every one is reached by a test, so a type error in
+      # one would only show at release build time. Errors fail; lints do not.
+      - name: Compile check of the BEAM screens
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings lib/pages/beam lib/widgets/beam lib/pages/token_view lib/pages_desktop_specific/beam lib/pages_desktop_specific/my_stack_view/wallet_view
+
       - name: BEAM tests
         run: flutter test test/beam --reporter expanded

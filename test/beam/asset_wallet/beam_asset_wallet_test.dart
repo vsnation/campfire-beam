@@ -111,7 +111,7 @@ void main() {
       expect(BeamAssetContract.assetIdOf('beamAsset:-1'), isNull);
     });
 
-    test('every asset has 8 decimals; verified ones come from the '
+    test('each asset in its own decimals; verified ones come from the '
         'catalogue with their bundled icon', () {
       final fomo = BeamAssetRegistry.build(174);
       expect(fomo.decimals, 8);
@@ -119,8 +119,29 @@ void main() {
       expect(fomo.verified, isTrue);
       expect(fomo.iconAsset, 'assets/beam/icons/174.png');
       expect(fomo.isPoolShare, isFalse);
-      // CROWN declares NTH_RATIO=1000; it is still shown with 8 decimals.
-      expect(BeamAssetRegistry.build(4).decimals, BeamAssetInfo.beamDecimals);
+      // CROWN declares NTH_RATIO=1000: 3 decimals, pinned, whatever a node says.
+      expect(BeamAssetRegistry.build(4).decimals, 3);
+      expect(
+        BeamAssetRegistry.build(
+          4,
+          metadata: BeamAssetMetadata.parse('STD:SCH_VER=1;N=X;NTH_RATIO=10'),
+        ).decimals,
+        3,
+      );
+      // An unverified asset: what its metadata says (CANDY #31 sets 10).
+      final candy = BeamAssetRegistry.build(
+        31,
+        metadata: BeamAssetMetadata.parse(
+          'STD:SCH_VER=1;N=CANDY;SN=EAT;UN=CANDY;NTHUN=BITE;NTH_RATIO=10;',
+        ),
+      );
+      expect(candy.decimals, 1);
+      expect(candy.metadataKnown, isTrue);
+      // Not read yet: a placeholder 8, and not known.
+      final unread = BeamAssetRegistry.build(8031);
+      expect(unread.metadataKnown, isFalse);
+      expect(BeamAssetRegistry.decimalsRead(8031), isFalse);
+      expect(BeamAssetRegistry.decimalsRead(4), isTrue);
     });
   });
 

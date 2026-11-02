@@ -41,6 +41,7 @@ import '../../../utilities/clipboard_interface.dart';
 import '../../../utilities/constants.dart';
 import '../../../utilities/text_styles.dart';
 import '../../../wallets/beam/assets/beam_asset_providers.dart';
+import '../../../wallets/beam/assets/beam_asset_registry.dart';
 import '../../../wallets/beam/assets/beam_asset_text.dart';
 import '../../../wallets/beam/sync/beam_sync_messages.dart';
 import '../../../wallets/beam/sync/beam_sync_state.dart';
@@ -128,9 +129,14 @@ class _BeamAssetSendFormState extends ConsumerState<BeamAssetSendForm> {
   /// German or French phone its decimal comma made a pasted "1,000" one
   /// token and refused "0.5", while "Available" and the confirm screen
   /// write "." (release audit 1.3.0).
+  ///
+  /// In the asset's own decimals (its NTH_RATIO, the row's [decimals]); nothing
+  /// while an unverified asset's metadata is not read: its row holds 8 then as a
+  /// placeholder, and "1" read as 8 would be 10^8 of a whole-number asset.
   Amount? _parsedAmount() {
     final text = _amount.text.trim();
     if (text.isEmpty || text.contains(',')) return null;
+    if (!BeamAssetRegistry.decimalsRead(_asset.assetId)) return null;
     return AmountUnit.normal.tryParse(
       text,
       locale: kAppAmountLocale,
@@ -164,6 +170,7 @@ class _BeamAssetSendFormState extends ConsumerState<BeamAssetSendForm> {
   /// Fills in the whole balance, ungrouped with a "." ("1000.5"), as the
   /// field takes it.
   void _sendAll(BigInt available) {
+    if (!BeamAssetRegistry.decimalsRead(_asset.assetId)) return;
     _amount.text = AmountUnit.normal.formatEditable(
       amount: Amount(rawValue: available, fractionDigits: _asset.decimals),
       locale: kAppAmountLocale,

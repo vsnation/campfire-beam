@@ -205,6 +205,7 @@ class _BeamSplitViewState extends State<BeamSplitView> {
   }
 
   String get _symbol => _names.symbol(_assetId);
+  int? get _places => _names.decimals(_assetId);
 
   /// What keeps the button off, apart from sync (its own notice).
   String? get _fundsIssue {
@@ -420,7 +421,7 @@ class _BeamSplitViewState extends State<BeamSplitView> {
         onPressed: many ? _pickAsset : null,
         child: BeamAssetTitle(
           display: _names.display(_assetId),
-          subtitle: BeamSplitText.now(coins, symbol),
+          subtitle: BeamSplitText.now(coins, symbol, places: _places),
           trailing: many
               ? Icon(Icons.expand_more_rounded, color: colors.textSubtitle1)
               : null,
@@ -469,7 +470,7 @@ class _BeamSplitViewState extends State<BeamSplitView> {
           children: [
             BeamDetailRow(
               label: l10n.splitYouWillHave,
-              value: BeamSplitText.newCoins(plan, symbol),
+              value: BeamSplitText.newCoins(plan, symbol, places: _places),
               valueKey: const ValueKey('split-new-coins'),
             ),
             BeamDetailRow(
@@ -480,7 +481,11 @@ class _BeamSplitViewState extends State<BeamSplitView> {
             if (plan.change > BigInt.zero)
               BeamDetailRow(
                 label: l10n.splitChangeLabel,
-                value: BeamUnits.withSymbol(plan.change, symbol),
+                value: BeamUnits.withSymbol(
+                  plan.change,
+                  symbol,
+                  places: _places,
+                ),
                 valueKey: const ValueKey('split-change'),
               ),
           ],
@@ -499,6 +504,7 @@ class _BeamSplitViewState extends State<BeamSplitView> {
               context: context,
               coins: coins,
               symbol: symbol,
+              places: _places,
             ),
           ),
         ),

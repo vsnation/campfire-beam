@@ -87,7 +87,7 @@ void main() {
         pools.singleWhere((p) => p.lpToken == 175).ctl,
         BigInt.parse('2125257813880'),
       );
-      expect(BeamAssetInfo.decimalsFor(175), 8);
+      expect(BeamAssetCatalog.decimalsOf(175, null), 8);
     });
   });
 

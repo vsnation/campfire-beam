@@ -73,13 +73,16 @@ class BeamAssetHolding {
   /// Campfire's balance for this asset, mapped exactly like BEAM's
   /// (`BeamBalanceMapper.balance`): spendable = available, pending =
   /// receiving + maturing, nothing blocked.
-  Balance get balance => beamAssetBalance(totals);
+  Balance get balance => beamAssetBalance(totals, decimals: contract.decimals);
 }
 
-/// [totals] as Campfire's [Balance] (8 decimals).
-Balance beamAssetBalance(BeamCachedAssetTotals totals) {
-  Amount a(BigInt v) =>
-      Amount(rawValue: v, fractionDigits: BeamAssetInfo.beamDecimals);
+/// [totals] as Campfire's [Balance], in the asset's [decimals] (its row's:
+/// BEAM's 8, or what its metadata's NTH_RATIO gives).
+Balance beamAssetBalance(
+  BeamCachedAssetTotals totals, {
+  int decimals = BeamAssetInfo.beamDecimals,
+}) {
+  Amount a(BigInt v) => Amount(rawValue: v, fractionDigits: decimals);
   return Balance(
     total: a(totals.total),
     spendable: a(totals.available),

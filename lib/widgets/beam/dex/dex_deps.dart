@@ -169,6 +169,10 @@ class BeamDexDeps implements DexLayout {
     metadataOf: metadataOf,
   );
 
+  /// [assetId]'s decimal places ([BeamAssetDisplay.decimals]); null while its
+  /// metadata is not read: no amount of it is typed then.
+  int? decimals(int assetId) => display(assetId).decimals;
+
   /// What the wallet can spend of [assetId] right now.
   BigInt available(int assetId) =>
       balances.value[assetId]?.available ?? BigInt.zero;

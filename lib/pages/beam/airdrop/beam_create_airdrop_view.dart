@@ -104,7 +104,11 @@ class _BeamCreateAirdropViewState extends State<BeamCreateAirdropView> {
   late final _amount = TextEditingController(
     text: widget.initialValue == null
         ? ''
-        : BeamUnits.plain(widget.initialValue!),
+        // Nothing until the asset's decimals are read: a text written as 8 would be read with others.
+        : BeamUnits.plain(
+            widget.initialValue!,
+            places: _names.decimals(widget.initialAssetId),
+          ),
   );
   late final _count = TextEditingController(
     text: '${widget.initialCount ?? 10}',
@@ -175,7 +179,9 @@ class _BeamCreateAirdropViewState extends State<BeamCreateAirdropView> {
         : null;
   }
 
-  BigInt? get _value => BeamUnits.parse(_amount.text);
+  // In the asset's own decimals (its NTH_RATIO); nothing while they are not read.
+  BigInt? get _value =>
+      BeamUnits.parse(_amount.text, places: _names.decimals(_assetId));
 
   /// The largest amount a call's funds carry (signed 64-bit).
   static final _maxFunds = (BigInt.one << 63) - BigInt.one;
@@ -400,7 +406,11 @@ class _BeamCreateAirdropViewState extends State<BeamCreateAirdropView> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
-                    error: BeamUnits.problem(_amount.text),
+                    error: BeamUnits.problem(
+                      _amount.text,
+                      places: _names.decimals(_assetId),
+                      symbol: _names.display(_assetId).label,
+                    ),
                     suffix: Padding(
                       padding: const EdgeInsets.only(right: 12),
                       child: Center(

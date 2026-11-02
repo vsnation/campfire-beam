@@ -233,17 +233,22 @@ abstract final class BeamTxText {
     AmountFormatter beam, {
     bool sign = false,
   }) {
-    final value = Amount(rawValue: raw.abs(), fractionDigits: 8);
+    // An asset in its own decimals (pinned, or read from its metadata this run;
+    // 8 until then).
+    final asset = BeamAssetCatalog.display(assetId, null);
+    final value = Amount(
+      rawValue: raw.abs(),
+      fractionDigits: assetId == 0 ? 8 : (asset.decimals ?? 8),
+    );
     final String text;
     if (assetId == 0) {
       text = beam.format(value);
     } else {
-      final asset = BeamAssetCatalog.display(assetId, null);
       text = AmountFormatter(
         unit: AmountUnit.normal,
         locale: beam.locale,
         coin: beam.coin,
-        maxDecimals: beam.maxDecimals,
+        maxDecimals: asset.decimals ?? beam.maxDecimals,
       ).format(value, overrideUnit: asset.symbol);
     }
     if (!sign || raw == BigInt.zero) return text;

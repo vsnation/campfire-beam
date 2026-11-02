@@ -175,7 +175,8 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
     _seq++;
     setState(() {
       if (!_settingShare) _share = null;
-      _input = DexFormat.parse(text);
+      // In the pay asset's own decimals (its NTH_RATIO); nothing while they are not read.
+      _input = DexFormat.parse(text, places: deps.decimals(_pay));
       _quote = null;
       _problem = null;
       _moved = null;
@@ -188,7 +189,7 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
   }
 
   void _setAmount(BigInt v) {
-    _amount.text = DexFormat.plain(v);
+    _amount.text = DexFormat.plain(v, places: deps.decimals(_pay));
     _onAmountChanged(_amount.text);
   }
 
@@ -270,7 +271,10 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
       setState(() {
         _quote = q;
         _quoting = false;
-        _receiveText.text = DexFormat.plain(q.receive);
+        _receiveText.text = DexFormat.plain(
+          q.receive,
+          places: deps.decimals(_receive),
+        );
       });
     } on BeamDexException catch (e) {
       if (!mounted || seq != _seq) return;
@@ -355,14 +359,24 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
     if (amount == null || amount == BigInt.zero) {
       return _off(l10n.dexEnterPayAmount(paySym));
     }
+    // What it gets is shown, and checked on the approve sheet, in the receive asset's decimals.
+    if (deps.decimals(_receive) == null) {
+      return _off(l10n.sendAssetDecimalsUnknown(_sym(_receive)));
+    }
     final have = deps.available(_pay);
     if (amount > have) {
       final back = deps.returning(_pay);
       if (back > BigInt.zero && amount <= have + back) {
-        return _off(_waitingLine(back, paySym), waiting: _pay);
+        return _off(
+          _waitingLine(back, paySym, deps.decimals(_pay)),
+          waiting: _pay,
+        );
       }
       return _off(
-        l10n.dexNotEnoughAsset(paySym, '${DexFormat.exact(have)} $paySym'),
+        l10n.dexNotEnoughAsset(
+          paySym,
+          '${DexFormat.exact(have, places: deps.decimals(_pay))} $paySym',
+        ),
       );
     }
     if (_problem != null) return _off(null);
@@ -397,8 +411,10 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
   static _DexCta _off(String? reason, {int? waiting}) =>
       (onPressed: null, reason: reason, waiting: waiting);
 
-  static String _waitingLine(BigInt back, String symbol) =>
-      appL10n.dexCoinsReturning('${DexFormat.exact(back)} $symbol');
+  static String _waitingLine(BigInt back, String symbol, [int? places]) =>
+      appL10n.dexCoinsReturning(
+        '${DexFormat.exact(back, places: places)} $symbol',
+      );
 
   // ------------------------------------------------------------------ build
 
@@ -408,7 +424,7 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
     final amount = _input.value;
     if (amount == null || amount <= BigInt.zero) return context.l10n.dexSwapCta;
     return context.l10n.dexSwapAmountCta(
-      '${DexFormat.exact(amount)} ${deps.assetLabel(_pay)}',
+      '${DexFormat.exact(amount, places: deps.decimals(_pay))} ${deps.assetLabel(_pay)}',
     );
   }
 
@@ -480,7 +496,9 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
           children: [
             Expanded(child: Text(l10n.dexYouPay, style: labelStyle)),
             Text(
-              l10n.dexBalance('${DexFormat.compact(have)} ${_sym(_pay)}'),
+              l10n.dexBalance(
+                '${DexFormat.compact(have, places: deps.decimals(_pay))} ${_sym(_pay)}',
+              ),
               key: const Key('dex-pay-balance'),
               style: STextStyles.label(context),
             ),
@@ -574,7 +592,8 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
             label: l10n.dexRateLabel,
             valueKey: const Key('dex-rate'),
             value:
-                '1 $paySym ≈ ${DexFormat.number(q.effectiveRate)} '
+                // Whole units of each side, each in its own decimals.
+                '1 $paySym ≈ ${DexFormat.number(q.effectiveRate * BeamRatio(BigInt.from(10).pow(deps.decimals(q.payAsset) ?? DexFormat.decimals), BigInt.from(10).pow(deps.decimals(q.receiveAsset) ?? DexFormat.decimals)))} '
                 '$receiveSym',
           ),
           DexDetailRow(
@@ -586,7 +605,8 @@ class _BeamDexSwapViewState extends State<BeamDexSwapView> {
           DexDetailRow(
             label: l10n.dexPoolFeeLabel(q.kind.feePercent),
             valueKey: const Key('dex-pool-fee'),
-            value: '${DexFormat.exact(q.fee)} $paySym',
+            value:
+                '${DexFormat.exact(q.fee, places: deps.decimals(q.payAsset))} $paySym',
           ),
           DexDetailRow(
             label: l10n.beamNetworkFee,

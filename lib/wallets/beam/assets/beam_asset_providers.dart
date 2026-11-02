@@ -20,6 +20,7 @@ import '../../../providers/global/wallets_provider.dart';
 import '../../isar/providers/wallet_info_provider.dart';
 import '../../wallet/impl/beam_wallet.dart';
 import '../../wallet/supporting/beam_wallet_info_extension.dart';
+import '../models/beam_asset_info.dart';
 import '../wallet/beam_balance_mapper.dart';
 import 'beam_asset_holdings.dart';
 import 'beam_asset_market_source.dart';
@@ -44,7 +45,10 @@ final pBeamAssetTotals =
 final pBeamAssetBalance =
     Provider.family<Balance, ({String walletId, int assetId})>((ref, key) {
       final totals = ref.watch(pBeamAssetTotals(key.walletId))[key.assetId];
+      // In the asset's own decimals: its cached row's (BEAM's 8 when there is none).
+      final row = ref.watch(pBeamAssetContracts)[key.assetId];
       return beamAssetBalance(
+        decimals: row?.decimals ?? BeamAssetInfo.beamDecimals,
         totals ??
             BeamCachedAssetTotals(
               assetId: key.assetId,

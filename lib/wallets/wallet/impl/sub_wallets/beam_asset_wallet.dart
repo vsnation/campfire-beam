@@ -118,7 +118,7 @@ class BeamAssetWallet extends Wallet<Beam> {
       );
 
   /// Campfire's [Balance] for this asset (8 decimals).
-  Balance get balance => beamAssetBalance(totals);
+  Balance get balance => beamAssetBalance(totals, decimals: tokenDecimals);
 
   @override
   Future<void> init() async {

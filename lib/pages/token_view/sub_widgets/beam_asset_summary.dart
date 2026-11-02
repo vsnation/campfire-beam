@@ -188,6 +188,16 @@ class BeamAssetSummary extends ConsumerWidget {
             const SizedBox(height: 8),
             Text(note, style: secondary, textAlign: TextAlign.center),
           ],
+          if (BeamAssetText.decimalsNote(asset, balance.spendable.raw)
+              case final decimals?) ...[
+            const SizedBox(height: 8),
+            Text(
+              decimals,
+              key: const Key('beamAssetDecimals'),
+              style: secondary,
+              textAlign: TextAlign.center,
+            ),
+          ],
           if (warning != null) ...[
             const SizedBox(height: 8),
             Text(

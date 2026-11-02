@@ -160,9 +160,10 @@ void main() {
         }
       }
       expect(
-        contracts.expand((t) => t.invokeData).expand((i) => i.amounts).any(
-          (a) => a.amount.isNegative,
-        ),
+        contracts
+            .expand((t) => t.invokeData)
+            .expand((i) => i.amounts)
+            .any((a) => a.amount.isNegative),
         isTrue,
       );
     });
@@ -243,16 +244,13 @@ void main() {
 
     test('all five address types parse; none is unknown', () {
       expect(addrs, hasLength(raw.length));
-      expect(
-        addrs.map((a) => a.type).toSet(),
-        {
-          BeamAddressType.regular,
-          BeamAddressType.regularNew,
-          BeamAddressType.offline,
-          BeamAddressType.maxPrivacy,
-          BeamAddressType.publicOffline,
-        },
-      );
+      expect(addrs.map((a) => a.type).toSet(), {
+        BeamAddressType.regular,
+        BeamAddressType.regularNew,
+        BeamAddressType.offline,
+        BeamAddressType.maxPrivacy,
+        BeamAddressType.publicOffline,
+      });
     });
 
     test('fields match the fixture', () {
@@ -324,18 +322,42 @@ void main() {
       expect(compared, raw.length);
     });
 
-    test('every asset uses 8 decimals, whatever NTH_RATIO says', () {
-      // The core has no ratio field and the official wallet never scales by
-      // it; CROWN declares NTH_RATIO=1000 and is still shown with 8.
-      final crown = BeamAssetMetadata.parse(
-        'STD:SCH_VER=1;N=GOTHIC CROWN;SN=CROWN;UN=CROWN;NTHUN=CRWN;'
-        'NTH_RATIO=1000',
+    test('decimals: NTH_RATIO as a power of ten gives the places (BEAM\'s '
+        'Asset Descriptor v1.0), anything else 8', () {
+      BeamAssetMetadata m(String? ratio) => BeamAssetMetadata.parse(
+        'STD:SCH_VER=1;N=T;SN=T;UN=T;NTHUN=t'
+        '${ratio == null ? '' : ';NTH_RATIO=$ratio'}',
       );
-      expect(crown.nthRatio, BigInt.from(1000));
-      expect(BeamAssetInfo.decimalsFor(0), 8);
-      expect(BeamAssetInfo.decimalsFor(4), 8);
+      // Mainnet: CANDY #31 sets 10, doggy #161 1e12, Dunbar #150 1, CROWN 1000.
+      expect(m('10').decimals, 1);
+      expect(m('1000000000000').decimals, 12);
+      expect(m('1').decimals, 0);
+      expect(m('1000').decimals, 3);
+      expect(m(null).decimals, 8);
+      expect(m('100000000').decimals, 8);
+      expect(m('1${'0' * 38}').decimals, 38);
+      // Bean and MSR set 21000000, karma 0: no decimal rendering, so 8.
+      for (final r in [
+        '21000000',
+        '0',
+        '',
+        '010',
+        ' 10',
+        '1e3',
+        '1${'0' * 39}',
+      ]) {
+        expect(m(r).decimals, 8, reason: r);
+      }
+      // Wallets keeping the first or the last would disagree: 8.
+      expect(
+        BeamAssetMetadata.parse('STD:SCH_VER=1;N=T;NTH_RATIO=10;NTH_RATIO=1000')
+            .decimals,
+        8,
+      );
+      expect(BeamAssetMetadata.parse('N=T;NTH_RATIO=10').decimals, 8);
+      // Every mainnet asset in the fixture: its metadata's rule.
       for (final a in assets) {
-        expect(a.decimals, 8, reason: 'asset ${a.assetId}');
+        expect(a.decimals, a.metadata.decimals, reason: 'asset ${a.assetId}');
       }
     });
 

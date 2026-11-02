@@ -124,10 +124,17 @@ class _BeamBurnViewState extends State<BeamBurnView> {
 
   BigInt get _available => _balances?[_assetId] ?? BigInt.zero;
 
+  /// The token's decimal places (its NTH_RATIO); null while its metadata is not read.
+  int? get _places => _assetId == null ? null : _names.decimals(_assetId!);
+
   String? get _amountProblem {
-    final p = BeamUnits.problem(_amount.text);
+    final p = BeamUnits.problem(
+      _amount.text,
+      places: _places,
+      symbol: _assetId == null ? null : _names.display(_assetId!).label,
+    );
     if (p != null) return p;
-    final v = BeamUnits.parse(_amount.text);
+    final v = BeamUnits.parse(_amount.text, places: _places);
     if (v != null && _assetId != null && v > _available) {
       return context.l10n.minterBurnAmountTooMuch(
         _names.amount(_assetId!, _available),
@@ -151,7 +158,7 @@ class _BeamBurnViewState extends State<BeamBurnView> {
   Future<void> _burn() async {
     if (_preparing) return;
     final aid = _assetId;
-    final v = BeamUnits.parse(_amount.text);
+    final v = BeamUnits.parse(_amount.text, places: _places);
     if (aid == null || aid == 0 || v == null) return;
     setState(() {
       _preparing = true;
@@ -193,7 +200,7 @@ class _BeamBurnViewState extends State<BeamBurnView> {
       sync: widget.sync,
       builder: (context, sync) {
         final aid = _assetId;
-        final v = BeamUnits.parse(_amount.text);
+        final v = BeamUnits.parse(_amount.text, places: _places);
         final ok = aid != null && v != null && _amountProblem == null;
         final nothing = _balances != null && _tokens.isEmpty;
         final l10n = context.l10n;
@@ -306,7 +313,9 @@ class _BeamBurnViewState extends State<BeamBurnView> {
       alignment: Alignment.centerRight,
       child: CustomTextButton(
         text: context.l10n.minterBurnAllOfIt,
-        onTap: () => setState(() => _amount.text = BeamUnits.plain(_available)),
+        onTap: () => setState(
+          () => _amount.text = BeamUnits.plain(_available, places: _places),
+        ),
       ),
     ),
   ];

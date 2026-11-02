@@ -214,6 +214,10 @@ class _BeamConfirmContentState extends State<BeamConfirmContent> {
         label: l10n.sendAmountLabel,
         value: BeamSendFormat.amount(r.amount, r.asset),
         valueKey: const Key('beamConfirmAmount'),
+        note: switch (BeamSendFormat.atEight(r.amount, r.asset)) {
+          final eight? => l10n.amountAtEight(eight),
+          null => null,
+        },
       ),
       _assetRow(context),
       _row(

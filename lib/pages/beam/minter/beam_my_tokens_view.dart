@@ -252,8 +252,14 @@ class _BeamMyTokensViewState extends State<BeamMyTokensView> {
               Expanded(
                 child: Text(
                   l10n.minterMyTokensMinted(
-                    BeamUnits.format(t.minted),
-                    BeamUnits.format(t.limit),
+                    BeamUnits.format(
+                      t.minted,
+                      places: _names.decimals(t.assetId),
+                    ),
+                    BeamUnits.format(
+                      t.limit,
+                      places: _names.decimals(t.assetId),
+                    ),
                   ),
                   style: STextStyles.label(context),
                 ),
