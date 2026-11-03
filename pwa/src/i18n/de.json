@@ -62,17 +62,11 @@
   "This code is from the old airdrop contract. Claiming it there shows the code to the network.": "Dieser Code stammt aus dem alten Airdrop-Vertrag. Wenn du ihn dort abholst, wird der Code für das Netzwerk sichtbar.",
   "Use one decimal mark, like 1.25": "Nutze ein Dezimalzeichen, z. B. 1.25",
   "Is that {a} or {b}? Write it without the comma, or with a dot for decimals.": "Meinst du {a} oder {b}? Schreib es ohne Komma oder mit einem Punkt für Dezimalstellen.",
-  "BEAM has 8 decimal places at most.": "BEAM hat höchstens 8 Dezimalstellen.",
-  "{symbol} has no decimal places.": "{symbol} hat keine Dezimalstellen.",
-  "The wallet is still reading {symbol} from the network. Try again in a moment.": "Das Wallet liest {symbol} noch aus dem Netzwerk. Versuch es gleich noch einmal.",
   "Enter an amount.": "Gib einen Betrag ein.",
   "The amount must be more than zero.": "Der Betrag muss größer als null sein.",
   "Only digits and one decimal mark, like 1.25": "Nur Ziffern und ein Dezimalzeichen, z. B. 1.25",
+  "BEAM has 8 decimal places at most.": "BEAM hat höchstens 8 Dezimalstellen.",
   "That amount is too large.": "Dieser Betrag ist zu groß.",
-  "{symbol} has {n} decimal places at most.": {
-    "one": "{symbol} hat höchstens {n} Dezimalstelle.",
-    "other": "{symbol} hat höchstens {n} Dezimalstellen."
-  },
   "If the browser offers to save this password, choose Never: there it would sit next to the wallet it opens.": "Wenn der Browser anbietet, dieses Passwort zu speichern, wähle „Nie“: Dort läge es direkt neben dem Wallet, das es öffnet.",
   "Face ID or Touch ID (Settings) saves the typing.": "Face ID oder Touch ID (Einstellungen) erspart dir das Tippen.",
   "Confirm it is you": "Bestätige, dass du es bist",
@@ -738,7 +732,12 @@
     "one": "Aufgeteilt auf {n} Route",
     "other": "Aufgeteilt auf {n} Routen"
   },
+  "{symbol} has no decimal places.": "{symbol} hat keine Dezimalstellen.",
   "This token has no decimal places.": "Dieser Token hat keine Dezimalstellen.",
+  "{symbol} has {n} decimal places at most.": {
+    "one": "{symbol} hat höchstens {n} Dezimalstelle.",
+    "other": "{symbol} hat höchstens {n} Dezimalstellen."
+  },
   "This token has {n} decimal places at most.": {
     "one": "Dieser Token hat höchstens {n} Dezimalstelle.",
     "other": "Dieser Token hat höchstens {n} Dezimalstellen."
@@ -990,7 +989,6 @@
   "{path} is far larger than a Beam PWA release file.": "{path} ist viel größer als eine Release-Datei von Beam PWA.",
   "{path} from {host} is far larger than a Beam PWA release file.": "{path} von {host} ist viel größer als eine Release-Datei von Beam PWA.",
   "Asset #{id}": "Asset #{id}",
-  "In BEAM’s desktop wallet and explorer, which show every token with 8 decimal places, this is {amount}.": "Im Desktop-Wallet und im Explorer von BEAM, die jeden Token mit 8 Dezimalstellen zeigen, lautet dieser Betrag {amount}.",
   "Pool share · {fee} fee": "Pool-Anteil · {fee} Gebühr",
   "Pool share": "Pool-Anteil",
   "Pool share · unconfirmed #{id}": "Pool-Anteil · unbestätigt #{id}",
@@ -2499,10 +2497,6 @@
   "Buy {n} letters for {amount}": {
     "one": "{n} Buchstabe für {amount} kaufen",
     "other": "{n} Buchstaben für {amount} kaufen"
-  },
-  "{n} smallest units of {unit}": {
-    "one": "{n} kleinste Einheit von {unit}",
-    "other": "{n} kleinste Einheiten von {unit}"
   },
   "Your contacts on this device could not be opened, so they were left exactly as they are. Nothing was changed. Lock and unlock the wallet, then try again.": "Deine Kontakte auf diesem Gerät ließen sich nicht öffnen, darum blieben sie genau, wie sie sind. Es wurde nichts geändert. Sperre und entsperre das Wallet und versuch es dann noch einmal.",
   "Unlock the wallet to see your contacts.": "Entsperre das Wallet, um deine Kontakte zu sehen.",
@@ -4179,7 +4173,6 @@
   "Address type": "Adresstyp",
   "Note (only you see it)": "Notiz (nur du siehst sie)",
   "Keep Beam PWA open until it completes. If nobody accepts it, it is cancelled and the money stays yours.": "Lass Beam PWA geöffnet, bis sie abgeschlossen ist. Wenn niemand sie annimmt, wird sie abgebrochen, und das Geld bleibt bei dir.",
-  "The wallet has just read how many decimal places {unit} has. Check the amount.": "Das Wallet hat gerade gelesen, wie viele Dezimalstellen {unit} hat. Prüfe den Betrag.",
   "There is not enough in the wallet for the amount and the fee.": "Im Wallet ist nicht genug für den Betrag und die Gebühr.",
   "The wallet was locked.": "Das Wallet wurde gesperrt.",
   "Send {amount} {unit} to {name}": "{amount} {unit} an {name} senden",
@@ -4365,7 +4358,7 @@
   "Price protection {percent}, change": "Preisschutz {percent}, ändern",
   "Prices could not be loaded: {reason}.": "Preise ließen sich nicht laden: {reason}.",
   "This swap moves the price by {percent}: you get noticeably less than the current rate. A smaller amount gets a better price.": "Dieser Tausch bewegt den Preis um {percent}: Du bekommst spürbar weniger als den aktuellen Kurs. Ein kleinerer Betrag bekommt einen besseren Preis.",
-  "{unit} comes in steps of {step}, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": "{unit} gibt es in Schritten von {step}, darum zahlst du {cost} {payUnit} für {amount} {unit}, nicht die {entered}, die du eingegeben hast.",
+  "{unit} comes in steps of 0.00000001, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": "{unit} gibt es in Schritten von 0.00000001, darum kostet {amount} {unit} {cost} {payUnit}, nicht die {entered}, die du eingegeben hast.",
   "You get at least {amount} {unit}, or the swap stops and nothing is sent.": "Du bekommst mindestens {amount} {unit}, sonst stoppt der Tausch und es wird nichts gesendet.",
   "If the price gets more than {percent} worse before you approve, the swap stops and nothing is sent.": "Wenn der Preis um mehr als {percent} schlechter wird, bevor du genehmigst, stoppt der Tausch und es wird nichts gesendet.",
   "Swap {amount} {unit} for ≈{getAmount} {getUnit}": "{amount} {unit} gegen ≈{getAmount} {getUnit} tauschen",
@@ -4390,7 +4383,6 @@
   "Your share of the {pair} pool.": "Dein Anteil am {pair}-Pool.",
   "Verified asset #{id}.": "Verifiziertes Asset #{id}.",
   "Unverified asset #{id}. Anyone can create an asset with any name; check the number with the sender.": "Nicht verifiziertes Asset #{id}. Jeder kann ein Asset mit beliebigem Namen erstellen; prüfe die Nummer mit dem Absender.",
-  "BEAM’s desktop wallet and explorer show every token with 8 decimal places, so there this balance reads {amount}.": "Das Desktop-Wallet und der Explorer von BEAM zeigen jeden Token mit 8 Dezimalstellen, dort lautet dieses Guthaben also {amount}.",
   "Prices load once the wallet is up to date.": "Preise werden geladen, sobald das Wallet auf dem neuesten Stand ist.",
   "Prices could not be read from the DEX. They are tried again shortly.": "Preise ließen sich nicht von der DEX lesen. Es wird gleich noch einmal versucht.",
   "Getting the price from the DEX…": "Preis wird von der DEX geholt…",
@@ -4410,10 +4402,6 @@
   "Show on Wallet": "Im Wallet zeigen",
   "Hide from Wallet": "Im Wallet ausblenden",
   "{token} is hidden from Wallet. Show it again here or in Settings.": "{token} ist im Wallet ausgeblendet. Zeig es hier oder in den Einstellungen wieder an.",
-  "{token} has {n} decimal places, as its creator set it.": {
-    "one": "{token} hat {n} Dezimalstelle, so wie sein Ersteller es festgelegt hat.",
-    "other": "{token} hat {n} Dezimalstellen, so wie sein Ersteller es festgelegt hat."
-  },
   "What the latest {n} payments hold.": {
     "one": "Was die letzte {n} Zahlung enthält.",
     "other": "Was die letzten {n} Zahlungen enthalten."

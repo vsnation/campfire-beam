@@ -370,30 +370,6 @@
       "b"
     ]
   },
-  "BEAM has 8 decimal places at most.": {
-    "where": [
-      "lib/amount.js"
-    ]
-  },
-  "{symbol} has no decimal places.": {
-    "where": [
-      "lib/amount.js",
-      "lib/eth/units.js",
-      "screens/token.js"
-    ],
-    "placeholders": [
-      "symbol"
-    ]
-  },
-  "The wallet is still reading {symbol} from the network. Try again in a moment.": {
-    "where": [
-      "lib/amount.js",
-      "screens/consent.js"
-    ],
-    "placeholders": [
-      "symbol"
-    ]
-  },
   "Enter an amount.": {
     "where": [
       "lib/amount.js",
@@ -421,25 +397,16 @@
       "lib/minter.js"
     ]
   },
+  "BEAM has 8 decimal places at most.": {
+    "where": [
+      "lib/amount.js"
+    ]
+  },
   "That amount is too large.": {
     "where": [
       "lib/amount.js",
       "lib/eth/units.js"
     ]
-  },
-  "{symbol} has {n} decimal places at most.": {
-    "where": [
-      "lib/amount.js",
-      "lib/eth/units.js"
-    ],
-    "placeholders": [
-      "n",
-      "symbol"
-    ],
-    "count": {
-      "one": "{symbol} has {n} decimal place at most.",
-      "other": "{symbol} has {n} decimal places at most."
-    }
   },
   "If the browser offers to save this password, choose Never: there it would sit next to the wallet it opens.": {
     "where": [
@@ -4285,10 +4252,31 @@
       "other": "Split over {n} routes"
     }
   },
+  "{symbol} has no decimal places.": {
+    "where": [
+      "lib/eth/units.js"
+    ],
+    "placeholders": [
+      "symbol"
+    ]
+  },
   "This token has no decimal places.": {
     "where": [
       "lib/eth/units.js"
     ]
+  },
+  "{symbol} has {n} decimal places at most.": {
+    "where": [
+      "lib/eth/units.js"
+    ],
+    "placeholders": [
+      "n",
+      "symbol"
+    ],
+    "count": {
+      "one": "{symbol} has {n} decimal place at most.",
+      "other": "{symbol} has {n} decimal places at most."
+    }
   },
   "This token has {n} decimal places at most.": {
     "where": [
@@ -5683,14 +5671,6 @@
     ],
     "placeholders": [
       "id"
-    ]
-  },
-  "In BEAM’s desktop wallet and explorer, which show every token with 8 decimal places, this is {amount}.": {
-    "where": [
-      "lib/meta.js"
-    ],
-    "placeholders": [
-      "amount"
     ]
   },
   "Pool share · {fee} fee": {
@@ -14216,19 +14196,6 @@
     "count": {
       "one": "Buy {n} letter for {amount}",
       "other": "Buy {n} letters for {amount}"
-    }
-  },
-  "{n} smallest units of {unit}": {
-    "where": [
-      "screens/consent.js"
-    ],
-    "placeholders": [
-      "n",
-      "unit"
-    ],
-    "count": {
-      "one": "{n} smallest unit of {unit}",
-      "other": "{n} smallest units of {unit}"
     }
   },
   "Your contacts on this device could not be opened, so they were left exactly as they are. Nothing was changed. Lock and unlock the wallet, then try again.": {
@@ -24001,14 +23968,6 @@
       "screens/review.js"
     ]
   },
-  "The wallet has just read how many decimal places {unit} has. Check the amount.": {
-    "where": [
-      "screens/review.js"
-    ],
-    "placeholders": [
-      "unit"
-    ]
-  },
   "There is not enough in the wallet for the amount and the fee.": {
     "where": [
       "screens/review.js"
@@ -25099,7 +25058,7 @@
       "percent"
     ]
   },
-  "{unit} comes in steps of {step}, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": {
+  "{unit} comes in steps of 0.00000001, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": {
     "where": [
       "screens/swap.js"
     ],
@@ -25108,7 +25067,6 @@
       "cost",
       "entered",
       "payUnit",
-      "step",
       "unit"
     ]
   },
@@ -25284,14 +25242,6 @@
       "id"
     ]
   },
-  "BEAM’s desktop wallet and explorer show every token with 8 decimal places, so there this balance reads {amount}.": {
-    "where": [
-      "screens/token.js"
-    ],
-    "placeholders": [
-      "amount"
-    ]
-  },
   "Prices load once the wallet is up to date.": {
     "where": [
       "screens/token.js"
@@ -25407,19 +25357,6 @@
     "placeholders": [
       "token"
     ]
-  },
-  "{token} has {n} decimal places, as its creator set it.": {
-    "where": [
-      "screens/token.js"
-    ],
-    "placeholders": [
-      "n",
-      "token"
-    ],
-    "count": {
-      "one": "{token} has {n} decimal place, as its creator set it.",
-      "other": "{token} has {n} decimal places, as its creator set it."
-    }
   },
   "What the latest {n} payments hold.": {
     "where": [

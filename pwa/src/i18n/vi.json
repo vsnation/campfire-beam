@@ -62,16 +62,11 @@
   "This code is from the old airdrop contract. Claiming it there shows the code to the network.": "Mã này thuộc hợp đồng airdrop cũ. Lấy về ở đó sẽ để lộ mã cho mạng thấy.",
   "Use one decimal mark, like 1.25": "Dùng một dấu thập phân, ví dụ 1.25",
   "Is that {a} or {b}? Write it without the comma, or with a dot for decimals.": "Đó là {a} hay {b}? Hãy viết không có dấu phẩy, hoặc dùng dấu chấm cho phần thập phân.",
-  "BEAM has 8 decimal places at most.": "BEAM có tối đa 8 chữ số thập phân.",
-  "{symbol} has no decimal places.": "{symbol} không có chữ số thập phân.",
-  "The wallet is still reading {symbol} from the network. Try again in a moment.": "Ví vẫn đang đọc {symbol} từ mạng. Hãy thử lại sau giây lát.",
   "Enter an amount.": "Nhập số tiền.",
   "The amount must be more than zero.": "Số tiền phải lớn hơn 0.",
   "Only digits and one decimal mark, like 1.25": "Chỉ dùng chữ số và một dấu thập phân, ví dụ 1.25",
+  "BEAM has 8 decimal places at most.": "BEAM có tối đa 8 chữ số thập phân.",
   "That amount is too large.": "Số tiền đó quá lớn.",
-  "{symbol} has {n} decimal places at most.": {
-    "other": "{symbol} có tối đa {n} chữ số thập phân."
-  },
   "If the browser offers to save this password, choose Never: there it would sit next to the wallet it opens.": "Nếu trình duyệt đề nghị lưu mật khẩu này, hãy chọn Không bao giờ: ở đó nó sẽ nằm ngay cạnh chiếc ví mà nó mở.",
   "Face ID or Touch ID (Settings) saves the typing.": "Face ID hoặc Touch ID (Cài đặt) giúp bạn khỏi phải gõ.",
   "Confirm it is you": "Xác nhận đó là bạn",
@@ -712,7 +707,11 @@
   "Split over {n} routes": {
     "other": "Chia qua {n} lộ trình"
   },
+  "{symbol} has no decimal places.": "{symbol} không có chữ số thập phân.",
   "This token has no decimal places.": "Token này không có chữ số thập phân.",
+  "{symbol} has {n} decimal places at most.": {
+    "other": "{symbol} có tối đa {n} chữ số thập phân."
+  },
   "This token has {n} decimal places at most.": {
     "other": "Token này có tối đa {n} chữ số thập phân."
   },
@@ -957,7 +956,6 @@
   "{path} is far larger than a Beam PWA release file.": "{path} lớn hơn rất nhiều so với một tệp phát hành của Beam PWA.",
   "{path} from {host} is far larger than a Beam PWA release file.": "{path} từ {host} lớn hơn rất nhiều so với một tệp phát hành của Beam PWA.",
   "Asset #{id}": "Tài sản #{id}",
-  "In BEAM’s desktop wallet and explorer, which show every token with 8 decimal places, this is {amount}.": "Trong ví máy tính và trình khám phá của BEAM, nơi mọi token hiển thị với 8 chữ số thập phân, số này là {amount}.",
   "Pool share · {fee} fee": "Phần góp pool · phí {fee}",
   "Pool share": "Phần góp pool",
   "Pool share · unconfirmed #{id}": "Phần góp pool · chưa xác nhận #{id}",
@@ -2404,9 +2402,6 @@
   },
   "Buy {n} letters for {amount}": {
     "other": "Mua {n} chữ cái với giá {amount}"
-  },
-  "{n} smallest units of {unit}": {
-    "other": "{n} đơn vị nhỏ nhất của {unit}"
   },
   "Your contacts on this device could not be opened, so they were left exactly as they are. Nothing was changed. Lock and unlock the wallet, then try again.": "Không mở được danh bạ trên thiết bị này, nên danh bạ được giữ nguyên như cũ. Không có gì thay đổi. Hãy khóa rồi mở khóa ví, sau đó thử lại.",
   "Unlock the wallet to see your contacts.": "Mở khóa ví để xem danh bạ.",
@@ -4039,7 +4034,6 @@
   "Address type": "Loại địa chỉ",
   "Note (only you see it)": "Ghi chú (chỉ bạn thấy)",
   "Keep Beam PWA open until it completes. If nobody accepts it, it is cancelled and the money stays yours.": "Hãy giữ Beam PWA mở cho đến khi hoàn tất. Nếu không ai chấp nhận, khoản này sẽ bị hủy và tiền vẫn là của bạn.",
-  "The wallet has just read how many decimal places {unit} has. Check the amount.": "Ví vừa đọc được {unit} có bao nhiêu chữ số thập phân. Hãy kiểm tra lại số tiền.",
   "There is not enough in the wallet for the amount and the fee.": "Ví không đủ tiền cho số tiền và phí.",
   "The wallet was locked.": "Ví đã bị khóa.",
   "Send {amount} {unit} to {name}": "Gửi {amount} {unit} tới {name}",
@@ -4224,7 +4218,7 @@
   "Price protection {percent}, change": "Bảo vệ giá {percent}, thay đổi",
   "Prices could not be loaded: {reason}.": "Không tải được giá: {reason}.",
   "This swap moves the price by {percent}: you get noticeably less than the current rate. A smaller amount gets a better price.": "Lần hoán đổi này làm giá thay đổi {percent}: bạn nhận ít hơn rõ rệt so với tỷ giá hiện tại. Số tiền nhỏ hơn sẽ có giá tốt hơn.",
-  "{unit} comes in steps of {step}, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": "{unit} đi theo bước {step}, nên {amount} {unit} có giá {cost} {payUnit}, không phải {entered} bạn đã nhập.",
+  "{unit} comes in steps of 0.00000001, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": "{unit} đi theo bước 0.00000001, nên {amount} {unit} có giá {cost} {payUnit}, không phải {entered} bạn đã nhập.",
   "You get at least {amount} {unit}, or the swap stops and nothing is sent.": "Bạn nhận ít nhất {amount} {unit}, nếu không lần hoán đổi sẽ dừng và không có gì được gửi.",
   "If the price gets more than {percent} worse before you approve, the swap stops and nothing is sent.": "Nếu giá tệ đi hơn {percent} trước khi bạn phê duyệt, lần hoán đổi sẽ dừng và không có gì được gửi.",
   "Swap {amount} {unit} for ≈{getAmount} {getUnit}": "Hoán đổi {amount} {unit} lấy ≈{getAmount} {getUnit}",
@@ -4249,7 +4243,6 @@
   "Your share of the {pair} pool.": "Phần của bạn trong pool {pair}.",
   "Verified asset #{id}.": "Tài sản đã xác minh #{id}.",
   "Unverified asset #{id}. Anyone can create an asset with any name; check the number with the sender.": "Tài sản chưa xác minh #{id}. Bất kỳ ai cũng có thể tạo tài sản với bất kỳ tên nào; hãy kiểm tra số hiệu với người gửi.",
-  "BEAM’s desktop wallet and explorer show every token with 8 decimal places, so there this balance reads {amount}.": "Ví máy tính và trình khám phá của BEAM hiển thị mọi token với 8 chữ số thập phân, nên ở đó số dư này hiện là {amount}.",
   "Prices load once the wallet is up to date.": "Giá sẽ tải khi ví được cập nhật đầy đủ.",
   "Prices could not be read from the DEX. They are tried again shortly.": "Không đọc được giá từ DEX. Sẽ thử lại trong chốc lát.",
   "Getting the price from the DEX…": "Đang lấy giá từ DEX…",
@@ -4269,9 +4262,6 @@
   "Show on Wallet": "Hiện trên Ví",
   "Hide from Wallet": "Ẩn khỏi Ví",
   "{token} is hidden from Wallet. Show it again here or in Settings.": "{token} bị ẩn khỏi Ví. Hiện lại ở đây hoặc trong Cài đặt.",
-  "{token} has {n} decimal places, as its creator set it.": {
-    "other": "{token} có {n} chữ số thập phân, theo cách người tạo đã đặt."
-  },
   "What the latest {n} payments hold.": {
     "other": "Những gì {n} khoản thanh toán gần nhất chứa."
   },

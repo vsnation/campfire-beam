@@ -62,16 +62,11 @@
   "This code is from the old airdrop contract. Claiming it there shows the code to the network.": "このコードは旧エアドロップコントラクトのものです。そこで受け取ると、コードがネットワークに公開されます。",
   "Use one decimal mark, like 1.25": "小数点は一つだけ使ってください。例：1.25",
   "Is that {a} or {b}? Write it without the comma, or with a dot for decimals.": "{a}と{b}のどちらですか？カンマなしで書くか、小数点にはドットを使ってください。",
-  "BEAM has 8 decimal places at most.": "BEAMの小数点以下は最大8桁です。",
-  "{symbol} has no decimal places.": "{symbol}には小数点以下の桁がありません。",
-  "The wallet is still reading {symbol} from the network. Try again in a moment.": "ウォレットはまだネットワークから{symbol}の情報を読み込んでいます。しばらくしてからもう一度お試しください。",
   "Enter an amount.": "金額を入力してください。",
   "The amount must be more than zero.": "金額はゼロより大きくしてください。",
   "Only digits and one decimal mark, like 1.25": "数字と小数点一つだけを使ってください。例：1.25",
+  "BEAM has 8 decimal places at most.": "BEAMの小数点以下は最大8桁です。",
   "That amount is too large.": "金額が大きすぎます。",
-  "{symbol} has {n} decimal places at most.": {
-    "other": "{symbol}の小数点以下は最大{n}桁です。"
-  },
   "If the browser offers to save this password, choose Never: there it would sit next to the wallet it opens.": "ブラウザがこのパスワードの保存を提案したら、「保存しない」を選んでください。保存すると、パスワードがそれで開けるウォレットのすぐ隣に置かれることになります。",
   "Face ID or Touch ID (Settings) saves the typing.": "Face IDまたはTouch ID（設定）を使えば入力の手間が省けます。",
   "Confirm it is you": "本人確認",
@@ -712,7 +707,11 @@
   "Split over {n} routes": {
     "other": "{n}個のルートに分割"
   },
+  "{symbol} has no decimal places.": "{symbol}には小数点以下の桁がありません。",
   "This token has no decimal places.": "このトークンには小数点以下の桁がありません。",
+  "{symbol} has {n} decimal places at most.": {
+    "other": "{symbol}の小数点以下は最大{n}桁です。"
+  },
   "This token has {n} decimal places at most.": {
     "other": "このトークンの小数点以下は最大{n}桁です。"
   },
@@ -957,7 +956,6 @@
   "{path} is far larger than a Beam PWA release file.": "{path}は、Beam PWAのリリースファイルにしては大きすぎます。",
   "{path} from {host} is far larger than a Beam PWA release file.": "{host}の{path}は、Beam PWAのリリースファイルにしては大きすぎます。",
   "Asset #{id}": "アセット #{id}",
-  "In BEAM’s desktop wallet and explorer, which show every token with 8 decimal places, this is {amount}.": "すべてのトークンを小数点以下8桁で表示するBEAMのデスクトップウォレットとエクスプローラーでは、これは{amount}です。",
   "Pool share · {fee} fee": "プールのシェア · 手数料{fee}",
   "Pool share": "プールのシェア",
   "Pool share · unconfirmed #{id}": "プールのシェア · 未確認 #{id}",
@@ -2404,9 +2402,6 @@
   },
   "Buy {n} letters for {amount}": {
     "other": "{n}文字を{amount}で購入"
-  },
-  "{n} smallest units of {unit}": {
-    "other": "{unit}の最小単位で{n}"
   },
   "Your contacts on this device could not be opened, so they were left exactly as they are. Nothing was changed. Lock and unlock the wallet, then try again.": "この端末の連絡先を開けなかったため、そのまま残してあります。何も変更されていません。ウォレットをロックしてからロック解除し、再試行してください。",
   "Unlock the wallet to see your contacts.": "連絡先を見るには、ウォレットのロックを解除してください。",
@@ -4039,7 +4034,6 @@
   "Address type": "アドレスの種類",
   "Note (only you see it)": "メモ（自分にだけ表示）",
   "Keep Beam PWA open until it completes. If nobody accepts it, it is cancelled and the money stays yours.": "完了するまでBeam PWAを開いたままにしてください。誰にも受け取られなかった場合はキャンセルされ、お金は手元に残ります。",
-  "The wallet has just read how many decimal places {unit} has. Check the amount.": "ウォレットがたった今、{unit}の小数点以下の桁数を読み込みました。金額を確認してください。",
   "There is not enough in the wallet for the amount and the fee.": "金額と手数料に対して、ウォレットの残高が足りません。",
   "The wallet was locked.": "ウォレットがロックされました。",
   "Send {amount} {unit} to {name}": "{amount} {unit}を{name}へ送金",
@@ -4224,7 +4218,7 @@
   "Price protection {percent}, change": "価格保護{percent}、変更",
   "Prices could not be loaded: {reason}.": "価格を読み込めませんでした：{reason}。",
   "This swap moves the price by {percent}: you get noticeably less than the current rate. A smaller amount gets a better price.": "このスワップで価格が{percent}動きます。受け取る量が現在のレートより明らかに少なくなります。金額を小さくすると、より良い価格になります。",
-  "{unit} comes in steps of {step}, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": "{unit}は{step}単位のため、{amount} {unit}の価格は、入力した{entered}ではなく{cost} {payUnit}になります。",
+  "{unit} comes in steps of 0.00000001, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": "{unit}は0.00000001単位のため、{amount} {unit}の価格は、入力した{entered}ではなく{cost} {payUnit}になります。",
   "You get at least {amount} {unit}, or the swap stops and nothing is sent.": "最低{amount} {unit}を受け取ります。そうでなければスワップは中止され、何も送金されません。",
   "If the price gets more than {percent} worse before you approve, the swap stops and nothing is sent.": "承認する前に価格が{percent}を超えて悪化した場合、スワップは中止され、何も送金されません。",
   "Swap {amount} {unit} for ≈{getAmount} {getUnit}": "{amount} {unit}を約{getAmount} {getUnit}にスワップ",
@@ -4249,7 +4243,6 @@
   "Your share of the {pair} pool.": "{pair}プールの持ち分です。",
   "Verified asset #{id}.": "確認済みのアセット #{id}。",
   "Unverified asset #{id}. Anyone can create an asset with any name; check the number with the sender.": "未確認のアセット #{id}。誰でも任意の名前でアセットを作成できます。番号を送金者に確認してください。",
-  "BEAM’s desktop wallet and explorer show every token with 8 decimal places, so there this balance reads {amount}.": "BEAMのデスクトップウォレットとエクスプローラーはすべてのトークンを小数点以下8桁で表示するため、そこではこの残高が{amount}と表示されます。",
   "Prices load once the wallet is up to date.": "ウォレットが最新の状態になると、価格が読み込まれます。",
   "Prices could not be read from the DEX. They are tried again shortly.": "DEXから価格を読み取れませんでした。まもなく再試行します。",
   "Getting the price from the DEX…": "DEXから価格を取得中…",
@@ -4269,9 +4262,6 @@
   "Show on Wallet": "ウォレットに表示",
   "Hide from Wallet": "ウォレットで非表示",
   "{token} is hidden from Wallet. Show it again here or in Settings.": "{token}はウォレットで非表示になっています。ここまたは設定で再表示できます。",
-  "{token} has {n} decimal places, as its creator set it.": {
-    "other": "{token}の小数点以下は{n}桁です（作成者が設定した値）。"
-  },
   "What the latest {n} payments hold.": {
     "other": "直近{n}件の取引に含まれる分です。"
   },

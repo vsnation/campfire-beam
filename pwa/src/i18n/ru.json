@@ -62,19 +62,11 @@
   "This code is from the old airdrop contract. Claiming it there shows the code to the network.": "Этот код — из старого контракта аирдропа. Если забрать его там, код увидит сеть.",
   "Use one decimal mark, like 1.25": "Используйте один десятичный разделитель, например 1.25",
   "Is that {a} or {b}? Write it without the comma, or with a dot for decimals.": "Это {a} или {b}? Напишите без запятой или с точкой для дробной части.",
-  "BEAM has 8 decimal places at most.": "У BEAM не больше 8 знаков после точки.",
-  "{symbol} has no decimal places.": "У {symbol} нет знаков после точки.",
-  "The wallet is still reading {symbol} from the network. Try again in a moment.": "Кошелёк ещё получает данные по {symbol} из сети. Попробуйте ещё раз чуть позже.",
   "Enter an amount.": "Введите сумму.",
   "The amount must be more than zero.": "Сумма должна быть больше нуля.",
   "Only digits and one decimal mark, like 1.25": "Только цифры и один десятичный разделитель, например 1.25",
+  "BEAM has 8 decimal places at most.": "У BEAM не больше 8 знаков после точки.",
   "That amount is too large.": "Сумма слишком велика.",
-  "{symbol} has {n} decimal places at most.": {
-    "one": "У {symbol} максимум {n} знак после точки.",
-    "few": "У {symbol} максимум {n} знака после точки.",
-    "many": "У {symbol} максимум {n} знаков после точки.",
-    "other": "У {symbol} максимум {n} знака после точки."
-  },
   "If the browser offers to save this password, choose Never: there it would sit next to the wallet it opens.": "Если браузер предложит сохранить этот пароль, выберите «Никогда»: там он лежал бы рядом с кошельком, который открывает.",
   "Face ID or Touch ID (Settings) saves the typing.": "Face ID или Touch ID (в настройках) избавит от ввода пароля.",
   "Confirm it is you": "Подтвердите, что это вы",
@@ -790,7 +782,14 @@
     "many": "Разделён по {n} маршрутам",
     "other": "Разделён по {n} маршрутам"
   },
+  "{symbol} has no decimal places.": "У {symbol} нет знаков после точки.",
   "This token has no decimal places.": "У этого токена нет знаков после точки.",
+  "{symbol} has {n} decimal places at most.": {
+    "one": "У {symbol} максимум {n} знак после точки.",
+    "few": "У {symbol} максимум {n} знака после точки.",
+    "many": "У {symbol} максимум {n} знаков после точки.",
+    "other": "У {symbol} максимум {n} знака после точки."
+  },
   "This token has {n} decimal places at most.": {
     "one": "У этого токена максимум {n} знак после точки.",
     "few": "У этого токена максимум {n} знака после точки.",
@@ -1056,7 +1055,6 @@
   "{path} is far larger than a Beam PWA release file.": "{path} намного больше любого файла релиза Beam PWA.",
   "{path} from {host} is far larger than a Beam PWA release file.": "{path} с {host} намного больше любого файла релиза Beam PWA.",
   "Asset #{id}": "Актив #{id}",
-  "In BEAM’s desktop wallet and explorer, which show every token with 8 decimal places, this is {amount}.": "В настольном кошельке и обозревателе BEAM, которые показывают любой токен с 8 знаками после точки, это {amount}.",
   "Pool share · {fee} fee": "Доля в пуле · комиссия {fee}",
   "Pool share": "Доля в пуле",
   "Pool share · unconfirmed #{id}": "Доля в пуле · не подтверждена #{id}",
@@ -2689,12 +2687,6 @@
     "few": "Купить {n} буквы за {amount}",
     "many": "Купить {n} букв за {amount}",
     "other": "Купить {n} буквы за {amount}"
-  },
-  "{n} smallest units of {unit}": {
-    "one": "{n} минимальная единица {unit}",
-    "few": "{n} минимальные единицы {unit}",
-    "many": "{n} минимальных единиц {unit}",
-    "other": "{n} минимальной единицы {unit}"
   },
   "Your contacts on this device could not be opened, so they were left exactly as they are. Nothing was changed. Lock and unlock the wallet, then try again.": "Не удалось открыть ваши контакты на этом устройстве, поэтому они оставлены в точности как есть. Ничего не изменено. Заблокируйте и снова разблокируйте кошелёк, затем попробуйте ещё раз.",
   "Unlock the wallet to see your contacts.": "Разблокируйте кошелёк, чтобы увидеть контакты.",
@@ -4459,7 +4451,6 @@
   "Address type": "Тип адреса",
   "Note (only you see it)": "Заметка (видна только вам)",
   "Keep Beam PWA open until it completes. If nobody accepts it, it is cancelled and the money stays yours.": "Не закрывайте Beam PWA до завершения. Если никто не примет платёж, он будет отменён, а деньги останутся у вас.",
-  "The wallet has just read how many decimal places {unit} has. Check the amount.": "Кошелёк только что узнал, сколько знаков после точки у {unit}. Проверьте сумму.",
   "There is not enough in the wallet for the amount and the fee.": "В кошельке не хватает средств на сумму и комиссию.",
   "The wallet was locked.": "Кошелёк был заблокирован.",
   "Send {amount} {unit} to {name}": "Отправить {amount} {unit} на имя {name}",
@@ -4647,7 +4638,7 @@
   "Price protection {percent}, change": "Защита цены {percent}, изменить",
   "Prices could not be loaded: {reason}.": "Не удалось загрузить цены: {reason}.",
   "This swap moves the price by {percent}: you get noticeably less than the current rate. A smaller amount gets a better price.": "Этот обмен сдвигает цену на {percent}: вы получите заметно меньше, чем по текущему курсу. При меньшей сумме цена будет лучше.",
-  "{unit} comes in steps of {step}, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": "{unit} считается с шагом {step}, поэтому {amount} {unit} стоит {cost} {payUnit}, а не {entered}, как вы ввели.",
+  "{unit} comes in steps of 0.00000001, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": "{unit} делится с шагом 0.00000001, поэтому {amount} {unit} стоит {cost} {payUnit}, а не {entered}, как вы ввели.",
   "You get at least {amount} {unit}, or the swap stops and nothing is sent.": "Вы получите не меньше {amount} {unit}, иначе обмен остановится и ничего не будет отправлено.",
   "If the price gets more than {percent} worse before you approve, the swap stops and nothing is sent.": "Если цена ухудшится больше чем на {percent} до вашего одобрения, обмен остановится и ничего не будет отправлено.",
   "Swap {amount} {unit} for ≈{getAmount} {getUnit}": "Обменять {amount} {unit} на ≈{getAmount} {getUnit}",
@@ -4672,7 +4663,6 @@
   "Your share of the {pair} pool.": "Ваша доля в пуле {pair}.",
   "Verified asset #{id}.": "Проверенный актив №{id}.",
   "Unverified asset #{id}. Anyone can create an asset with any name; check the number with the sender.": "Непроверенный актив №{id}. Кто угодно может создать актив с любым названием; сверьте номер с отправителем.",
-  "BEAM’s desktop wallet and explorer show every token with 8 decimal places, so there this balance reads {amount}.": "Настольный кошелёк и обозреватель BEAM показывают любой токен с 8 знаками после точки, поэтому там этот баланс выглядит как {amount}.",
   "Prices load once the wallet is up to date.": "Цены загрузятся, когда кошелёк синхронизируется.",
   "Prices could not be read from the DEX. They are tried again shortly.": "Не удалось получить цены из DEX. Скоро будет новая попытка.",
   "Getting the price from the DEX…": "Получаем цену из DEX…",
@@ -4692,12 +4682,6 @@
   "Show on Wallet": "Показывать в «Кошельке»",
   "Hide from Wallet": "Скрыть в «Кошельке»",
   "{token} is hidden from Wallet. Show it again here or in Settings.": "{token} скрыт в «Кошельке». Снова показать его можно здесь или в настройках.",
-  "{token} has {n} decimal places, as its creator set it.": {
-    "one": "У {token} — {n} знак после точки, так задал его создатель.",
-    "few": "У {token} — {n} знака после точки, так задал его создатель.",
-    "many": "У {token} — {n} знаков после точки, так задал его создатель.",
-    "other": "У {token} — {n} знака после точки, так задал его создатель."
-  },
   "What the latest {n} payments hold.": {
     "one": "Что есть в последнем {n} платеже.",
     "few": "Что есть в последних {n} платежах.",

@@ -62,16 +62,11 @@
   "This code is from the old airdrop contract. Claiming it there shows the code to the network.": "此领取码来自旧的空投合约。在那里领取会让网络看到这个领取码。",
   "Use one decimal mark, like 1.25": "只能使用一个小数点，例如 1.25",
   "Is that {a} or {b}? Write it without the comma, or with a dot for decimals.": "这是 {a} 还是 {b}？请去掉逗号，或用小数点表示小数。",
-  "BEAM has 8 decimal places at most.": "BEAM 最多有 8 位小数。",
-  "{symbol} has no decimal places.": "{symbol} 没有小数位。",
-  "The wallet is still reading {symbol} from the network. Try again in a moment.": "钱包仍在从网络读取 {symbol} 的信息。请稍后再试。",
   "Enter an amount.": "请输入金额。",
   "The amount must be more than zero.": "金额必须大于零。",
   "Only digits and one decimal mark, like 1.25": "只能输入数字和一个小数点，例如 1.25",
+  "BEAM has 8 decimal places at most.": "BEAM 最多有 8 位小数。",
   "That amount is too large.": "金额太大。",
-  "{symbol} has {n} decimal places at most.": {
-    "other": "{symbol} 最多有 {n} 位小数。"
-  },
   "If the browser offers to save this password, choose Never: there it would sit next to the wallet it opens.": "如果浏览器提出保存此密码，请选择“永不”：保存在浏览器里，它就会和它能打开的钱包放在同一处。",
   "Face ID or Touch ID (Settings) saves the typing.": "Face ID 或 Touch ID（见“设置”）可免去输入密码。",
   "Confirm it is you": "确认是你本人",
@@ -712,7 +707,11 @@
   "Split over {n} routes": {
     "other": "分成 {n} 条路径"
   },
+  "{symbol} has no decimal places.": "{symbol} 没有小数位。",
   "This token has no decimal places.": "此代币没有小数位。",
+  "{symbol} has {n} decimal places at most.": {
+    "other": "{symbol} 最多有 {n} 位小数。"
+  },
   "This token has {n} decimal places at most.": {
     "other": "此代币最多有 {n} 位小数。"
   },
@@ -957,7 +956,6 @@
   "{path} is far larger than a Beam PWA release file.": "{path} 远大于 Beam PWA 发布版本中的文件。",
   "{path} from {host} is far larger than a Beam PWA release file.": "来自 {host} 的 {path} 远大于 Beam PWA 发布版本中的文件。",
   "Asset #{id}": "资产 #{id}",
-  "In BEAM’s desktop wallet and explorer, which show every token with 8 decimal places, this is {amount}.": "在对所有代币都显示 8 位小数的 BEAM 桌面钱包和区块浏览器中，这是 {amount}。",
   "Pool share · {fee} fee": "资金池份额 · {fee} 手续费",
   "Pool share": "资金池份额",
   "Pool share · unconfirmed #{id}": "资金池份额 · 未确认 #{id}",
@@ -2404,9 +2402,6 @@
   },
   "Buy {n} letters for {amount}": {
     "other": "以 {amount} 购买 {n} 个字母"
-  },
-  "{n} smallest units of {unit}": {
-    "other": "{unit} 的最小单位 {n} 个"
   },
   "Your contacts on this device could not be opened, so they were left exactly as they are. Nothing was changed. Lock and unlock the wallet, then try again.": "无法打开你在本设备上的联系人，因此它们保持原样，没有做任何更改。请锁定再解锁钱包，然后重试。",
   "Unlock the wallet to see your contacts.": "解锁钱包以查看你的联系人。",
@@ -4039,7 +4034,6 @@
   "Address type": "地址类型",
   "Note (only you see it)": "备注（仅你可见）",
   "Keep Beam PWA open until it completes. If nobody accepts it, it is cancelled and the money stays yours.": "请保持 Beam PWA 打开，直到完成。如果没有人接收，这笔转账会被取消，钱仍归你所有。",
-  "The wallet has just read how many decimal places {unit} has. Check the amount.": "钱包刚读取到 {unit} 有几位小数。请检查金额。",
   "There is not enough in the wallet for the amount and the fee.": "钱包中的余额不足以支付金额和手续费。",
   "The wallet was locked.": "钱包已锁定。",
   "Send {amount} {unit} to {name}": "向 {name} 发送 {amount} {unit}",
@@ -4224,7 +4218,7 @@
   "Price protection {percent}, change": "价格保护 {percent}，更改",
   "Prices could not be loaded: {reason}.": "无法加载价格：{reason}。",
   "This swap moves the price by {percent}: you get noticeably less than the current rate. A smaller amount gets a better price.": "这笔兑换会使价格变动 {percent}：你得到的会明显少于当前兑换率。金额小一些价格会更好。",
-  "{unit} comes in steps of {step}, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": "{unit} 以 {step} 为最小单位，因此 {amount} {unit} 需要 {cost} {payUnit}，而不是你输入的 {entered}。",
+  "{unit} comes in steps of 0.00000001, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": "{unit} 以 0.00000001 为最小单位，因此 {amount} {unit} 需要 {cost} {payUnit}，而不是你输入的 {entered}。",
   "You get at least {amount} {unit}, or the swap stops and nothing is sent.": "你至少会得到 {amount} {unit}，否则兑换会停止，不会发送任何内容。",
   "If the price gets more than {percent} worse before you approve, the swap stops and nothing is sent.": "如果在你批准之前价格变差超过 {percent}，兑换会停止，不会发送任何内容。",
   "Swap {amount} {unit} for ≈{getAmount} {getUnit}": "用 {amount} {unit} 兑换 ≈{getAmount} {getUnit}",
@@ -4249,7 +4243,6 @@
   "Your share of the {pair} pool.": "你在 {pair} 资金池中的份额。",
   "Verified asset #{id}.": "已验证的资产 #{id}。",
   "Unverified asset #{id}. Anyone can create an asset with any name; check the number with the sender.": "未验证的资产 #{id}。任何人都可以用任何名称创建资产；请与发送方核对编号。",
-  "BEAM’s desktop wallet and explorer show every token with 8 decimal places, so there this balance reads {amount}.": "BEAM 的桌面钱包和区块浏览器对所有代币都显示 8 位小数，所以在那里此余额显示为 {amount}。",
   "Prices load once the wallet is up to date.": "钱包同步到最新后会加载价格。",
   "Prices could not be read from the DEX. They are tried again shortly.": "无法从 DEX 读取价格。稍后会再次尝试。",
   "Getting the price from the DEX…": "正在从 DEX 获取价格…",
@@ -4269,9 +4262,6 @@
   "Show on Wallet": "在“钱包”中显示",
   "Hide from Wallet": "从“钱包”中隐藏",
   "{token} is hidden from Wallet. Show it again here or in Settings.": "{token} 已从“钱包”中隐藏。可在这里或“设置”中重新显示。",
-  "{token} has {n} decimal places, as its creator set it.": {
-    "other": "{token} 有 {n} 位小数，这是其创建者设定的。"
-  },
   "What the latest {n} payments hold.": {
     "other": "最近 {n} 笔转账中的内容。"
   },

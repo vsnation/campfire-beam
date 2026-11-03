@@ -258,8 +258,8 @@ test('"at least" is what a swap is sure to get: the protection, then what a rebu
 
 test('the swap screen shows "at least" and hands it to the approve sheet', () => {
   const src = readFileSync(new URL('../../src/screens/swap.js', import.meta.url), 'utf8');
-  assert.match(src, /tNodes\('\{about\}, at least \{least\}', \{ about: exactEl, least: h\('span', \{ 'data-testid': 'swap-get-least', text: formatAmount\(least, \{ decimals: getD \}\) \}\) \}\)/);
-  assert.match(src, /rows: \[\[t\('You get at least'\), `\$\{formatAmount\(least, \{ decimals: decimalsOf\(q\.receiveAsset\) \}\)\} \$\{unit\(q\.receiveAsset\)\}`\]\]/);
+  assert.match(src, /tNodes\('\{about\}, at least \{least\}', \{ about: exactEl, least: h\('span', \{ 'data-testid': 'swap-get-least', text: formatAmount\(least\) \}\) \}\)/);
+  assert.match(src, /rows: \[\[t\('You get at least'\), `\$\{formatAmount\(least\)\} \$\{unit\(q\.receiveAsset\)\}`\]\]/);
   assert.match(readFileSync(new URL('../../src/screens/consent.js', import.meta.url), 'utf8'), /action === 'swap' \? t\('You get about'\) :/, 'the approve sheet calls the engine amount "about"');
 });
 

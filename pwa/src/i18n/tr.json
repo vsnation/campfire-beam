@@ -62,17 +62,11 @@
   "This code is from the old airdrop contract. Claiming it there shows the code to the network.": "Bu kod eski airdrop sözleşmesine ait. Onu orada talep etmek kodu ağa gösterir.",
   "Use one decimal mark, like 1.25": "Tek bir ondalık işareti kullanın, örneğin 1.25",
   "Is that {a} or {b}? Write it without the comma, or with a dot for decimals.": "Bu {a} mı yoksa {b} mi? Virgülsüz yazın ya da ondalık için nokta kullanın.",
-  "BEAM has 8 decimal places at most.": "BEAM en fazla 8 ondalık basamaklıdır.",
-  "{symbol} has no decimal places.": "{symbol} ondalık basamak içermez.",
-  "The wallet is still reading {symbol} from the network. Try again in a moment.": "Cüzdan {symbol} bilgisini hâlâ ağdan okuyor. Birazdan tekrar deneyin.",
   "Enter an amount.": "Bir tutar girin.",
   "The amount must be more than zero.": "Tutar sıfırdan büyük olmalı.",
   "Only digits and one decimal mark, like 1.25": "Yalnızca rakamlar ve tek bir ondalık işareti, örneğin 1.25",
+  "BEAM has 8 decimal places at most.": "BEAM en fazla 8 ondalık basamaklıdır.",
   "That amount is too large.": "Bu tutar çok büyük.",
-  "{symbol} has {n} decimal places at most.": {
-    "one": "{symbol} en fazla {n} ondalık basamaklıdır.",
-    "other": "{symbol} en fazla {n} ondalık basamaklıdır."
-  },
   "If the browser offers to save this password, choose Never: there it would sit next to the wallet it opens.": "Tarayıcı bu şifreyi kaydetmeyi önerirse Asla'yı seçin: aksi hâlde şifre, açtığı cüzdanın hemen yanında durur.",
   "Face ID or Touch ID (Settings) saves the typing.": "Face ID veya Touch ID (Ayarlar) sizi yazmaktan kurtarır.",
   "Confirm it is you": "Siz olduğunuzu onaylayın",
@@ -738,7 +732,12 @@
     "one": "{n} rotaya bölündü",
     "other": "{n} rotaya bölündü"
   },
+  "{symbol} has no decimal places.": "{symbol} ondalık basamak içermez.",
   "This token has no decimal places.": "Bu token ondalık basamak içermez.",
+  "{symbol} has {n} decimal places at most.": {
+    "one": "{symbol} en fazla {n} ondalık basamaklıdır.",
+    "other": "{symbol} en fazla {n} ondalık basamaklıdır."
+  },
   "This token has {n} decimal places at most.": {
     "one": "Bu token en fazla {n} ondalık basamaklıdır.",
     "other": "Bu token en fazla {n} ondalık basamaklıdır."
@@ -990,7 +989,6 @@
   "{path} is far larger than a Beam PWA release file.": "{path}, bir Beam PWA sürüm dosyasından çok daha büyük.",
   "{path} from {host} is far larger than a Beam PWA release file.": "{path} ({host}), bir Beam PWA sürüm dosyasından çok daha büyük.",
   "Asset #{id}": "Varlık #{id}",
-  "In BEAM’s desktop wallet and explorer, which show every token with 8 decimal places, this is {amount}.": "Her token'ı 8 ondalık basamakla gösteren BEAM'in masaüstü cüzdanında ve blok gezgininde bu, {amount} olur.",
   "Pool share · {fee} fee": "Havuz payı · {fee} ücret",
   "Pool share": "Havuz payı",
   "Pool share · unconfirmed #{id}": "Havuz payı · onaylanmamış #{id}",
@@ -2499,10 +2497,6 @@
   "Buy {n} letters for {amount}": {
     "one": "{amount} karşılığında {n} harf satın al",
     "other": "{amount} karşılığında {n} harf satın al"
-  },
-  "{n} smallest units of {unit}": {
-    "one": "{unit} için en küçük birimden {n} adet",
-    "other": "{unit} için en küçük birimden {n} adet"
   },
   "Your contacts on this device could not be opened, so they were left exactly as they are. Nothing was changed. Lock and unlock the wallet, then try again.": "Bu cihazdaki kişileriniz açılamadı, bu yüzden tam olarak oldukları gibi bırakıldı. Hiçbir şey değiştirilmedi. Cüzdanı kilitleyip kilidini açın, ardından tekrar deneyin.",
   "Unlock the wallet to see your contacts.": "Kişilerinizi görmek için cüzdanın kilidini açın.",
@@ -4179,7 +4173,6 @@
   "Address type": "Adres türü",
   "Note (only you see it)": "Not (yalnızca siz görürsünüz)",
   "Keep Beam PWA open until it completes. If nobody accepts it, it is cancelled and the money stays yours.": "Tamamlanana kadar Beam PWA'yı açık tutun. Kimse kabul etmezse iptal edilir ve para sizde kalır.",
-  "The wallet has just read how many decimal places {unit} has. Check the amount.": "Cüzdan, {unit} token'ının kaç ondalık basamağı olduğunu az önce okudu. Tutarı kontrol edin.",
   "There is not enough in the wallet for the amount and the fee.": "Cüzdanda tutar ve ücret için yeterli bakiye yok.",
   "The wallet was locked.": "Cüzdan kilitlendi.",
   "Send {amount} {unit} to {name}": "{name} adlı alıcıya {amount} {unit} gönder",
@@ -4365,7 +4358,7 @@
   "Price protection {percent}, change": "Fiyat koruması {percent}, değiştir",
   "Prices could not be loaded: {reason}.": "Fiyatlar yüklenemedi: {reason}.",
   "This swap moves the price by {percent}: you get noticeably less than the current rate. A smaller amount gets a better price.": "Bu takas fiyatı {percent} değiştiriyor: mevcut kurdan belirgin şekilde daha az alırsınız. Daha küçük bir tutar daha iyi fiyat alır.",
-  "{unit} comes in steps of {step}, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": "{unit}, {step}'lik adımlarla gelir; bu yüzden {amount} {unit}, girdiğiniz {entered} değil, {cost} {payUnit} tutar.",
+  "{unit} comes in steps of 0.00000001, so {amount} {unit} costs {cost} {payUnit}, not the {entered} you entered.": "{unit} 0.00000001'lik adımlarla gelir, bu yüzden {amount} {unit}, girdiğiniz {entered} değil, {cost} {payUnit} tutar.",
   "You get at least {amount} {unit}, or the swap stops and nothing is sent.": "En az {amount} {unit} alırsınız, yoksa takas durur ve hiçbir şey gönderilmez.",
   "If the price gets more than {percent} worse before you approve, the swap stops and nothing is sent.": "Fiyat siz onaylamadan önce {percent} oranından fazla kötüleşirse, takas durur ve hiçbir şey gönderilmez.",
   "Swap {amount} {unit} for ≈{getAmount} {getUnit}": "{amount} {unit} karşılığında ≈{getAmount} {getUnit} takas et",
@@ -4390,7 +4383,6 @@
   "Your share of the {pair} pool.": "{pair} havuzundaki payınız.",
   "Verified asset #{id}.": "Doğrulanmış varlık #{id}.",
   "Unverified asset #{id}. Anyone can create an asset with any name; check the number with the sender.": "Doğrulanmamış varlık #{id}. Herkes istediği adla bir varlık oluşturabilir; numarayı gönderenle kontrol edin.",
-  "BEAM’s desktop wallet and explorer show every token with 8 decimal places, so there this balance reads {amount}.": "BEAM'in masaüstü cüzdanı ve blok gezgini her token'ı 8 ondalık basamakla gösterir; bu yüzden orada bu bakiye {amount} olarak görünür.",
   "Prices load once the wallet is up to date.": "Fiyatlar, cüzdan güncel olduğunda yüklenir.",
   "Prices could not be read from the DEX. They are tried again shortly.": "Fiyatlar DEX'ten okunamadı. Kısa süre sonra yeniden denenir.",
   "Getting the price from the DEX…": "Fiyat DEX'ten alınıyor…",
@@ -4410,10 +4402,6 @@
   "Show on Wallet": "Cüzdan'da göster",
   "Hide from Wallet": "Cüzdan'dan gizle",
   "{token} is hidden from Wallet. Show it again here or in Settings.": "{token}, Cüzdan'dan gizlendi. Burada veya Ayarlar'da yeniden gösterin.",
-  "{token} has {n} decimal places, as its creator set it.": {
-    "one": "{token}, oluşturanın belirlediği gibi {n} ondalık basamaklıdır.",
-    "other": "{token}, oluşturanın belirlediği gibi {n} ondalık basamaklıdır."
-  },
   "What the latest {n} payments hold.": {
     "one": "Son {n} ödemenin içerdiği.",
     "other": "Son {n} ödemenin içerdiği."

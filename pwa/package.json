@@ -57,7 +57,6 @@
     "e2e:near-intents": "node tools/stage_engine.mjs && node --test --test-concurrency=1 test/e2e/near_intents.test.mjs",
     "e2e:tokens": "node tools/stage_engine.mjs && node --test --test-concurrency=1 test/e2e/tokens.test.mjs",
     "e2e:live:tokens": "node tools/stage_engine.mjs && node test/e2e/live_tokens.mjs",
-    "e2e:live:decimals": "node tools/stage_engine.mjs && node tools/build.mjs && node test/e2e/live_decimals.mjs",
     "e2e:payments": "node tools/stage_engine.mjs && node --test --test-concurrency=1 test/e2e/payments.test.mjs",
     "e2e:live:payments": "node tools/stage_engine.mjs && node test/e2e/live_payments.mjs",
     "e2e:dex-pools": "node tools/stage_engine.mjs && node --test --test-concurrency=1 test/e2e/dex_pools.test.mjs",
