@@ -39,7 +39,9 @@ jobs:
           if grep -vqE '^[^<>]+ <[^<>@]+@users\.noreply\.github\.com>$' "$allowed"; then
             echo "contributors.txt may list GitHub no-reply addresses only"; exit 1
           fi
-          bad=$(git log --format='%an <%ae>' "$base"..HEAD | grep -vxF -f "$allowed" || true)
+          # --no-merges: a pull request is checked out as GitHub's merge commit, made in the
+          # account's numbered no-reply name, not ours.
+          bad=$(git log --no-merges --format='%an <%ae>' "$base"..HEAD | grep -vxF -f "$allowed" || true)
           if [ -n "$bad" ]; then echo "Foreign authors:"; echo "$bad" | sort -u; exit 1; fi
           # A trailer is a line of its own; prose that names one is not.
           trailers=$(git log --format='%h %B' "$base"..HEAD \
@@ -98,6 +100,11 @@ jobs:
 
       - name: Analyze BEAM code
         run: flutter analyze lib/wallets/beam test/beam
+
+      # The BEAM screens: not every one is reached by a test, so a type error in
+      # one would only show at release build time. Errors fail; lints do not.
+      - name: Compile check of the BEAM screens
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings lib/pages/beam lib/widgets/beam lib/pages/token_view lib/pages_desktop_specific/beam lib/pages_desktop_specific/my_stack_view/wallet_view
 
       - name: BEAM tests
         run: flutter test test/beam --reporter expanded
