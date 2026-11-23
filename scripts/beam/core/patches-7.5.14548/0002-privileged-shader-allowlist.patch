@@ -1,0 +1,253 @@
+Campfire for BEAM: wallet-api --privileged_shader_sha256=<hex>[,<hex>...]
+
+Stock wallet-api runs every app shader at privilege 0 (api_cli.cpp:340). Shaders
+that derive keys from the master KDF (get_PkEx, get_BlindSk, SetKernelAdv; e.g.
+BANS "user view" and "receive_all") fail there. Granting privilege 1 to every shader
+would let any dApp derive keys other dApps use, so only shaders whose SHA-256 of the
+exact `contract` bytes is listed get a privilege-1 manager; all others keep the
+stock privilege-0 manager. Empty list (the default) = stock behaviour.
+
+Also: process_invoke_data refuses invoke data that asks to re-run an app body at a
+privilege above 0 unless this process compiled that body from an allowlisted shader
+(never above 1). Stock honours whatever privilege the client-supplied data names
+(contract_transaction.cpp:648). Invoke data wallet-api itself produced at privilege 0
+is unaffected.
+
+Applies after 0001-bind-loopback.patch, to tag beam-7.5.14493, with patch -p1.
+
+--- a/wallet/api/cli/api_cli.cpp
++++ b/wallet/api/cli/api_cli.cpp
+@@ -59,6 +59,9 @@
+ 
+ #include "wallet/transactions/lelantus/lelantus_reg_creators.h"
+ #include "wallet/core/contracts/i_shaders_manager.h"
++#include "bvm/bvm2.h"
++#include "utility/hex.h"
++#include <set>
+ #include "nlohmann/json.hpp"
+ #include "version.h"
+ 
+@@ -135,6 +138,140 @@
+         return ApiACL(keys);
+     }
+ 
++    // Campfire: per-shader privilege for invoke_contract.
++    //
++    // Stock wallet-api runs every app shader at privilege 0: one IShadersManager,
++    // created at privilege 0. A few shaders need privilege 1 to derive keys from the
++    // master KDF (get_PkEx, get_BlindSk, SetKernelAdv without a foreign signature),
++    // e.g. BANS "user view" / "receive_all". Raising the privilege for every shader would
++    // let any dApp shader derive the keys other dApps use, so privilege 1 is granted only
++    // to shaders whose SHA-256 (of the exact `contract` bytes the client sends) is listed
++    // in --privileged_shader_sha256. Every other shader runs at privilege 0, as stock.
++    class PrivilegeRoutingShadersManager : public IShadersManager
++    {
++    public:
++        PrivilegeRoutingShadersManager(Wallet& wallet, std::vector<ECC::Hash::Value> privileged)
++            : _wallet(wallet)
++            , _privileged(std::move(privileged))
++            , _std(IShadersManager::CreateInstance(wallet, "", "", 0))
++        {
++        }
++
++        void CallShaderAndStartTx(std::vector<uint8_t>&& shader, std::string&& args, unsigned method, uint32_t priority, uint32_t unique, DoneAllHandler doneHandler) override
++        {
++            route(shader).CallShaderAndStartTx(std::move(shader), std::move(args), method, priority, unique, std::move(doneHandler));
++        }
++
++        void CallShader(std::vector<uint8_t>&& shader, std::string&& args, unsigned method, uint32_t priority, uint32_t unique, DoneCallHandler doneHandler) override
++        {
++            route(shader).CallShader(std::move(shader), std::move(args), method, priority, unique, std::move(doneHandler));
++        }
++
++        void ProcessTxData(const ByteBuffer& data, DoneTxHandler doneHandler) override
++        {
++            // process_invoke_data takes invoke data back from the client. When it carries an
++            // app invocation to re-run later (dependent transactions), contract_transaction.cpp
++            // re-runs that app body at the privilege stored in the data, so a client could ask
++            // for any privilege with any body. Accept a non-zero privilege only for a body this
++            // process compiled from an allowlisted shader, and never above 1.
++            bvm2::ContractInvokeData invokeData;
++            if (fromByteBuffer(data, invokeData) && invokeData.m_AppInvoke.m_Privilege)
++            {
++                ECC::Hash::Value hv;
++                ECC::Hash::Processor() << Blob(invokeData.m_AppInvoke.m_App) >> hv;
++                if ((invokeData.m_AppInvoke.m_Privilege > 1) || !_privilegedBodies.count(hv))
++                {
++                    BEAM_LOG_WARNING() << "process_invoke_data refused: app privilege " << invokeData.m_AppInvoke.m_Privilege << " was not granted to this shader";
++                    return doneHandler(boost::none, std::string("invoke data requests a shader privilege that was not granted"));
++                }
++            }
++            _std->ProcessTxData(data, std::move(doneHandler));
++        }
++
++        bool IsDone() const override
++        {
++            return _std->IsDone() && (!_priv || _priv->IsDone());
++        }
++
++    private:
++        IShadersManager& route(const std::vector<uint8_t>& shader)
++        {
++            // An empty `contract` reuses the body compiled last, so it stays on the manager
++            // (and therefore the privilege) that compiled that body.
++            if (!shader.empty())
++            {
++                ECC::Hash::Value hv;
++                ECC::Hash::Processor() << Blob(shader) >> hv;
++                _lastPrivileged = std::find(_privileged.begin(), _privileged.end(), hv) != _privileged.end();
++                if (_lastPrivileged)
++                {
++                    if (!_priv)
++                        _priv = IShadersManager::CreateInstance(_wallet, "", "", 1);
++                    rememberBody(shader);
++                    BEAM_LOG_INFO() << "app shader " << to_hex(hv.m_pData, hv.nBytes) << " runs at privilege 1";
++                }
++            }
++            return _lastPrivileged ? *_priv : *_std;
++        }
++
++        void rememberBody(const std::vector<uint8_t>& shader)
++        {
++            try
++            {
++                ByteBuffer body;
++                bvm2::Processor::Compile(body, Blob(shader), bvm2::Processor::Kind::Manager);
++                ECC::Hash::Value hv;
++                ECC::Hash::Processor() << Blob(body) >> hv;
++                _privilegedBodies.insert(hv);
++            }
++            catch (const std::exception&)
++            {
++                // the manager compiles it again and reports the error to the caller
++            }
++        }
++
++        Wallet& _wallet;
++        std::vector<ECC::Hash::Value> _privileged;
++        std::set<ECC::Hash::Value> _privilegedBodies;
++        IShadersManager::Ptr _std;
++        IShadersManager::Ptr _priv;
++        bool _lastPrivileged = false;
++    };
++
++    // Campfire: parse --privileged_shader_sha256 (comma-separated, 64 hex digits each).
++    bool parsePrivilegedShaders(const std::string& list, std::vector<ECC::Hash::Value>& out)
++    {
++        auto nibble = [](char c) -> int
++        {
++            if (c >= '0' && c <= '9') return c - '0';
++            if (c >= 'a' && c <= 'f') return c - 'a' + 10;
++            if (c >= 'A' && c <= 'F') return c - 'A' + 10;
++            return -1;
++        };
++
++        for (auto item : string_helpers::split(list, ','))
++        {
++            boost::algorithm::trim(item);
++            ECC::Hash::Value hv;
++            bool ok = (item.size() == hv.nBytes * 2);
++            for (uint32_t i = 0; ok && (i < hv.nBytes); i++)
++            {
++                int hi = nibble(item[2 * i]), lo = nibble(item[2 * i + 1]);
++                ok = (hi >= 0) && (lo >= 0);
++                if (ok)
++                    hv.m_pData[i] = static_cast<uint8_t>((hi << 4) | lo);
++            }
++
++            if (!ok)
++            {
++                BEAM_LOG_ERROR() << "--privileged_shader_sha256: not a 64-digit hex SHA-256: \"" << item << "\"";
++                return false;
++            }
++            out.push_back(hv);
++        }
++        return true;
++    }
++
+     class IWalletApiServer
+     {
+     public:
+@@ -180,6 +317,12 @@
+         ~WalletApiServer()
+         {
+             stop();
++        }
++
++        // Campfire: must be called before the reactor runs (before any connection).
++        void setPrivilegedShaders(std::vector<ECC::Hash::Value> v)
++        {
++            _privilegedShaders = std::move(v);
+         }
+ 
+         #ifdef BEAM_IPFS_SUPPORT
+@@ -337,7 +480,7 @@
+                 _walletData->walletDB    = _walletDB;
+                 _walletData->wallet      = _wallet;
+                 _walletData->acl         = _acl;
+-                _walletData->contracts   = IShadersManager::CreateInstance(*_wallet, "", "", 0);
++                _walletData->contracts   = std::make_shared<PrivilegeRoutingShadersManager>(*_wallet, _privilegedShaders);
+                 _walletData->nodeNetwork = _network;
+ 
+                 #ifdef BEAM_ATOMIC_SWAP_SUPPORT
+@@ -618,6 +761,7 @@
+         std::vector<uint64_t> _pendingToClose;
+         ApiACL _acl;
+         std::vector<uint32_t> _whitelist;
++        std::vector<ECC::Hash::Value> _privilegedShaders;
+ 
+         std::set<Asset::ID> _assetsFullList = {Asset::s_BeamID};
+ 
+@@ -659,6 +803,7 @@
+         std::string aclPath;
+         std::string whitelist;
+         std::string apiVersion;
++        std::string privilegedShaders;
+ 
+         uint32_t logCleanupPeriod;
+         bool enableLelantus = false;
+@@ -688,6 +833,7 @@
+             (cli::LOG_CLEANUP_DAYS, po::value<uint32_t>()->default_value(5), "old logfiles cleanup period(days)")
+             (cli::API_TCP_MAX_LINE, po::value<size_t>(&connectionOptions.maxLineSize)->default_value(65536), "max line size in TCP mode")
+             (cli::REQUEST_BODIES,   po::value<bool>(&options.enableBodyRequests)->default_value(false), "request and parse block bodies on the wallet side")
++            ("privileged_shader_sha256", po::value<std::string>(&options.privilegedShaders)->default_value(""), "comma-separated SHA-256 (hex) of app shaders allowed to run at privilege 1; every other shader runs at privilege 0")
+         ;
+ 
+         po::options_description authDesc("User authorization options");
+@@ -768,6 +914,7 @@
+         IWalletDB::Ptr walletDB;
+         ApiACL acl;
+         std::vector<uint32_t> whitelist;
++        std::vector<ECC::Hash::Value> privilegedShaders;
+ 
+         {
+             if (!IWalletApi::ValidateAPIVersion(options.apiVersion))
+@@ -824,7 +971,20 @@
+                         BEAM_LOG_ERROR() << "IP address not added to whitelist: " << item;
+                         return -1;
+                     }
++                }
++            }
++
++            if (!options.privilegedShaders.empty())
++            {
++                if (!parsePrivilegedShaders(options.privilegedShaders, privilegedShaders))
++                {
++                    return -1;
+                 }
++
++                for (const auto& hv : privilegedShaders)
++                {
++                    BEAM_LOG_INFO() << "Privileged app shader (privilege 1): " << to_hex(hv.m_pData, hv.nBytes);
++                }
+             }
+ 
+             if (vm.count(cli::NODE_ADDR) == 0)
+@@ -904,6 +1064,7 @@
+         wallet->SetNodeEndpoint(nnet);
+ 
+         WalletApiServer server(options.apiVersion, walletDB, wallet, nnet, *reactor, listenTo, connectionOptions, acl, whitelist);
++        server.setPrivilegedShaders(std::move(privilegedShaders));
+ 
+         #ifdef BEAM_ATOMIC_SWAP_SUPPORT
+         RegisterSwapTxCreators(wallet, walletDB);

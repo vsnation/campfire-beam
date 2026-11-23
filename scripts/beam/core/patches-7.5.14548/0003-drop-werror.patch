@@ -1,0 +1,20 @@
+Drop -Werror from the top-level C++ flags.
+
+Apple clang 17 warns unused-private-field on _broadcastRouter in
+wallet/api/cli/api_cli.cpp; -Werror turns it into an error and clang then reports
+six misleading cascade errors (no matching constructor ... WalletApiServer).
+See LightWallet docs/BUILDING_BEAM_MACOS.md. Warnings stay on (-Wall).
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 9bb589a4f..faf9c7c40 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -269,7 +269,7 @@ else()
+     endif()
+ 
+     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread ")
+-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror -pthread -fvisibility=hidden")
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pthread -fvisibility=hidden")
+     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -ggdb3")
+     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+ 

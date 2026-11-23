@@ -23,6 +23,16 @@
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/../core/common.sh"
 
+# The web engine follows BEAM's newest hotfix, 7.5.14548 (2026-10-30: safe handling of malformed peer
+# messages in the wallet, Slatepack, explorer fixes); owner 2026-11-23: "Update Beam PWA wallet to github new
+# hotfix". The desktop/phone core keeps common.sh's pin until its own release. Same core patches.
+BEAM_TAG="beam-7.5.14548"
+BEAM_COMMIT="2f38843ed0641dbb8c555a854f78fbd811b1de83"
+BEAM_EXPECTED_VERSION="7.5.14548"
+# The same six core patches, made for 7.5.14548: 0001's wallet-api hunk sat under two comment lines the
+# hotfix added (identical change); 0002-0006 are byte-for-byte the 14493 ones.
+PATCH_DIR="${CORE_SCRIPTS_DIR}/patches-7.5.14548"
+
 EMSDK_REPO_URL="https://github.com/emscripten-core/emsdk.git"
 EMSDK_VERSION="3.1.10"
 EMSDK_COMMIT="891b4491419c42f9d2b9f97c47d1043b26dfd3e5"   # tag 3.1.10

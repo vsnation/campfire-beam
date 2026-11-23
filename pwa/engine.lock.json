@@ -1,11 +1,11 @@
 {
-  "comment": "BEAM's WebAssembly wallet client (BeamMW/beam wasmclient/), built by scripts/beam/wasm/build_wasm.sh from tag beam-7.5.14493 (HF6) with the core patches and the wasm patches listed here. tools/stage_engine.mjs copies these into vendor/engine/ only if every hash matches. The binaries are not committed.",
-  "beam_tag": "beam-7.5.14493",
+  "comment": "BEAM's WebAssembly wallet client (BeamMW/beam wasmclient/), built by scripts/beam/wasm/build_wasm.sh from tag beam-7.5.14548 (the Oct 2026 hotfix on HF6) with the core patches (scripts/beam/core/patches-7.5.14548) and the wasm patches listed here. tools/stage_engine.mjs copies these into vendor/engine/ only if every hash matches. The binaries are not committed.",
+  "beam_tag": "beam-7.5.14548",
   "build_script": "scripts/beam/wasm/build_wasm.sh",
   "rules_signature_contains": "3928666-96df3f33ee02ad9e",
   "files": {
-    "wasm-client.js": "b3d47b7ce7a18a6400de02f103e2982dd511ce2e5f3815a8e9cd1661d7ab97f0",
-    "wasm-client.wasm": "a0410ea3ab28486847e48434ba68125c09bf1986acb801daec82fc5a5d3f482b",
+    "wasm-client.js": "e7883c5eda7bcbbff7f98e875e06acfb2a93e7b495861df0174987b053fe5cc1",
+    "wasm-client.wasm": "b635aaf8e81d0d3a29153a0633a2ea378753c72fcb9a8634b7e57a1286e2f394",
     "wasm-client.worker.js": "eff6668e83689221c3515bd0b29bf9db9a1c8067a73213be4abe142f396a4e0e"
   },
   "patches": [
